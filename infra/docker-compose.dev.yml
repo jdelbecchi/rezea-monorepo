@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: rezea_postgres
+    environment:
+      POSTGRES_DB: rezea
+      POSTGRES_USER: rezea
+      POSTGRES_PASSWORD: rezea_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rezea"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rezea_network
+
+  # FastAPI Backend
+  api:
+    build:
+      context: ../apps/api
+      dockerfile: Dockerfile
+    container_name: rezea_api
+    environment:
+      DATABASE_URL: postgresql+asyncpg://rezea:rezea_password@postgres:5432/rezea
+      SECRET_KEY: dev-secret-key-change-in-production-min-32-chars
+      ENVIRONMENT: development
+      DEBUG: "true"
+      CORS_ORIGINS: '["http://localhost:3000"]'
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../apps/api/app:/app/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - rezea_network
+
+  # Next.js Frontend (Dev mode)
+  web:
+    image: node:20-alpine
+    container_name: rezea_web
+    working_dir: /app
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NODE_ENV: development
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../apps/web:/app
+      - /app/node_modules
+      - /app/.next
+    command: sh -c "npm install && npm run dev"
+    networks:
+      - rezea_network
+
+volumes:
+  postgres_data:
+
+networks:
+  rezea_network:
+    driver: bridge

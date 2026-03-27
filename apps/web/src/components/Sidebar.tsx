@@ -1,0 +1,307 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+
+interface User {
+    id: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    role: string;
+}
+
+interface SidebarProps {
+    user: User | null;
+    tenant?: {
+        name: string;
+        logo_url?: string | null;
+        primary_color?: string;
+    } | null;
+}
+
+interface NavItem {
+    path: string;
+    label: string;
+    icon: string;
+    highlight?: boolean;
+}
+
+interface AdminNavItem {
+    path?: string;
+    label: string;
+    icon: string;
+    children?: { path: string; label: string }[];
+}
+
+export default function Sidebar({ user, tenant }: SidebarProps) {
+    const pathname = usePathname();
+    const router = useRouter();
+    const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+
+    const handleLogout = () => {
+        localStorage.clear();
+        router.push("/login");
+    };
+
+    const isActive = (path: string) => {
+        if (path === "/dashboard") {
+            return pathname === "/dashboard";
+        }
+        return pathname === path;
+    };
+
+    const isParentActive = (item: AdminNavItem) => {
+        if (item.path && isActive(item.path)) return true;
+        if (item.children) {
+            return item.children.some((child) => isActive(child.path));
+        }
+        return false;
+    };
+
+    const toggleMenu = (label: string) => {
+        setOpenMenus((prev) => ({ ...prev, [label]: !prev[label] }));
+    };
+
+    // Auto-open menus that contain the active page
+    const isMenuOpen = (item: AdminNavItem) => {
+        if (openMenus[item.label] !== undefined) return openMenus[item.label];
+        if (item.children) {
+            return item.children.some((child) => isActive(child.path));
+        }
+        return false;
+    };
+
+    const navItems: NavItem[] = [
+        { path: "/dashboard", label: "Accueil", icon: "🏠" },
+        { path: "/dashboard/profile", label: "Mon profil", icon: "👤" },
+        { path: "/dashboard/credits", label: "Boutique", icon: "🛍️" },
+        { path: "/dashboard/planning", label: "Planning et réservations", icon: "📋" },
+        { path: "/dashboard/orders", label: "Mes commandes", icon: "📦" },
+        { path: "/dashboard/events", label: "Evenements", icon: "🎉" },
+    ];
+
+    // Menus visibles par owner, manager et staff uniquement
+    const isStaffOrAbove = user?.role === "owner" || user?.role === "manager" || user?.role === "staff";
+
+    const staffNavItems: NavItem[] = [
+        { path: "/dashboard/cours-inscriptions", label: "Cours et inscriptions", icon: "📚" },
+        { path: "/dashboard/contacts", label: "Contacts", icon: "📇" },
+    ];
+
+    const adminNavItems: AdminNavItem[] = [
+        { path: "/dashboard/admin", label: "Tableau de bord", icon: "📊" },
+        { path: "/dashboard/admin/shop/offers", label: "Catalogue d'offres", icon: "🏷️" },
+        { path: "/dashboard/admin/shop/orders", label: "Gestion des commandes", icon: "📦" },
+        { path: "/dashboard/admin/planning/agenda", label: "Agenda", icon: "📅" },
+        {
+            label: "Programmation du planning",
+            icon: "📋",
+            children: [
+                { path: "/dashboard/admin/planning/sessions", label: "Séances" },
+                { path: "/dashboard/admin/events/programming", label: "Evènements" },
+            ],
+        },
+        {
+            label: "Gestion des inscriptions",
+            icon: "📝",
+            children: [
+                { path: "/dashboard/admin/planning/bookings", label: "Inscriptions aux séances" },
+                { path: "/dashboard/admin/events/registrations", label: "Inscriptions aux évènements" },
+            ],
+        },
+        { path: "/dashboard/admin/users", label: "Utilisateurs", icon: "👥" },
+        { path: "/dashboard/admin/emails", label: "Emails", icon: "📧" },
+        { path: "/dashboard/admin/settings", label: "Paramètres", icon: "⚙️" },
+    ];
+
+    const isAdmin = user?.role === "owner" || user?.role === "manager";
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    const SidebarContent = () => (
+        <>
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                    {tenant?.logo_url ? (
+                        <img src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${tenant.logo_url}`} className="h-8 w-8 object-contain" alt="Logo" />
+                    ) : (
+                        <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-xs font-bold">RZ</div>
+                    )}
+                    <div className="text-xl font-bold tracking-tight text-white uppercase truncate max-w-[150px]">
+                        {tenant?.name || "REZEA"}
+                    </div>
+                </div>
+                <button 
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="md:hidden text-slate-400 hover:text-white"
+                >
+                    ✕
+                </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-6 pr-2 -mr-2 scrollbar-hide">
+                {/* Navigation membre */}
+                <div>
+                    <p className="px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">
+                        Bienvenue {user?.first_name}
+                    </p>
+                    <nav className="space-y-1">
+                        {navItems.map((item) => (
+                            <Link
+                                key={item.path}
+                                href={item.path}
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className={`flex items-center py-2.5 px-4 rounded-xl transition-all whitespace-nowrap overflow-hidden text-ellipsis ${isActive(item.path)
+                                    ? "bg-blue-600/10 text-blue-400 font-bold shadow-sm shadow-blue-500/5 border border-blue-500/20"
+                                    : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
+                                    }`}
+                            >
+                                <span className="mr-3 text-lg opacity-80">{item.icon}</span>
+                                {item.label}
+                            </Link>
+                        ))}
+                        {isStaffOrAbove && staffNavItems.map((item) => (
+                            <Link
+                                key={item.path}
+                                href={item.path}
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className={`flex items-center py-2.5 px-4 rounded-xl transition-all whitespace-nowrap overflow-hidden text-ellipsis ${isActive(item.path)
+                                    ? "bg-emerald-600/10 text-emerald-400 font-bold shadow-sm shadow-emerald-500/5 border border-emerald-500/20"
+                                    : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
+                                    }`}
+                            >
+                                <span className="mr-3 text-lg opacity-80">{item.icon}</span>
+                                {item.label}
+                            </Link>
+                        ))}
+                    </nav>
+                </div>
+
+                {/* Navigation admin */}
+                {isAdmin && (
+                    <>
+                        <div className="border-t border-slate-800 pt-6">
+                            <p className="px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">
+                                Administration
+                            </p>
+                        </div>
+                        <nav className="space-y-1">
+                            {adminNavItems.map((item) => {
+                                if (item.children) {
+                                    const open = isMenuOpen(item);
+                                    const parentActive = isParentActive(item);
+                                    return (
+                                        <div key={item.label} className="space-y-1">
+                                            <button
+                                                onClick={() => toggleMenu(item.label)}
+                                                className={`w-full flex items-center justify-between py-2.5 px-4 rounded-xl transition-all text-left group ${parentActive
+                                                    ? "bg-amber-600/10 text-amber-400 font-bold border border-amber-500/20 shadow-sm shadow-amber-500/5"
+                                                    : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
+                                                    }`}
+                                            >
+                                                <span className="flex items-center whitespace-nowrap overflow-hidden text-ellipsis mr-2">
+                                                    <span className="mr-3 text-lg opacity-80">{item.icon}</span>
+                                                    {item.label}
+                                                </span>
+                                                <span className={`text-[10px] transition-transform flex-shrink-0 ${open ? "rotate-180" : ""}`}>
+                                                    ▼
+                                                </span>
+                                            </button>
+                                            {open && (
+                                                <div className="ml-7 mt-1 space-y-1 border-l-2 border-slate-800 pl-4 py-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                    {item.children.map((child) => (
+                                                        <Link
+                                                            key={child.path}
+                                                            href={child.path}
+                                                            onClick={() => setIsMobileMenuOpen(false)}
+                                                            className={`block py-2 px-3 rounded-lg text-sm transition-all whitespace-nowrap overflow-hidden text-ellipsis ${isActive(child.path)
+                                                                ? "text-amber-400 font-bold"
+                                                                : "text-slate-500 hover:text-slate-200"
+                                                                }`}
+                                                        >
+                                                            {child.label}
+                                                        </Link>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                }
+
+                                return (
+                                    <Link
+                                        key={item.path}
+                                        href={item.path!}
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                        className={`flex items-center py-2.5 px-4 rounded-xl transition-all whitespace-nowrap overflow-hidden text-ellipsis ${isActive(item.path!)
+                                            ? "bg-amber-600/10 text-amber-400 font-bold shadow-sm shadow-amber-500/5 border border-amber-500/20"
+                                            : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
+                                            }`}
+                                    >
+                                        <span className="mr-3 text-lg opacity-80">{item.icon}</span>
+                                        {item.label}
+                                    </Link>
+                                );
+                            })}
+                        </nav>
+                    </>
+                )}
+            </div>
+
+            <div className="border-t border-slate-800 pt-6">
+                <button
+                    onClick={handleLogout}
+                    className="w-full py-4 px-4 bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 hover:text-rose-300 rounded-2xl font-black uppercase tracking-widest text-xs transition-all border border-rose-600/30 shadow-lg shadow-rose-900/20 active:scale-[0.98]"
+                >
+                    Déconnexion
+                </button>
+            </div>
+        </>
+    );
+
+    return (
+        <>
+            {/* Header Mobile */}
+            <header className="md:hidden fixed top-0 left-0 right-0 h-16 bg-slate-900 border-b border-slate-800 px-6 flex items-center justify-between z-50">
+                <div className="flex items-center gap-3">
+                    {tenant?.logo_url ? (
+                        <img src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${tenant.logo_url}`} className="h-6 w-6 object-contain" alt="Logo" />
+                    ) : (
+                        <div className="w-6 h-6 rounded bg-blue-600 flex items-center justify-center text-[10px] font-bold">RZ</div>
+                    )}
+                    <span className="text-white font-bold uppercase tracking-tight text-sm truncate max-w-[120px]">
+                        {tenant?.name || "REZEA"}
+                    </span>
+                </div>
+                <button 
+                    onClick={() => setIsMobileMenuOpen(true)}
+                    className="p-2 -mr-2 text-slate-400 hover:text-white transition-colors"
+                >
+                    <span className="text-2xl">☰</span>
+                </button>
+            </header>
+
+            {/* Overlay Mobile */}
+            {isMobileMenuOpen && (
+                <div 
+                    className="md:hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[60] animate-in fade-in duration-300"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                />
+            )}
+
+            {/* Sidebar Desktop */}
+            <aside className="hidden md:flex w-72 bg-slate-900 text-white p-6 flex-col min-h-screen sticky top-0 border-r border-slate-800/50">
+                <SidebarContent />
+            </aside>
+
+            {/* Sidebar Mobile (Drawer) */}
+            <aside className={`md:hidden fixed top-0 bottom-0 left-0 w-[280px] bg-slate-900 border-r border-slate-800 p-6 z-[70] transition-transform duration-300 ease-out flex flex-col ${isMobileMenuOpen ? "translate-x-0 shadow-2xl shadow-black/50" : "-translate-x-full"}`}>
+                <SidebarContent />
+            </aside>
+            
+            {/* Spacer for mobile header */}
+            <div className="md:hidden h-16" />
+        </>
+    );
+}
