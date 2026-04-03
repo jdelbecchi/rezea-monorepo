@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Livvic } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 
-const inter = Inter({ subsets: ["latin"] });
+const livvic = Livvic({ 
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "900"],
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: "REZEA - Gestion de Réservations Sportives",
@@ -20,7 +24,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr">
-      <body className={inter.className}>
+      <body className={livvic.className}>
         <Providers>{children}</Providers>
       </body>
     </html>

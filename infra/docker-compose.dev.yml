@@ -37,7 +37,9 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ../apps/api/app:/app/app
+      - ../apps/api:/app
+      - /app/venv # To avoid overriding the venv if it exists in the host
+
     depends_on:
       postgres:
         condition: service_healthy

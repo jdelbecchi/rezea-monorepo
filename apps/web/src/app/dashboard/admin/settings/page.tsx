@@ -86,7 +86,7 @@ export default function AdminSettingsPage() {
 
         setUploading(type);
         try {
-            let result;
+            let result: any;
             if (type === 'banner') {
                 result = await api.uploadBanner(file);
                 setPreviewBanner(`${API_URL}${result.banner_url}`);

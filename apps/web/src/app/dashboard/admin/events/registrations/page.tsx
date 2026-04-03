@@ -307,6 +307,7 @@ th{background:#f1f5f9}
         }
         return [
             { value: "confirmed", label: "✅ Confirmée" },
+            { value: "pending_payment", label: "💳 En attente de paiement" },
             { value: "waiting_list", label: "⏳ Sur liste" },
             { value: "cancelled", label: "🚫 Annulée" },
             { value: "absent", label: "❌ Absent" },

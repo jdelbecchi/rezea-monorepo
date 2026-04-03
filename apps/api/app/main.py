@@ -14,7 +14,7 @@ from app.core.config import settings
 from app.core.security import verify_token
 from app.db.session import engine, Base, AsyncSessionLocal
 from app.models.models import User, UserRole, Order, Offer, Booking, BookingStatus, OrderPaymentStatus, Installment, Tenant
-from app.api import auth, users, tenants, bookings, credits, planning
+from app.api import auth, users, tenants, bookings, credits, planning, events
 
 # Configuration du logger structuré
 logger = structlog.get_logger()
@@ -172,11 +172,33 @@ async def global_exception_handler(request: Request, exc: Exception):
 # Routes
 @app.get("/health")
 async def health_check():
-    """Health check pour monitoring"""
+    """
+    Health check pour monitoring.
+    Vérifie que l'API est active ET que la base de données est accessible.
+    Coût : ~1ms (un simple SELECT 1).
+    """
+    db_status = "healthy"
+    try:
+        from sqlalchemy import text
+        async with AsyncSessionLocal() as session:
+            await session.execute(text("SELECT 1"))
+    except Exception as e:
+        db_status = f"unhealthy: {str(e)}"
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "status": "degraded",
+                "version": "1.0.0",
+                "environment": settings.ENVIRONMENT,
+                "database": db_status
+            }
+        )
+    
     return {
         "status": "healthy",
         "version": "1.0.0",
-        "environment": settings.ENVIRONMENT
+        "environment": settings.ENVIRONMENT,
+        "database": db_status
     }
 
 
@@ -187,6 +209,7 @@ app.include_router(tenants.router, prefix="/api/tenants", tags=["Tenants"])
 app.include_router(bookings.router, prefix="/api/bookings", tags=["Bookings"])
 app.include_router(credits.router, prefix="/api/credits", tags=["Credits"])
 app.include_router(planning.router, prefix="/api/planning", tags=["Planning"])
+app.include_router(events.router, prefix="/api/events", tags=["Events"])
 
 # Offers & Shop
 from app.api import offers, shop

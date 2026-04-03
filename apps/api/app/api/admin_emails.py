@@ -52,6 +52,11 @@ async def send_admin_emails(
     
     if request_data.recipient_type == "active":
         query = query.where(User.is_active == True)
+        # Filter by marketing consent
+        query = query.where(User.receive_marketing_emails == True)
+    elif request_data.recipient_type == "all":
+        # Filter by marketing consent
+        query = query.where(User.receive_marketing_emails == True)
     elif request_data.recipient_type == "selected":
         if not request_data.selected_user_ids:
             raise HTTPException(

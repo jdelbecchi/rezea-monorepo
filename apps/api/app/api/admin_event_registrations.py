@@ -12,7 +12,7 @@ from sqlalchemy.orm import joinedload
 from app.db.session import get_db
 from app.models.models import (
     User, UserRole, Event, EventRegistration,
-    EventRegistrationStatus, OrderPaymentStatus,
+    EventRegistrationStatus, OrderPaymentStatus, Order,
 )
 from app.schemas.schemas import (
     EventRegistrationCreate, EventRegistrationUpdate, EventRegistrationResponse,
@@ -34,9 +34,21 @@ async def require_manager(request: Request, db: AsyncSession = Depends(get_db)) 
     return user
 
 
-def build_response(reg: EventRegistration) -> EventRegistrationResponse:
+def build_response(reg: EventRegistration, users_with_pending: set = None) -> EventRegistrationResponse:
     event = reg.event
     user = reg.user
+    
+    # Distinction "à valider" ou "en attente" sur cette inscription OU globale
+    p_status = reg.payment_status.value if hasattr(reg.payment_status, 'value') else str(reg.payment_status)
+    has_pending = p_status in [
+        OrderPaymentStatus.PENDING.value, 
+        OrderPaymentStatus.WAITING.value,
+        OrderPaymentStatus.ISSUE.value
+    ]
+    
+    if users_with_pending is not None and not has_pending:
+        has_pending = reg.user_id in users_with_pending
+
     return EventRegistrationResponse(
         id=reg.id,
         tenant_id=reg.tenant_id,
@@ -44,7 +56,7 @@ def build_response(reg: EventRegistration) -> EventRegistrationResponse:
         event_id=reg.event_id,
         status=reg.status.value if hasattr(reg.status, 'value') else str(reg.status),
         price_paid_cents=reg.price_paid_cents,
-        payment_status=reg.payment_status.value if hasattr(reg.payment_status, 'value') else str(reg.payment_status),
+        payment_status=p_status,
         created_by_admin=reg.created_by_admin or False,
         notes=reg.notes,
         created_at=reg.created_at,
@@ -53,6 +65,10 @@ def build_response(reg: EventRegistration) -> EventRegistrationResponse:
         event_time=event.event_time.strftime("%H:%M") if event and event.event_time else "",
         event_title=event.title if event else "",
         user_name=f"{user.first_name} {user.last_name}" if user else "",
+        user_phone=user.phone if user else None,
+        instagram_handle=user.instagram_handle if user else None,
+        facebook_handle=user.facebook_handle if user else None,
+        has_pending_order=has_pending
     )
 
 
@@ -93,14 +109,18 @@ async def list_registrations(
     current_user: User = Depends(require_manager),
     status_filter: Optional[str] = Query(None, alias="status"),
     payment_status_filter: Optional[str] = Query(None, alias="payment"),
+    event_id: Optional[str] = Query(None, alias="event_id"),
 ):
     tenant_id = request.state.tenant_id
     query = (
         select(EventRegistration)
         .where(EventRegistration.tenant_id == tenant_id)
-        .options(joinedload(EventRegistration.event), joinedload(EventRegistration.user))
-        .order_by(EventRegistration.created_at.desc())
     )
+
+    if event_id:
+        query = query.where(EventRegistration.event_id == event_id)
+    
+    query = query.options(joinedload(EventRegistration.event), joinedload(EventRegistration.user)).order_by(EventRegistration.created_at.desc())
 
     if status_filter == "confirmed":
         query = query.where(EventRegistration.status == EventRegistrationStatus.CONFIRMED)
@@ -116,7 +136,25 @@ async def list_registrations(
 
     result = await db.execute(query)
     registrations = result.unique().scalars().all()
-    return [build_response(r) for r in registrations]
+    
+    # Bulk check pending orders for these users
+    user_ids = {r.user_id for r in registrations}
+    users_with_pending = set()
+    if user_ids:
+        pending_orders_result = await db.execute(
+            select(Order.user_id).where(
+                Order.tenant_id == tenant_id,
+                Order.user_id.in_(user_ids),
+                Order.payment_status.in_([
+                    OrderPaymentStatus.PENDING, 
+                    OrderPaymentStatus.WAITING,
+                    OrderPaymentStatus.ISSUE
+                ])
+            )
+        )
+        users_with_pending = set(pending_orders_result.scalars().all())
+
+    return [build_response(r, users_with_pending) for r in registrations]
 
 
 async def auto_promote_event_waitlist(db: AsyncSession, tenant_id, event_id):
@@ -266,36 +304,53 @@ async def update_registration(
 
     update_data = data.model_dump(exclude_unset=True)
 
-    # Gestion du changement de statut
+    # Gestion du changement de statut (Réversibilité totale)
     if "status" in update_data:
-        new_status = update_data["status"]
+        old_status = reg.status
+        try:
+            new_status = EventRegistrationStatus(update_data["status"])
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Statut invalide: {update_data['status']}")
 
-        # Annulation → place libérée
-        if new_status == "cancelled" and reg.status not in (
-            EventRegistrationStatus.CANCELLED,
-            EventRegistrationStatus.EVENT_DELETED,
-        ):
-            old_status = reg.status
-            reg.cancelled_at = datetime.utcnow()
-            # Libérer la place si le statut était actif
-            if reg.event and old_status in (EventRegistrationStatus.CONFIRMED, EventRegistrationStatus.PENDING_PAYMENT):
-                reg.event.registrations_count = max(0, (reg.event.registrations_count or 0) - 1)
-                # Promouvoir le prochain
-                await auto_promote_event_waitlist(db, tenant_id, reg.event_id)
+        if new_status != old_status:
+            # Liste des statuts qui occupent une place
+            active_statuses = [EventRegistrationStatus.CONFIRMED, EventRegistrationStatus.PENDING_PAYMENT]
+            
+            was_active = old_status in active_statuses
+            is_active = new_status in active_statuses
+            
+            # 1. Libération de place (Actif -> Inactif)
+            if was_active and not is_active:
+                if reg.event:
+                    reg.event.registrations_count = max(0, (reg.event.registrations_count or 0) - 1)
+                    # Promotion automatique
+                    await auto_promote_event_waitlist(db, tenant_id, reg.event_id)
+                
+                if new_status == EventRegistrationStatus.CANCELLED:
+                    reg.cancelled_at = datetime.utcnow()
 
-        # Confirmation (paiement reçu)
-        if new_status == "confirmed" and reg.status == EventRegistrationStatus.PENDING_PAYMENT:
-            reg.payment_status = OrderPaymentStatus.PAID
+            # 2. Occupation de place (Inactif -> Actif)
+            elif not was_active and is_active:
+                if reg.event:
+                    # On permet de forcer même si complet (flexibilité manager)
+                    reg.event.registrations_count = (reg.event.registrations_count or 0) + 1
+                
+                reg.cancelled_at = None
 
-        reg.status = EventRegistrationStatus(new_status)
+            # 3. Ajustements spécifiques
+            if new_status == EventRegistrationStatus.CONFIRMED and old_status == EventRegistrationStatus.PENDING_PAYMENT:
+                reg.payment_status = OrderPaymentStatus.PAID
+            
+            reg.status = new_status
 
-    # Gestion du changement de paiement
-    if "payment_status" in update_data and "status" not in update_data:
+    # Gestion du changement de paiement (Indépendant)
+    if "payment_status" in update_data:
         new_payment = update_data["payment_status"]
         reg.payment_status = new_payment
-        # Si paiement validé et statut en attente → confirmer automatiquement
+        # Si paiement validé et statut en attente de paiement → confirmer automatiquement
         if new_payment == OrderPaymentStatus.PAID and reg.status == EventRegistrationStatus.PENDING_PAYMENT:
             reg.status = EventRegistrationStatus.CONFIRMED
+            # Note: Le passage de PENDING_PAYMENT à CONFIRMED ne change pas le registrations_count car les deux sont actifs.
 
     # Notes
     if "notes" in update_data:

@@ -15,8 +15,10 @@ const PAYMENT_LABELS: Record<string, string> = {
     a_regulariser: "À régulariser",
 };
 const STATUS_LABELS: Record<string, string> = {
-    en_cours: "En cours",
-    termine: "Terminé",
+    active: "Active",
+    termine: "Terminée",
+    expiree: "Expirée",
+    en_pause: "En pause",
 };
 interface OfferOption { id: string; offer_code: string; name: string; }
 interface UserOption { id: string; first_name: string; last_name: string; }
@@ -381,8 +383,8 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                     {/* Header */}
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">🛍️ Commandes</h1>
-                            <p className="text-slate-500 mt-1">Suivi des commandes et paiements</p>
+                            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight">🛍️ commandes</h1>
+                            <p className="text-[11px] font-medium text-slate-400 lowercase mt-1">suivi des commandes et paiements</p>
                         </div>
                         <button
                             onClick={() => { setShowCreate(true); loadFormOptions(); }}
@@ -470,17 +472,17 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                             <table className="w-full">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Date</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nom</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Offre</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Début</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Fin</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">Tarif</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden xl:table-cell">Crédits</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">Solde</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paiement</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Statut</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                        <th className="px-3 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest hidden md:table-cell">date</th>
+                                        <th className="px-3 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest">nom</th>
+                                        <th className="px-3 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest">offre</th>
+                                        <th className="px-3 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest hidden lg:table-cell">début</th>
+                                        <th className="px-3 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest hidden lg:table-cell">fin</th>
+                                        <th className="px-3 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest hidden sm:table-cell">tarif</th>
+                                        <th className="px-3 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest hidden xl:table-cell">crédits</th>
+                                        <th className="px-3 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest hidden sm:table-cell">solde</th>
+                                        <th className="px-3 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest">paiement</th>
+                                        <th className="px-3 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest hidden md:table-cell">statut</th>
+                                        <th className="px-3 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest">actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
@@ -494,8 +496,10 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                             a_regulariser: "bg-red-100 text-red-800",
                                         };
                                         const statusColors: Record<string, string> = {
-                                            en_cours: "bg-blue-100 text-blue-800",
-                                            termine: "bg-gray-100 text-gray-600",
+                                            active: "bg-emerald-50 text-emerald-600 border border-emerald-100",
+                                            termine: "bg-slate-100 text-slate-600 border border-slate-200",
+                                            expiree: "bg-orange-50 text-orange-600 border border-orange-100",
+                                            en_pause: "bg-amber-50 text-amber-600 border border-amber-100",
                                         };
                                         const days = daysUntil(order.end_date);
                                         const expiryWarning = !order.is_validity_unlimited && days !== null && days <= 30;
@@ -564,7 +568,7 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                                     </span>
                                                 </td>
                                                 <td className="px-3 py-3 whitespace-nowrap hidden md:table-cell">
-                                                    <span className={`px-2 py-1 text-xs font-bold rounded-full ${statusColors[order.status] || "bg-indigo-100 text-indigo-800"}`}>
+                                                    <span className={`px-2 py-1 text-[10px] font-medium rounded-full lowercase tracking-tight ${statusColors[order.status] || "bg-indigo-50 text-indigo-600 border border-indigo-100"}`}>
                                                         {STATUS_LABELS[order.status] || order.status}
                                                     </span>
                                                 </td>
@@ -705,7 +709,7 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                     <label className="block text-sm font-medium text-slate-700 mb-1">Statut</label>
                                     <div className="space-y-2">
                                         <select 
-                                            value={showCustomStatus ? "_custom" : (editForm.status || "en_cours")}
+                                            value={showCustomStatus ? "_custom" : (editForm.status || "active")}
                                             onChange={(e) => {
                                                 if (e.target.value === "_custom") {
                                                     setShowCustomStatus(true);
@@ -716,9 +720,11 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                             }}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                                         >
-                                            <option value="en_cours">En cours</option>
-                                            <option value="termine">Terminé</option>
-                                            {dynamicStatuses.filter(s => s !== "en_cours" && s !== "termine" && s !== "Terminé").map(s => (
+                                            <option value="active">Active</option>
+                                            <option value="termine">Terminée</option>
+                                            <option value="expiree">Expirée</option>
+                                            <option value="en_pause">En pause</option>
+                                            {dynamicStatuses.filter(s => !["active", "termine", "expiree", "en_pause", "en_cours", "Terminé", "terminé"].includes(s)).map(s => (
                                                 <option key={s} value={s}>{s}</option>
                                             ))}
                                             <option value="_custom">+ Autre (saisie libre)...</option>

@@ -1,7 +1,8 @@
 "use client";
 
 import Sidebar from "@/components/Sidebar";
-import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api, User } from "@/lib/api";
 import dynamic from "next/dynamic";
 
@@ -14,11 +15,15 @@ const ReactQuill = dynamic(() => import("react-quill"), {
     loading: () => <div className="h-64 bg-slate-50 border border-slate-200 rounded-xl animate-pulse flex items-center justify-center text-slate-400">Chargement de l'éditeur...</div>
 });
 
-export default function AdminEmailsPage() {
+function AdminEmailsContent() {
+    const searchParams = useSearchParams();
     const [user, setUser] = useState<User | null>(null);
     const [recipientType, setRecipientType] = useState<"all" | "active" | "selected">("all");
     const [allUsers, setAllUsers] = useState<User[]>([]);
+    const QuillNode = ReactQuill as any;
+
     const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+
     const [subject, setSubject] = useState("");
     const [content, setContent] = useState("");
     const [isSending, setIsSending] = useState(false);
@@ -30,8 +35,18 @@ export default function AdminEmailsPage() {
 
     useEffect(() => {
         api.getCurrentUser().then(setUser).catch(() => { });
-        api.getAdminUsers().then(setAllUsers).catch(() => { });
-    }, []);
+        api.getAdminUsers().then(users => {
+            setAllUsers(users);
+            
+            // Handle pre-filled recipients from query params
+            const recipientIds = searchParams.get("recipientIds");
+            if (recipientIds) {
+                const ids = recipientIds.split(",");
+                setSelectedUserIds(ids);
+                setRecipientType("selected");
+            }
+        }).catch(() => { });
+    }, [searchParams]);
 
     const imageHandler = useCallback(() => {
         const input = document.createElement('input');
@@ -146,7 +161,7 @@ export default function AdminEmailsPage() {
                                 >
                                     <span className="text-2xl">🌍</span>
                                     <span className="font-bold">Tous</span>
-                                    <span className="text-xs opacity-70">Tous les membres</span>
+                                    <span className="text-xs opacity-70">Tous les inscrits</span>
                                 </button>
                                 <button
                                     onClick={() => setRecipientType("active")}
@@ -217,7 +232,8 @@ export default function AdminEmailsPage() {
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-2">Contenu de l'email</label>
                                     <div className="bg-white rounded-xl overflow-hidden border border-slate-200 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all">
-                                        <ReactQuill
+                                        {/* @ts-ignore */}
+                                        <QuillNode
                                             ref={quillRef}
                                             theme="snow"
                                             value={content}
@@ -227,6 +243,7 @@ export default function AdminEmailsPage() {
                                             className="h-80 quill-editor"
                                         />
                                     </div>
+
                                     <style jsx global>{`
                                         .quill-editor .ql-toolbar {
                                             border: none !important;
@@ -322,5 +339,13 @@ export default function AdminEmailsPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function AdminEmailsPage() {
+    return (
+        <Suspense fallback={<div className="flex min-h-screen bg-slate-50 items-center justify-center">Chargement...</div>}>
+            <AdminEmailsContent />
+        </Suspense>
     );
 }

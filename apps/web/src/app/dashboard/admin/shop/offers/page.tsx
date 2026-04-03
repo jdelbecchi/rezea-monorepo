@@ -207,8 +207,8 @@ export default function AdminOffersPage() {
                     {/* Header */}
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">🏷️ Gestion des Offres</h1>
-                            <p className="text-slate-500 mt-1">
+                            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight">🏷️ gestion des offres</h1>
+                            <p className="text-[11px] font-medium text-slate-400 lowercase mt-1">
                                 {offers.length} prestation{offers.length > 1 ? "s" : ""} disponible{offers.length > 1 ? "s" : ""}
                             </p>
                         </div>
@@ -234,7 +234,7 @@ export default function AdminOffersPage() {
                                 />
                             </div>
                             <div className="flex items-center gap-2">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">Statut:</label>
+                                <label className="text-[10px] font-medium text-slate-400 lowercase tracking-widest whitespace-nowrap">statut:</label>
                                 <select 
                                     value={statusFilter}
                                     onChange={(e) => setStatusFilter(e.target.value)}
@@ -251,8 +251,8 @@ export default function AdminOffersPage() {
                     {/* Form (shown conditionally) */}
                     {showForm && (
                         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                            <h2 className="text-xl font-bold text-slate-900 mb-4">
-                                {editingId ? "Modifier l'offre" : "Créer une nouvelle offre"}
+                            <h2 className="text-xl font-semibold text-slate-900 mb-4 tracking-tight">
+                                {editingId ? "modifier l'offre" : "créer une nouvelle offre"}
                             </h2>
                             <form onSubmit={handleSubmit} className="space-y-6">
                                 {/* Row 1: Code + Intitulé */}
@@ -553,9 +553,9 @@ export default function AdminOffersPage() {
                                 <div className="flex gap-2">
                                     <button
                                         type="submit"
-                                        className="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors"
+                                        className="px-6 py-2 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all active:scale-95 shadow-md shadow-slate-200 text-[11px] lowercase"
                                     >
-                                        {editingId ? "Mettre à jour" : "Créer l'offre"}
+                                        {editingId ? "mettre à jour" : "créer l'offre"}
                                     </button>
                                     <button
                                         type="button"
@@ -575,15 +575,15 @@ export default function AdminOffersPage() {
                             <table className="w-full">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Offre</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tarif</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Crédits</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Validité</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Ordre</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        <th className="px-4 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest">code</th>
+                                        <th className="px-4 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest">offre</th>
+                                        <th className="px-4 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest">tarif</th>
+                                        <th className="px-4 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest">crédits</th>
+                                        <th className="px-4 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest">validité</th>
+                                        <th className="px-4 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest">type</th>
+                                        <th className="px-4 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest">statut</th>
+                                        <th className="px-4 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest text-center">ordre</th>
+                                        <th className="px-4 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest">actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
@@ -655,11 +655,11 @@ export default function AdminOffersPage() {
                                                 )}
                                             </td>
                                             <td className="px-4 py-4 whitespace-nowrap">
-                                                <span className={`px-2 py-1 text-xs font-bold rounded-full ${offer.is_active
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : 'bg-gray-100 text-gray-800'
+                                                <span className={`px-2 py-1 text-[10px] font-medium rounded-full lowercase tracking-tight ${offer.is_active
+                                                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                                                    : 'bg-slate-100 text-slate-600 border border-slate-200'
                                                     }`}>
-                                                    {offer.is_active ? 'Active' : 'Inactive'}
+                                                    {offer.is_active ? 'active' : 'inactive'}
                                                 </span>
                                             </td>
                                             <td className="px-4 py-4 whitespace-nowrap text-center">
@@ -703,7 +703,7 @@ export default function AdminOffersPage() {
             {deleteConfirmId && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-2xl">
-                        <h3 className="text-lg font-bold text-slate-900 mb-2">Confirmer la suppression</h3>
+                        <h3 className="text-lg font-semibold text-slate-900 mb-2 tracking-tight">confirmer la suppression</h3>
                         <p className="text-slate-600 mb-4">
                             Êtes-vous sûr de vouloir supprimer cette offre ? Cette action est irréversible.
                         </p>

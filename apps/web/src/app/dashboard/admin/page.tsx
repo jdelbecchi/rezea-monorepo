@@ -50,15 +50,15 @@ export default function AdminDashboardPage() {
     if (loading) return <div className="p-8 text-center bg-gray-50 min-h-screen">Chargement console admin...</div>;
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
+        <div className="min-h-screen bg-white flex flex-col md:flex-row">
             <Sidebar user={user} />
 
             {/* Main Content */}
             <main className="flex-1 p-8">
                 <div className="max-w-6xl mx-auto space-y-8">
                     <header>
-                        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Administration</h1>
-                        <p className="text-slate-500 mt-1">Gérez votre plateforme REZEA</p>
+                        <h1 className="text-2xl font-medium text-slate-900 tracking-tight lowercase">administration</h1>
+                        <p className="text-slate-500 mt-1 font-medium text-[11px] lowercase">gérez votre plateforme rezea</p>
                     </header>
 
                     {/* Stats Cards */}
@@ -66,8 +66,8 @@ export default function AdminDashboardPage() {
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-slate-500 font-medium">Offres actives</p>
-                                    <p className="text-3xl font-bold text-slate-900 mt-2">{stats.activeOffers}</p>
+                                    <p className="text-[11px] text-slate-400 font-medium lowercase">offres actives</p>
+                                    <p className="text-3xl font-semibold text-slate-900 mt-2">{stats.activeOffers}</p>
                                 </div>
                                 <div className="text-4xl">📦</div>
                             </div>
@@ -76,8 +76,8 @@ export default function AdminDashboardPage() {
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-slate-500 font-medium">Séances à venir</p>
-                                    <p className="text-3xl font-bold text-slate-900 mt-2">{stats.upcomingSessions}</p>
+                                    <p className="text-[11px] text-slate-400 font-medium lowercase">séances à venir</p>
+                                    <p className="text-3xl font-semibold text-slate-900 mt-2">{stats.upcomingSessions}</p>
                                 </div>
                                 <div className="text-4xl">📅</div>
                             </div>
@@ -86,8 +86,8 @@ export default function AdminDashboardPage() {
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-slate-500 font-medium">Utilisateurs</p>
-                                    <p className="text-3xl font-bold text-slate-900 mt-2">{stats.totalUsers || '-'}</p>
+                                    <p className="text-[11px] text-slate-400 font-medium lowercase">utilisateurs</p>
+                                    <p className="text-3xl font-semibold text-slate-900 mt-2">{stats.totalUsers || '-'}</p>
                                 </div>
                                 <div className="text-4xl">👥</div>
                             </div>
@@ -96,7 +96,7 @@ export default function AdminDashboardPage() {
 
                     {/* Quick Actions */}
                     <section>
-                        <h2 className="text-xl font-bold text-slate-900 mb-4">Accès rapide</h2>
+                        <h2 className="text-base font-medium text-slate-400 mb-4 lowercase px-1 tracking-widest">accès rapide</h2>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <Link
                                 href="/dashboard/admin/offers"
@@ -105,11 +105,11 @@ export default function AdminDashboardPage() {
                                 <div className="flex items-start space-x-4">
                                     <div className="text-5xl">📦</div>
                                     <div className="flex-1">
-                                        <h3 className="text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                                            Gestion des Offres
+                                        <h3 className="text-lg font-medium text-slate-800 group-hover:text-blue-600 transition-colors lowercase">
+                                            gestion des offres
                                         </h3>
-                                        <p className="text-slate-500 mt-2">
-                                            Créez et gérez les forfaits disponibles à l&apos;achat
+                                        <p className="text-slate-500 mt-1 text-sm lowercase leading-tight">
+                                            créez et gérez les forfaits disponibles à l&apos;achat
                                         </p>
                                         <div className="mt-4 text-blue-600 font-medium flex items-center">
                                             Gérer les offres
@@ -126,11 +126,11 @@ export default function AdminDashboardPage() {
                                 <div className="flex items-start space-x-4">
                                     <div className="text-5xl">📅</div>
                                     <div className="flex-1">
-                                        <h3 className="text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                                            Gestion des Séances
+                                        <h3 className="text-lg font-medium text-slate-800 group-hover:text-blue-600 transition-colors lowercase">
+                                            gestion des séances
                                         </h3>
-                                        <p className="text-slate-500 mt-2">
-                                            Planifiez et organisez les cours de sport
+                                        <p className="text-slate-500 mt-1 text-sm lowercase leading-tight">
+                                            planifiez et organisez les cours de sport
                                         </p>
                                         <div className="mt-4 text-blue-600 font-medium flex items-center">
                                             Gérer les séances
@@ -147,15 +147,15 @@ export default function AdminDashboardPage() {
                                 <div className="flex items-start space-x-4">
                                     <div className="text-5xl">🎨</div>
                                     <div className="flex-1">
-                                        <h3 className="text-xl font-bold text-slate-900 group-hover:text-purple-600 transition-colors">
-                                            Personnalisation
+                                        <h3 className="text-lg font-medium text-slate-800 group-hover:text-purple-600 transition-colors lowercase">
+                                            personnalisation
                                         </h3>
-                                        <p className="text-slate-500 mt-2">
-                                            Bannière, couleurs et message d&apos;accueil
+                                        <p className="text-slate-500 mt-1 text-sm lowercase leading-tight">
+                                            bannière, couleurs et message d&apos;accueil
                                         </p>
-                                        <div className="mt-4 text-purple-600 font-medium flex items-center">
-                                            Personnaliser
-                                            <span className="ml-2">→</span>
+                                        <div className="mt-4 text-purple-600 font-medium text-sm flex items-center lowercase opacity-70 group-hover:opacity-100">
+                                            personnaliser
+                                            <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span>
                                         </div>
                                     </div>
                                 </div>

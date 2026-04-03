@@ -1,5 +1,5 @@
 """Routes réservations avec gestion FIFO des crédits"""
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,7 +9,7 @@ from uuid import UUID
 from app.db.session import get_db
 from app.models.models import (
     Booking, Session, CreditAccount, CreditTransaction,
-    BookingStatus, CreditTransactionType, WaitlistEntry, WaitlistStatus
+    BookingStatus, CreditTransactionType, WaitlistEntry, WaitlistStatus, Tenant
 )
 from app.schemas.schemas import (
     BookingCreate, BookingResponse, BookingListResponse
@@ -250,6 +250,20 @@ async def cancel_booking(
         )
     
     booking, session = booking_with_session
+    
+    # --- Vérification du délai d'annulation ---
+    result = await db.execute(select(Tenant.cancellation_limit_mins).where(Tenant.id == tenant_id))
+    limit_mins = result.scalar() or 0
+    
+    if limit_mins > 0:
+        now = datetime.utcnow()
+        limit_time = session.start_time - timedelta(minutes=limit_mins)
+        if now > limit_time:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Le délai d'annulation est dépassé ({limit_mins} min avant le début)."
+            )
+    # ------------------------------------------
     
     if booking.status == BookingStatus.CANCELLED:
         raise HTTPException(

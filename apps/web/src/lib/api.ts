@@ -38,12 +38,27 @@ apiClient.interceptors.request.use(
 );
 
 // Intercepteur pour gérer les erreurs
+// IMPORTANT : Ne redirige vers /login QUE si le serveur a explicitement
+// répondu 401. Les erreurs réseau (backend down, timeout, 500) ne doivent
+// PAS détruire la session de l'utilisateur.
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
-    if (error.response?.status === 401) {
+    // --- Cas 1 : Erreur réseau (serveur down, timeout, CORS) ---
+    // error.response est undefined → le serveur n'a pas répondu du tout.
+    // On ne touche PAS au token, on laisse la page gérer l'erreur.
+    if (!error.response) {
+      console.warn('[API] Erreur réseau — le serveur est probablement inaccessible.', error.message);
+      return Promise.reject(error);
+    }
+
+    // --- Cas 2 : Le serveur a répondu avec un code d'erreur ---
+    const status = error.response.status;
+    const url = error.config?.url || '';
+
+    // 401 = Token expiré ou invalide (réponse explicite du serveur)
+    if (status === 401) {
       if (typeof window !== 'undefined') {
-        const url = error.config?.url || '';
         const pathname = window.location.pathname;
 
         // Ne pas rediriger sur les endpoints de login (laisser la page afficher l'erreur)
@@ -63,6 +78,12 @@ apiClient.interceptors.response.use(
         window.location.href = '/login';
       }
     }
+
+    // 500+ = Erreur serveur. On ne touche pas au token.
+    if (status >= 500) {
+      console.error(`[API] Erreur serveur ${status} sur ${url}`);
+    }
+
     return Promise.reject(error);
   }
 );
@@ -88,6 +109,8 @@ export interface User {
   last_login?: string;
   is_blacklisted?: boolean;
   blacklist_reason?: string;
+  remind_before_session?: boolean;
+  receive_marketing_emails?: boolean;
 }
 
 export interface Session {
@@ -104,6 +127,24 @@ export interface Session {
   is_full: boolean;
   is_active: boolean;
   allow_waitlist: boolean;
+  instructor_name?: string;
+}
+
+export interface Event {
+  id: string;
+  title: string;
+  description?: string;
+  event_date: string;
+  event_time: string;
+  duration_minutes: number;
+  price_member_cents: number;
+  price_external_cents: number;
+  instructor_name: string;
+  max_places: number;
+  registrations_count: number;
+  is_registered?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Tenant {
@@ -185,6 +226,12 @@ export interface OrderItem {
   received_cents: number;
   pending_cents: number;
   error_cents: number;
+  // Snapshots contractuels
+  offer_snap_name: string | null;
+  offer_snap_description: string | null;
+  offer_snap_validity_days: number | null;
+  offer_snap_validity_unit: string | null;
+  offer_snap_is_validity_unlimited: boolean;
 }
 
 export interface InstallmentItem {
@@ -215,6 +262,10 @@ export interface AdminBookingItem {
   session_time: string;
   session_title: string;
   user_name: string;
+  user_phone: string | null;
+  instagram_handle: string | null;
+  facebook_handle: string | null;
+  has_pending_order: boolean;
 }
 
 export interface AdminEventRegistrationItem {
@@ -233,6 +284,10 @@ export interface AdminEventRegistrationItem {
   event_time: string;
   event_title: string;
   user_name: string;
+  user_phone: string | null;
+  instagram_handle: string | null;
+  facebook_handle: string | null;
+  has_pending_order: boolean;
 }
 
 export interface Booking {
@@ -241,6 +296,7 @@ export interface Booking {
   status: 'pending' | 'confirmed' | 'cancelled' | 'session_cancelled' | 'absent' | 'completed';
   credits_used: number;
   created_at: string;
+  session?: Session;
 }
 
 export interface CreditAccount {
@@ -401,7 +457,12 @@ export const api = {
 
   getMyBookings: async (): Promise<Booking[]> => {
     const response = await apiClient.get('/api/bookings');
-    return response.data;
+    // Le backend renvoie [{ booking: ..., session: ... }]
+    // On l'aplatit pour rester compatible avec la logique frontend existante
+    return response.data.map((item: any) => ({
+      ...item.booking,
+      session: item.session
+    }));
   },
 
   cancelBooking: async (bookingId: string) => {
@@ -684,9 +745,14 @@ export const api = {
     return response.data;
   },
 
-  getAdminBookings: async (statusFilter?: string): Promise<AdminBookingItem[]> => {
+  getAdminBookings: async (filters?: string | { status?: string, session_id?: string }): Promise<AdminBookingItem[]> => {
     const params: Record<string, string> = {};
-    if (statusFilter) params.status = statusFilter;
+    if (typeof filters === 'string') {
+      params.status = filters;
+    } else if (filters) {
+      if (filters.status) params.status = filters.status;
+      if (filters.session_id) params.session_id = filters.session_id;
+    }
     const response = await apiClient.get('/api/admin/bookings', { params });
     return response.data;
   },
@@ -706,10 +772,11 @@ export const api = {
   },
 
   // ==================== Admin Event Registrations ====================
-  getAdminEventRegistrations: async (filters?: { status?: string, payment?: string }): Promise<AdminEventRegistrationItem[]> => {
+  getAdminEventRegistrations: async (filters?: { status?: string, payment?: string, event_id?: string }): Promise<AdminEventRegistrationItem[]> => {
     const params: Record<string, string> = {};
     if (filters?.status) params.status = filters.status;
     if (filters?.payment) params.payment = filters.payment;
+    if (filters?.event_id) params.event_id = filters.event_id;
     const response = await apiClient.get('/api/admin/event-registrations', { params });
     return response.data;
   },
@@ -751,6 +818,26 @@ export const api = {
     const response = await apiClient.post('/api/uploads/image', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
+    return response.data;
+  },
+
+  // Events (Member)
+  getUpcomingEvents: async (): Promise<Event[]> => {
+    const response = await apiClient.get('/api/events/upcoming');
+    return response.data;
+  },
+
+  getEvent: async (eventId: string): Promise<Event> => {
+    const response = await apiClient.get(`/api/events/${eventId}`);
+    return response.data;
+  },
+
+  checkoutEvent: async (eventId: string, tariff: 'member' | 'external', payLater: boolean = false): Promise<{
+    registration_id: string;
+    message: string;
+    price_cents: number;
+  }> => {
+    const response = await apiClient.post(`/api/events/${eventId}/checkout?tariff=${tariff}&pay_later=${payLater}`);
     return response.data;
   },
 };

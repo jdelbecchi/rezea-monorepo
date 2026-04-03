@@ -13,6 +13,7 @@ from app.db.session import get_db
 from app.models.models import (
     User, UserRole, Booking, Session, BookingStatus,
     CreditAccount, CreditTransaction, CreditTransactionType,
+    Order, OrderPaymentStatus,
 )
 from app.schemas.schemas import (
     AdminBookingCreate, AdminBookingUpdate, AdminBookingResponse,
@@ -38,10 +39,15 @@ async def require_manager(request: Request, db: AsyncSession = Depends(get_db)) 
     return user
 
 
-def build_booking_response(booking: Booking) -> AdminBookingResponse:
+def build_booking_response(booking: Booking, users_with_pending: set = None) -> AdminBookingResponse:
     """Construit la réponse avec les champs joints"""
     session = booking.session
     user = booking.user
+    
+    has_pending = False
+    if users_with_pending is not None:
+        has_pending = booking.user_id in users_with_pending
+
     return AdminBookingResponse(
         id=booking.id,
         tenant_id=booking.tenant_id,
@@ -58,6 +64,10 @@ def build_booking_response(booking: Booking) -> AdminBookingResponse:
         session_time=session.start_time.strftime("%H:%M") if session else "",
         session_title=session.title if session else "",
         user_name=f"{user.first_name} {user.last_name}" if user else "",
+        user_phone=user.phone if user else None,
+        instagram_handle=user.instagram_handle if user else None,
+        facebook_handle=user.facebook_handle if user else None,
+        has_pending_order=has_pending
     )
 
 
@@ -160,6 +170,7 @@ async def list_bookings(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_manager),
     status_filter: Optional[str] = Query(None, alias="status"),
+    session_id: Optional[str] = Query(None, alias="session_id"),
 ):
     tenant_id = request.state.tenant_id
     query = (
@@ -180,14 +191,33 @@ async def list_bookings(
         query = query.where(Booking.status == BookingStatus.SESSION_CANCELLED)
     elif status_filter == "absent":
         query = query.where(Booking.status == BookingStatus.ABSENT)
-    elif status_filter is None or status_filter == "":
-        # Par défaut : toutes
-        pass
+    # Filtre par séance
+    if session_id:
+        query = query.where(Booking.session_id == session_id)
+
+    # Filtre par statut
 
     result = await db.execute(query)
     bookings = result.unique().scalars().all()
 
-    return [build_booking_response(b) for b in bookings]
+    # Bulk check pending orders for these users
+    user_ids = {b.user_id for b in bookings}
+    users_with_pending = set()
+    if user_ids:
+        pending_orders_result = await db.execute(
+            select(Order.user_id).where(
+                Order.tenant_id == tenant_id,
+                Order.user_id.in_(user_ids),
+                Order.payment_status.in_([
+                    OrderPaymentStatus.PENDING, 
+                    OrderPaymentStatus.WAITING,
+                    OrderPaymentStatus.ISSUE
+                ])
+            )
+        )
+        users_with_pending = set(pending_orders_result.scalars().all())
+
+    return [build_booking_response(b, users_with_pending) for b in bookings]
 
 
 # ---- CREATE ----
@@ -318,22 +348,29 @@ async def update_booking(
 
     update_data = data.model_dump(exclude_unset=True)
 
-    # Gestion du changement de statut
+    # Gestion du changement de statut (Réversibilité totale)
     if "status" in update_data:
-        new_status = update_data["status"]
+        old_status = booking.status
+        try:
+            new_status = BookingStatus(update_data["status"])
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Statut invalide: {update_data['status']}")
 
-        # Annulation (par l'utilisateur via admin)
-        if new_status == BookingStatus.CANCELLED and booking.status != BookingStatus.CANCELLED:
-            booking.cancelled_at = datetime.utcnow()
-            booking.cancellation_type = "user"
-
-            # Décrémenter si confirmé + rembourser
-            if booking.status == BookingStatus.CONFIRMED and booking.session:
-                booking.session.current_participants = max(
-                    0, booking.session.current_participants - 1
-                )
-
-                # Rembourser les crédits
+        if new_status != old_status:
+            # Liste des statuts qui occupent une place
+            active_statuses = [BookingStatus.CONFIRMED, BookingStatus.COMPLETED, BookingStatus.ABSENT]
+            # Note: ABSENT est considéré comme ayant occupé une place (la séance est passée ou réservée)
+            
+            was_active = old_status in active_statuses
+            is_active = new_status in active_statuses
+            
+            # 1. Libération de place (Actif -> Inactif)
+            # Inactifs : CANCELLED, PENDING (liste d'attente), SESSION_CANCELLED
+            if was_active and new_status in (BookingStatus.CANCELLED, BookingStatus.SESSION_CANCELLED, BookingStatus.PENDING):
+                if booking.session:
+                    booking.session.current_participants = max(0, booking.session.current_participants - 1)
+                
+                # Rembourser les crédits si l'annulation est valide
                 if booking.credits_used > 0:
                     acct = await db.execute(
                         select(CreditAccount).where(
@@ -351,18 +388,60 @@ async def update_booking(
                             transaction_type=CreditTransactionType.REFUND,
                             amount=booking.credits_used,
                             balance_after=account.balance,
-                            description="Remboursement inscription annulée",
+                            description=f"Remboursement: Statut passé de {old_status} à {new_status}",
                             reference=str(booking.id),
                         )
                         db.add(refund)
+                        booking.credits_used = 0
+                        booking.transaction_id = None
 
-                # Promouvoir automatiquement le prochain en liste d'attente
-                await auto_promote_waitlist(db, tenant_id, booking.session_id)
+                # Si c'était une annulation par l'utilisateur
+                if new_status == BookingStatus.CANCELLED:
+                    booking.cancelled_at = datetime.utcnow()
+                    booking.cancellation_type = "user"
 
-        # Marquage absent (par staff/manager après la séance)
-        elif new_status == BookingStatus.ABSENT and booking.status == BookingStatus.CONFIRMED:
-            # L'absent ne libère pas de place (la séance est passée)
-            pass
+                # Promotion automatique si place libérée
+                if old_status in (BookingStatus.CONFIRMED, BookingStatus.COMPLETED):
+                    await auto_promote_waitlist(db, tenant_id, booking.session_id)
+
+            # 2. Occupation de place (Inactif -> Actif)
+            elif not was_active and is_active:
+                if booking.session:
+                    booking.session.current_participants += 1
+                
+                booking.cancelled_at = None
+                booking.cancellation_type = None
+
+                # Débiter les crédits si nécessaire
+                credits_to_deduct = booking.session.credits_required if booking.session else 0
+                if credits_to_deduct > 0:
+                    acct = await db.execute(
+                        select(CreditAccount).where(
+                            CreditAccount.tenant_id == tenant_id,
+                            CreditAccount.user_id == booking.user_id,
+                        )
+                    )
+                    account = acct.scalar_one_or_none()
+                    if account:
+                        # On permet le débit même si balance < credits (flexibilité manager)
+                        account.balance -= credits_to_deduct
+                        account.total_used += credits_to_deduct
+                        tx = CreditTransaction(
+                            tenant_id=tenant_id,
+                            account_id=account.id,
+                            transaction_type=CreditTransactionType.BOOKING,
+                            amount=-credits_to_deduct,
+                            balance_after=account.balance,
+                            description=f"Débit: Statut passé de {old_status} à {new_status}",
+                            consumed_at=datetime.utcnow(),
+                            reference=str(booking.id)
+                        )
+                        db.add(tx)
+                        await db.flush()
+                        booking.transaction_id = tx.id
+                        booking.credits_used = credits_to_deduct
+
+            booking.status = new_status
 
     for field, value in update_data.items():
         setattr(booking, field, value)

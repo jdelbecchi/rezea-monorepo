@@ -200,26 +200,20 @@ export default function AdminBookingsPage() {
         }
     };
 
-    // Statuts disponibles dans l'édition selon le statut actuel
+    // Statuts disponibles dans l'édition (Flexibilité totale)
     const getEditStatusOptions = (currentStatus: string) => {
-        switch (currentStatus) {
-            case "confirmed":
-                return [
-                    { value: "confirmed", label: "✅ Confirmée" },
-                    { value: "cancelled", label: "🚫 Annulée" },
-                    { value: "absent", label: "❌ Absent" },
-                ];
-            case "pending":
-                return [
-                    { value: "pending", label: "⏳ Sur liste" },
-                    { value: "confirmed", label: "✅ Confirmée" },
-                    { value: "cancelled", label: "🚫 Annulée" },
-                ];
-            default:
-                return [
-                    { value: currentStatus, label: STATUS_LABELS[currentStatus] || currentStatus },
-                ];
+        if (currentStatus === "session_cancelled") {
+            return [
+                { value: "session_cancelled", label: "🚫 Séance annulée" },
+                { value: "confirmed", label: "✅ Re-confirmer" },
+            ];
         }
+        return [
+            { value: "confirmed", label: "✅ Confirmée" },
+            { value: "pending", label: "⏳ Sur liste" },
+            { value: "cancelled", label: "🚫 Annulée" },
+            { value: "absent", label: "❌ Absent" },
+        ];
     };
 
     if (loading) return <div className="p-8 text-center bg-gray-50 min-h-screen">Chargement...</div>;
@@ -340,15 +334,8 @@ export default function AdminBookingsPage() {
                                                 {getStatusBadge(booking)}
                                             </td>
                                             <td className="px-4 py-3 whitespace-nowrap text-sm space-x-2">
-                                                {(booking.status === "confirmed" || booking.status === "pending") && (
-                                                    <>
-                                                        <button onClick={() => openEdit(booking)} className="text-blue-600 hover:text-blue-800 font-medium" title="Modifier">✏️</button>
-                                                        <button onClick={() => setDeleteConfirmId(booking.id)} className="text-red-600 hover:text-red-800 font-medium" title="Supprimer">🗑️</button>
-                                                    </>
-                                                )}
-                                                {(booking.status === "cancelled" || booking.status === "session_cancelled" || booking.status === "absent") && (
-                                                    <span className="text-slate-400 text-xs italic">—</span>
-                                                )}
+                                                <button onClick={() => openEdit(booking)} className="text-blue-600 hover:text-blue-800 font-medium" title="Modifier">✏️</button>
+                                                <button onClick={() => setDeleteConfirmId(booking.id)} className="text-red-600 hover:text-red-800 font-medium" title="Supprimer">🗑️</button>
                                             </td>
                                         </tr>
                                     ))}

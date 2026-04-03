@@ -65,10 +65,14 @@ def normalize_status(status_str: Optional[str]) -> Optional[str]:
     lower_s = s.lower()
     
     # Mappings standards
-    if lower_s in ["en cours", "en_cours", "encours"]:
-        return "en_cours"
+    if lower_s in ["en cours", "en_cours", "encours", "active"]:
+        return "active"
     if lower_s in ["termine", "terminé", "terminée", "terminé ", "termine "]:
         return "termine"
+    if lower_s in ["expire", "expiré", "expirée", "expiree"]:
+        return "expiree"
+    if lower_s in ["pause", "en pause", "en_pause"]:
+        return "en_pause"
     
     return s
 
@@ -97,13 +101,26 @@ def build_order_response(order: Order, credits_used: int) -> dict:
         balance = order.credits_total - credits_used
 
     # Logic: use manual status if present, otherwise calculate automatic one
+    today = date.today()
     display_status = order.status
-    if not display_status:
-        today = date.today()
-        if order.is_validity_unlimited:
-            display_status = "en_cours"
-        else:
-            display_status = "termine" if order.end_date and order.end_date < today else "en_cours"
+    
+    # Check balance
+    balance = None
+    if not order.is_unlimited and order.credits_total is not None:
+        balance = order.credits_total - credits_used
+    
+    has_credits = order.is_unlimited or (balance is not None and balance > 0)
+    is_past = not order.is_validity_unlimited and order.end_date and order.end_date < today
+
+    if display_status == "en_pause":
+        # Keep it as is
+        pass
+    elif not has_credits:
+        display_status = "termine"
+    elif is_past:
+        display_status = "expiree"
+    else:
+        display_status = "active"
 
     # Installments status logic
     # Perçu = J+7 passés (non erreur) OR resolved_at
@@ -237,7 +254,7 @@ async def list_order_statuses(
         .where(Order.tenant_id == tenant_id, Order.status != None)
         .distinct()
     )
-    base_statuses = ["en_cours", "termine"]
+    base_statuses = ["active", "termine", "expiree", "en_pause"]
     manual_statuses = [row[0] for row in result.all() if row[0] not in base_statuses]
     all_statuses = base_statuses + sorted(manual_statuses)
     
@@ -272,10 +289,17 @@ async def create_order(
 
     end_date = compute_end_date(offer, data.start_date)
     
-    if offer.is_validity_unlimited:
-        initial_status = "en_cours"
+    # Initial status calculation logic
+    today = date.today()
+    is_past = not offer.is_validity_unlimited and end_date and end_date < today
+    has_credits = offer.is_unlimited or (offer.classes_included is not None and offer.classes_included > 0)
+    
+    if not has_credits:
+        initial_status = "termine"
+    elif is_past:
+        initial_status = "expiree"
     else:
-        initial_status = "termine" if end_date and end_date < date.today() else "en_cours"
+        initial_status = "active"
 
     # Determine price and payment status
     price = offer.price_lump_sum_cents or offer.price_recurring_cents or 0

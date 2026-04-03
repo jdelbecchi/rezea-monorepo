@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 
-export default function CreditsCallbackPage() {
+function CreditsCallbackContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -108,5 +108,13 @@ export default function CreditsCallbackPage() {
                 )}
             </div>
         </div>
+    );
+}
+
+export default function CreditsCallbackPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center p-8">Chargement...</div>}>
+            <CreditsCallbackContent />
+        </Suspense>
     );
 }

@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { api, User, CreditAccount, Tenant } from "@/lib/api";
+import { api, User, CreditAccount, Tenant, Booking, Event, OrderItem } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
+import BottomNav from "@/components/BottomNav";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -13,22 +14,34 @@ export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [credits, setCredits] = useState<CreditAccount | null>(null);
   const [tenantSettings, setTenantSettings] = useState<Tenant | null>(null);
+  const [myBookings, setMyBookings] = useState<any[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
+  const [myOrders, setMyOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Espace Client - PWA Home
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [userData, creditData, tenantData] = await Promise.all([
+        const [userData, creditData, tenantData, bookingsData, eventsData, ordersData] = await Promise.all([
           api.getCurrentUser(),
           api.getCreditAccount(),
           api.getTenantSettings(),
+          api.getMyBookings(),
+          api.getUpcomingEvents(),
+          api.getMyOrders(),
         ]);
         setUser(userData);
         setCredits(creditData);
         setTenantSettings(tenantData);
+        setMyBookings(bookingsData || []);
+        setUpcomingEvents(eventsData || []);
+        setMyOrders(ordersData || []);
       } catch (err) {
-        console.error(err);
-        router.push("/login");
+        console.error("Erreur lors du chargement des données:", err);
+        // On redirige seulement si le user n'a pu être chargé
+        if (!user) router.push("/login");
       } finally {
         setLoading(false);
       }
@@ -36,237 +49,247 @@ export default function DashboardPage() {
     fetchData();
   }, [router]);
 
+  // Logic: Find next RDV
+  const nextRDV = useMemo(() => {
+    const now = new Date();
+    
+    // 1. Next Session Booking
+    const futureBookings = myBookings
+      .filter((b: any) => b.status !== 'cancelled' && b.session)
+      .map((b: any) => ({
+        title: b.session.title,
+        date: new Date(b.session.start_time),
+      }))
+      .filter(b => b.date > now);
+
+    // 2. Registered Events
+    const registeredEvents = upcomingEvents
+      .filter(e => e.is_registered)
+      .map(e => {
+        // Parse "YYYY-MM-DD" and "HH:mm"
+        const [year, month, day] = e.event_date.split('-').map(Number);
+        const [hour, min] = e.event_time.split(':').map(Number);
+        return {
+          title: e.title,
+          date: new Date(year, month - 1, day, hour, min)
+        };
+      })
+      .filter(e => e.date > now);
+
+    const all = [...futureBookings, ...registeredEvents].sort((a, b) => a.date.getTime() - b.date.getTime());
+    return all[0] || null;
+  }, [myBookings, upcomingEvents]);
+
+  // Logic: Order expiry check
+  const expiringOrder = useMemo(() => {
+    const now = new Date();
+    const nextMonth = new Date();
+    nextMonth.setMonth(now.getMonth() + 1);
+
+    return myOrders.find(o => {
+      if (!o.end_date) return false;
+      const expiry = new Date(o.end_date);
+      return expiry > now && expiry < nextMonth && (o.payment_status === 'paye' || o.payment_status === 'echelonne');
+    });
+  }, [myOrders]);
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-slate-400">Chargement...</div>
+      <div className="h-[100dvh] flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-slate-400 font-medium animate-pulse">Chargement de votre espace...</p>
+        </div>
       </div>
     );
   }
 
-  const isAdmin = user?.role === "owner" || user?.role === "manager";
-  const color = tenantSettings?.primary_color || "#7c3aed";
+  const isAdminOrStaff = user?.role === "owner" || user?.role === "manager" || user?.role === "staff";
+  const color = tenantSettings?.primary_color || "#2563eb";
   const bannerUrl = tenantSettings?.banner_url ? `${API_URL}${tenantSettings.banner_url}` : null;
-  const welcomeMsg = tenantSettings?.welcome_message || "Gérez vos cours et réservations";
 
-  // Admin/Manager: show the full dashboard with sidebar
-  if (isAdmin) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
-        <Sidebar user={user} tenant={tenantSettings ? { name: tenantSettings.name, logo_url: tenantSettings.logo_url || null, primary_color: tenantSettings.primary_color } : null} />
-        <main className="flex-1 p-8">
-          <div className="max-w-4xl mx-auto space-y-8">
-            <header>
-              <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Accueil</h1>
-              <p className="text-slate-500 mt-1">Bienvenue, {user?.first_name} {user?.last_name}</p>
+
+  // --- VIEW: PWA HOME (Default for everyone) ---
+  return (
+    <div className="min-h-[100dvh] bg-white flex flex-col items-center overflow-x-hidden safe-top pb-20 md:pb-0">
+      
+      {/* Main Responsive Container: Max width on Desktop, Full on Mobile */}
+      <div className="w-full max-w-6xl mx-auto flex flex-col min-h-screen md:min-h-0 md:pt-16 bg-white lg:grid lg:grid-cols-2 lg:gap-24 lg:items-start px-0 md:px-12">
+        
+        {/* Left Column (Desktop) / Top Section (Mobile): Banner & Identity */}
+        <div className="flex flex-col h-full">
+            {/* 1. Header Discreet - More Compact on Mobile */}
+            <header className="px-5 py-3 flex items-center justify-between shrink-0 mb-1 md:mb-10">
+                <div className="flex items-center gap-3">
+                    {tenantSettings?.logo_url ? (
+                        <img src={`${API_URL}${tenantSettings.logo_url}`} className="h-8 w-8 object-contain" alt="Logo" />
+                    ) : (
+                        <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-[10px] font-medium text-white">
+                            {tenantSettings?.name?.[0]?.toUpperCase() || 'R'}
+                        </div>
+                    )}
+                    <span className="text-sm font-medium tracking-tight text-slate-800 truncate max-w-[200px]">
+                        {tenantSettings?.name || "rezea"}
+                    </span>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                    <span className="text-sm font-medium text-slate-900 tracking-tight">
+                        {user?.first_name}
+                    </span>
+                    <Link href="/dashboard/profile" className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 border border-slate-100 text-slate-400 hover:text-blue-600 hover:border-blue-100 transition-all shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                    </Link>
+                </div>
             </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-6 text-white shadow-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-blue-100 text-sm font-medium">Cours restants</p>
-                    <p className="text-4xl font-bold mt-2">{credits?.balance || 0}</p>
-                  </div>
-                  <div className="text-4xl opacity-20">🎟️</div>
-                </div>
-                <Link
-                  href="/dashboard/credits"
-                  className="mt-4 block text-center bg-white/20 hover:bg-white/30 py-2 rounded-lg text-sm font-bold transition-colors"
+            {/* 2. Banner (Editorial Style) - Reduced spacing on mobile */}
+            <div className="relative shrink-0 mb-1 md:mb-8 lg:mb-0">
+                <div 
+                    className="aspect-video w-full shadow-2xl shadow-blue-900/10 relative group bg-slate-50 border border-slate-100 overflow-hidden"
+                    style={{ 
+                        background: bannerUrl 
+                            ? `url(${bannerUrl}) center/cover no-repeat` 
+                            : `linear-gradient(135deg, ${color}20, ${color}40)` 
+                    }}
                 >
-                  Acheter un forfait
-                </Link>
-              </div>
-
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Votre Profil</h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-xs text-slate-400 block">Nom complet</label>
-                    <p className="text-lg font-medium text-slate-900">{user?.first_name} {user?.last_name}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs text-slate-400 block">Email</label>
-                    <p className="text-slate-600">{user?.email}</p>
-                  </div>
-                  <div className="inline-block px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold uppercase">
-                    {user?.role}
-                  </div>
+                    {bannerUrl && <div className="absolute inset-0 bg-black/5 group-hover:bg-transparent transition-all duration-700" />}
+                    {!bannerUrl && (
+                        <div className="absolute inset-0 flex items-center justify-center text-slate-300">
+                            <span className="text-8xl opacity-20">✨</span>
+                        </div>
+                    )}
                 </div>
-              </div>
             </div>
-
-            <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-              <h2 className="text-xl font-bold text-slate-900 mb-4">Actions Rapides</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Link href="/dashboard/planning" className="p-4 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/50 transition-all group">
-                  <h3 className="font-bold text-slate-900 group-hover:text-blue-600">Réserver une séance</h3>
-                  <p className="text-sm text-slate-500">Consultez le planning et inscrivez-vous.</p>
-                </Link>
-                <Link href="/dashboard/bookings" className="p-4 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/50 transition-all group">
-                  <h3 className="font-bold text-slate-900 group-hover:text-blue-600">Voir mes réservations</h3>
-                  <p className="text-sm text-slate-500">Gérez vos cours à venir.</p>
-                </Link>
-              </div>
-            </section>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  // Member: show the visual home page with navigation cards
-  return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
-      {/* Header Bar */}
-      <header className="bg-white shadow-sm px-4 py-3 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center text-white font-bold text-sm">
-            {user?.first_name?.[0]}{user?.last_name?.[0]}
-          </div>
-          <span className="font-semibold text-slate-800 text-sm">
-            {user?.first_name} {user?.last_name}
-          </span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="bg-purple-50 text-purple-700 px-3 py-1 rounded-full text-xs font-bold">
-            {credits?.balance || 0} cours
-          </div>
-          <button
-            onClick={() => { localStorage.clear(); router.push("/login"); }}
-            className="text-slate-400 hover:text-red-500 transition-colors p-1"
-            title="Déconnexion"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-          </button>
-        </div>
-      </header>
 
-      {/* Banner / Background */}
-      <div
-        className="relative h-56 overflow-hidden"
-        style={{
-          background: bannerUrl
-            ? `url(${bannerUrl}) center/cover no-repeat`
-            : `linear-gradient(135deg, ${color}, ${color}cc, ${color}99)`,
-        }}
-      >
-        {/* Overlay for readability */}
-        <div className={`absolute inset-0 ${bannerUrl ? 'bg-black/40' : 'bg-black/10'}`} />
+        {/* Right Column (Desktop) / Bottom Section (Mobile): Actions & Stats */}
+        <div className="flex flex-col flex-1 px-5 h-full py-0 lg:py-0">
+            {/* 3. Reporting Section - Compacted font and p on mobile */}
+            <div className="flex flex-col gap-3 mb-6 w-full max-w-[440px] mx-auto lg:mx-0">
+                {/* Status Row */}
+                {/* Status Row - Balanced and Centered */}
+                <div className="flex border border-transparent rounded-2xl items-stretch w-full mb-1 px-6">
+                    {/* Solde Crédits */}
+                    {credits && (credits.balance > 0 || myOrders.length > 0) && (
+                        <div className="w-[30%] py-1.5 shrink-0 flex flex-col">
+                            <p className="text-[11px] font-medium text-blue-600 mb-0.5">Mon crédit</p>
+                            <p className="text-2xl font-bold text-slate-900 leading-none">{credits.balance}</p>
+                        </div>
+                    )}
+                    
+                    {/* Vertical Divider */}
+                    {credits && nextRDV && (
+                        <div className="w-px bg-slate-100 self-stretch my-2 mx-1" />
+                    )}
 
-        {/* Decorative pattern (only if no banner) */}
-        {!bannerUrl && (
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 left-0 w-full h-full"
-              style={{
-                backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
-              }}
-            />
-          </div>
-        )}
+                    {/* Prochain RDV */}
+                    {nextRDV && (
+                        <div className="flex-1 py-1.5 px-3 min-w-0 flex flex-col">
+                            <p className="text-[11px] font-medium text-blue-500 mb-0.5 truncate">
+                                Prochain RDV le {nextRDV.date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} à {nextRDV.date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                            <p className="text-[15px] font-semibold text-slate-900 truncate leading-tight">{nextRDV.title}</p>
+                        </div>
+                    )}
+                </div>
+ 
+                {/* Alerte Expiration */}
+                {expiringOrder && (
+                    <div className="bg-amber-50/40 border border-amber-100 p-3 rounded-2xl flex items-center justify-center gap-3 shadow-sm animate-in slide-in-from-right-4 duration-500">
+                        <span className="text-sm shrink-0">⚠️</span>
+                        <p className="text-[11px] font-medium text-slate-700 leading-snug">
+                            Votre &quot;{expiringOrder.offer_name}&quot; se termine le {new Date(expiringOrder.end_date).toLocaleDateString('fr-FR')}
+                        </p>
+                    </div>
+                )}
 
-        <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-4">
-          <p className="text-white/70 text-xs uppercase tracking-widest font-semibold mb-1">Réservation via Rezea</p>
-          <h2 className="text-white text-2xl font-bold mt-2">Bienvenue, {user?.first_name} !</h2>
-          <p className="text-white/80 text-sm mt-2">
-            {welcomeMsg}
-          </p>
-        </div>
-      </div>
-
-      {/* Navigation Cards */}
-      <div className="flex-1 px-4 -mt-6 relative z-20">
-        <div className="max-w-lg mx-auto grid grid-cols-2 gap-4">
-          {/* Mon profil */}
-          <Link
-            href="/dashboard/planning"
-            className="bg-white rounded-2xl p-6 shadow-md hover:shadow-lg transition-all flex flex-col items-center text-center group border border-gray-100 hover:border-purple-200"
-          >
-            <div className="w-16 h-16 rounded-2xl bg-purple-50 flex items-center justify-center mb-3 group-hover:bg-purple-100 transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
+                {/* Horizontal Divider - Zen style */}
+                {!expiringOrder && (
+                    <div className="h-px bg-slate-100 w-full mt-2" />
+                )}
             </div>
-            <span className="text-sm font-semibold text-slate-800 group-hover:text-purple-700 transition-colors">
-              Mon profil
-            </span>
-          </Link>
-
-          {/* Calendrier des réservations */}
-          <Link
-            href="/dashboard/planning"
-            className="bg-white rounded-2xl p-6 shadow-md hover:shadow-lg transition-all flex flex-col items-center text-center group border border-gray-100 hover:border-purple-200"
-          >
-            <div className="w-16 h-16 rounded-2xl bg-purple-50 flex items-center justify-center mb-3 group-hover:bg-purple-100 transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
+ 
+            {/* 4. Quick Actions Stack - Compact buttons on mobile */}
+            <div className="flex flex-col gap-3 mb-8 w-full max-w-[440px] mx-auto lg:mx-0">
+                {[
+                    { path: "/dashboard/planning", label: "Planning", icon: "📅", color: "bg-purple-50 text-purple-600" },
+                    { path: "/dashboard/credits", label: "Boutique", icon: "🛍️", color: "bg-pink-50 text-pink-600" },
+                    { path: "/dashboard/orders", label: "Mes commandes", icon: "📦", color: "bg-blue-50 text-blue-600" },
+                    ...(user?.role === "owner" || user?.role === "manager" || user?.role === "staff" 
+                        ? [{ path: "/dashboard/gestion-inscriptions", label: "Gestion des inscriptions", icon: "📝", color: "bg-emerald-50 text-emerald-600" }] 
+                        : []),
+                ].map((item) => (
+                    <Link 
+                        key={item.path} 
+                        href={item.path}
+                        className="flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-xl hover:border-blue-600/30 hover:shadow-xl hover:shadow-blue-900/5 transition-all active:scale-[0.98] group shadow-sm"
+                    >
+                        <div className={`w-10 h-10 shrink-0 ${item.color} rounded-full flex items-center justify-center text-lg group-hover:scale-110 transition-transform shadow-sm`}>
+                            {item.icon}
+                        </div>
+                        <span className="text-sm font-medium text-slate-600 group-hover:text-slate-900 transition-colors">{item.label}</span>
+                        <span className="ml-auto text-slate-300 group-hover:text-blue-500 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
+                            </svg>
+                        </span>
+                    </Link>
+                ))}
             </div>
-            <span className="text-sm font-semibold text-slate-800 group-hover:text-purple-700 transition-colors">
-              Calendrier des réservations
-            </span>
-          </Link>
 
-          {/* Boutique */}
-          <Link
-            href="/dashboard/credits"
-            className="bg-white rounded-2xl p-6 shadow-md hover:shadow-lg transition-all flex flex-col items-center text-center group border border-gray-100 hover:border-purple-200"
-          >
-            <div className="w-16 h-16 rounded-2xl bg-purple-50 flex items-center justify-center mb-3 group-hover:bg-purple-100 transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
-              </svg>
-            </div>
-            <span className="text-sm font-semibold text-slate-800 group-hover:text-purple-700 transition-colors">
-              Boutique
-            </span>
-          </Link>
+            {/* 5. Admin & Footer Area */}
+            <div className="mt-auto w-full max-w-[440px] mx-auto lg:mx-0">
+                {/* Admin Toggle (Managers only) */}
+                {(user?.role === "owner" || user?.role === "manager") && (
+                    <button 
+                        onClick={() => router.push('/dashboard/admin')}
+                        className="w-full py-3.5 mb-8 bg-slate-900 text-white flex items-center justify-center gap-4 shadow-xl shadow-slate-900/20 active:scale-[0.98] transition-all hover:bg-slate-800"
+                    >
+                        <span className="text-base animate-pulse">⚙️</span>
+                        <span className="text-sm font-medium">accès administration</span>
+                    </button>
+                )}
 
-          {/* Mes commandes */}
-          <Link
-            href="/dashboard/bookings"
-            className="bg-white rounded-2xl p-6 shadow-md hover:shadow-lg transition-all flex flex-col items-center text-center group border border-gray-100 hover:border-purple-200"
-          >
-            <div className="w-16 h-16 rounded-2xl bg-purple-50 flex items-center justify-center mb-3 group-hover:bg-purple-100 transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-              </svg>
+                <footer className="pt-6 border-t border-slate-100 flex items-center justify-between pb-8">
+                    <div className="flex gap-8">
+                        <a 
+                            href={tenantSettings?.cgv_url ? `${API_URL}${tenantSettings.cgv_url}` : "#"} 
+                            target="_blank" 
+                            className={`text-[11px] font-medium transition-all ${tenantSettings?.cgv_url ? 'text-slate-400 hover:text-blue-600' : 'text-slate-400 pointer-events-none'}`}
+                        >
+                            CGV
+                        </a>
+                        <a 
+                            href={tenantSettings?.rules_url ? `${API_URL}${tenantSettings.rules_url}` : "#"} 
+                            target="_blank" 
+                            className={`text-[11px] font-medium transition-all ${tenantSettings?.rules_url ? 'text-slate-400 hover:text-blue-600' : 'text-slate-400 pointer-events-none'}`}
+                        >
+                            Règlement intérieur
+                        </a>
+                    </div>
+                    <div className="text-right">
+                        <span className="text-[11px] font-medium text-slate-400 tracking-tighter">@rezea</span>
+                    </div>
+                </footer>
             </div>
-            <span className="text-sm font-semibold text-slate-800 group-hover:text-purple-700 transition-colors">
-              Mes commandes
-            </span>
-          </Link>
         </div>
       </div>
+      
+      {/* Bottom Navigation for Mobile PWA Experience */}
+      <BottomNav userRole={user?.role} />
 
-      {/* Footer / Legal Docs */}
-      <div className="mt-8 px-4 pb-10">
-        <div className="max-w-lg mx-auto space-y-3">
-          {(tenantSettings as any)?.cgv_url && (
-            <a 
-              href={`${API_URL}${(tenantSettings as any).cgv_url}`} 
-              target="_blank" 
-              className="w-full block py-3 text-center bg-white border border-slate-200 text-slate-600 font-bold rounded-2xl hover:bg-slate-50 transition-all text-sm"
-            >
-              📄 Conditions Générales de Vente
-            </a>
-          )}
-          {(tenantSettings as any)?.rules_url && (
-            <a 
-              href={`${API_URL}${(tenantSettings as any).rules_url}`} 
-              target="_blank" 
-              className="w-full block py-3 text-center bg-white border border-slate-200 text-slate-600 font-bold rounded-2xl hover:bg-slate-50 transition-all text-sm"
-            >
-              📜 Règlement Intérieur
-            </a>
-          )}
-          <p className="text-center text-[10px] text-slate-400 font-medium pt-2">
-            Plateforme propulsée par Rezea &copy; 2026
-          </p>
-        </div>
-      </div>
+      {/* Global CSS fixes for PWA feel */}
+      <style jsx global>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @supports (-webkit-touch-callout: none) {
+            .safe-top { padding-top: env(safe-area-inset-top); }
+            .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+        }
+      `}</style>
     </div>
   );
 }

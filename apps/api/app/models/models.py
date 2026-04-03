@@ -159,6 +159,10 @@ class User(Base):
     is_suspended = Column(Boolean, default=False)  # Suspend credits (blocks bookings)
     blacklist_reason = Column(Text)
     
+    # Préférences (Notifications & Marketing)
+    remind_before_session = Column(Boolean, default=True)
+    receive_marketing_emails = Column(Boolean, default=True)
+    
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -537,6 +541,13 @@ class Order(Base):
     # Flag: créé par un manager
     created_by_admin = Column(Boolean, default=False)
 
+    # Snapshot des infos de l'offre au moment de l'achat (Contractuel)
+    offer_snap_name = Column(String(100))
+    offer_snap_description = Column(Text)
+    offer_snap_validity_days = Column(Integer)
+    offer_snap_validity_unit = Column(String(20))
+    offer_snap_is_validity_unlimited = Column(Boolean, default=False)
+    
     # Facturation
     invoice_number = Column(String(100), nullable=True)
     invoice_url = Column(String(500), nullable=True)

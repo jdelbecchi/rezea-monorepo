@@ -3,12 +3,16 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { api, User, Offer } from "@/lib/api";
+import { api, User, Offer, Tenant } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
+import BottomNav from "@/components/BottomNav";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function CreditsPage() {
     const router = useRouter();
     const [user, setUser] = useState<User | null>(null);
+    const [tenantSettings, setTenantSettings] = useState<Tenant | null>(null);
     const [balance, setBalance] = useState(0);
     const [offers, setOffers] = useState<Offer[]>([]);
     const [loading, setLoading] = useState(true);
@@ -16,14 +20,16 @@ export default function CreditsPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [userData, accountData, offersData] = await Promise.all([
+                const [userData, accountData, offersData, tenantData] = await Promise.all([
                     api.getCurrentUser(),
                     api.getCreditAccount(),
-                    api.getOffers(false) // Only active offers
+                    api.getOffers(false), // Only active offers
+                    api.getTenantSettings()
                 ]);
                 setUser(userData);
                 setBalance(accountData.balance);
                 setOffers(offersData);
+                setTenantSettings(tenantData);
             } catch (err) {
                 console.error(err);
                 router.push("/login");
@@ -44,38 +50,58 @@ export default function CreditsPage() {
         return acc;
     }, {} as Record<string, Offer[]>);
 
+    const isAdminMode = false; // We can refine this later if needed
+
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
-            <Sidebar user={user} />
+        <div className="min-h-screen bg-white flex flex-col md:flex-row pb-20 md:pb-0 overflow-x-hidden">
+            {isAdminMode && <Sidebar user={user} tenant={tenantSettings} />}
+
+            {/* PWA Mobile Header - Reduced Height and Tight Spacing */}
+            {!isAdminMode && (
+                <header className="fixed top-0 left-0 right-0 h-14 bg-white/80 backdrop-blur-lg border-b border-slate-100 flex items-center px-4 z-40 md:hidden safe-top shadow-sm">
+                    <Link href="/dashboard" className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-50 active:scale-95 transition-all text-slate-400">
+                        <span className="text-lg">←</span>
+                    </Link>
+                </header>
+            )}
 
             {/* Main Content */}
-            <main className="flex-1 p-8">
-                <div className="max-w-6xl mx-auto space-y-10">
-                    <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                        <div>
-                            <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Boutique</h1>
-                            <p className="text-slate-500 mt-2 text-lg">Choisissez votre offre pour réserver vos séances</p>
+            <main className={`flex-1 px-5 pb-5 md:p-12 ${!isAdminMode ? 'pt-16 md:pt-14' : ''}`}>
+                <div className="max-w-5xl mx-auto">
+                    {/* Desktop Header with Back Button */}
+                    {!isAdminMode && (
+                        <div className="hidden md:flex items-center gap-2 mb-10">
+                            <Link href="/dashboard" className="flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-slate-800 transition-colors group">
+                                <span className="text-lg group-hover:-translate-x-1 transition-transform">←</span>
+                                Retour
+                            </Link>
+                        </div>
+                    )}
+                    <header className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+                        <div className="px-1 space-y-1">
+                            <h1 className="text-xl md:text-2xl font-medium text-slate-900 tracking-tight flex items-center gap-2">
+                                <span className="text-2xl md:text-3xl">🛍️</span> Boutique
+                            </h1>
+                            <p className="text-slate-500 font-medium text-[11px] md:text-xs">Choisissez votre offre pour réserver vos séances</p>
                         </div>
                         
-                        {/* More discrete balance display */}
-                        <div className="bg-white px-6 py-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xl">
-                                🎟️
-                            </div>
-                            <div>
-                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Mon Solde</p>
-                                <p className="text-2xl font-bold text-slate-900">{balance} <span className="text-sm font-medium text-slate-500">crédits</span></p>
+                        {/* More discrete balance display - Compact on mobile */}
+                        <div className="bg-white px-6 py-4 md:px-8 md:py-5 rounded-[2rem] border border-slate-200 shadow-sm flex items-center justify-center gap-4 md:gap-6 self-center">
+                            <span className="text-[10px] md:text-xs font-medium text-slate-400 capitalize tracking-tight whitespace-nowrap">Mon solde :</span>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-2xl md:text-4xl font-semibold text-slate-900 leading-none">{balance}</span>
+                                <span className="text-xs md:text-base font-medium text-slate-500 lowercase">crédits</span>
                             </div>
                         </div>
                     </header>
 
                     {/* Catalog sections */}
                     {Object.keys(categories).length > 0 ? (
-                        <div className="space-y-12">
+                        <div className="mt-8 space-y-12">
                             {Object.entries(categories).map(([category, categoryOffers]) => (
                                 <section key={category} className="space-y-6">
                                     <div className="flex items-center gap-4">
-                                        <h2 className="text-2xl font-bold text-slate-800">{category}</h2>
+                                        <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">{category}</h2>
                                         <div className="h-px flex-1 bg-slate-200"></div>
                                     </div>
                                     
@@ -84,69 +110,62 @@ export default function CreditsPage() {
                                             return (
                                                 <div
                                                     key={offer.id}
-                                                    className="group relative bg-white rounded-3xl p-8 border border-slate-200 hover:border-blue-400 transition-all duration-300 hover:shadow-2xl flex flex-col justify-between overflow-hidden"
+                                                    className="group relative bg-white rounded-3xl p-6 border border-slate-200 hover:border-blue-400 transition-all duration-300 hover:shadow-2xl flex flex-col items-center justify-between overflow-hidden text-center"
                                                 >
                                                     {/* Background decorative element */}
-                                                    <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-0"></div>
+                                                    <div className="absolute inset-0 bg-blue-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-0"></div>
                                                     
-                                                    <div className="relative z-10 space-y-6">
-                                                        <div className="space-y-4">
-                                                            <div className="flex justify-between items-start">
-                                                                <h3 className="text-xl font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{offer.name}</h3>
-                                                                {offer.is_unique && (
-                                                                    <span className="px-2 py-1 bg-amber-50 text-amber-600 text-[10px] font-bold uppercase tracking-wider rounded-md border border-amber-100">
-                                                                        Unique
-                                                                    </span>
-                                                                )}
-                                                            </div>
+                                                    <div className="relative z-10 space-y-4 w-full flex flex-col items-center">
+                                                        <div className="space-y-2 w-full">
+                                                            <h3 className="text-lg font-semibold text-slate-800 group-hover:text-blue-600 transition-colors capitalize tracking-tight">{offer.name}</h3>
                                                         </div>
 
-                                                        <div className="flex flex-col gap-1">
-                                                            <div className="flex items-baseline gap-2">
-                                                                <span className="text-4xl font-black text-slate-900">
+                                                        <div className="flex flex-col items-center gap-0.5">
+                                                            <div className="flex items-baseline justify-center gap-1.5">
+                                                                <span className="text-2xl font-semibold text-slate-900">
                                                                     {offer.featured_pricing === "recurring" && offer.price_recurring_cents 
                                                                         ? (offer.price_recurring_cents / 100).toFixed(2)
                                                                         : (offer.price_lump_sum_cents ? (offer.price_lump_sum_cents / 100).toFixed(2) : "0.00")
                                                                     }€
                                                                 </span>
                                                                 {offer.featured_pricing === "recurring" && offer.period && (
-                                                                    <span className="text-slate-400 text-sm font-medium">{offer.period}</span>
-                                                                )}
-                                                                {offer.featured_pricing === "recurring" && offer.recurring_count && (
-                                                                    <span className="text-slate-400 text-[10px] font-medium italic">pendant {offer.recurring_count} mois</span>
+                                                                    <span className="text-slate-400 text-xs font-medium lowercase">/{offer.period}</span>
                                                                 )}
                                                             </div>
-                                                            {/* Secondary price display */}
-                                                            {((offer.featured_pricing === "recurring" && offer.price_lump_sum_cents) || 
-                                                              (offer.featured_pricing === "lump_sum" && offer.price_recurring_cents)) && (
-                                                                <p className="text-sm font-medium text-slate-400">
-                                                                    ou {offer.featured_pricing === "recurring" 
-                                                                        ? `${(offer.price_lump_sum_cents! / 100).toFixed(2)}€ en une fois` 
-                                                                        : `${(offer.price_recurring_cents! / 100).toFixed(2)}€ ${offer.period}${offer.recurring_count ? ` pendant ${offer.recurring_count} m.` : ""}`
-                                                                    }
-                                                                </p>
-                                                            )}
+                                                            {/* Secondary line: Recurrence and alternative pricing */}
+                                                            <p className="text-xs font-medium text-slate-400 leading-tight">
+                                                                {offer.featured_pricing === "recurring" ? (
+                                                                    <>
+                                                                        pendant {offer.recurring_count} {offer.period || 'mois'}
+                                                                        {offer.price_lump_sum_cents && ` • ou ${(offer.price_lump_sum_cents / 100).toFixed(2)}€ en 1x`}
+                                                                    </>
+                                                                ) : (
+                                                                    offer.price_recurring_cents ? (
+                                                                        `ou ${(offer.price_recurring_cents / 100).toFixed(2)}€ /${offer.period} pendant ${offer.recurring_count} mois`
+                                                                    ) : ""
+                                                                )}
+                                                            </p>
                                                         </div>
 
-                                                        <div className="space-y-3">
-                                                            <div className="flex items-center gap-3 text-slate-600">
-                                                                <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-[10px]">✨</div>
+                                                        <div className="space-y-1.5 w-full flex flex-col items-center">
+                                                            <div className="flex items-center gap-2 text-slate-600 justify-center">
+                                                                <div className="w-5 h-5 rounded-full bg-blue-50 flex items-center justify-center text-xs">💎</div>
                                                                 <span className="text-sm font-medium">
-                                                                    {offer.is_unlimited ? "Crédits illimités" : `${offer.classes_included} crédits inclus`}
+                                                                    {offer.is_unlimited ? "Crédits illimités" : `${offer.classes_included} crédits`}
                                                                 </span>
                                                             </div>
                                                             
                                                             {offer.is_validity_unlimited ? (
-                                                                <div className="flex items-center gap-3 text-purple-600">
-                                                                    <div className="w-5 h-5 rounded-full bg-purple-50 flex items-center justify-center text-[10px]">♾️</div>
+                                                                <div className="flex items-center gap-2 text-purple-600 justify-center">
+                                                                    <div className="w-5 h-5 rounded-full bg-purple-50 flex items-center justify-center text-xs">♾️</div>
                                                                     <span className="text-sm font-semibold">Validité illimitée</span>
                                                                 </div>
                                                             ) : (offer.validity_days || offer.deadline_date) && (
-                                                                <div className="flex items-center gap-3 text-slate-600">
-                                                                    <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-[10px]">📅</div>
-                                                                    <span className="text-sm font-medium">
+                                                                <div className="flex items-center gap-2 text-slate-500 justify-center">
+                                                                    <div className="w-5 h-5 rounded-full bg-slate-50 flex items-center justify-center text-xs">📅</div>
+                                                                    <span className="text-xs font-medium opacity-80">
                                                                         {offer.deadline_date 
-                                                                            ? `Valable jusqu'au ${new Date(offer.deadline_date).toLocaleDateString()}`
+                                                                            ? `jusqu'au ${new Date(offer.deadline_date).toLocaleDateString()}`
                                                                             : `Validité : ${offer.validity_days} ${offer.validity_unit === 'months' ? 'mois' : 'jours'}`
                                                                         }
                                                                     </span>
@@ -154,24 +173,24 @@ export default function CreditsPage() {
                                                             )}
 
                                                             {offer.is_unique && (
-                                                                <div className="flex items-center gap-3 text-amber-600">
-                                                                    <div className="w-5 h-5 rounded-full bg-amber-50 flex items-center justify-center text-[10px]">🔒</div>
-                                                                    <span className="text-sm font-semibold italic">Valable une fois / personne</span>
+                                                                <div className="flex items-center gap-2 text-amber-600 justify-center">
+                                                                    <div className="w-5 h-5 rounded-full bg-amber-50 flex items-center justify-center text-xs">🔒</div>
+                                                                    <span className="text-xs font-semibold italic">Valable 1 fois / personne</span>
                                                                 </div>
                                                             )}
                                                         </div>
 
                                                         {offer.description && (
-                                                            <div className="pt-4 border-t border-slate-100">
-                                                                <p className="text-slate-500 text-sm leading-relaxed italic">{offer.description}</p>
+                                                            <div className="pt-2 border-t border-slate-50 w-full">
+                                                                <p className="text-slate-400 text-xs leading-relaxed italic">{offer.description}</p>
                                                             </div>
                                                         )}
                                                     </div>
 
-                                                    <div className="mt-8 relative z-10">
+                                                    <div className="mt-6 relative z-10 w-full">
                                                         <Link
                                                             href={`/dashboard/credits/checkout/${offer.id}`}
-                                                            className="block w-full text-center py-4 rounded-2xl font-bold text-white bg-slate-900 hover:bg-blue-600 shadow-lg shadow-slate-200 hover:shadow-blue-200 transition-all duration-300"
+                                                            className="block w-full text-center py-2.5 rounded-2xl font-medium text-white bg-slate-900 hover:bg-blue-600 shadow-md shadow-slate-100 transition-all duration-300 text-[11px]"
                                                         >
                                                             Choisir cette offre
                                                         </Link>
@@ -194,6 +213,16 @@ export default function CreditsPage() {
                     )}
                 </div>
             </main>
+
+            <BottomNav userRole={user?.role} />
+
+            {/* Global style for safe areas */}
+            <style jsx global>{`
+                @supports (-webkit-touch-callout: none) {
+                    .safe-top { padding-top: env(safe-area-inset-top); }
+                    .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+                }
+            `}</style>
         </div>
     );
 }

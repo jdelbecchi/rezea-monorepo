@@ -297,21 +297,21 @@ export default function AdminPlanningAgendaPage() {
                     {/* Header */}
                     <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                         <div>
-                            <h1 className="text-3xl font-bold text-slate-900">📋 Agenda</h1>
+                            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight">📋 agenda</h1>
                             <div className="flex items-center gap-4 mt-1">
                                 <p className="text-slate-500">{periodLabel}</p>
                                 <div className="flex items-center gap-2">
                                     <button
                                         onClick={() => { setShowDuplicateModal(true); setDuplicateData({ source_start: "", source_end: "", target_start: "" }); }}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-slate-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-xs font-medium"
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-slate-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-[11px] font-medium lowercase tracking-tight"
                                     >
-                                        📋 Dupliquer
+                                        📋 dupliquer
                                     </button>
                                     <button
                                         onClick={() => { setShowForm(true); setFormData({ ...emptyForm }); setMessage(null); }}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs font-medium"
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors text-[11px] font-medium lowercase tracking-tight shadow-md shadow-slate-200"
                                     >
-                                        ➕ Nouvelle séance
+                                        ➕ nouvelle séance
                                     </button>
                                 </div>
                             </div>
@@ -330,23 +330,23 @@ export default function AdminPlanningAgendaPage() {
                             </div>
                             {/* Navigation */}
                             <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg">
-                                <button onClick={() => navigate(-1)} className="px-3 py-2 hover:bg-gray-100 rounded-l-lg text-sm font-medium">←</button>
-                                <button onClick={goToday} className="px-3 py-2 hover:bg-gray-100 text-sm font-medium">Aujourd&apos;hui</button>
-                                <button onClick={() => navigate(1)} className="px-3 py-2 hover:bg-gray-100 rounded-r-lg text-sm font-medium">→</button>
+                                <button onClick={() => navigate(-1)} className="px-3 py-2 hover:bg-gray-100 rounded-l-lg text-[11px] font-medium lowercase">←</button>
+                                <button onClick={goToday} className="px-3 py-2 hover:bg-gray-100 text-[11px] font-medium lowercase">aujourd&apos;hui</button>
+                                <button onClick={() => navigate(1)} className="px-3 py-2 hover:bg-gray-100 rounded-r-lg text-[11px] font-medium lowercase">→</button>
                             </div>
                             {/* View toggle */}
                             <div className="flex bg-white border border-gray-200 rounded-lg">
                                 <button
                                     onClick={() => setViewMode("week")}
-                                    className={`px-4 py-2 text-sm font-medium rounded-l-lg transition-colors ${viewMode === "week" ? "bg-blue-600 text-white" : "hover:bg-gray-100"}`}
+                                    className={`px-4 py-2 text-[11px] font-medium rounded-l-lg transition-colors lowercase ${viewMode === "week" ? "bg-slate-900 text-white" : "hover:bg-gray-100"}`}
                                 >
-                                    Semaine
+                                    semaine
                                 </button>
                                 <button
                                     onClick={() => setViewMode("month")}
-                                    className={`px-4 py-2 text-sm font-medium rounded-r-lg transition-colors ${viewMode === "month" ? "bg-blue-600 text-white" : "hover:bg-gray-100"}`}
+                                    className={`px-4 py-2 text-[11px] font-medium rounded-r-lg transition-colors lowercase ${viewMode === "month" ? "bg-slate-900 text-white" : "hover:bg-gray-100"}`}
                                 >
-                                    Mois
+                                    mois
                                 </button>
                             </div>
                         </div>
@@ -388,14 +388,14 @@ export default function AdminPlanningAgendaPage() {
                     <div className="bg-white rounded-xl shadow-2xl p-6 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-start justify-between mb-4">
                             <div className="flex items-center gap-2">
-                                <span className={`px-2 py-1 text-xs font-bold rounded-full ${selectedItem.type === "session" ? "bg-blue-100 text-blue-800" : "bg-purple-100 text-purple-800"}`}>
-                                    {selectedItem.type === "session" ? "🏋️ Séance" : "🎉 Événement"}
+                                <span className={`px-2 py-1 text-[10px] font-medium rounded-full lowercase ${selectedItem.type === "session" ? "bg-blue-50 text-blue-600 border border-blue-100" : "bg-purple-50 text-purple-600 border border-purple-100"}`}>
+                                    {selectedItem.type === "session" ? "🏋️ séance" : "🎉 événement"}
                                 </span>
                             </div>
                             <button onClick={() => setSelectedItem(null)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
                         </div>
 
-                        <h3 className="text-xl font-bold text-slate-900 mb-1">{selectedItem.title}</h3>
+                        <h3 className="text-xl font-semibold text-slate-900 mb-1">{selectedItem.title}</h3>
                         {selectedItem.description && (
                             <p className="text-slate-500 text-sm mb-3">{selectedItem.description}</p>
                         )}
@@ -450,8 +450,8 @@ export default function AdminPlanningAgendaPage() {
                         {/* Registered users */}
                         {selectedItem.registered_users.length > 0 && (
                             <div className="mb-4">
-                                <h4 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                                    Inscrits ({selectedItem.registered_users.length})
+                                <h4 className="text-[10px] font-medium text-slate-400 lowercase tracking-widest mb-2">
+                                    inscrits ({selectedItem.registered_users.length})
                                 </h4>
                                 <div className="space-y-1">
                                     {selectedItem.registered_users.map((u, i) => (
@@ -499,7 +499,7 @@ export default function AdminPlanningAgendaPage() {
             {deleteConfirmId && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
                     <div className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-2xl">
-                        <h3 className="text-lg font-bold text-slate-900 mb-2">Confirmer la suppression</h3>
+                        <h3 className="text-lg font-semibold text-slate-900 mb-2">Confirmer la suppression</h3>
                         <p className="text-slate-600 mb-4">
                             {deleteConfirmId.type === "session"
                                 ? "Cette séance sera désactivée et n'apparaîtra plus dans l'agenda."
@@ -529,7 +529,7 @@ export default function AdminPlanningAgendaPage() {
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl my-8 animate-in fade-in zoom-in duration-200">
                         <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-slate-50">
                             <div>
-                                <h3 className="text-xl font-bold text-slate-900">Nouvelle séance</h3>
+                                <h3 className="text-xl font-semibold text-slate-900">nouvelle séance</h3>
                                 <p className="text-xs text-slate-500 mt-1">Créez une séance individuelle ou une récurrence</p>
                             </div>
                             <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-600 text-2xl">×</button>
@@ -635,7 +635,7 @@ export default function AdminPlanningAgendaPage() {
                                 </div>
 
                                 <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 space-y-4">
-                                    <h4 className="text-sm font-bold text-blue-900 flex items-center gap-2">🔄 Récurrence</h4>
+                                    <h4 className="text-[11px] font-medium text-slate-400 flex items-center gap-2 lowercase tracking-widest">🔄 récurrence</h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-xs font-semibold text-blue-700 mb-1">Type de récurrence</label>
@@ -678,9 +678,9 @@ export default function AdminPlanningAgendaPage() {
                                 <button
                                     type="submit"
                                     disabled={saving}
-                                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95 disabled:opacity-50"
+                                    className="flex-1 px-4 py-2 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 shadow-lg shadow-slate-200 transition-all active:scale-95 disabled:opacity-50 text-[11px] lowercase"
                                 >
-                                    {saving ? "Création..." : "Créer la séance"}
+                                    {saving ? "création..." : "créer la séance"}
                                 </button>
                             </div>
                         </form>
@@ -694,14 +694,14 @@ export default function AdminPlanningAgendaPage() {
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
                         <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-slate-50">
                             <div>
-                                <h3 className="text-xl font-bold text-slate-900">Dupliquer des séances</h3>
-                                <p className="text-xs text-slate-500 mt-1">Copier un planning vers une nouvelle période</p>
+                                <h3 className="text-xl font-semibold text-slate-900 tracking-tight">dupliquer des séances</h3>
+                                <p className="text-[11px] font-medium text-slate-400 lowercase mt-1">copier un planning vers une nouvelle période</p>
                             </div>
                             <button onClick={() => setShowDuplicateModal(false)} className="text-slate-400 hover:text-slate-600 text-2xl">×</button>
                         </div>
                         <div className="p-6 space-y-6">
                             <div className="space-y-4">
-                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Période Source</h4>
+                                <h4 className="text-[10px] font-medium text-slate-400 lowercase tracking-widest">période source</h4>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-xs font-medium text-slate-700 mb-1">Du</label>
@@ -725,7 +725,7 @@ export default function AdminPlanningAgendaPage() {
                             </div>
 
                             <div className="pt-4 border-t border-gray-100 space-y-4">
-                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Destination</h4>
+                                <h4 className="text-[10px] font-medium text-slate-400 lowercase tracking-widest">destination</h4>
                                 <div>
                                     <label className="block text-xs font-medium text-slate-700 mb-1">Date de début cible</label>
                                     <input
@@ -746,9 +746,9 @@ export default function AdminPlanningAgendaPage() {
                             </button>
                             <button
                                 onClick={handleDuplicate}
-                                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95"
+                                className="flex-1 px-4 py-2 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 shadow-lg shadow-slate-200 transition-all active:scale-95 text-[11px] lowercase"
                             >
-                                Dupliquer
+                                dupliquer
                             </button>
                         </div>
                     </div>
@@ -783,9 +783,11 @@ function WeekView({
                     return (
                         <div key={dateStr} className="min-h-[500px]">
                             {/* Day header */}
-                            <div className={`px-2 py-3 text-center border-b border-gray-100 ${isToday ? "bg-blue-50" : "bg-gray-50"}`}>
-                                <div className="text-xs font-medium text-slate-500 uppercase">{DAYS_FR[day.getDay() === 0 ? 6 : day.getDay() - 1]}</div>
-                                <div className={`text-lg font-bold mt-0.5 ${isToday ? "text-blue-600 bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center mx-auto" : "text-slate-900"}`}>
+                            <div className={`px-2 py-3 text-center border-b border-gray-100 ${isToday ? "bg-slate-900" : "bg-gray-50"}`}>
+                                <div className={`text-[10px] font-medium lowercase tracking-widest ${isToday ? "text-slate-300" : "text-slate-400"}`}>
+                                    {DAYS_FR[day.getDay() === 0 ? 6 : day.getDay() - 1]}
+                                </div>
+                                <div className={`text-lg font-semibold mt-0.5 ${isToday ? "text-white" : "text-slate-900"}`}>
                                     {day.getDate()}
                                 </div>
                             </div>

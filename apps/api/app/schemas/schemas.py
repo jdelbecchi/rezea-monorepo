@@ -77,6 +77,8 @@ class UserUpdate(BaseModel):
     is_active: Optional[bool] = None
     is_blacklisted: Optional[bool] = None
     blacklist_reason: Optional[str] = None
+    remind_before_session: Optional[bool] = None
+    receive_marketing_emails: Optional[bool] = None
 
 
 class UserResponse(UserBase):
@@ -94,6 +96,8 @@ class UserResponse(UserBase):
     last_login: Optional[datetime] = None
     is_blacklisted: bool = False
     blacklist_reason: Optional[str] = None
+    remind_before_session: bool = True
+    receive_marketing_emails: bool = True
 
 
 # ==================== Tenant ====================
@@ -435,6 +439,7 @@ class EventResponse(BaseModel):
     instructor_name: str
     max_places: int
     registrations_count: int
+    is_registered: Optional[bool] = False
     description: Optional[str] = None
     created_at: datetime
     updated_at: datetime
@@ -499,6 +504,12 @@ class OrderResponse(BaseModel):
     credits_used: float = 0.0
     balance: Optional[float] = None
     status: str = "en_cours"
+    # Snapshots contractuels (Optionnels pour compatibilité avec anciennes commandes)
+    offer_snap_name: Optional[str] = None
+    offer_snap_description: Optional[str] = None
+    offer_snap_validity_days: Optional[int] = None
+    offer_snap_validity_unit: Optional[str] = None
+    offer_snap_is_validity_unlimited: Optional[bool] = False
     # Financial summary for installments
     received_cents: int = 0
     pending_cents: int = 0
@@ -555,6 +566,10 @@ class AdminBookingResponse(BaseModel):
     session_time: str = ""        # heure de la séance
     session_title: str = ""       # intitulé de la séance
     user_name: str = ""           # prénom + nom
+    user_phone: Optional[str] = None
+    instagram_handle: Optional[str] = None
+    facebook_handle: Optional[str] = None
+    has_pending_order: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -594,6 +609,10 @@ class EventRegistrationResponse(BaseModel):
     event_time: str = ""
     event_title: str = ""
     user_name: str = ""
+    user_phone: Optional[str] = None
+    instagram_handle: Optional[str] = None
+    facebook_handle: Optional[str] = None
+    has_pending_order: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 

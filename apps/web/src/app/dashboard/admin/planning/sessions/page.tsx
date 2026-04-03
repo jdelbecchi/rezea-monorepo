@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api, Session, User } from "@/lib/api";
 import { format } from "date-fns";
@@ -22,7 +22,7 @@ const emptyForm = {
     recurrence_count: 4,
 };
 
-export default function AdminSessionsPage() {
+function AdminSessionsContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [user, setUser] = useState<User | null>(null);
@@ -98,7 +98,7 @@ export default function AdminSessionsPage() {
             }
         };
         fetchData();
-    }, [router]);
+    }, [router, searchParams]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -297,7 +297,7 @@ export default function AdminSessionsPage() {
         }
         // Build CSV (Excel-compatible with BOM)
         const BOM = "\uFEFF";
-        const header = "Date;Heure;Intitul\u00e9;Dur\u00e9e (min);Attribution;Places;Inscrits;Cr\u00e9dits;Description";
+        const header = "Date;Heure;Intitulé;Durée (min);Attribution;Places;Inscrits;Crédits;Description";
         const rows = toExport.map((s) => {
             const start = new Date(s.start_time);
             const end = new Date(s.end_time);
@@ -819,7 +819,7 @@ export default function AdminSessionsPage() {
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Nombre de places *</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Places *</label>
                                     <input type="number" required min="1" value={editForm.max_participants}
                                         onChange={(e) => setEditForm({ ...editForm, max_participants: parseInt(e.target.value) || 0 })}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
@@ -835,109 +835,57 @@ export default function AdminSessionsPage() {
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
                                 <textarea value={editForm.description}
                                     onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    rows={2} />
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" rows={2} />
                             </div>
-                            <div className="flex gap-2 justify-end">
+                            <div className="flex gap-2 justify-end pt-4">
                                 <button type="button" onClick={() => setEditSession(null)}
-                                    className="px-4 py-2 bg-gray-200 text-slate-900 rounded-lg font-medium hover:bg-gray-300">
+                                    className="px-6 py-2 bg-gray-200 text-slate-900 rounded-lg font-bold hover:bg-gray-300 transition-colors">
                                     Annuler
                                 </button>
                                 <button type="submit"
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
-                                    Enregistrer
+                                    className="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors">
+                                    Enregistrer les modifications
                                 </button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
-
-            {/* Duplication Modal */}
+            
+            {/* Duplicate Modal */}
             {showDuplicateModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-                        <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-slate-50">
-                            <div>
-                                <h3 className="text-xl font-bold text-slate-900">Dupliquer des séances</h3>
-                                <p className="text-xs text-slate-500 mt-1">Copier un planning vers une nouvelle période</p>
-                            </div>
-                            <button onClick={() => setShowDuplicateModal(false)} className="text-slate-400 hover:text-slate-600 text-2xl">×</button>
-                        </div>
-                        <div className="p-6 space-y-6">
-                            <div className="space-y-4">
-                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Période Source</h4>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-medium text-slate-700 mb-1">Du</label>
-                                        <input
-                                            type="date"
-                                            value={duplicateData.source_start}
-                                            onChange={(e) => setDuplicateData({...duplicateData, source_start: e.target.value})}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-slate-700 mb-1">Au</label>
-                                        <input
-                                            type="date"
-                                            value={duplicateData.source_end}
-                                            onChange={(e) => setDuplicateData({...duplicateData, source_end: e.target.value})}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button 
-                                        onClick={() => {
-                                            const today = new Date().toISOString().split('T')[0];
-                                            setDuplicateData({...duplicateData, source_start: today, source_end: today});
-                                        }}
-                                        className="text-[10px] px-2 py-1 bg-slate-100 text-slate-600 rounded hover:bg-slate-200"
-                                    >
-                                        Aujourd&apos;hui
-                                    </button>
-                                    <button 
-                                        onClick={() => {
-                                            const now = new Date();
-                                            const monday = new Date(now.setDate(now.getDate() - now.getDay() + 1)).toISOString().split('T')[0];
-                                            const sunday = new Date(now.setDate(now.getDate() - now.getDay() + 7)).toISOString().split('T')[0];
-                                            setDuplicateData({...duplicateData, source_start: monday, source_end: sunday});
-                                        }}
-                                        className="text-[10px] px-2 py-1 bg-slate-100 text-slate-600 rounded hover:bg-slate-200"
-                                    >
-                                        Cette semaine
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="pt-4 border-t border-gray-100 space-y-4">
-                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Destination</h4>
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-xl p-6 max-w-lg w-full mx-4 shadow-2xl">
+                        <h3 className="text-xl font-bold text-slate-900 mb-4">Dupliquer des séances</h3>
+                        <p className="text-sm text-slate-500 mb-6">
+                            Copiez toutes les séances d&apos;une période donnée vers une nouvelle date de début.
+                        </p>
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-700 mb-1">Date de début cible</label>
-                                    <input
-                                        type="date"
-                                        value={duplicateData.target_start}
-                                        onChange={(e) => setDuplicateData({...duplicateData, target_start: e.target.value})}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                                    />
-                                    <p className="text-[10px] text-slate-400 mt-2">
-                                        💡 Les séances seront créées sans aucune inscription.
-                                    </p>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Période source : Du</label>
+                                    <input type="date" value={duplicateData.source_start} onChange={(e) => setDuplicateData({...duplicateData, source_start: e.target.value})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Au (inclus)</label>
+                                    <input type="date" value={duplicateData.source_end} onChange={(e) => setDuplicateData({...duplicateData, source_end: e.target.value})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
                                 </div>
                             </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Nouvelle date de début</label>
+                                <input type="date" value={duplicateData.target_start} onChange={(e) => setDuplicateData({...duplicateData, target_start: e.target.value})}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                            </div>
                         </div>
-                        <div className="p-6 bg-slate-50 border-t border-gray-100 flex gap-3">
-                            <button
-                                onClick={() => setShowDuplicateModal(false)}
-                                className="flex-1 px-4 py-2 bg-white text-slate-700 border border-gray-200 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-                            >
+                        <div className="flex gap-2 justify-end mt-8">
+                            <button onClick={() => setShowDuplicateModal(false)}
+                                className="px-6 py-2 bg-gray-200 text-slate-900 rounded-lg font-bold hover:bg-gray-300 transition-colors">
                                 Annuler
                             </button>
-                            <button
-                                onClick={handleDuplicate}
-                                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95"
-                            >
+                            <button onClick={handleDuplicate}
+                                className="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors">
                                 Dupliquer
                             </button>
                         </div>
@@ -945,5 +893,13 @@ export default function AdminSessionsPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function AdminSessionsPage() {
+    return (
+        <Suspense fallback={<div className="p-8 text-center bg-gray-50 min-h-screen">Chargement...</div>}>
+            <AdminSessionsContent />
+        </Suspense>
     );
 }

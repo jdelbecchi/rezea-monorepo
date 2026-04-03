@@ -84,7 +84,13 @@ async def shop_checkout(
         price_cents=offer.price_lump_sum_cents or offer.price_recurring_cents or 0,
         payment_status=payment_status,
         status="en_cours",
-        created_by_admin=False
+        created_by_admin=False,
+        # Snapshot des infos de l'offre
+        offer_snap_name=offer.name,
+        offer_snap_description=offer.description,
+        offer_snap_validity_days=offer.validity_days,
+        offer_snap_validity_unit=offer.validity_unit,
+        offer_snap_is_validity_unlimited=offer.is_validity_unlimited
     )
     
     db.add(order)
@@ -169,18 +175,24 @@ async def shop_checkout(
         updated_at=order.updated_at,
         invoice_number=order.invoice_number,
         invoice_url=order.invoice_url,
-        user_name=f"{order.user.first_name} {order.user.last_name}",
-        user_email=order.user.email or "",
-        offer_code=order.offer.offer_code,
-        offer_name=order.offer.name,
-        offer_period=order.offer.period,
-        offer_featured_pricing=order.offer.featured_pricing,
-        offer_price_recurring_cents=order.offer.price_recurring_cents,
-        offer_price_lump_sum_cents=order.offer.price_lump_sum_cents,
-        offer_recurring_count=order.offer.recurring_count,
+        user_name=f"{order.user.first_name} {order.user.last_name}" if order.user else "Utilisateur supprimé",
+        user_email=order.user.email if (order.user and order.user.email) else "",
+        offer_code=order.offer.offer_code if order.offer else "",
+        offer_name=order.offer.name if order.offer else (order.offer_snap_name or "Offre inconnue"),
+        offer_period=order.offer.period if order.offer else None,
+        offer_featured_pricing=order.offer.featured_pricing if order.offer else None,
+        offer_price_recurring_cents=order.offer.price_recurring_cents if order.offer else None,
+        offer_price_lump_sum_cents=order.offer.price_lump_sum_cents if order.offer else None,
+        offer_recurring_count=order.offer.recurring_count if order.offer else None,
         credits_used=0,
         balance=order.credits_total,
-        status=order.status or "en_cours"
+        status=order.status or "en_cours",
+        # Snapshots
+        offer_snap_name=order.offer_snap_name,
+        offer_snap_description=order.offer_snap_description,
+        offer_snap_validity_days=order.offer_snap_validity_days,
+        offer_snap_validity_unit=order.offer_snap_validity_unit,
+        offer_snap_is_validity_unlimited=order.offer_snap_is_validity_unlimited or False
     )
 
     return ShopCheckoutResponse(
@@ -235,18 +247,24 @@ async def list_my_orders(
             updated_at=order.updated_at,
             invoice_number=order.invoice_number,
             invoice_url=order.invoice_url,
-            user_name=f"{order.user.first_name} {order.user.last_name}",
-            user_email=order.user.email or "",
-            offer_code=order.offer.offer_code,
-            offer_name=order.offer.name,
-            offer_period=order.offer.period,
-            offer_featured_pricing=order.offer.featured_pricing,
-            offer_price_recurring_cents=order.offer.price_recurring_cents,
-            offer_price_lump_sum_cents=order.offer.price_lump_sum_cents,
-            offer_recurring_count=order.offer.recurring_count,
+            user_name=f"{order.user.first_name} {order.user.last_name}" if order.user else "Utilisateur supprimé",
+            user_email=order.user.email if (order.user and order.user.email) else "",
+            offer_code=order.offer.offer_code if order.offer else "",
+            offer_name=order.offer.name if order.offer else (order.offer_snap_name or "Offre inconnue"),
+            offer_period=order.offer.period if order.offer else None,
+            offer_featured_pricing=order.offer.featured_pricing if order.offer else None,
+            offer_price_recurring_cents=order.offer.price_recurring_cents if order.offer else None,
+            offer_price_lump_sum_cents=order.offer.price_lump_sum_cents if order.offer else None,
+            offer_recurring_count=order.offer.recurring_count if order.offer else None,
             credits_used=0,
             balance=order.credits_total,
-            status=order.status or "en_cours"
+            status=order.status or "en_cours",
+            # Snapshots
+            offer_snap_name=order.offer_snap_name,
+            offer_snap_description=order.offer_snap_description,
+            offer_snap_validity_days=order.offer_snap_validity_days,
+            offer_snap_validity_unit=order.offer_snap_validity_unit,
+            offer_snap_is_validity_unlimited=order.offer_snap_is_validity_unlimited or False
         ))
     
     return res

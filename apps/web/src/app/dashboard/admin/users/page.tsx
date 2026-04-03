@@ -248,24 +248,24 @@ export default function AdminUsersPage() {
                     {/* Header */}
                     <div className="flex items-center justify-between mb-6">
                         <div>
-                            <h1 className="text-3xl font-bold text-slate-900">👥 Utilisateurs</h1>
-                            <p className="text-slate-500 mt-1">
+                            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight">👥 utilisateurs</h1>
+                            <p className="text-[11px] font-medium text-slate-400 lowercase mt-1">
                                 {totalCount} utilisateur{totalCount > 1 ? "s" : ""} au total
                             </p>
                         </div>
                         <div className="flex items-center gap-3">
                             <button
                                 onClick={() => { setShowCreateModal(true); setCreateMessage(""); }}
-                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors font-medium text-[11px] lowercase tracking-tight shadow-md shadow-slate-200"
                             >
-                                ➕ Nouveau
+                                ➕ nouveau
                             </button>
                             <button
                                 onClick={handleExport}
                                 disabled={users.length === 0}
-                                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                                className="flex items-center gap-2 px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-[11px] lowercase tracking-tight"
                             >
-                                📥 Exporter Excel
+                                📥 exporter excel
                             </button>
                         </div>
                     </div>
@@ -330,14 +330,14 @@ export default function AdminUsersPage() {
                                 <table className="w-full text-sm">
                                     <thead>
                                         <tr className="bg-slate-50 border-b border-slate-200">
-                                            <th className="text-left py-3 px-4 font-semibold text-slate-600">Nom</th>
-                                            <th className="text-left py-3 px-4 font-semibold text-slate-600">Email</th>
-                                            <th className="text-left py-3 px-4 font-semibold text-slate-600">Téléphone</th>
-                                            <th className="text-left py-3 px-4 font-semibold text-slate-600">Ville</th>
-                                            <th className="text-left py-3 px-4 font-semibold text-slate-600">Profil</th>
-                                            <th className="text-left py-3 px-4 font-semibold text-slate-600">Statut</th>
-                                            <th className="text-left py-3 px-4 font-semibold text-slate-600">Créé le</th>
-                                            <th className="text-right py-3 px-4 font-semibold text-slate-600">Actions</th>
+                                            <th className="text-left py-3 px-4 font-medium text-slate-400 lowercase tracking-widest text-[10px]">nom</th>
+                                            <th className="text-left py-3 px-4 font-medium text-slate-400 lowercase tracking-widest text-[10px]">email</th>
+                                            <th className="text-left py-3 px-4 font-medium text-slate-400 lowercase tracking-widest text-[10px]">téléphone</th>
+                                            <th className="text-left py-3 px-4 font-medium text-slate-400 lowercase tracking-widest text-[10px]">ville</th>
+                                            <th className="text-left py-3 px-4 font-medium text-slate-400 lowercase tracking-widest text-[10px]">profil</th>
+                                            <th className="text-left py-3 px-4 font-medium text-slate-400 lowercase tracking-widest text-[10px]">statut</th>
+                                            <th className="text-left py-3 px-4 font-medium text-slate-400 lowercase tracking-widest text-[10px]">créé le</th>
+                                            <th className="text-right py-3 px-4 font-medium text-slate-400 lowercase tracking-widest text-[10px]">actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
@@ -407,8 +407,8 @@ export default function AdminUsersPage() {
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                         <div className="p-6 border-b border-slate-200">
                             <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-bold text-slate-900">
-                                    Modifier l&apos;utilisateur
+                                <h2 className="text-xl font-semibold text-slate-900 tracking-tight">
+                                    modifier l&apos;utilisateur
                                 </h2>
                                 <button
                                     onClick={() => setEditingUser(null)}
@@ -422,8 +422,8 @@ export default function AdminUsersPage() {
                         <div className="p-6 space-y-6">
                             {/* Identity */}
                             <div>
-                                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">
-                                    Identité
+                                <h3 className="text-[10px] font-medium text-slate-400 lowercase tracking-widest mb-3">
+                                    identité
                                 </h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
@@ -449,8 +449,8 @@ export default function AdminUsersPage() {
 
                             {/* Contact */}
                             <div>
-                                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">
-                                    Contact
+                                <h3 className="text-[10px] font-medium text-slate-400 lowercase tracking-widest mb-3">
+                                    contact
                                 </h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>

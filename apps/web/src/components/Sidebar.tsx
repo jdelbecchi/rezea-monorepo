@@ -79,15 +79,13 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
         { path: "/dashboard/credits", label: "Boutique", icon: "🛍️" },
         { path: "/dashboard/planning", label: "Planning et réservations", icon: "📋" },
         { path: "/dashboard/orders", label: "Mes commandes", icon: "📦" },
-        { path: "/dashboard/events", label: "Evenements", icon: "🎉" },
     ];
 
     // Menus visibles par owner, manager et staff uniquement
     const isStaffOrAbove = user?.role === "owner" || user?.role === "manager" || user?.role === "staff";
 
     const staffNavItems: NavItem[] = [
-        { path: "/dashboard/cours-inscriptions", label: "Cours et inscriptions", icon: "📚" },
-        { path: "/dashboard/contacts", label: "Contacts", icon: "📇" },
+        { path: "/dashboard/gestion-inscriptions", label: "Suivi des inscriptions", icon: "📝" },
     ];
 
     const adminNavItems: AdminNavItem[] = [
@@ -128,8 +126,8 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
                     ) : (
                         <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-xs font-bold">RZ</div>
                     )}
-                    <div className="text-xl font-bold tracking-tight text-white uppercase truncate max-w-[150px]">
-                        {tenant?.name || "REZEA"}
+                    <div className="text-xl font-medium tracking-tight text-white truncate max-w-[150px]">
+                        {tenant?.name || "rezea"}
                     </div>
                 </div>
                 <button 
@@ -140,50 +138,25 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
                 </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-6 pr-2 -mr-2 scrollbar-hide">
-                {/* Navigation membre */}
-                <div>
-                    <p className="px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">
-                        Bienvenue {user?.first_name}
-                    </p>
-                    <nav className="space-y-1">
-                        {navItems.map((item) => (
-                            <Link
-                                key={item.path}
-                                href={item.path}
-                                onClick={() => setIsMobileMenuOpen(false)}
-                                className={`flex items-center py-2.5 px-4 rounded-xl transition-all whitespace-nowrap overflow-hidden text-ellipsis ${isActive(item.path)
-                                    ? "bg-blue-600/10 text-blue-400 font-bold shadow-sm shadow-blue-500/5 border border-blue-500/20"
-                                    : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
-                                    }`}
-                            >
-                                <span className="mr-3 text-lg opacity-80">{item.icon}</span>
-                                {item.label}
-                            </Link>
-                        ))}
-                        {isStaffOrAbove && staffNavItems.map((item) => (
-                            <Link
-                                key={item.path}
-                                href={item.path}
-                                onClick={() => setIsMobileMenuOpen(false)}
-                                className={`flex items-center py-2.5 px-4 rounded-xl transition-all whitespace-nowrap overflow-hidden text-ellipsis ${isActive(item.path)
-                                    ? "bg-emerald-600/10 text-emerald-400 font-bold shadow-sm shadow-emerald-500/5 border border-emerald-500/20"
-                                    : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
-                                    }`}
-                            >
-                                <span className="mr-3 text-lg opacity-80">{item.icon}</span>
-                                {item.label}
-                            </Link>
-                        ))}
-                    </nav>
-                </div>
+            {/* Bouton de bascule rapide vers Vue Client */}
+            <div className="mb-6">
+                <Link 
+                    href="/dashboard"
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-medium transition-all shadow-lg shadow-blue-900/20 active:scale-[0.98]"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                >
+                    <span className="text-base">📱</span>
+                    vue client
+                </Link>
+            </div>
 
+            <div className="flex-1 overflow-y-auto space-y-6 pr-2 -mr-2 scrollbar-hide">
                 {/* Navigation admin */}
                 {isAdmin && (
                     <>
-                        <div className="border-t border-slate-800 pt-6">
-                            <p className="px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">
-                                Administration
+                        <div>
+                            <p className="px-4 text-[11px] font-medium text-slate-400 lowercase mb-3">
+                                administration
                             </p>
                         </div>
                         <nav className="space-y-1">
@@ -196,7 +169,7 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
                                             <button
                                                 onClick={() => toggleMenu(item.label)}
                                                 className={`w-full flex items-center justify-between py-2.5 px-4 rounded-xl transition-all text-left group ${parentActive
-                                                    ? "bg-amber-600/10 text-amber-400 font-bold border border-amber-500/20 shadow-sm shadow-amber-500/5"
+                                                    ? "bg-amber-600/10 text-amber-400 font-semibold border border-amber-500/20 shadow-sm shadow-amber-500/5"
                                                     : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
                                                     }`}
                                             >
@@ -216,7 +189,7 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
                                                             href={child.path}
                                                             onClick={() => setIsMobileMenuOpen(false)}
                                                             className={`block py-2 px-3 rounded-lg text-sm transition-all whitespace-nowrap overflow-hidden text-ellipsis ${isActive(child.path)
-                                                                ? "text-amber-400 font-bold"
+                                                                ? "text-amber-400 font-semibold"
                                                                 : "text-slate-500 hover:text-slate-200"
                                                                 }`}
                                                         >
@@ -235,7 +208,7 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
                                         href={item.path!}
                                         onClick={() => setIsMobileMenuOpen(false)}
                                         className={`flex items-center py-2.5 px-4 rounded-xl transition-all whitespace-nowrap overflow-hidden text-ellipsis ${isActive(item.path!)
-                                            ? "bg-amber-600/10 text-amber-400 font-bold shadow-sm shadow-amber-500/5 border border-amber-500/20"
+                                            ? "bg-amber-600/10 text-amber-400 font-semibold shadow-sm shadow-amber-500/5 border border-amber-500/20"
                                             : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
                                             }`}
                                     >
@@ -245,16 +218,56 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
                                 );
                             })}
                         </nav>
+                        <div className="border-t border-slate-800 my-6"></div>
                     </>
+                )}
+
+                {/* Navigation membre (cachée pour les admins pour éviter la confusion) */}
+                {!isAdmin && (
+                    <div>
+                        <p className="px-4 text-[11px] font-medium text-slate-400 lowercase mb-3">
+                            menus utilisateurs et staff
+                        </p>
+                        <nav className="space-y-1">
+                            {navItems.map((item) => (
+                                <Link
+                                    key={item.path}
+                                    href={item.path}
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className={`flex items-center py-2.5 px-4 rounded-xl transition-all whitespace-nowrap overflow-hidden text-ellipsis ${isActive(item.path)
+                                        ? "bg-blue-600/10 text-blue-400 font-semibold shadow-sm shadow-blue-500/5 border border-blue-500/20"
+                                        : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
+                                        }`}
+                                >
+                                    <span className="mr-3 text-lg opacity-80">{item.icon}</span>
+                                    {item.label}
+                                </Link>
+                            ))}
+                            {isStaffOrAbove && staffNavItems.map((item) => (
+                                <Link
+                                    key={item.path}
+                                    href={item.path}
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className={`flex items-center py-2.5 px-4 rounded-xl transition-all whitespace-nowrap overflow-hidden text-ellipsis ${isActive(item.path)
+                                        ? "bg-emerald-600/10 text-emerald-400 font-semibold shadow-sm shadow-emerald-500/5 border border-emerald-500/20"
+                                        : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
+                                        }`}
+                                >
+                                    <span className="mr-3 text-lg opacity-80">{item.icon}</span>
+                                    {item.label}
+                                </Link>
+                            ))}
+                        </nav>
+                    </div>
                 )}
             </div>
 
             <div className="border-t border-slate-800 pt-6">
                 <button
                     onClick={handleLogout}
-                    className="w-full py-4 px-4 bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 hover:text-rose-300 rounded-2xl font-black uppercase tracking-widest text-xs transition-all border border-rose-600/30 shadow-lg shadow-rose-900/20 active:scale-[0.98]"
+                    className="w-full py-4 px-4 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 hover:text-rose-300 rounded-2xl font-medium text-xs transition-all border border-rose-600/20 shadow-lg shadow-rose-900/10 active:scale-[0.98]"
                 >
-                    Déconnexion
+                    déconnexion
                 </button>
             </div>
         </>
@@ -270,8 +283,8 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
                     ) : (
                         <div className="w-6 h-6 rounded bg-blue-600 flex items-center justify-center text-[10px] font-bold">RZ</div>
                     )}
-                    <span className="text-white font-bold uppercase tracking-tight text-sm truncate max-w-[120px]">
-                        {tenant?.name || "REZEA"}
+                    <span className="text-white font-medium text-sm truncate max-w-[120px] lowercase">
+                        {tenant?.name || "rezea"}
                     </span>
                 </div>
                 <button 

@@ -73,13 +73,20 @@ export default function AdminEventsProgrammingPage() {
         e.preventDefault();
         setSaving(true);
         try {
+            const memberPriceStr = formData.price_member_cents || "";
+            const externalPriceStr = formData.price_external_cents || "";
+            
+            // Si l'un est vide, on prend la valeur de l'autre pour avoir un tarif unique
+            const memberVal = memberPriceStr || externalPriceStr || "0";
+            const externalVal = externalPriceStr || memberPriceStr || "0";
+
             const data = {
                 event_date: formData.event_date,
                 event_time: formData.event_time,
                 title: formData.title,
                 duration_minutes: parseInt(formData.duration_minutes),
-                price_member_cents: Math.round(parseFloat(formData.price_member_cents || "0") * 100),
-                price_external_cents: Math.round(parseFloat(formData.price_external_cents || "0") * 100),
+                price_member_cents: Math.round(parseFloat(memberVal) * 100),
+                price_external_cents: Math.round(parseFloat(externalVal) * 100),
                 instructor_name: formData.instructor_name,
                 max_places: parseInt(formData.max_places),
                 description: formData.description || null,
@@ -339,7 +346,7 @@ export default function AdminEventsProgrammingPage() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Places disponibles *</label>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">places disponibles *</label>
                                         <input
                                             type="number"
                                             required
@@ -398,7 +405,7 @@ export default function AdminEventsProgrammingPage() {
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tarif Membre</th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tarif Ext.</th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attribution</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Places</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">places</th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inscriptions</th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                     </tr>
