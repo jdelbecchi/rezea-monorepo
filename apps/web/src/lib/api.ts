@@ -5,6 +5,8 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+import { UserRole, PaymentStatus, BookingStatus, EventRegistrationStatus } from '../types/enums';
+
 // Instance Axios configurée
 export const apiClient: AxiosInstance = axios.create({
   baseURL: API_URL,
@@ -30,6 +32,14 @@ apiClient.interceptors.request.use(
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
+      }
+
+      // Injection automatique du X-Tenant-Slug depuis l'URL
+      const segments = window.location.pathname.split('/');
+      const slug = segments[1];
+      // On évite d'injecter si c'est une route racine réservée (ex: /login, /dashboard)
+      if (slug && !['login', 'register', 'sysadmin', 'dashboard', 'reset-password'].includes(slug)) {
+        config.headers['X-Tenant-Slug'] = slug;
       }
     }
     return config;
@@ -93,7 +103,7 @@ export interface User {
   email: string;
   first_name: string;
   last_name: string;
-  role: 'owner' | 'manager' | 'staff' | 'user';
+  role: UserRole;
   tenant_id: string;
   phone?: string;
   street?: string;
@@ -205,7 +215,7 @@ export interface OrderItem {
   credits_total: number | null;
   is_unlimited: boolean;
   price_cents: number;
-  payment_status: 'a_valider' | 'paye' | 'rembourse' | 'en_attente' | 'echelonne' | 'a_regulariser';
+  payment_status: PaymentStatus;
   comment: string | null;
   created_by_admin: boolean;
   created_at: string;
@@ -251,7 +261,7 @@ export interface AdminBookingItem {
   tenant_id: string;
   user_id: string;
   session_id: string;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'session_cancelled' | 'absent';
+  status: BookingStatus;
   credits_used: number;
   created_by_admin: boolean;
   cancellation_type: string | null;
@@ -273,9 +283,9 @@ export interface AdminEventRegistrationItem {
   tenant_id: string;
   user_id: string;
   event_id: string;
-  status: 'pending_payment' | 'confirmed' | 'cancelled' | 'absent' | 'event_deleted' | 'waiting_list';
+  status: EventRegistrationStatus;
   price_paid_cents: number;
-  payment_status: 'a_valider' | 'paye' | 'rembourse' | 'en_attente';
+  payment_status: PaymentStatus;
   created_by_admin: boolean;
   notes: string | null;
   created_at: string;
@@ -293,7 +303,7 @@ export interface AdminEventRegistrationItem {
 export interface Booking {
   id: string;
   session_id: string;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'session_cancelled' | 'absent' | 'completed';
+  status: BookingStatus;
   credits_used: number;
   created_at: string;
   session?: Session;
@@ -545,7 +555,7 @@ export const api = {
     is_active: boolean;
     display_order: number;
   }>) => {
-    const response = await apiClient.put(`/api/offers/${offerId}`, offerData);
+    const response = await apiClient.patch(`/api/offers/${offerId}`, offerData);
     return response.data;
   },
 
@@ -658,7 +668,7 @@ export const api = {
   },
 
   updateAdminEvent: async (eventId: string, data: Record<string, any>) => {
-    const response = await apiClient.put(`/api/admin/events/${eventId}`, data);
+    const response = await apiClient.patch(`/api/admin/events/${eventId}`, data);
     return response.data;
   },
 

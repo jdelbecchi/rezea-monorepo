@@ -78,7 +78,7 @@ async def create_offer(
     return offer
 
 
-@router.put("/{offer_id}", response_model=OfferResponse)
+@router.patch("/{offer_id}", response_model=OfferResponse)
 async def update_offer(
     offer_id: str,
     offer_data: OfferUpdate,
