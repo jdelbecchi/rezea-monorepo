@@ -3,7 +3,7 @@
 import Sidebar from "@/components/Sidebar";
 import { useEffect, useState, useMemo, useCallback, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api, User } from "@/lib/api";
+import { api, User, EmailTemplate } from "@/lib/api";
 import dynamic from "next/dynamic";
 
 // Import CSS for ReactQuill
@@ -31,6 +31,12 @@ function AdminEmailsContent() {
     const [showUserSelector, setShowUserSelector] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     
+    // Templates state
+    const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+    const [showSaveModal, setShowSaveModal] = useState(false);
+    const [templateName, setTemplateName] = useState("");
+    const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+    
     const quillRef = useRef<any>(null);
 
     useEffect(() => {
@@ -46,6 +52,9 @@ function AdminEmailsContent() {
                 setRecipientType("selected");
             }
         }).catch(() => { });
+
+        // Fetch templates
+        api.getEmailTemplates().then(setTemplates).catch(err => console.error("Failed to load templates", err));
     }, [searchParams]);
 
     const imageHandler = useCallback(() => {
@@ -116,6 +125,50 @@ function AdminEmailsContent() {
         } finally {
             setIsSending(false);
         }
+    };
+
+    const handleSaveTemplate = async () => {
+        if (!templateName.trim()) return;
+        if (!subject || !content || content === "<p><br></p>") {
+            setMessage({ type: "error", text: "Veuillez remplir l'objet et le contenu avant de sauvegarder." });
+            return;
+        }
+
+        setIsSavingTemplate(true);
+        try {
+            const newTemplate = await api.saveEmailTemplate({
+                name: templateName,
+                subject,
+                content
+            });
+            setTemplates(prev => [newTemplate, ...prev]);
+            setShowSaveModal(false);
+            setTemplateName("");
+            setMessage({ type: "success", text: "Modèle enregistré avec succès." });
+        } catch (error) {
+            setMessage({ type: "error", text: "Erreur lors de la sauvegarde du modèle." });
+        } finally {
+            setIsSavingTemplate(false);
+        }
+    };
+
+    const handleDeleteTemplate = async (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        if (!confirm("Supprimer ce modèle ?")) return;
+        
+        try {
+            await api.deleteEmailTemplate(id);
+            setTemplates(prev => prev.filter(t => t.id !== id));
+        } catch (error) {
+            console.error("Delete failed", error);
+        }
+    };
+
+    const loadTemplate = (template: EmailTemplate) => {
+        setSubject(template.subject);
+        setContent(template.content);
+        // Scroll to subject input or editor
+        window.scrollTo({ top: 400, behavior: 'smooth' });
     };
 
     const filteredUsers = allUsers.filter(u => 
@@ -211,6 +264,38 @@ function AdminEmailsContent() {
                             )}
                         </section>
 
+                        {/* Section Modèles */}
+                        {templates.length > 0 && (
+                            <section className="animate-in fade-in slide-in-from-top-4 duration-500">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Modèles enregistrés</h2>
+                                    <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{templates.length} modèles</span>
+                                </div>
+                                <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">
+                                    {templates.map(t => (
+                                        <div 
+                                            key={t.id}
+                                            onClick={() => loadTemplate(t)}
+                                            className="min-w-[220px] max-w-[220px] bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group relative"
+                                        >
+                                            <button 
+                                                onClick={(e) => handleDeleteTemplate(e, t.id)}
+                                                className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all text-xs z-20"
+                                                title="Supprimer le modèle"
+                                            >
+                                                ✕
+                                            </button>
+                                            <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors mb-4">
+                                                <span className="text-xl">📄</span>
+                                            </div>
+                                            <h3 className="font-bold text-slate-900 text-sm truncate mb-1">{t.name}</h3>
+                                            <p className="text-xs text-slate-500 truncate">{t.subject || "Pas d'objet"}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        )}
+
                         {/* Composition du message */}
                         <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                             <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center">
@@ -268,13 +353,19 @@ function AdminEmailsContent() {
                             </div>
                         </section>
 
-                        <div className="flex justify-end pt-4 pb-8">
+                        <div className="flex flex-col md:flex-row justify-end items-center gap-4 pt-4 pb-8">
+                            <button
+                                onClick={() => setShowSaveModal(true)}
+                                className="w-full md:w-auto px-6 py-4 rounded-xl font-medium text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+                            >
+                                💾 Enregistrer comme modèle
+                            </button>
                             <button
                                 onClick={handleSend}
                                 disabled={isSending}
-                                className={`px-10 py-4 rounded-xl font-bold text-white shadow-lg transition-all transform hover:scale-105 active:scale-95 ${isSending ? "bg-slate-400 cursor-not-allowed" : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"}`}
+                                className={`w-full md:w-auto px-10 py-4 rounded-xl font-medium text-white shadow-lg transition-all ${isSending ? "bg-slate-400 cursor-not-allowed" : "bg-slate-900 hover:bg-slate-800"}`}
                             >
-                                {isSending ? "Envoi en cours..." : "🚀 Envoyer l'email"}
+                                {isSending ? "Envoi en cours..." : "Envoyer l'email"}
                             </button>
                         </div>
                     </div>
@@ -334,6 +425,49 @@ function AdminEmailsContent() {
                             >
                                 Terminer
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de sauvegarde de modèle */}
+            {showSaveModal && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-[2.5rem] w-full max-w-sm shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-10 text-center">
+                            <div className="w-20 h-20 bg-blue-50 text-blue-500 rounded-3xl flex items-center justify-center text-3xl mx-auto mb-8 shadow-inner">
+                                💾
+                            </div>
+                            <h3 className="text-2xl font-bold text-slate-900 mb-2">Enregistrer le modèle</h3>
+                            <p className="text-sm text-slate-500 mb-8 leading-relaxed">Donnez un nom à ce modèle pour le retrouver facilement dans votre bibliothèque.</p>
+                            
+                            <div className="relative mb-8">
+                                <input
+                                    type="text"
+                                    autoFocus
+                                    value={templateName}
+                                    onChange={(e) => setTemplateName(e.target.value)}
+                                    placeholder="ex: Newsletter Annonce Stage"
+                                    className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-slate-50/50 text-center font-medium"
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSaveTemplate()}
+                                />
+                            </div>
+
+                            <div className="flex gap-4">
+                                <button 
+                                    onClick={() => setShowSaveModal(false)}
+                                    className="flex-1 py-4 rounded-2xl font-medium text-slate-500 hover:bg-slate-50 transition-all active:scale-95"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    onClick={handleSaveTemplate}
+                                    disabled={isSavingTemplate || !templateName.trim()}
+                                    className="flex-1 py-4 rounded-2xl font-bold bg-slate-900 text-white hover:bg-slate-800 disabled:bg-slate-200 disabled:cursor-not-allowed transition-all shadow-lg active:scale-95"
+                                >
+                                    {isSavingTemplate ? "..." : "Enregistrer"}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

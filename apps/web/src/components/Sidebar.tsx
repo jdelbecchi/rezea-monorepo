@@ -304,12 +304,12 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
             )}
 
             {/* Sidebar Desktop */}
-            <aside className="hidden md:flex w-72 bg-slate-900 text-white p-6 flex-col min-h-screen sticky top-0 border-r border-slate-800/50">
+            <aside className="hidden md:flex w-80 bg-slate-900 text-white p-6 flex-col min-h-screen sticky top-0 border-r border-slate-800/50">
                 <SidebarContent />
             </aside>
 
             {/* Sidebar Mobile (Drawer) */}
-            <aside className={`md:hidden fixed top-0 bottom-0 left-0 w-[280px] bg-slate-900 border-r border-slate-800 p-6 z-[70] transition-transform duration-300 ease-out flex flex-col ${isMobileMenuOpen ? "translate-x-0 shadow-2xl shadow-black/50" : "-translate-x-full"}`}>
+            <aside className={`md:hidden fixed top-0 bottom-0 left-0 w-[300px] bg-slate-900 border-r border-slate-800 p-6 z-[70] transition-transform duration-300 ease-out flex flex-col ${isMobileMenuOpen ? "translate-x-0 shadow-2xl shadow-black/50" : "-translate-x-full"}`}>
                 <SidebarContent />
             </aside>
             

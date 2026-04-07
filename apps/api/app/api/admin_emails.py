@@ -7,7 +7,7 @@ from typing import List
 import uuid
 
 from app.db.session import get_db
-from app.models.models import User, UserRole
+from app.models.models import User, UserRole, EmailTemplate
 from app.schemas import schemas
 from app.core import mailer
 
@@ -30,6 +30,8 @@ async def require_manager(request: Request, db: AsyncSession = Depends(get_db)) 
         )
     return user
 
+# ==================== Envoi d'Emails ====================
+
 @router.post("/send", response_model=dict)
 async def send_admin_emails(
     request_data: schemas.EmailSendRequest,
@@ -45,8 +47,6 @@ async def send_admin_emails(
             detail="Seuls les administrateurs peuvent envoyer des emails"
         )
 
-    tenant_id = request_data.tenant_id if hasattr(request_data, 'tenant_id') else current_user.tenant_id
-    
     # 1) Sélectionner les destinataires
     query = select(User).where(User.tenant_id == current_user.tenant_id)
     
@@ -97,3 +97,58 @@ async def send_admin_emails(
         "message": f"Email envoyé avec succès à {len(recipients)} destinataires",
         "count": len(recipients)
     }
+
+# ==================== Modèles d'Email ====================
+
+@router.get("/templates", response_model=List[schemas.EmailTemplateResponse])
+async def list_email_templates(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_manager)
+):
+    """Liste les modèles d'email du club"""
+    result = await db.execute(
+        select(EmailTemplate)
+        .where(EmailTemplate.tenant_id == current_user.tenant_id)
+        .order_by(EmailTemplate.created_at.desc())
+    )
+    return result.scalars().all()
+
+@router.post("/templates", response_model=schemas.EmailTemplateResponse)
+async def create_email_template(
+    template_in: schemas.EmailTemplateCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_manager)
+):
+    """Crée un nouveau modèle d'email"""
+    template = EmailTemplate(
+        **template_in.model_dump(),
+        tenant_id=current_user.tenant_id
+    )
+    db.add(template)
+    await db.commit()
+    await db.refresh(template)
+    return template
+
+@router.delete("/templates/{template_id}", response_model=dict)
+async def delete_email_template(
+    template_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_manager)
+):
+    """Supprime un modèle d'email"""
+    result = await db.execute(
+        select(EmailTemplate).where(
+            EmailTemplate.id == template_id,
+            EmailTemplate.tenant_id == current_user.tenant_id
+        )
+    )
+    template = result.scalar_one_or_none()
+    if not template:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Modèle non trouvé"
+        )
+    
+    await db.delete(template)
+    await db.commit()
+    return {"message": "Modèle supprimé avec succès"}

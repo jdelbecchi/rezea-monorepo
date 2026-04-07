@@ -138,6 +138,32 @@ export interface Session {
   is_active: boolean;
   allow_waitlist: boolean;
   instructor_name?: string;
+  location?: string;
+}
+
+export interface EventRegistration {
+  id: string;
+  tenant_id: string;
+  user_id: string;
+  event_id: string;
+  status: string;
+  price_paid_cents: number;
+  payment_status: string;
+  created_by_admin: boolean;
+  notes?: string;
+  created_at: string;
+  cancelled_at?: string;
+  event_title: string;
+  event_date: string;
+  event_time: string;
+}
+
+export interface EmailTemplate {
+  id: string;
+  name: string;
+  subject: string;
+  content: string;
+  created_at: string;
 }
 
 export interface Event {
@@ -153,6 +179,7 @@ export interface Event {
   max_places: number;
   registrations_count: number;
   is_registered?: boolean;
+  location?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -174,6 +201,7 @@ export interface Tenant {
   allow_pay_later: boolean;
   payment_redirect_link?: string;
   pay_now_instructions?: string;
+  locations?: string[];
   is_active: boolean;
   max_users: number;
   max_sessions_per_day: number;
@@ -200,6 +228,7 @@ export interface Offer {
   is_unique: boolean;
   is_active: boolean;
   display_order: number;
+  category_display_order?: number;
   created_at: string;
   updated_at: string;
 }
@@ -431,7 +460,7 @@ export const api = {
   }): Promise<Session[]> => {
     const params: Record<string, any> = { ...filters };
     if (filters?.available_only !== undefined) params.available_only = String(filters.available_only);
-    
+
     const response = await apiClient.get('/api/planning', { params });
     return response.data;
   },
@@ -526,16 +555,22 @@ export const api = {
     offer_code: string;
     name: string;
     description?: string | null;
-    price_cents: number;
+    price_lump_sum_cents?: number | null;
+    price_recurring_cents?: number | null;
+    recurring_count?: number | null;
+    featured_pricing: 'lump_sum' | 'recurring';
     period?: string | null;
     classes_included?: number | null;
     is_unlimited?: boolean;
     validity_days?: number | null;
+    validity_unit?: 'days' | 'months';
     deadline_date?: string | null;
+    is_validity_unlimited?: boolean;
     is_unique?: boolean;
     is_active?: boolean;
     category?: string | null;
     display_order?: number;
+    category_display_order?: number;
   }) => {
     const response = await apiClient.post('/api/offers', offerData);
     return response.data;
@@ -545,15 +580,22 @@ export const api = {
     offer_code: string;
     name: string;
     description: string | null;
-    price_cents: number;
+    price_lump_sum_cents: number | null;
+    price_recurring_cents: number | null;
+    recurring_count: number | null;
+    featured_pricing: 'lump_sum' | 'recurring';
     period: string | null;
     classes_included: number | null;
     is_unlimited: boolean;
     validity_days: number | null;
+    validity_unit: 'days' | 'months';
     deadline_date: string | null;
+    is_validity_unlimited: boolean;
     is_unique: boolean;
     is_active: boolean;
+    category: string | null;
     display_order: number;
+    category_display_order: number;
   }>) => {
     const response = await apiClient.patch(`/api/offers/${offerId}`, offerData);
     return response.data;
@@ -573,6 +615,8 @@ export const api = {
     end_time: string;
     max_participants: number;
     credits_required: number;
+    instructor_name?: string;
+    location?: string;
   }) => {
     const response = await apiClient.post('/api/planning', sessionData);
     return response.data;
@@ -609,6 +653,7 @@ export const api = {
     allow_pay_later: boolean;
     payment_redirect_link: string;
     pay_now_instructions: string;
+    locations: string[];
   }>) => {
     const response = await apiClient.patch('/api/tenants/current/settings', data);
     return response.data;
@@ -849,5 +894,25 @@ export const api = {
   }> => {
     const response = await apiClient.post(`/api/events/${eventId}/checkout?tariff=${tariff}&pay_later=${payLater}`);
     return response.data;
+  },
+
+  getMyEventRegistrations: async (): Promise<EventRegistration[]> => {
+    const response = await apiClient.get('/api/events/registrations');
+    return response.data;
+  },
+
+  // Email Templates
+  getEmailTemplates: async (): Promise<EmailTemplate[]> => {
+    const response = await apiClient.get('/api/admin/emails/templates');
+    return response.data;
+  },
+
+  saveEmailTemplate: async (data: { name: string; subject: string; content: string }): Promise<EmailTemplate> => {
+    const response = await apiClient.post('/api/admin/emails/templates', data);
+    return response.data;
+  },
+
+  deleteEmailTemplate: async (templateId: string): Promise<void> => {
+    await apiClient.delete(`/api/admin/emails/templates/${templateId}`);
   },
 };

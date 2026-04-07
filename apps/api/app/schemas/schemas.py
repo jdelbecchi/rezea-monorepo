@@ -129,6 +129,7 @@ class TenantSettingsUpdate(BaseModel):
     allow_pay_later: Optional[bool] = None
     payment_redirect_link: Optional[str] = None
     pay_now_instructions: Optional[str] = None
+    locations: Optional[List[str]] = Field(default_factory=list)
 
 
 class TenantResponse(TenantBase):
@@ -151,6 +152,7 @@ class TenantResponse(TenantBase):
     allow_pay_later: bool = True
     payment_redirect_link: Optional[str] = None
     pay_now_instructions: Optional[str] = None
+    locations: Optional[List[str]] = Field(default_factory=list)
     created_at: datetime
 
 
@@ -189,6 +191,7 @@ class SessionBase(BaseModel):
     description: Optional[str] = None
     activity_type: Optional[str] = Field(None, max_length=100)
     instructor_name: Optional[str] = Field(None, max_length=255)
+    location: Optional[str] = Field(None, max_length=255)
     start_time: datetime
     end_time: datetime
     max_participants: int = Field(..., gt=0)
@@ -211,6 +214,7 @@ class SessionUpdate(BaseModel):
     max_participants: Optional[int] = None
     credits_required: Optional[float] = None
     is_active: Optional[bool] = None
+    location: Optional[str] = None
 
 
 class SessionResponse(SessionBase):
@@ -310,14 +314,16 @@ class OfferBase(BaseModel):
     recurring_count: Optional[int] = Field(None, ge=1)
     featured_pricing: str = "lump_sum"
     period: Optional[str] = Field(None, max_length=50)
-    classes_included: Optional[float] = Field(None, gt=0)
+    classes_included: Optional[int] = Field(None, gt=0)
     is_unlimited: bool = False
     validity_days: Optional[int] = Field(None, gt=0)
     validity_unit: str = "days"
     deadline_date: Optional[date] = None
+    is_validity_unlimited: Optional[bool] = False
     is_unique: bool = False
     is_active: bool = True
-    display_order: int = 0
+    display_order: Optional[int] = 0
+    category_display_order: Optional[int] = 0
 
 
 class OfferCreate(OfferBase):
@@ -344,6 +350,7 @@ class OfferUpdate(BaseModel):
     is_unique: Optional[bool] = None
     is_active: Optional[bool] = None
     display_order: Optional[int] = None
+    category_display_order: Optional[int] = None
 
 
 class OfferResponse(OfferBase):
@@ -410,6 +417,7 @@ class EventCreate(BaseModel):
     price_external_cents: int = Field(0, ge=0)
     instructor_name: str = Field(..., min_length=1, max_length=255)
     max_places: int = Field(..., gt=0)
+    location: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = None
 
 
@@ -423,6 +431,7 @@ class EventUpdate(BaseModel):
     price_external_cents: Optional[int] = Field(None, ge=0)
     instructor_name: Optional[str] = Field(None, min_length=1, max_length=255)
     max_places: Optional[int] = Field(None, gt=0)
+    location: Optional[str] = None
     description: Optional[str] = None
 
 
@@ -440,6 +449,7 @@ class EventResponse(BaseModel):
     max_places: int
     registrations_count: int
     is_registered: Optional[bool] = False
+    location: Optional[str] = None
     description: Optional[str] = None
     created_at: datetime
     updated_at: datetime
@@ -624,6 +634,26 @@ class EmailSendRequest(BaseModel):
     content: str = Field(..., min_length=1)
     recipient_type: str = Field(..., pattern="^(all|active|selected)$")
     selected_user_ids: Optional[List[UUID]] = None
+
+
+class EmailTemplateBase(BaseModel):
+    """Base pour les modèles d'email"""
+    name: str = Field(..., min_length=1, max_length=255)
+    subject: str = Field(..., min_length=1, max_length=255)
+    content: str = Field(..., min_length=1)
+
+
+class EmailTemplateCreate(EmailTemplateBase):
+    """Création d'un modèle d'email"""
+    pass
+
+
+class EmailTemplateResponse(EmailTemplateBase):
+    """Réponse pour un modèle d'email"""
+    id: UUID
+    created_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ==================== Shop ====================

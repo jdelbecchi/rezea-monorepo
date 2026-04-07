@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import dynamic from "next/dynamic";
 import { api, User, Tenant } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
@@ -10,7 +9,7 @@ import Sidebar from "@/components/Sidebar";
 // Import dynamique de ReactQuill pour éviter les erreurs SSR
 const ReactQuill = dynamic(() => import("react-quill"), {
   ssr: false,
-  loading: () => <div className="h-48 bg-gray-50 animate-pulse rounded-xl border border-gray-200" />,
+  loading: () => <div className="h-48 bg-slate-50 animate-pulse rounded-xl border border-slate-200" />,
 });
 
 import "react-quill/dist/quill.snow.css";
@@ -20,9 +19,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const TABS = [
     { id: "identity", label: "Identité", icon: "🏢" },
     { id: "rules", label: "Règles", icon: "⚖️" },
-    { id: "payment", label: "Paiement", icon: "💳" },
-    { id: "emails", label: "Emails", icon: "✉️" },
-    { id: "docs", label: "Documents", icon: "📁" },
+    { id: "payment", label: "Paiements", icon: "💳" },
+    { id: "docs", label: "Documents légaux", icon: "📁" },
 ];
 
 export default function AdminSettingsPage() {
@@ -44,6 +42,7 @@ export default function AdminSettingsPage() {
     const [formData, setFormData] = useState<Partial<Tenant>>({});
     const [previewBanner, setPreviewBanner] = useState<string | null>(null);
     const [previewLogo, setPreviewLogo] = useState<string | null>(null);
+    const [newLocation, setNewLocation] = useState("");
 
     useEffect(() => {
         const fetchData = async () => {
@@ -110,7 +109,6 @@ export default function AdminSettingsPage() {
     const handleSave = async () => {
         setSaving(true);
         try {
-            // Unset identity fields if they shouldn't be patched or if specific rules apply
             const updated = await api.updateTenantSettings(formData);
             setTenant(updated);
             setFormData(updated);
@@ -120,6 +118,22 @@ export default function AdminSettingsPage() {
         } finally {
             setSaving(false);
         }
+    };
+
+    const handleAddLocation = () => {
+        if (!newLocation.trim()) return;
+        const current = formData.locations || [];
+        if (current.includes(newLocation.trim())) {
+            showMessage("Ce lieu existe déjà", "error");
+            return;
+        }
+        setFormData({ ...formData, locations: [...current, newLocation.trim()] });
+        setNewLocation("");
+    };
+
+    const handleRemoveLocation = (loc: string) => {
+        const current = formData.locations || [];
+        setFormData({ ...formData, locations: current.filter(l => l !== loc) });
     };
 
     const quillModules = {
@@ -132,7 +146,7 @@ export default function AdminSettingsPage() {
         ],
     };
 
-    if (loading) return <div className="p-8 text-center bg-gray-50 min-h-screen">Chargement...</div>;
+    if (loading) return <div className="p-8 text-center bg-slate-50 min-h-screen">Chargement...</div>;
 
     return (
         <div className="min-h-screen bg-[#f8fafc] flex flex-col md:flex-row font-sans text-slate-900">
@@ -142,24 +156,16 @@ export default function AdminSettingsPage() {
                     {/* Header */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                         <div>
-                            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Paramètres de l&apos;Établissement</h1>
+                            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Paramètres</h1>
                             <p className="text-slate-500 mt-1">Gérez l&apos;identité, les règles et les options de votre club</p>
                         </div>
                         <div className="flex items-center gap-3">
                             <button
                                 onClick={handleSave}
                                 disabled={saving}
-                                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold font-semibold transition-all shadow-lg shadow-blue-200 disabled:opacity-50 flex items-center gap-2"
+                                className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold transition-all shadow-lg shadow-slate-200 disabled:opacity-50 flex items-center gap-2"
                             >
-                                {saving ? (
-                                    <>
-                                        <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        Enregistrement...
-                                    </>
-                                ) : "Enregistrer les modifications"}
+                                {saving ? "Enregistrement..." : "Enregistrer les modifications"}
                             </button>
                         </div>
                     </div>
@@ -195,8 +201,9 @@ export default function AdminSettingsPage() {
                     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
                         {/* IDENTITY TAB */}
                         {activeTab === "identity" && (
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                <div className="lg:col-span-2 space-y-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                <div className="space-y-8">
+                                    {/* Bloc 1: Informations Générales */}
                                     <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
                                         <h3 className="text-xl font-bold flex items-center gap-2">📝 Informations Générales</h3>
                                         <div className="grid grid-cols-1 gap-6">
@@ -218,96 +225,103 @@ export default function AdminSettingsPage() {
                                                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-medium resize-none"
                                                 />
                                             </div>
-                                            <div>
-                                                <label className="block text-sm font-bold text-slate-700 mb-2">Message d&apos;accueil (Dashboard)</label>
-                                                <input
-                                                    type="text"
-                                                    value={formData.welcome_message || ""}
-                                                    onChange={e => setFormData({ ...formData, welcome_message: e.target.value })}
-                                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-medium"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
-                                        <h3 className="text-xl font-bold flex items-center gap-2">🎨 Style & Couleurs</h3>
-                                        <div>
-                                            <label className="block text-sm font-bold text-slate-700 mb-2">Couleur d&apos;accentuation</label>
-                                            <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                                <input
-                                                    type="color"
-                                                    value={formData.primary_color || "#7c3aed"}
-                                                    onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
-                                                    className="w-14 h-14 rounded-xl border-2 border-white shadow-sm cursor-pointer"
-                                                />
-                                                <div className="flex-1">
-                                                    <input
-                                                        type="text"
-                                                        value={formData.primary_color || "#7c3aed"}
-                                                        onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
-                                                        className="bg-transparent border-none p-0 font-mono font-bold text-lg outline-none w-full"
-                                                    />
-                                                    <p className="text-xs text-slate-400 font-medium lowercase">Code hexadécimal</p>
-                                                </div>
-                                                <div 
-                                                    className="px-6 py-2 rounded-xl text-white font-bold text-sm shadow-sm"
-                                                    style={{ backgroundColor: formData.primary_color }}
-                                                >
-                                                    Aperçu
+                                            <div className="pt-2">
+                                                <label className="block text-sm font-bold text-slate-700 mb-4">Logo de l&apos;établissement</label>
+                                                <div className="flex items-center gap-6">
+                                                    <div className="w-24 h-24 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group">
+                                                        {previewLogo ? (
+                                                            <img src={previewLogo} className="w-full h-full object-contain p-2" alt="Logo" />
+                                                        ) : (
+                                                            <span className="text-2xl">🏗️</span>
+                                                        )}
+                                                        {uploading === 'logo' && (
+                                                            <div className="absolute inset-0 bg-white/80 flex items-center justify-center backdrop-blur-sm">
+                                                                <div className="h-6 w-6 border-2 border-blue-600 border-t-transparent animate-spin rounded-full"></div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex-1 space-y-2">
+                                                        <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'logo')} />
+                                                        <button 
+                                                            onClick={() => logoInputRef.current?.click()}
+                                                            className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl font-bold text-xs transition-all shadow-sm"
+                                                        >
+                                                            Changer le logo
+                                                        </button>
+                                                        <p className="text-[10px] text-slate-400 font-medium tracking-wide leading-tight">Recommandé : Fond transparent, max 1MB.</p>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="space-y-6">
+                                <div className="space-y-8">
+                                    {/* Bloc 2: Personnalisation */}
                                     <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
-                                        <h3 className="text-xl font-bold flex items-center gap-2">🎯 Logo</h3>
-                                        <div className="flex flex-col items-center">
-                                            <div className="w-32 h-32 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden mb-4 relative group">
-                                                {previewLogo ? (
-                                                    <img src={previewLogo} className="w-full h-full object-contain p-2" alt="Logo" />
-                                                ) : (
-                                                    <span className="text-3xl">🏗️</span>
-                                                )}
-                                                {uploading === 'logo' && (
-                                                    <div className="absolute inset-0 bg-white/80 flex items-center justify-center backdrop-blur-sm">
-                                                        <div className="h-6 w-6 border-2 border-blue-600 border-t-transparent animate-spin rounded-full"></div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'logo')} />
-                                            <button 
-                                                onClick={() => logoInputRef.current?.click()}
-                                                className="w-full py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl font-bold text-sm transition-all"
-                                            >
-                                                Modifier le logo
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
-                                        <h3 className="text-xl font-bold flex items-center gap-2">🖼️ Bannière</h3>
-                                        <div className="w-full h-32 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group">
-                                            {previewBanner ? (
-                                                <img src={previewBanner} className="w-full h-full object-cover" alt="Banner" />
-                                            ) : (
-                                                <span className="text-3xl">🌄</span>
-                                            )}
-                                            {uploading === 'banner' && (
-                                                <div className="absolute inset-0 bg-white/80 flex items-center justify-center backdrop-blur-sm">
-                                                    <div className="h-6 w-6 border-2 border-blue-600 border-t-transparent animate-spin rounded-full"></div>
+                                        <h3 className="text-xl font-bold flex items-center gap-2">🎨 Personnalisation</h3>
+                                        
+                                        <div className="space-y-6">
+                                            <div>
+                                                <label className="block text-sm font-bold text-slate-700 mb-2">Bannière (Dashboard)</label>
+                                                <div className="w-full h-32 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group mb-3">
+                                                    {previewBanner ? (
+                                                        <img src={previewBanner} className="w-full h-full object-cover" alt="Banner" />
+                                                    ) : (
+                                                        <span className="text-3xl">🌄</span>
+                                                    )}
+                                                    {uploading === 'banner' && (
+                                                        <div className="absolute inset-0 bg-white/80 flex items-center justify-center backdrop-blur-sm">
+                                                            <div className="h-6 w-6 border-2 border-blue-600 border-t-transparent animate-spin rounded-full"></div>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
+                                                <input type="file" ref={bannerInputRef} className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'banner')} />
+                                                <button 
+                                                    onClick={() => bannerInputRef.current?.click()}
+                                                    className="w-full py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl font-bold text-xs transition-all"
+                                                >
+                                                    Changer la bannière
+                                                </button>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-bold text-slate-700 mb-2">Couleur d&apos;accentuation</label>
+                                                <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                                    <input
+                                                        type="color"
+                                                        value={formData.primary_color || "#7c3aed"}
+                                                        onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
+                                                        className="w-12 h-12 rounded-xl border-2 border-white shadow-sm cursor-pointer"
+                                                    />
+                                                    <div className="flex-1">
+                                                        <input
+                                                            type="text"
+                                                            value={formData.primary_color || "#7c3aed"}
+                                                            onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
+                                                            className="bg-transparent border-none p-0 font-mono font-bold text-base outline-none w-full"
+                                                        />
+                                                    </div>
+                                                    <div 
+                                                        className="px-4 py-1.5 rounded-lg text-white font-bold text-[10px] uppercase shadow-sm"
+                                                        style={{ backgroundColor: formData.primary_color }}
+                                                    >
+                                                        Aperçu
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-bold text-slate-700 mb-2">Message d&apos;accueil</label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.welcome_message || ""}
+                                                    onChange={e => setFormData({ ...formData, welcome_message: e.target.value })}
+                                                    placeholder="Bienvenue chez nous !"
+                                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-medium"
+                                                />
+                                            </div>
                                         </div>
-                                        <input type="file" ref={bannerInputRef} className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'banner')} />
-                                        <button 
-                                            onClick={() => bannerInputRef.current?.click()}
-                                            className="w-full py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl font-bold text-sm transition-all"
-                                        >
-                                            Modifier la bannière
-                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -315,7 +329,7 @@ export default function AdminSettingsPage() {
 
                         {/* RULES TAB */}
                         {activeTab === "rules" && (
-                            <div className="max-w-3xl mx-auto space-y-8">
+                            <div className="space-y-8">
                                 <section className="bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm space-y-8">
                                     <div className="space-y-2">
                                         <h3 className="text-2xl font-black tracking-tight flex items-center gap-3">
@@ -356,77 +370,113 @@ export default function AdminSettingsPage() {
                                         </div>
                                     </div>
                                 </section>
+
+                                {/* LOCATIONS SECTION */}
+                                <section className="bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm space-y-8">
+                                    <div className="space-y-2">
+                                        <h3 className="text-2xl font-black tracking-tight flex items-center gap-3">
+                                            📍 Locaux & Espaces
+                                        </h3>
+                                        <p className="text-slate-500 font-medium">Définissez les salles et lieux de votre établissement pour vos planning</p>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        <div className="flex gap-3">
+                                            <input
+                                                type="text"
+                                                placeholder="Ex: Salle 1, Studio Yoga, Extérieur..."
+                                                value={newLocation}
+                                                onChange={e => setNewLocation(e.target.value)}
+                                                onKeyDown={e => e.key === "Enter" && (e.preventDefault(), handleAddLocation())}
+                                                className="flex-1 px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                                            />
+                                            <button
+                                                onClick={handleAddLocation}
+                                                className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-800 transition-all"
+                                            >
+                                                Ajouter
+                                            </button>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                            {(formData.locations || []).map((loc) => (
+                                                <div key={loc} className="group flex items-center justify-between px-5 py-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-slate-300 transition-all">
+                                                    <span className="font-bold text-slate-700">{loc}</span>
+                                                    <button 
+                                                        onClick={() => handleRemoveLocation(loc)}
+                                                        className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                                                    >
+                                                        🗑️
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            {(formData.locations || []).length === 0 && (
+                                                <div className="col-span-full py-8 text-center border-2 border-dashed border-slate-100 rounded-2xl">
+                                                    <p className="text-slate-400 font-medium text-sm">Aucun lieu configuré</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </section>
                             </div>
                         )}
 
                         {/* PAYMENT TAB */}
                         {activeTab === "payment" && (
-                            <div className="max-w-3xl mx-auto space-y-6">
-                                <section className="bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm space-y-8">
-                                    <div className="flex items-center justify-between">
-                                        <div className="space-y-1">
-                                            <h3 className="text-2xl font-black tracking-tight flex items-center gap-3">💶 Options de paiement</h3>
-                                            <p className="text-slate-500 font-medium">Gérez comment vos membres règlent leurs commandes</p>
-                                        </div>
-                                        <button
-                                            onClick={() => setFormData({ ...formData, allow_pay_later: !formData.allow_pay_later })}
-                                            className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none ${formData.allow_pay_later ? 'bg-emerald-500' : 'bg-slate-300'}`}
-                                        >
-                                            <span className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${formData.allow_pay_later ? 'translate-x-7' : 'translate-x-1 shadow-sm'}`} />
-                                        </button>
-                                    </div>
-
-                                    <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 flex items-start gap-4">
-                                        <div className="p-3 bg-white rounded-2xl shadow-sm text-2xl">💡</div>
-                                        <div>
-                                            <h4 className="font-bold text-slate-800">Paiement différé autorisé ?</h4>
-                                            <p className="text-sm text-slate-500 mt-1 leading-relaxed">
-                                                Si activé, l&apos;utilisateur peut valider sa commande sans payer immédiatement (ex: chèque, espèces sur place). Son compte sera alors en attente de validation par un administrateur.
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {!formData.allow_pay_later && (
-                                        <div className="space-y-6 animate-in slide-in-from-top-4 duration-300">
-                                            <div>
-                                                <label className="block text-sm font-bold text-slate-700 mb-2">Lien de redirection après commande (Optionnel)</label>
-                                                <input
-                                                    type="url"
-                                                    placeholder="https://votre-site.com/payment"
-                                                    value={formData.payment_redirect_link || ""}
-                                                    onChange={e => setFormData({ ...formData, payment_redirect_link: e.target.value })}
-                                                    className="w-full px-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 outline-none transition-all font-medium"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-bold text-slate-700 mb-3">Instructions de paiement immédiat</label>
-                                                <div className="rounded-2xl overflow-hidden border border-slate-200">
-                                                    <ReactQuill
-                                                        theme="snow"
-                                                        value={formData.pay_now_instructions || ""}
-                                                        onChange={val => setFormData({ ...formData, pay_now_instructions: val })}
-                                                        modules={quillModules}
-                                                        className="h-64 bg-white"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </section>
-                            </div>
-                        )}
-
-                        {/* EMAILS TAB */}
-                        {activeTab === "emails" && (
-                            <div className="max-w-4xl mx-auto space-y-6">
+                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 <section className="bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm space-y-8">
                                     <div className="space-y-2">
-                                        <h3 className="text-2xl font-black tracking-tight flex items-center gap-3">📧 Emails Automatisés</h3>
-                                        <p className="text-slate-500 font-medium">Personnalisez les messages envoyés à vos clients</p>
+                                        <h3 className="text-2xl font-black tracking-tight flex items-center gap-3">💶 Paramètres de Paiement</h3>
+                                        <p className="text-slate-500 font-medium">Gérez comment vos membres règlent leurs commandes</p>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 gap-8">
+                                        {/* Redirection Link - FIRST and ALWAYS visible */}
+                                        <div className="p-8 bg-blue-50/50 rounded-3xl border border-blue-100/50 space-y-4">
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <span className="text-2xl">🔗</span>
+                                                <label className="text-lg font-bold text-slate-800">Lien de redirection de paiement</label>
+                                            </div>
+                                            <input
+                                                type="url"
+                                                placeholder="https://www.helloasso.com/votre-boutique"
+                                                value={formData.payment_redirect_link || ""}
+                                                onChange={e => setFormData({ ...formData, payment_redirect_link: e.target.value })}
+                                                className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 outline-none transition-all font-medium text-blue-600"
+                                            />
+                                            <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                                                Indiquez ici l&apos;URL de votre page de paiement (ex: HelloAsso). Les utilisateurs y seront redirigés pour finaliser leur achat.
+                                            </p>
+                                        </div>
+
+                                        {/* Différé Toggle */}
+                                        <div className="p-8 bg-white rounded-3xl border border-slate-200 space-y-6">
+                                            <div className="flex items-center justify-between">
+                                                <div className="space-y-1">
+                                                    <h4 className="text-lg font-bold text-slate-800">Accepter les paiements différés</h4>
+                                                    <p className="text-sm text-slate-500 max-w-xl leading-relaxed">
+                                                        Si activé, l&apos;utilisateur peut valider sa commande sans être redirigé vers le site de paiement (ex: chèque, espèces sur place). Sa commande sera alors &quot;en attente&quot; de validation par un administrateur.
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    onClick={() => setFormData({ ...formData, allow_pay_later: !formData.allow_pay_later })}
+                                                    className={`relative inline-flex h-9 w-16 items-center rounded-full transition-colors focus:outline-none ${formData.allow_pay_later ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                                                >
+                                                    <span className={`inline-block h-7 w-7 transform rounded-full bg-white transition-transform shadow-md ${formData.allow_pay_later ? 'translate-x-8' : 'translate-x-1'}`} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                {/* Confirmation Email section */}
+                                <section className="bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm space-y-8">
+                                    <div className="space-y-2">
+                                        <h3 className="text-2xl font-black tracking-tight flex items-center gap-3">✉️ Email de Confirmation</h3>
+                                        <p className="text-slate-500 font-medium">Personnalisez le message envoyé automatiquement après une commande</p>
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-4">Mail de confirmation de commande</label>
                                         <div className="rounded-3xl overflow-hidden border border-slate-200 bg-white shadow-sm">
                                             <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center gap-2">
                                                 <span className="text-sm font-bold text-slate-400">Objet:</span>
@@ -437,13 +487,13 @@ export default function AdminSettingsPage() {
                                                 value={formData.confirmation_email_body || ""}
                                                 onChange={val => setFormData({ ...formData, confirmation_email_body: val })}
                                                 modules={quillModules}
-                                                className="h-[32rem]"
+                                                className="h-[24rem]"
                                             />
                                         </div>
-                                        <div className="mt-4 flex items-center gap-3 p-4 bg-blue-50/50 rounded-2xl text-blue-700">
+                                        <div className="mt-4 flex items-center gap-3 p-4 bg-amber-50 border border-amber-100 rounded-2xl text-amber-800">
                                             <span className="text-xl">✨</span>
                                             <p className="text-xs font-bold leading-tight uppercase tracking-wider">
-                                                Conseil : Ajoutez votre signature et vos coordonnées bancaires si vous utilisez le paiement hors-ligne.
+                                                Conseil : Si vous acceptez les paiements différés, n&apos;oubliez pas d&apos;inclure vos instructions (RIB, ordre de chèque) dans cet email.
                                             </p>
                                         </div>
                                     </div>
@@ -453,7 +503,7 @@ export default function AdminSettingsPage() {
 
                         {/* DOCUMENTS TAB */}
                         {activeTab === "docs" && (
-                            <div className="max-w-3xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm space-y-8 text-center relative overflow-hidden group">
                                     {formData.cgv_url && (
                                         <div className="absolute top-4 right-4 bg-emerald-100 text-emerald-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">Actif</div>

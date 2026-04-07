@@ -5,925 +5,227 @@ import { useRouter } from "next/navigation";
 import { api, User } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 
-interface AgendaItem {
-    id: string;
-    type: "session" | "event";
-    title: string;
-    description?: string;
-    activity_type?: string;
-    date: string; // YYYY-MM-DD
-    time: string; // HH:MM
-    duration_minutes: number;
-    start_time?: string;
-    end_time?: string;
-    // Session fields
-    max_participants?: number;
-    current_participants?: number;
-    credits_required?: number;
-    // Event fields
-    instructor_name?: string;
-    price_member_cents?: number;
-    price_external_cents?: number;
-    max_places?: number;
-    registrations_count?: number;
-    // Common
-    registered_users: { first_name: string; last_name: string }[];
-}
-
-type RecurrenceType = "none" | "daily" | "weekly" | "monthly";
-
-const emptyForm = {
-    title: "",
-    description: "",
-    instructor_name: "",
-    date: "",
-    time: "",
-    duration_minutes: 60,
-    max_participants: 10,
-    credits_required: 1,
-    recurrence: "none" as RecurrenceType,
-    recurrence_count: 4,
-};
-
-type ViewMode = "week" | "month";
-
 const DAYS_FR = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-const MONTHS_FR = [
-    "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-    "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
-];
 
-function getMonday(d: Date): Date {
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    return new Date(d.getFullYear(), d.getMonth(), diff);
-}
-
-function formatDate(d: Date): string {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-
-function addDays(d: Date, n: number): Date {
-    const r = new Date(d);
-    r.setDate(r.getDate() + n);
-    return r;
-}
-
-export default function AdminPlanningAgendaPage() {
+export default function AdminAgendaPage() {
     const router = useRouter();
     const [user, setUser] = useState<User | null>(null);
+    const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [items, setItems] = useState<AgendaItem[]>([]);
-    const [viewMode, setViewMode] = useState<ViewMode>("week");
-    const [currentDate, setCurrentDate] = useState<Date>(new Date());
-    const [search, setSearch] = useState("");
-    const [selectedItem, setSelectedItem] = useState<AgendaItem | null>(null);
-    const [deleteConfirmId, setDeleteConfirmId] = useState<{ id: string; type: string } | null>(null);
-    const [showForm, setShowForm] = useState(false);
-    const [formData, setFormData] = useState({ ...emptyForm });
-    const [saving, setSaving] = useState(false);
-    const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-    const [showDuplicateModal, setShowDuplicateModal] = useState(false);
-    const [duplicateData, setDuplicateData] = useState({
-        source_start: "",
-        source_end: "",
-        target_start: "",
-    });
+    const [currentDate, setCurrentDate] = useState(new Date());
+    const [locationFilter, setLocationFilter] = useState("all");
+    const [tenant, setTenant] = useState<any>(null);
 
-    // Compute date range
-    const { startDate, endDate, days } = useMemo(() => {
-        if (viewMode === "week") {
-            const monday = getMonday(currentDate);
-            const sunday = addDays(monday, 6);
-            const dArr: Date[] = [];
-            for (let i = 0; i < 7; i++) dArr.push(addDays(monday, i));
-            return { startDate: monday, endDate: sunday, days: dArr };
-        } else {
-            const first = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-            const last = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-            // Extend to full weeks
-            const startMonday = getMonday(first);
-            const endSunday = addDays(getMonday(addDays(last, 6)), 6);
-            const dArr: Date[] = [];
-            let d = new Date(startMonday);
-            while (d <= endSunday) {
-                dArr.push(new Date(d));
-                d = addDays(d, 1);
-            }
-            return { startDate: startMonday, endDate: endSunday, days: dArr };
+    const weekDays = useMemo(() => {
+        const days = [];
+        const start = new Date(currentDate);
+        const day = start.getDay();
+        const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+        start.setDate(diff);
+
+        for (let i = 0; i < 7; i++) {
+            days.push(new Date(start));
+            start.setDate(start.getDate() + 1);
         }
-    }, [viewMode, currentDate]);
+        return days;
+    }, [currentDate]);
 
     const fetchData = useCallback(async () => {
         try {
-            const userData = await api.getCurrentUser();
-            if (userData.role !== "owner" && userData.role !== "manager") {
-                router.push("/dashboard");
-                return;
-            }
+            const start = weekDays[0].toISOString().split('T')[0];
+            const end = weekDays[6].toISOString().split('T')[0];
+            const [userData, agendaData, tenantData] = await Promise.all([
+                api.getCurrentUser(),
+                api.getAdminAgenda(start, end),
+                api.getTenantSettings()
+            ]);
             setUser(userData);
-
-            const data = await api.getAdminAgenda(
-                formatDate(startDate),
-                formatDate(endDate),
-                search || undefined
-            );
-
-            const allItems: AgendaItem[] = [
-                ...data.sessions,
-                ...data.events,
+            setTenant(tenantData);
+            const flattenedItems = [
+                ...agendaData.sessions.map((s: any) => ({ ...s, type: "session" as const, date: s.start_time.split('T')[0], time: s.start_time.split('T')[1].substring(0, 5) })),
+                ...agendaData.events.map((e: any) => ({ ...e, type: "event" as const, date: e.event_date, time: e.event_time }))
             ];
-            setItems(allItems);
+            setItems(flattenedItems);
         } catch (err) {
             console.error(err);
-            if (!user) router.push("/login");
+            router.push("/login");
         } finally {
             setLoading(false);
         }
-    }, [startDate, endDate, search]);
+    }, [router, weekDays]);
 
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+    useEffect(() => { fetchData(); }, [fetchData]);
 
-    const navigate = (direction: number) => {
-        if (viewMode === "week") {
-            setCurrentDate(addDays(currentDate, direction * 7));
-        } else {
-            const d = new Date(currentDate);
-            d.setMonth(d.getMonth() + direction);
-            setCurrentDate(d);
-        }
-    };
-
-    const goToday = () => setCurrentDate(new Date());
-
-    const getItemsForDate = (dateStr: string) =>
-        items.filter((it) => it.date === dateStr).sort((a, b) => a.time.localeCompare(b.time));
-
-    const handleDeleteSession = async (id: string) => {
-        try {
-            await api.deleteSession(id);
-            setDeleteConfirmId(null);
-            setSelectedItem(null);
-            await fetchData();
-        } catch (err: any) {
-            alert(err.response?.data?.detail || "Erreur lors de la suppression");
-        }
-    };
-
-    const handleDeleteEvent = async (id: string) => {
-        try {
-            await api.deleteAdminEvent(id);
-            setDeleteConfirmId(null);
-            setSelectedItem(null);
-            await fetchData();
-        } catch (err: any) {
-            alert(err.response?.data?.detail || "Erreur lors de la suppression");
-        }
-    };
-
-    const handleDelete = () => {
-        if (!deleteConfirmId) return;
-        if (deleteConfirmId.type === "session") {
-            handleDeleteSession(deleteConfirmId.id);
-        } else {
-            handleDeleteEvent(deleteConfirmId.id);
-        }
-    };
-
-    const handleSaveSession = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setSaving(true);
-        setMessage(null);
-        try {
-            const startDt = new Date(`${formData.date}T${formData.time}:00`);
-            const endDt = new Date(startDt.getTime() + formData.duration_minutes * 60000);
-
-            // Create payload
-            const payload = {
-                title: formData.title,
-                description: formData.description || "",
-                instructor_name: formData.instructor_name || "",
-                activity_type: "",
-                start_time: startDt.toISOString(),
-                end_time: endDt.toISOString(),
-                max_participants: formData.max_participants,
-                credits_required: formData.credits_required,
-                allow_waitlist: true,
-            };
-
-            await api.createSession(payload);
-            
-            // Handle recurrence
-            if (formData.recurrence !== "none" && formData.recurrence_count > 1) {
-                for (let i = 1; i < formData.recurrence_count; i++) {
-                    const rStart = new Date(startDt);
-                    const rEnd = new Date(endDt);
-                    if (formData.recurrence === "daily") {
-                        rStart.setDate(rStart.getDate() + i);
-                        rEnd.setDate(rEnd.getDate() + i);
-                    } else if (formData.recurrence === "weekly") {
-                        rStart.setDate(rStart.getDate() + i * 7);
-                        rEnd.setDate(rEnd.getDate() + i * 7);
-                    } else if (formData.recurrence === "monthly") {
-                        rStart.setMonth(rStart.getMonth() + i);
-                        rEnd.setMonth(rEnd.getMonth() + i);
-                    }
-                    await api.createSession({
-                        ...payload,
-                        start_time: rStart.toISOString(),
-                        end_time: rEnd.toISOString(),
-                    });
-                }
-            }
-
-            setShowForm(false);
-            setFormData({ ...emptyForm });
-            setMessage({ type: "success", text: "Séance(s) créée(s) avec succès !" });
-            await fetchData();
-        } catch (err: any) {
-            setMessage({ type: "error", text: err.response?.data?.detail || "Erreur lors de la création" });
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    const handleDuplicate = async () => {
-        if (!duplicateData.source_start || !duplicateData.source_end || !duplicateData.target_start) {
-            alert("Veuillez remplir tous les champs.");
-            return;
-        }
-        try {
-            const res = await api.duplicateSessions({
-                source_start: `${duplicateData.source_start}T00:00:00`,
-                source_end: `${duplicateData.source_end}T23:59:59`,
-                target_start: `${duplicateData.target_start}T00:00:00`,
-            });
-            setShowDuplicateModal(false);
-            setMessage({ type: "success", text: `${res.count} séances dupliquées avec succès !` });
-            await fetchData();
-        } catch (err: any) {
-            alert("Erreur lors de la duplication.");
-        }
-    };
-
-    // Header period display
-    const periodLabel = useMemo(() => {
-        if (viewMode === "week") {
-            const mon = getMonday(currentDate);
-            const sun = addDays(mon, 6);
-            const monStr = mon.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
-            const sunStr = sun.toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
-            return `${monStr} — ${sunStr}`;
-        } else {
-            return `${MONTHS_FR[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
-        }
-    }, [viewMode, currentDate]);
-
-    const todayStr = formatDate(new Date());
-
-    if (loading) return <div className="p-8 text-center bg-gray-50 min-h-screen">Chargement...</div>;
+    if (loading) return <div className="p-8 text-center text-slate-500 font-medium">Chargement...</div>;
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
+        <div className="flex min-h-screen bg-white font-sans text-slate-900 overflow-hidden">
             <Sidebar user={user} />
 
-            <main className="flex-1 p-6 overflow-auto">
-                <div className="max-w-full mx-auto space-y-4">
-                    {/* Header */}
-                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                        <div>
-                            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight">📋 agenda</h1>
-                            <div className="flex items-center gap-4 mt-1">
-                                <p className="text-slate-500">{periodLabel}</p>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={() => { setShowDuplicateModal(true); setDuplicateData({ source_start: "", source_end: "", target_start: "" }); }}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-slate-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-[11px] font-medium lowercase tracking-tight"
-                                    >
-                                        📋 dupliquer
-                                    </button>
-                                    <button
-                                        onClick={() => { setShowForm(true); setFormData({ ...emptyForm }); setMessage(null); }}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors text-[11px] font-medium lowercase tracking-tight shadow-md shadow-slate-200"
-                                    >
-                                        ➕ nouvelle séance
-                                    </button>
+            <main className="flex-1 p-8 md:p-12 overflow-auto bg-[#fafafa]">
+                <div className="max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500">
+                    
+                    {/* Header Image 2 Style */}
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div className="flex items-center gap-4">
+                            <span className="text-3xl">📋</span>
+                            <h1 className="text-4xl font-extrabold tracking-tight text-[#0f172a] font-sans">Agenda</h1>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="relative group">
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">🔍</div>
+                                <input 
+                                    type="text" 
+                                    placeholder="Rechercher..." 
+                                    className="pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl w-64 text-sm font-medium focus:ring-2 focus:ring-slate-900 outline-none transition-all"
+                                />
+                            </div>
+                            <button className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm">
+                                ↺ Dupliquer
+                            </button>
+                            <button className="px-5 py-2.5 bg-[#0f172a] text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg active:scale-95">
+                                + Nouvelle séance
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Filtrer par Lieu :</span>
+                            <select 
+                                value={locationFilter}
+                                onChange={(e) => setLocationFilter(e.target.value)}
+                                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-slate-900 transition-all min-w-[150px]"
+                            >
+                                <option value="all">Tous les lieux</option>
+                                {(tenant?.locations || []).map((loc: string) => (
+                                    <option key={loc} value={loc}>{loc}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Navigation Bar Image 2 Style */}
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-100 pb-6">
+                        <div className="flex items-center gap-6">
+                            <div className="text-base font-bold text-slate-800 tracking-tight">
+                                {weekDays[0].toLocaleDateString("fr-FR", { day: 'numeric', month: 'short' })} — {weekDays[6].toLocaleDateString("fr-FR", { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="flex items-center bg-white p-1 rounded-2xl border border-slate-200 shadow-sm transition-all focus-within:shadow-md">
+                                    <button onClick={() => setCurrentDate(new Date(currentDate.setDate(currentDate.getDate() - 7)))} className="p-2 hover:bg-slate-50 rounded-xl transition-all">←</button>
+                                    <button onClick={() => setCurrentDate(new Date())} className="px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors">Aujourd'hui</button>
+                                    <button onClick={() => setCurrentDate(new Date(currentDate.setDate(currentDate.getDate() + 7)))} className="p-2 hover:bg-slate-50 rounded-xl transition-all">→</button>
+                                </div>
+                                <div className="flex items-center bg-slate-900 p-1 rounded-2xl shadow-xl">
+                                    <button className="px-6 py-2 text-[10px] font-black uppercase tracking-widest text-white border-r border-slate-800">Semaine</button>
+                                    <button className="px-6 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white transition-colors">Mois</button>
                                 </div>
                             </div>
                         </div>
-                        <div className="flex items-center gap-3 flex-wrap">
-                            {/* Search */}
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    placeholder="Rechercher..."
-                                    className="pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm w-52"
-                                />
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+
+                        {/* Legend */}
+                        <div className="flex items-center gap-6">
+                            <div className="flex items-center gap-2.5 group cursor-help">
+                                <span className="w-2.5 h-2.5 rounded-full bg-[#3b82f6] shadow-sm shadow-blue-200 transition-transform group-hover:scale-125"></span>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Séance</span>
                             </div>
-                            {/* Navigation */}
-                            <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg">
-                                <button onClick={() => navigate(-1)} className="px-3 py-2 hover:bg-gray-100 rounded-l-lg text-[11px] font-medium lowercase">←</button>
-                                <button onClick={goToday} className="px-3 py-2 hover:bg-gray-100 text-[11px] font-medium lowercase">aujourd&apos;hui</button>
-                                <button onClick={() => navigate(1)} className="px-3 py-2 hover:bg-gray-100 rounded-r-lg text-[11px] font-medium lowercase">→</button>
-                            </div>
-                            {/* View toggle */}
-                            <div className="flex bg-white border border-gray-200 rounded-lg">
-                                <button
-                                    onClick={() => setViewMode("week")}
-                                    className={`px-4 py-2 text-[11px] font-medium rounded-l-lg transition-colors lowercase ${viewMode === "week" ? "bg-slate-900 text-white" : "hover:bg-gray-100"}`}
-                                >
-                                    semaine
-                                </button>
-                                <button
-                                    onClick={() => setViewMode("month")}
-                                    className={`px-4 py-2 text-[11px] font-medium rounded-r-lg transition-colors lowercase ${viewMode === "month" ? "bg-slate-900 text-white" : "hover:bg-gray-100"}`}
-                                >
-                                    mois
-                                </button>
+                            <div className="flex items-center gap-2.5 group cursor-help">
+                                <span className="w-2.5 h-2.5 rounded-full bg-[#f59e0b] shadow-sm shadow-amber-200 transition-transform group-hover:scale-125"></span>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Évènement</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Legend */}
-                    <div className="flex items-center gap-4 text-sm text-slate-600">
-                        <span className="flex items-center gap-1">
-                            <span className="w-3 h-3 rounded-full bg-blue-500 inline-block"></span> Séance
-                        </span>
-                        <span className="flex items-center gap-1">
-                            <span className="w-3 h-3 rounded-full bg-purple-500 inline-block"></span> Événement
-                        </span>
-                    </div>
+                    {/* Weekly Grid Image 2 Style */}
+                    <div className="bg-white rounded-[3rem] shadow-[0_20px_60px_rgba(15,23,42,0.02)] border border-slate-100 overflow-hidden">
+                        <div className="grid grid-cols-7 border-b border-slate-100/50 bg-white shadow-[0_1px_0_0_rgba(15,23,42,0.02)]">
+                            {weekDays.map((date, idx) => {
+                                const isToday = date.toDateString() === new Date().toDateString();
+                                return (
+                                    <div key={idx} className="p-8 text-center space-y-3">
+                                        <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300">
+                                            {DAYS_FR[idx]}
+                                        </div>
+                                        <div className={`text-2xl font-black transition-all h-14 w-14 flex items-center justify-center mx-auto rounded-full ${
+                                            isToday ? "bg-slate-900 text-white shadow-2xl shadow-slate-900/20 scale-110" : "text-slate-900"
+                                        }`}>
+                                            {date.getDate()}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
 
-                    {/* Calendar Grid */}
-                    {viewMode === "week" ? (
-                        <WeekView
-                            days={days}
-                            todayStr={todayStr}
-                            getItemsForDate={getItemsForDate}
-                            onSelectItem={setSelectedItem}
-                        />
-                    ) : (
-                        <MonthView
-                            days={days}
-                            todayStr={todayStr}
-                            currentMonth={currentDate.getMonth()}
-                            getItemsForDate={getItemsForDate}
-                            onSelectItem={setSelectedItem}
-                        />
-                    )}
+                        <div className="grid grid-cols-7 min-h-[700px] divide-x divide-slate-100/50 bg-[#fafafa]/30">
+                            {weekDays.map((date, dayIdx) => {
+                                const dayStr = date.toISOString().split('T')[0];
+                                const dayItems = items
+                                    .filter(i => i.date === dayStr)
+                                    .filter(i => locationFilter === "all" || i.location === locationFilter)
+                                    .sort((a,b) => a.time.localeCompare(b.time));
+
+                                return (
+                                    <div key={dayIdx} className="p-5 space-y-5 min-h-[200px] group/day transition-colors">
+                                        {dayItems.map(item => {
+                                            const isSession = item.type === "session";
+                                            
+                                            return (
+                                                <div 
+                                                    key={item.id}
+                                                    className={`p-5 rounded-[2rem] border cursor-pointer transition-all hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden group/item ${
+                                                        isSession 
+                                                        ? "bg-white border-blue-50 text-blue-900 shadow-[0_10px_30px_rgba(59,130,246,0.02)]" 
+                                                        : "bg-white border-amber-50 text-amber-900 shadow-[0_10px_30px_rgba(245,158,11,0.02)]"
+                                                    }`}
+                                                >
+                                                    <div className="flex flex-col space-y-4">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="text-xs font-black tracking-tight text-slate-900">
+                                                                {item.time} <span className="ml-2 uppercase font-black tracking-widest text-[#64748b] text-[10px] group-hover/item:text-slate-900 transition-colors">{item.title}</span>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div className="space-y-3">
+                                                            <div className="flex flex-wrap items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
+                                                                <div className="flex items-center gap-1.5 min-w-[120px]">
+                                                                    <span className="text-xs group-hover/item:scale-125 transition-all">👤</span> 
+                                                                    {item.instructor_name || "N/A"}
+                                                                </div>
+                                                                {item.location && (
+                                                                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-slate-50 text-slate-500 rounded-md border border-slate-100">
+                                                                        <span className="text-[8px]">📍</span> {item.location}
+                                                                    </div>
+                                                                )}
+                                                                <div className="ml-auto text-slate-300">
+                                                                    {item.duration_minutes || 60} min
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center justify-end">
+                                                                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border shadow-sm ${
+                                                                    isSession 
+                                                                        ? "bg-blue-50/50 text-blue-600 border-blue-100/50" 
+                                                                        : "bg-amber-100 text-amber-700 border-amber-200"
+                                                                }`}>
+                                                                    <span className="text-xs">👥</span> {item.current_participants || 0}/{item.max_participants || 10}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                        
+                                        <div className="absolute inset-x-5 bottom-5 opacity-0 group-hover/day:opacity-100 transition-all pointer-events-none">
+                                            <div className="w-full h-12 rounded-3xl border border-dashed border-slate-200 bg-white/50"></div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
                 </div>
             </main>
-
-            {/* Detail Panel */}
-            {selectedItem && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setSelectedItem(null)}>
-                    <div className="bg-white rounded-xl shadow-2xl p-6 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                                <span className={`px-2 py-1 text-[10px] font-medium rounded-full lowercase ${selectedItem.type === "session" ? "bg-blue-50 text-blue-600 border border-blue-100" : "bg-purple-50 text-purple-600 border border-purple-100"}`}>
-                                    {selectedItem.type === "session" ? "🏋️ séance" : "🎉 événement"}
-                                </span>
-                            </div>
-                            <button onClick={() => setSelectedItem(null)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
-                        </div>
-
-                        <h3 className="text-xl font-semibold text-slate-900 mb-1">{selectedItem.title}</h3>
-                        {selectedItem.description && (
-                            <p className="text-slate-500 text-sm mb-3">{selectedItem.description}</p>
-                        )}
-
-                        <div className="space-y-2 text-sm text-slate-700 mb-4">
-                            <div className="flex justify-between">
-                                <span className="text-slate-500">📅 Date</span>
-                                <span className="font-medium">{new Date(selectedItem.date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-slate-500">🕐 Heure</span>
-                                <span className="font-medium">{selectedItem.time}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-slate-500">⏱️ Durée</span>
-                                <span className="font-medium">{selectedItem.duration_minutes} min</span>
-                            </div>
-                            {selectedItem.type === "session" && selectedItem.activity_type && (
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">🏷️ Type</span>
-                                    <span className="font-medium">{selectedItem.activity_type}</span>
-                                </div>
-                            )}
-                            {selectedItem.type === "session" && (
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">👥 Places</span>
-                                    <span className="font-medium">{selectedItem.current_participants}/{selectedItem.max_participants}</span>
-                                </div>
-                            )}
-                            {selectedItem.type === "event" && (
-                                <>
-                                    <div className="flex justify-between">
-                                        <span className="text-slate-500">👤 Animateur</span>
-                                        <span className="font-medium">{selectedItem.instructor_name}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-slate-500">👥 Places</span>
-                                        <span className="font-medium">{selectedItem.registrations_count}/{selectedItem.max_places}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-slate-500">💰 Tarif membre</span>
-                                        <span className="font-medium">{((selectedItem.price_member_cents || 0) / 100).toFixed(2)}€</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-slate-500">💰 Tarif extérieur</span>
-                                        <span className="font-medium">{((selectedItem.price_external_cents || 0) / 100).toFixed(2)}€</span>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-
-                        {/* Registered users */}
-                        {selectedItem.registered_users.length > 0 && (
-                            <div className="mb-4">
-                                <h4 className="text-[10px] font-medium text-slate-400 lowercase tracking-widest mb-2">
-                                    inscrits ({selectedItem.registered_users.length})
-                                </h4>
-                                <div className="space-y-1">
-                                    {selectedItem.registered_users.map((u, i) => (
-                                        <div key={i} className="flex items-center gap-2 text-sm text-slate-700">
-                                            <span className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
-                                                {u.first_name[0]}{u.last_name[0]}
-                                            </span>
-                                            {u.first_name} {u.last_name}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                        {selectedItem.registered_users.length === 0 && (
-                            <p className="text-sm text-slate-400 mb-4 italic">Aucun inscrit</p>
-                        )}
-
-                        {/* Actions */}
-                        <div className="flex gap-2 pt-2 border-t border-gray-100">
-                            <button
-                                onClick={() => {
-                                    setSelectedItem(null);
-                                    if (selectedItem.type === "session") {
-                                        router.push(`/dashboard/admin/planning/sessions?edit=${selectedItem.id}`);
-                                    } else {
-                                        router.push(`/dashboard/admin/events/programming?edit=${selectedItem.id}`);
-                                    }
-                                }}
-                                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 text-sm text-center"
-                            >
-                                ✏️ Modifier
-                            </button>
-                            <button
-                                onClick={() => setDeleteConfirmId({ id: selectedItem.id, type: selectedItem.type })}
-                                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 text-sm text-center"
-                            >
-                                🗑️ Supprimer
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Delete Confirmation Modal */}
-            {deleteConfirmId && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
-                    <div className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-2xl">
-                        <h3 className="text-lg font-semibold text-slate-900 mb-2">Confirmer la suppression</h3>
-                        <p className="text-slate-600 mb-4">
-                            {deleteConfirmId.type === "session"
-                                ? "Cette séance sera désactivée et n'apparaîtra plus dans l'agenda."
-                                : "Cet événement sera définitivement supprimé."}
-                        </p>
-                        <div className="flex gap-2 justify-end">
-                            <button
-                                onClick={() => setDeleteConfirmId(null)}
-                                className="px-4 py-2 bg-gray-200 text-slate-900 rounded-lg font-medium hover:bg-gray-300"
-                            >
-                                Annuler
-                            </button>
-                            <button
-                                onClick={handleDelete}
-                                className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700"
-                            >
-                                Supprimer
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Session Creation Modal */}
-            {showForm && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4 overflow-y-auto">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl my-8 animate-in fade-in zoom-in duration-200">
-                        <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-slate-50">
-                            <div>
-                                <h3 className="text-xl font-semibold text-slate-900">nouvelle séance</h3>
-                                <p className="text-xs text-slate-500 mt-1">Créez une séance individuelle ou une récurrence</p>
-                            </div>
-                            <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-600 text-2xl">×</button>
-                        </div>
-                        
-                        <form onSubmit={handleSaveSession}>
-                            <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-                                {message && (
-                                    <div className={`p-4 rounded-lg border ${message.type === "success" ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-800"}`}>
-                                        {message.text}
-                                    </div>
-                                )}
-                                
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Intitulé *</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={formData.title}
-                                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            placeholder="Ex: Yoga Vinyasa, Cross-training..."
-                                        />
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-                                        <textarea
-                                            value={formData.description}
-                                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent h-20"
-                                            placeholder="Détails de la séance..."
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Intervenant</label>
-                                        <input
-                                            type="text"
-                                            value={formData.instructor_name}
-                                            onChange={(e) => setFormData({ ...formData, instructor_name: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            placeholder="Nom du coach"
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Date *</label>
-                                            <input
-                                                type="date"
-                                                required
-                                                value={formData.date}
-                                                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Heure *</label>
-                                            <input
-                                                type="time"
-                                                required
-                                                value={formData.time}
-                                                onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Durée (min) *</label>
-                                        <input
-                                            type="number"
-                                            required
-                                            min="5"
-                                            value={formData.duration_minutes}
-                                            onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) || 0 })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Capacité *</label>
-                                            <input
-                                                type="number"
-                                                required
-                                                min="1"
-                                                value={formData.max_participants}
-                                                onChange={(e) => setFormData({ ...formData, max_participants: parseInt(e.target.value) || 0 })}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Crédits *</label>
-                                            <input
-                                                type="number"
-                                                required
-                                                step="0.1"
-                                                min="0"
-                                                value={formData.credits_required}
-                                                onChange={(e) => setFormData({ ...formData, credits_required: parseFloat(e.target.value) || 0 })}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 space-y-4">
-                                    <h4 className="text-[11px] font-medium text-slate-400 flex items-center gap-2 lowercase tracking-widest">🔄 récurrence</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-xs font-semibold text-blue-700 mb-1">Type de récurrence</label>
-                                            <select
-                                                value={formData.recurrence}
-                                                onChange={(e) => setFormData({ ...formData, recurrence: e.target.value as RecurrenceType })}
-                                                className="w-full px-3 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
-                                            >
-                                                <option value="none">Aucune</option>
-                                                <option value="daily">Quotidienne</option>
-                                                <option value="weekly">Hebdomadaire</option>
-                                                <option value="monthly">Mensuelle</option>
-                                            </select>
-                                        </div>
-                                        {formData.recurrence !== "none" && (
-                                            <div>
-                                                <label className="block text-xs font-semibold text-blue-700 mb-1">Nombre d&apos;occurrences</label>
-                                                <input
-                                                    type="number"
-                                                    min="2"
-                                                    max="52"
-                                                    value={formData.recurrence_count}
-                                                    onChange={(e) => setFormData({ ...formData, recurrence_count: parseInt(e.target.value) || 2 })}
-                                                    className="w-full px-3 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="p-6 bg-slate-50 border-t border-gray-100 flex gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowForm(false)}
-                                    className="px-4 py-2 bg-white text-slate-700 border border-gray-200 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-                                >
-                                    Annuler
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={saving}
-                                    className="flex-1 px-4 py-2 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 shadow-lg shadow-slate-200 transition-all active:scale-95 disabled:opacity-50 text-[11px] lowercase"
-                                >
-                                    {saving ? "création..." : "créer la séance"}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* Duplication Modal */}
-            {showDuplicateModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-                        <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-slate-50">
-                            <div>
-                                <h3 className="text-xl font-semibold text-slate-900 tracking-tight">dupliquer des séances</h3>
-                                <p className="text-[11px] font-medium text-slate-400 lowercase mt-1">copier un planning vers une nouvelle période</p>
-                            </div>
-                            <button onClick={() => setShowDuplicateModal(false)} className="text-slate-400 hover:text-slate-600 text-2xl">×</button>
-                        </div>
-                        <div className="p-6 space-y-6">
-                            <div className="space-y-4">
-                                <h4 className="text-[10px] font-medium text-slate-400 lowercase tracking-widest">période source</h4>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-medium text-slate-700 mb-1">Du</label>
-                                        <input
-                                            type="date"
-                                            value={duplicateData.source_start}
-                                            onChange={(e) => setDuplicateData({...duplicateData, source_start: e.target.value})}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-slate-700 mb-1">Au</label>
-                                        <input
-                                            type="date"
-                                            value={duplicateData.source_end}
-                                            onChange={(e) => setDuplicateData({...duplicateData, source_end: e.target.value})}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="pt-4 border-t border-gray-100 space-y-4">
-                                <h4 className="text-[10px] font-medium text-slate-400 lowercase tracking-widest">destination</h4>
-                                <div>
-                                    <label className="block text-xs font-medium text-slate-700 mb-1">Date de début cible</label>
-                                    <input
-                                        type="date"
-                                        value={duplicateData.target_start}
-                                        onChange={(e) => setDuplicateData({...duplicateData, target_start: e.target.value})}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                        <div className="p-6 bg-slate-50 border-t border-gray-100 flex gap-3">
-                            <button
-                                onClick={() => setShowDuplicateModal(false)}
-                                className="flex-1 px-4 py-2 bg-white text-slate-700 border border-gray-200 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-                            >
-                                Annuler
-                            </button>
-                            <button
-                                onClick={handleDuplicate}
-                                className="flex-1 px-4 py-2 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 shadow-lg shadow-slate-200 transition-all active:scale-95 text-[11px] lowercase"
-                            >
-                                dupliquer
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
-    );
-}
-
-
-// ==================== WEEK VIEW ====================
-
-function WeekView({
-    days,
-    todayStr,
-    getItemsForDate,
-    onSelectItem,
-}: {
-    days: Date[];
-    todayStr: string;
-    getItemsForDate: (d: string) => AgendaItem[];
-    onSelectItem: (item: AgendaItem) => void;
-}) {
-    return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="grid grid-cols-7 divide-x divide-gray-100">
-                {days.map((day) => {
-                    const dateStr = formatDate(day);
-                    const isToday = dateStr === todayStr;
-                    const dayItems = getItemsForDate(dateStr);
-
-                    return (
-                        <div key={dateStr} className="min-h-[500px]">
-                            {/* Day header */}
-                            <div className={`px-2 py-3 text-center border-b border-gray-100 ${isToday ? "bg-slate-900" : "bg-gray-50"}`}>
-                                <div className={`text-[10px] font-medium lowercase tracking-widest ${isToday ? "text-slate-300" : "text-slate-400"}`}>
-                                    {DAYS_FR[day.getDay() === 0 ? 6 : day.getDay() - 1]}
-                                </div>
-                                <div className={`text-lg font-semibold mt-0.5 ${isToday ? "text-white" : "text-slate-900"}`}>
-                                    {day.getDate()}
-                                </div>
-                            </div>
-                            {/* Items */}
-                            <div className="p-1 space-y-1">
-                                {dayItems.map((item) => (
-                                    <AgendaCard key={`${item.type}-${item.id}`} item={item} onClick={() => onSelectItem(item)} compact={false} />
-                                ))}
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
-        </div>
-    );
-}
-
-
-// ==================== MONTH VIEW ====================
-
-function MonthView({
-    days,
-    todayStr,
-    currentMonth,
-    getItemsForDate,
-    onSelectItem,
-}: {
-    days: Date[];
-    todayStr: string;
-    currentMonth: number;
-    getItemsForDate: (d: string) => AgendaItem[];
-    onSelectItem: (item: AgendaItem) => void;
-}) {
-    const weeks: Date[][] = [];
-    for (let i = 0; i < days.length; i += 7) {
-        weeks.push(days.slice(i, i + 7));
-    }
-
-    return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            {/* Column headers */}
-            <div className="grid grid-cols-7 divide-x divide-gray-100 bg-gray-50">
-                {DAYS_FR.map((d) => (
-                    <div key={d} className="px-2 py-2 text-center text-xs font-medium text-slate-500 uppercase">
-                        {d}
-                    </div>
-                ))}
-            </div>
-            {/* Weeks */}
-            {weeks.map((week, wi) => (
-                <div key={wi} className="grid grid-cols-7 divide-x divide-gray-100 border-t border-gray-100">
-                    {week.map((day) => {
-                        const dateStr = formatDate(day);
-                        const isToday = dateStr === todayStr;
-                        const isCurrentMonth = day.getMonth() === currentMonth;
-                        const dayItems = getItemsForDate(dateStr);
-
-                        return (
-                            <div key={dateStr} className={`min-h-[110px] p-1 ${!isCurrentMonth ? "bg-gray-50/50" : ""}`}>
-                                <div className={`text-xs font-bold mb-1 text-right px-1 ${isToday ? "text-blue-600" : isCurrentMonth ? "text-slate-700" : "text-slate-300"}`}>
-                                    {day.getDate()}
-                                </div>
-                                <div className="space-y-0.5">
-                                    {dayItems.slice(0, 3).map((item) => (
-                                        <AgendaCard key={`${item.type}-${item.id}`} item={item} onClick={() => onSelectItem(item)} compact={true} />
-                                    ))}
-                                    {dayItems.length > 3 && (
-                                        <div className="text-[10px] text-slate-400 text-center">+{dayItems.length - 3} autres</div>
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            ))}
-        </div>
-    );
-}
-
-
-// ==================== AGENDA CARD ====================
-
-function AgendaCard({
-    item,
-    onClick,
-    compact,
-}: {
-    item: AgendaItem;
-    onClick: () => void;
-    compact: boolean;
-}) {
-    const isSession = item.type === "session";
-    const bgColor = isSession ? "bg-blue-50 border-blue-200 hover:bg-blue-100" : "bg-purple-50 border-purple-200 hover:bg-purple-100";
-    const icon = isSession ? "📌" : "🎉";
-    const textColor = isSession ? "text-blue-800" : "text-purple-800";
-
-    if (compact) {
-        return (
-            <button
-                onClick={onClick}
-                className={`w-full text-left px-1.5 py-1 rounded border text-[11px] ${bgColor} ${textColor} transition-colors`}
-            >
-                <div className="font-medium truncate">{icon} {item.time} {item.title}</div>
-                <div className="flex items-center gap-1.5 opacity-60 truncate">
-                    {item.instructor_name && <span>👤 {item.instructor_name}</span>}
-                    {isSession && <span>👥 {item.current_participants}/{item.max_participants}</span>}
-                    {item.type === "event" && item.max_places && <span>👥 {item.registrations_count || 0}/{item.max_places}</span>}
-                </div>
-            </button>
-        );
-    }
-
-    return (
-        <button
-            onClick={onClick}
-            className={`w-full text-left px-2 py-1.5 rounded-lg border ${bgColor} transition-colors`}
-        >
-            <div className={`text-xs font-bold ${textColor} flex items-center gap-1`}>
-                <span>{icon}</span>
-                <span>{item.time}</span>
-                <span className="text-[10px] font-normal opacity-70">{item.duration_minutes}min</span>
-            </div>
-            <div className={`text-xs font-medium ${textColor} truncate`}>{item.title}</div>
-            {item.instructor_name && (
-                <div className="text-[10px] text-slate-500 truncate">👤 {item.instructor_name}</div>
-            )}
-            {isSession && (
-                <div className="text-[10px] text-slate-500 truncate">
-                    👥 {item.current_participants}/{item.max_participants} inscrits
-                </div>
-            )}
-            {item.type === "event" && item.max_places && (
-                <div className="text-[10px] text-slate-500 truncate">
-                    👥 {item.registrations_count || 0}/{item.max_places} inscrits
-                </div>
-            )}
-        </button>
     );
 }

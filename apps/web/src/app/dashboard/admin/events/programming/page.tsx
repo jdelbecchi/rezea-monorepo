@@ -16,6 +16,7 @@ interface EventItem {
     instructor_name: string;
     max_places: number;
     registrations_count: number;
+    location: string | null;
     description: string | null;
 }
 
@@ -28,6 +29,7 @@ const emptyForm = {
     price_external_cents: "",
     instructor_name: "",
     max_places: "",
+    location: "",
     description: "",
 };
 
@@ -44,16 +46,19 @@ export default function AdminEventsProgrammingPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [exportFrom, setExportFrom] = useState("");
     const [exportTo, setExportTo] = useState("");
+    const [tenant, setTenant] = useState<any>(null);
 
     useEffect(() => {
         fetchData();
     }, [router]);
 
     const fetchData = async () => {
+        setLoading(true);
         try {
-            const [userData, eventsData] = await Promise.all([
+            const [userData, eventsData, tenantData] = await Promise.all([
                 api.getCurrentUser(),
                 api.getAdminEvents(),
+                api.getTenantSettings(),
             ]);
             if (userData.role !== "owner" && userData.role !== "manager") {
                 router.push("/dashboard");
@@ -61,6 +66,7 @@ export default function AdminEventsProgrammingPage() {
             }
             setUser(userData);
             setEvents(eventsData);
+            setTenant(tenantData);
         } catch (err) {
             console.error(err);
             router.push("/login");
@@ -89,6 +95,7 @@ export default function AdminEventsProgrammingPage() {
                 price_external_cents: Math.round(parseFloat(externalVal) * 100),
                 instructor_name: formData.instructor_name,
                 max_places: parseInt(formData.max_places),
+                location: formData.location || null,
                 description: formData.description || null,
             };
 
@@ -118,6 +125,7 @@ export default function AdminEventsProgrammingPage() {
             price_external_cents: (event.price_external_cents / 100).toString(),
             instructor_name: event.instructor_name,
             max_places: event.max_places.toString(),
+            location: event.location || "",
             description: event.description || "",
         });
         setEditingId(event.id);
@@ -357,6 +365,19 @@ export default function AdminEventsProgrammingPage() {
                                             placeholder="20"
                                         />
                                     </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Lieu / Salle</label>
+                                        <select
+                                            value={formData.location}
+                                            onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                        >
+                                            <option value="">Aucun lieu spécifique</option>
+                                            {(tenant?.locations || []).map((loc: string) => (
+                                                <option key={loc} value={loc}>{loc}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
 
                                 {/* Description */}
@@ -404,6 +425,7 @@ export default function AdminEventsProgrammingPage() {
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Durée</th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tarif Membre</th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tarif Ext.</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lieu</th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attribution</th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">places</th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inscriptions</th>
@@ -435,6 +457,9 @@ export default function AdminEventsProgrammingPage() {
                                             </td>
                                             <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
                                                 {(event.price_external_cents / 100).toFixed(2)}€
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
+                                                {event.location || <span className="text-gray-300 italic">—</span>}
                                             </td>
                                             <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
                                                 {event.instructor_name}

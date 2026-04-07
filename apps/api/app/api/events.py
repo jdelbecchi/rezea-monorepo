@@ -5,10 +5,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from sqlalchemy.orm import joinedload
 from app.db.session import get_db
 from app.models.models import Event, EventRegistration, EventRegistrationStatus, OrderPaymentStatus
-from app.schemas.schemas import EventResponse
+from app.schemas.schemas import EventResponse, EventRegistrationResponse
 
 router = APIRouter()
 
@@ -66,6 +66,63 @@ async def list_upcoming_events(
             "updated_at": e.updated_at,
         }
         response.append(data)
+    return response
+
+
+
+@router.get("/registrations", response_model=List[EventRegistrationResponse])
+async def list_my_registrations(
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    """Liste les inscriptions de l'utilisateur connecté"""
+    tenant_id = request.state.tenant_id
+    user_id = request.state.user_id
+    
+    result = await db.execute(
+        select(EventRegistration)
+        .where(
+            and_(
+                EventRegistration.tenant_id == tenant_id,
+                EventRegistration.user_id == user_id
+            )
+        )
+        .options(joinedload(EventRegistration.event))
+        .order_by(EventRegistration.created_at.desc())
+    )
+    registrations = result.unique().scalars().all()
+    
+    response = []
+    for reg in registrations:
+        try:
+            status_val = str(reg.status.value) if hasattr(reg.status, "value") else str(reg.status)
+            payment_val = str(reg.payment_status.value) if hasattr(reg.payment_status, "value") else str(reg.payment_status)
+            
+            response.append({
+                "id": reg.id,
+                "tenant_id": reg.tenant_id,
+                "user_id": reg.user_id,
+                "event_id": reg.event_id,
+                "status": status_val,
+                "price_paid_cents": reg.price_paid_cents or 0,
+                "payment_status": payment_val,
+                "created_by_admin": bool(reg.created_by_admin),
+                "notes": reg.notes,
+                "created_at": reg.created_at,
+                "cancelled_at": reg.cancelled_at,
+                "event_title": reg.event.title if reg.event else "Événement inconnu",
+                "event_date": reg.event.event_date.isoformat() if (reg.event and reg.event.event_date) else "",
+                "event_time": reg.event.event_time.strftime("%H:%M") if (reg.event and reg.event.event_time) else "",
+                "user_name": "", 
+                "user_phone": None,
+                "instagram_handle": None,
+                "facebook_handle": None,
+                "has_pending_order": False
+            })
+        except Exception as e:
+            print(f"ERROR mapping registration {reg.id}: {e}")
+            continue
+            
     return response
 
 
@@ -195,3 +252,4 @@ async def event_checkout(
         "message": "Inscription initialisée avec succès",
         "price_cents": price_cents
     }
+

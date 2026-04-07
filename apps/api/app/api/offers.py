@@ -3,6 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, update
+from sqlalchemy.exc import IntegrityError
 
 from app.db.session import get_db
 from app.models.models import Offer, UserRole
@@ -71,9 +72,16 @@ async def create_offer(
         **offer_data.model_dump()
     )
     
-    db.add(offer)
-    await db.commit()
-    await db.refresh(offer)
+    try:
+        db.add(offer)
+        await db.commit()
+        await db.refresh(offer)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Une offre avec ce code existe déjà."
+        )
     
     return offer
 
@@ -128,8 +136,15 @@ async def update_offer(
     for field, value in update_data.items():
         setattr(offer, field, value)
     
-    await db.commit()
-    await db.refresh(offer)
+    try:
+        await db.commit()
+        await db.refresh(offer)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Une offre avec ce code existe déjà."
+        )
     
     return offer
 

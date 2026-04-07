@@ -83,13 +83,22 @@ export default function DashboardPage() {
   // Logic: Order expiry check
   const expiringOrder = useMemo(() => {
     const now = new Date();
-    const nextMonth = new Date();
-    nextMonth.setMonth(now.getMonth() + 1);
+    const threshold = new Date();
+    threshold.setDate(now.getDate() + 30); // J+30 exact
 
     return myOrders.find(o => {
       if (!o.end_date) return false;
       const expiry = new Date(o.end_date);
-      return expiry > now && expiry < nextMonth && (o.payment_status === 'paye' || o.payment_status === 'echelonne');
+      
+      // Une commande est pertinente si elle est "active" ou "en_cours"
+      // même si le paiement est en attente (cas du Pay Later)
+      const isActive = o.status === 'active' || o.status === 'en_cours';
+      
+      // On affiche l'alerte du jour J (jusqu'à minuit) jusqu'à J+30
+      const expiryEndDay = new Date(expiry);
+      expiryEndDay.setHours(23, 59, 59, 999);
+      
+      return isActive && expiryEndDay >= now && expiry <= threshold;
     });
   }, [myOrders]);
 

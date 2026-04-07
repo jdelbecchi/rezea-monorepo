@@ -35,6 +35,7 @@ export default function GestionInscriptionsPage() {
     const [selectedItem, setSelectedItem] = useState<{ type: 'session' | 'event', data: any } | null>(null);
     const [participants, setParticipants] = useState<(AdminBookingItem | AdminEventRegistrationItem)[]>([]);
     const [loadingParticipants, setLoadingParticipants] = useState(false);
+    const [locationFilter, setLocationFilter] = useState<string>('all');
 
     // Modals & UX
     const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -46,6 +47,7 @@ export default function GestionInscriptionsPage() {
         title: "",
         description: "",
         instructor_name: "",
+        location: "",
         time: "",
         duration_minutes: 60,
         max_participants: 10,
@@ -105,8 +107,14 @@ export default function GestionInscriptionsPage() {
     }, [currentMonth]);
 
     const itemsForDay = (day: Date) => {
-        const daySessions = sessions.filter(s => isSameDay(parseISO(s.start_time), day));
-        const dayEvents = events.filter(e => isSameDay(parseISO(e.event_date), day));
+        let daySessions = sessions.filter(s => isSameDay(parseISO(s.start_time), day));
+        let dayEvents = events.filter(e => isSameDay(parseISO(e.event_date), day));
+        
+        if (locationFilter !== 'all') {
+            daySessions = daySessions.filter(s => s.location === locationFilter);
+            dayEvents = dayEvents.filter(e => e.location === locationFilter);
+        }
+        
         return { sessions: daySessions, events: dayEvents };
     };
 
@@ -149,6 +157,7 @@ export default function GestionInscriptionsPage() {
             title: s.title,
             description: s.description || "",
             instructor_name: s.instructor_name || "",
+            location: s.location || "",
             time: format(start, "HH:mm"),
             duration_minutes: duration,
             max_participants: s.max_participants,
@@ -181,6 +190,7 @@ export default function GestionInscriptionsPage() {
                 title: editFormData.title,
                 description: editFormData.description,
                 instructor_name: editFormData.instructor_name,
+                location: editFormData.location,
                 start_time: startDt.toISOString(),
                 end_time: endDt.toISOString(),
                 max_participants: editFormData.max_participants,
@@ -299,6 +309,35 @@ export default function GestionInscriptionsPage() {
                             <h3 className="text-sm font-medium text-slate-400 px-1">
                                 {format(selectedDate, "eeee d MMMM", { locale: fr })}
                             </h3>
+
+                            {/* Filtres par lieu (chips) */}
+                            {tenant?.locations && tenant.locations.length > 1 && (
+                                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
+                                    <button
+                                        onClick={() => setLocationFilter('all')}
+                                        className={`px-4 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all border ${
+                                            locationFilter === 'all' 
+                                            ? 'bg-slate-900 text-white border-slate-900 shadow-sm' 
+                                            : 'bg-white text-slate-500 border-slate-100 hover:border-slate-200'
+                                        }`}
+                                    >
+                                        Toutes les salles
+                                    </button>
+                                    {tenant.locations.map((loc) => (
+                                        <button
+                                            key={loc}
+                                            onClick={() => setLocationFilter(loc)}
+                                            className={`px-4 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all border ${
+                                                locationFilter === loc 
+                                                ? 'bg-violet-600 text-white border-violet-600 shadow-sm' 
+                                                : 'bg-white text-slate-500 border-slate-100 hover:border-slate-200'
+                                            }`}
+                                        >
+                                            {loc}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                             
                             {!hasItems ? (
                                 <div className="bg-white rounded-[2.5rem] p-16 text-center border border-dashed border-slate-200">
@@ -390,6 +429,14 @@ export default function GestionInscriptionsPage() {
                                                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                                                     </svg>
                                                                     <span className="truncate">{session.instructor_name || "Coach"}</span>
+                                                                    {session.location && (
+                                                                        <>
+                                                                            <span className="text-slate-200">•</span>
+                                                                            <span className="truncate flex items-center gap-1">
+                                                                                <span className="text-[10px]">📍</span> {session.location}
+                                                                            </span>
+                                                                        </>
+                                                                    )}
                                                                 </span>
                                                                 
                                                                 <span className={`font-medium shrink-0 ${isHighAttendance ? 'text-emerald-500' : 'text-amber-500'}`}>
@@ -492,6 +539,14 @@ export default function GestionInscriptionsPage() {
                                                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                                                     </svg>
                                                                     <span className="truncate">{event.instructor_name || "Staff"}</span>
+                                                                    {event.location && (
+                                                                        <>
+                                                                            <span className="text-slate-200">•</span>
+                                                                            <span className="truncate flex items-center gap-1">
+                                                                                <span className="text-[10px]">📍</span> {event.location}
+                                                                            </span>
+                                                                        </>
+                                                                    )}
                                                                 </span>
                                                                 
                                                                 <span className={`font-medium shrink-0 ${isHighAttendance ? 'text-emerald-500' : 'text-amber-500'}`}>
@@ -623,6 +678,32 @@ export default function GestionInscriptionsPage() {
                                         />
                                     </div>
                                     <div>
+                                        <label className="block text-[11px] font-medium text-slate-400 mb-1.5 px-1">Lieu</label>
+                                        {tenant?.locations && tenant.locations.length > 0 ? (
+                                            <select 
+                                                value={editFormData.location}
+                                                onChange={(e) => setEditFormData({...editFormData, location: e.target.value})}
+                                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-violet-500 outline-none transition-all text-sm appearance-none"
+                                            >
+                                                <option value="">Aucun lieu</option>
+                                                {tenant.locations.map(loc => (
+                                                    <option key={loc} value={loc}>{loc}</option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <input 
+                                                type="text" 
+                                                placeholder="Salle"
+                                                value={editFormData.location}
+                                                onChange={(e) => setEditFormData({...editFormData, location: e.target.value})}
+                                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-violet-500 outline-none transition-all text-sm"
+                                            />
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
                                         <label className="block text-[11px] font-medium text-slate-400 mb-1.5 px-1">Capacité</label>
                                         <input 
                                             type="number" 
@@ -632,6 +713,7 @@ export default function GestionInscriptionsPage() {
                                             className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-violet-500 outline-none transition-all text-sm"
                                         />
                                     </div>
+                                    <div />
                                 </div>
 
                                 <div>

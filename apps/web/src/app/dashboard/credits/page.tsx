@@ -42,13 +42,21 @@ export default function CreditsPage() {
 
     if (loading) return <div className="p-8 text-center bg-gray-50 min-h-screen">Chargement...</div>;
 
-    // Group offers by category
-    const categories = offers.reduce((acc, offer) => {
+    // Sort all offers first by category order then by offer order
+    const sortedOffers = [...offers].sort((a, b) => 
+        (a.category_display_order || 0) - (b.category_display_order || 0) || 
+        (a.display_order || 0) - (b.display_order || 0)
+    );
+
+    // Group offers by category while preserving order
+    const categoriesMap = new Map<string, Offer[]>();
+    sortedOffers.forEach(offer => {
         const category = offer.category || "Autres";
-        if (!acc[category]) acc[category] = [];
-        acc[category].push(offer);
-        return acc;
-    }, {} as Record<string, Offer[]>);
+        if (!categoriesMap.has(category)) categoriesMap.set(category, []);
+        categoriesMap.get(category)!.push(offer);
+    });
+
+    const categoriesList = Array.from(categoriesMap.entries());
 
     const isAdminMode = false; // We can refine this later if needed
 
@@ -96,9 +104,9 @@ export default function CreditsPage() {
                     </header>
 
                     {/* Catalog sections */}
-                    {Object.keys(categories).length > 0 ? (
+                    {categoriesList.length > 0 ? (
                         <div className="mt-8 space-y-12">
-                            {Object.entries(categories).map(([category, categoryOffers]) => (
+                            {categoriesList.map(([category, categoryOffers]) => (
                                 <section key={category} className="space-y-6">
                                     <div className="flex items-center gap-4">
                                         <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">{category}</h2>

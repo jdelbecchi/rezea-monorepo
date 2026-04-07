@@ -3,14 +3,16 @@
 import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
 import { useEffect, useState } from "react";
-import { api, User, Tenant } from "@/lib/api";
+import { api, User, Tenant, EventRegistration } from "@/lib/api";
 import Link from "next/link";
 
 export default function MemberOrdersPage() {
     const [user, setUser] = useState<User | null>(null);
     const [tenant, setTenant] = useState<Tenant | null>(null);
     const [orders, setOrders] = useState<any[]>([]);
+    const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState<'offers' | 'events'>('offers');
     
     // States for Info Modal
     const [showInfoModal, setShowInfoModal] = useState(false);
@@ -19,16 +21,34 @@ export default function MemberOrdersPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [userData, ordersData, tenantData] = await Promise.all([
+                // Fetch basic info first (User and Tenant)
+                const [userData, tenantData] = await Promise.all([
                     api.getCurrentUser(),
-                    api.getMyOrders(),
                     api.getTenantSettings()
                 ]);
                 setUser(userData);
-                setOrders(ordersData);
                 setTenant(tenantData);
+
+                // Fetch orders and registrations in parallel and wait for both
+                const [ordersResult, registrationsResult] = await Promise.allSettled([
+                    api.getMyOrders(),
+                    api.getMyEventRegistrations()
+                ]);
+
+                if (ordersResult.status === 'fulfilled') {
+                    setOrders(ordersResult.value);
+                } else {
+                    console.error("Orders fetch failed:", ordersResult.reason);
+                }
+
+                if (registrationsResult.status === 'fulfilled') {
+                    setRegistrations(registrationsResult.value);
+                } else {
+                    console.error("Registrations fetch failed:", registrationsResult.reason);
+                }
+
             } catch (err) {
-                console.error(err);
+                console.error("Global dashboard fetch fail:", err);
             } finally {
                 setLoading(false);
             }
@@ -83,6 +103,34 @@ export default function MemberOrdersPage() {
             case 'annule': return 'Annulée';
             default: return status;
         }
+    };
+
+    const getEventRegistrationStatusStyle = (status: string) => {
+        switch (status) {
+            case 'pending_payment': return 'bg-amber-100 text-amber-700 border-amber-200';
+            case 'confirmed': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+            case 'cancelled': return 'bg-slate-100 text-slate-500 border-slate-200';
+            case 'waiting_list': return 'bg-blue-100 text-blue-700 border-blue-200';
+            case 'absent': return 'bg-rose-100 text-rose-700 border-rose-200';
+            default: return 'bg-slate-100 text-slate-700 border-slate-200';
+        }
+    };
+
+    const getEventRegistrationStatusLabel = (status: string) => {
+        switch (status) {
+            case 'pending_payment': return 'En attente';
+            case 'confirmed': return 'Confirmé';
+            case 'cancelled': return 'Annulé';
+            case 'waiting_list': return 'Liste d\'attente';
+            case 'absent': return 'Absent';
+            case 'event_deleted': return 'Événement supprimé';
+            default: return status;
+        }
+    };
+
+    const formatEventPrice = (reg: EventRegistration) => {
+        if (reg.price_paid_cents === 0) return "Offert";
+        return `${(reg.price_paid_cents / 100).toFixed(2)}€`;
     };
 
     const downloadInvoice = (order: any) => {
@@ -150,105 +198,192 @@ th{background:#f1f5f9}
                             </Link>
                         </div>
                     )}
-                    <header className="px-1 space-y-1">
+                    <header className="px-1 space-y-1 mb-8">
                         <h1 className="text-xl md:text-2xl font-medium text-slate-900 tracking-tight flex items-center gap-2">
                             <span className="text-2xl md:text-3xl">📋</span> Mes commandes
                         </h1>
                         <p className="text-slate-500 font-medium text-[11px] md:text-xs">Historique de vos achats</p>
                     </header>
 
+                    {/* Tab Switcher */}
+                    <div className="flex gap-2 p-1 bg-slate-100/50 rounded-2xl mb-8 w-fit">
+                        <button 
+                            onClick={() => setActiveTab('offers')}
+                            className={`px-6 py-2.5 rounded-xl text-xs font-semibold transition-all ${activeTab === 'offers' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            Offres et forfaits
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('events')}
+                            className={`px-6 py-2.5 rounded-xl text-xs font-semibold transition-all ${activeTab === 'events' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            Événements
+                        </button>
+                    </div>
+
                     {loading ? (
                         <div className="p-12 text-center text-slate-400 font-semibold bg-white rounded-3xl border border-slate-100 shadow-sm animate-pulse">
                             Chargement de vos commandes...
                         </div>
-                    ) : orders.length === 0 ? (
+                    ) : (activeTab === 'offers' ? orders.length : registrations.length) === 0 ? (
                         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 md:p-16 text-center space-y-4">
-                            <div className="text-6xl">🛍️</div>
-                            <h2 className="text-2xl font-semibold text-slate-900">Vous n&apos;avez pas encore de commande</h2>
-                            <p className="text-slate-500 max-w-xs mx-auto">Parcourez notre boutique pour découvrir nos offres et forfaits.</p>
-                            <Link href="/dashboard/credits" className="inline-block mt-4 px-8 py-3 bg-blue-600 text-white font-medium rounded-2xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100">
-                                Aller à la Boutique
+                            <div className="text-6xl">{activeTab === 'offers' ? '🛍️' : '🎫'}</div>
+                            <h2 className="text-2xl font-semibold text-slate-900">
+                                {activeTab === 'offers' ? "Vous n'avez pas encore de commande" : "Vous n'êtes inscrit à aucun événement"}
+                            </h2>
+                            <p className="text-slate-500 max-w-xs mx-auto">
+                                {activeTab === 'offers' 
+                                    ? "Parcourez notre boutique pour découvrir nos offres et forfaits." 
+                                    : "Consultez notre planning pour découvrir les événements à venir."}
+                            </p>
+                            <Link href={activeTab === 'offers' ? "/dashboard/credits" : "/dashboard/planning"} className="inline-block mt-4 px-8 py-3 bg-blue-600 text-white font-medium rounded-2xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100">
+                                {activeTab === 'offers' ? "Aller à la Boutique" : "Voir le Planning"}
                             </Link>
                         </div>
                     ) : (
-                        <div className="mt-6 grid grid-cols-1 gap-4">
-                            {orders.map((order) => (
-                                <div key={order.id} className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden group">
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-bl-full -mr-16 -mt-16 opacity-50 pointer-events-none" />
-                                    
-                                    <div className="flex flex-col sm:flex-row justify-between items-start gap-4 relative z-10">
-                                        <div className="flex flex-col min-w-0 flex-1">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <h3 className="text-lg md:text-xl font-semibold text-slate-900 truncate pr-2 capitalize tracking-tight">{order.offer_name}</h3>
-                                                <button 
-                                                    onClick={() => { setSelectedOrder(order); setShowInfoModal(true); }}
-                                                    className="w-6 h-6 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-all flex-shrink-0"
-                                                    title="Détails de l'offre"
-                                                >
-                                                    ⓘ
-                                                </button>
-                                            </div>
-                                            <p className="text-slate-400 text-[11px] md:text-xs">
-                                                Commandée le {new Date(order.created_at).toLocaleDateString("fr-FR")}
-                                            </p>
-                                        </div>
+                        <div className="grid grid-cols-1 gap-4">
+                            {activeTab === 'offers' ? (
+                                orders.map((order) => (
+                                    <div key={order.id} className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden group">
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-bl-full -mr-16 -mt-16 opacity-50 pointer-events-none" />
                                         
-                                        <div className="flex items-center gap-2 relative z-10 flex-wrap sm:flex-nowrap">
-                                            <span className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold border ${getStatusStyle(order.payment_status)}`}>
-                                                <span className="opacity-60 mr-1">Paiement :</span>
-                                                {getStatusLabel(order.payment_status)}
-                                            </span>
-                                            <span className="px-3 py-1.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-lg text-[10px] font-semibold">
-                                                <span className="opacity-60 mr-1">Statut :</span>
-                                                {getGeneralStatusLabel(order.status)}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Action Panel & Validity */}
-                                    <div className="mt-4 pt-4 border-t border-dashed border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-8 h-8 flex items-center justify-center text-sm">📅</div>
-                                            <div className="flex items-center gap-2">
-                                                <p className="text-xs text-slate-400 font-medium tracking-tight">Fin de validité :</p>
-                                                <p className={`text-sm font-semibold tracking-tight ${order.is_unlimited ? 'text-emerald-600' : 'text-slate-900'}`}>
-                                                    {order.is_validity_unlimited ? 'Illimitée' : (order.end_date ? new Date(order.end_date).toLocaleDateString("fr-FR") : "N/A")}
+                                        <div className="flex flex-col sm:flex-row justify-between items-start gap-4 relative z-10">
+                                            <div className="flex flex-col min-w-0 flex-1">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <h3 className="text-lg md:text-xl font-semibold text-slate-900 truncate pr-2 capitalize tracking-tight">{order.offer_name}</h3>
+                                                    <button 
+                                                        onClick={() => { setSelectedOrder(order); setShowInfoModal(true); }}
+                                                        className="w-6 h-6 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-all flex-shrink-0"
+                                                        title="Détails de l'offre"
+                                                    >
+                                                        ⓘ
+                                                    </button>
+                                                </div>
+                                                <p className="text-slate-400 text-[11px] md:text-xs">
+                                                    Commandée le {new Date(order.created_at).toLocaleDateString("fr-FR")}
                                                 </p>
                                             </div>
+                                            
+                                            <div className="flex items-center gap-2 relative z-10 flex-wrap sm:flex-nowrap">
+                                                <span className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold border ${getStatusStyle(order.payment_status)}`}>
+                                                    <span className="opacity-60 mr-1">Paiement :</span>
+                                                    {getStatusLabel(order.payment_status)}
+                                                </span>
+                                                <span className="px-3 py-1.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-lg text-[10px] font-semibold">
+                                                    <span className="opacity-60 mr-1">Statut :</span>
+                                                    {getGeneralStatusLabel(order.status)}
+                                                </span>
+                                            </div>
                                         </div>
 
-                                        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                                            {order.payment_status === 'en_attente' && tenant?.payment_redirect_link && (
-                                                <a 
-                                                    href={tenant.payment_redirect_link}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="flex-1 md:flex-none px-5 py-2.5 bg-blue-600 text-white text-xs font-medium rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2 group/btn"
-                                                >
-                                                    💳 Payer
-                                                    <span className="group-hover/btn:translate-x-1 transition-transform">→</span>
-                                                </a>
-                                            )}
-                                            {order.invoice_number && (
-                                                <button 
-                                                    onClick={() => downloadInvoice(order)}
-                                                    className="flex-1 md:flex-none px-4 py-2.5 bg-slate-900 text-white text-xs font-medium rounded-xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-sm"
-                                                >
-                                                    🧾 Facture
-                                                </button>
-                                            )}
+                                        {/* Action Panel & Validity */}
+                                        <div className="mt-4 pt-4 border-t border-dashed border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 flex items-center justify-center text-sm">📅</div>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-xs text-slate-400 font-medium tracking-tight">Fin de validité :</p>
+                                                    <p className={`text-sm font-semibold tracking-tight ${order.is_validity_unlimited ? 'text-emerald-600' : 'text-slate-900'}`}>
+                                                        {order.is_validity_unlimited ? 'Illimitée' : (order.end_date ? new Date(order.end_date).toLocaleDateString("fr-FR") : "N/A")}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                                                {/* Bouton Payer */}
+                                                {(order.payment_status?.toLowerCase().includes('attente')) && tenant?.payment_redirect_link && (
+                                                    <a 
+                                                        href={tenant.payment_redirect_link}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex-1 md:flex-none px-5 py-2.5 bg-blue-600 text-white text-xs font-medium rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2 group/btn"
+                                                    >
+                                                        💳 Payer ma commande
+                                                        <span className="group-hover/btn:translate-x-1 transition-transform">→</span>
+                                                    </a>
+                                                )}
+                                                {order.invoice_number && (
+                                                    <button 
+                                                        onClick={() => downloadInvoice(order)}
+                                                        className="flex-1 md:flex-none px-4 py-2.5 bg-slate-900 text-white text-xs font-medium rounded-xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-sm"
+                                                    >
+                                                        🧾 Facture
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))
+                            ) : (
+                                registrations.map((reg) => (
+                                    <div key={reg.id} className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden group">
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-bl-full -mr-16 -mt-16 opacity-50 pointer-events-none" />
+                                        
+                                        <div className="flex flex-col sm:flex-row justify-between items-start gap-4 relative z-10">
+                                            <div className="flex flex-col min-w-0 flex-1">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <h3 className="text-lg md:text-xl font-semibold text-slate-900 truncate pr-2 capitalize tracking-tight">{reg.event_title}</h3>
+                                                </div>
+                                                <p className="text-slate-400 text-[11px] md:text-xs">
+                                                    Inscrit le {new Date(reg.created_at).toLocaleDateString("fr-FR")}
+                                                </p>
+                                            </div>
+                                            
+                                            <div className="flex items-center gap-2 relative z-10 flex-wrap sm:flex-nowrap">
+                                                <div className="flex flex-col items-end gap-1">
+                                                    <p className="text-lg font-bold text-slate-900 leading-none">
+                                                        {formatEventPrice(reg)}
+                                                    </p>
+                                                    <span className={`px-2 py-1 rounded-md text-[9px] font-bold border uppercase tracking-wider ${getEventRegistrationStatusStyle(reg.status)}`}>
+                                                        {getEventRegistrationStatusLabel(reg.status)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Action Panel & Validity */}
+                                        <div className="mt-4 pt-4 border-t border-dashed border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
+                                            <div className="flex items-center gap-4">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-6 h-6 flex items-center justify-center text-xs bg-slate-50 rounded-full">📅</div>
+                                                    <p className="text-xs font-semibold text-slate-700">
+                                                        {new Date(reg.event_date).toLocaleDateString("fr-FR")}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-6 h-6 flex items-center justify-center text-xs bg-slate-50 rounded-full">⏰</div>
+                                                    <p className="text-xs font-semibold text-slate-700">
+                                                        {reg.event_time}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                                                {/* Bouton Payer */}
+                                                {(reg.payment_status?.toLowerCase().includes('attente') || reg.status?.toLowerCase().includes('payment')) && tenant?.payment_redirect_link && (
+                                                    <a 
+                                                        href={tenant.payment_redirect_link}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex-1 md:flex-none px-5 py-2 md:py-2.5 bg-blue-600 text-white text-[11px] font-medium rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2 group/btn"
+                                                    >
+                                                        💳 Payer ma commande
+                                                        <span className="group-hover/btn:translate-x-1 transition-transform">→</span>
+                                                    </a>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     )}
                 </div>
             </main>
 
-            {/* Detail Modal */}
+            {/* Detail Modal (Keep existing) */}
             {showInfoModal && selectedOrder && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
+                    {/* ... rest of modal ... */}
                    <div className="bg-white rounded-[2.5rem] w-full max-w-sm overflow-hidden shadow-2xl border border-slate-100 animate-in zoom-in duration-300 p-8 text-center">
                       <div className="mb-8">
                          <h2 className="text-xl md:text-2xl font-medium text-slate-900 mb-6 tracking-tight">
@@ -302,7 +437,6 @@ th{background:#f1f5f9}
 
             <BottomNav userRole={user?.role} />
 
-            {/* Global style for safe areas */}
             <style jsx global>{`
                 @supports (-webkit-touch-callout: none) {
                     .safe-top { padding-top: env(safe-area-inset-top); }

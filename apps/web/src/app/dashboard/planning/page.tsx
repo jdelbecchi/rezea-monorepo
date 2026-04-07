@@ -54,6 +54,7 @@ export default function PlanningPage() {
     title: string;
     description?: string;
     instructor?: string;
+    location?: string;
     start?: string;
     credits?: number;
     spots?: number;
@@ -65,6 +66,7 @@ export default function PlanningPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [bookingToCancel, setBookingToCancel] = useState<{ id: string; title: string } | null>(null);
+  const [locationFilter, setLocationFilter] = useState("all");
 
   useEffect(() => {
     const initData = async () => {
@@ -342,6 +344,35 @@ export default function PlanningPage() {
                   {loading && <div className="w-4 h-4 border-2 border-violet-600 border-t-transparent rounded-full animate-spin"></div>}
                 </div>
 
+                {/* Location Filter Chips */}
+                {!loading && tenant && (tenant.locations || []).length > 1 && (
+                  <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-1 px-1 no-scrollbar">
+                    <button
+                      onClick={() => setLocationFilter("all")}
+                      className={`px-4 py-2 rounded-2xl text-[11px] font-black uppercase tracking-widest whitespace-nowrap transition-all border ${
+                        locationFilter === "all" 
+                          ? "bg-violet-600 text-white border-violet-600 shadow-md" 
+                          : "bg-white text-slate-400 border-slate-100 hover:border-slate-200"
+                      }`}
+                    >
+                      Tous les lieux
+                    </button>
+                    {(tenant.locations || []).map((loc: string) => (
+                      <button
+                        key={loc}
+                        onClick={() => setLocationFilter(loc)}
+                        className={`px-4 py-2 rounded-2xl text-[11px] font-black uppercase tracking-widest whitespace-nowrap transition-all border ${
+                          locationFilter === loc
+                            ? "bg-violet-600 text-white border-violet-600 shadow-md"
+                            : "bg-white text-slate-400 border-slate-100 hover:border-slate-200"
+                        }`}
+                      >
+                        {loc}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 {error && (
                   <div className="p-4 bg-rose-50 border border-rose-100 text-rose-700 rounded-2xl text-xs font-semibold flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
                     <span>⚠️</span> {error}
@@ -370,6 +401,7 @@ export default function PlanningPage() {
                       ...events.map(e => ({ ...e, uType: 'event' })),
                       ...sessions.map(s => ({ ...s, uType: 'session' }))
                     ]
+                    .filter(item => locationFilter === 'all' || item.location === locationFilter)
                     .sort((a: any, b: any) => {
                         const timeA = a.uType === 'event' ? a.event_time : format(parseISO(a.start_time), 'HH:mm');
                         const timeB = b.uType === 'event' ? b.event_time : format(parseISO(b.start_time), 'HH:mm');
@@ -396,11 +428,15 @@ export default function PlanningPage() {
                                   {isEvent && <span className="text-base font-medium">✨</span>}
                                </div>
                             </div>
-                            <div className="w-40 flex items-center gap-2 text-slate-400 text-sm truncate">
+                            <div className="w-32 flex items-center gap-2 text-slate-400 text-sm truncate">
                                <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                </svg>
                                <span className="truncate">{item.instructor_name}</span>
+                            </div>
+                            <div className="w-32 flex items-center gap-2 text-slate-400 text-sm truncate">
+                               <span className="text-sm flex-shrink-0">📍</span>
+                               <span className="truncate">{item.location || "N/A"}</span>
                             </div>
                             <div className="w-44 flex items-center justify-center">
                               <span className={`text-[11px] md:text-xs px-3 py-1 rounded-full font-semibold tracking-tight shadow-sm ${isFull ? 'text-rose-400 bg-rose-50/50' : (spotsLeft <= 3 ? 'text-amber-500 bg-amber-50/50' : 'text-emerald-500 bg-emerald-50/50')}`}>
@@ -425,6 +461,7 @@ export default function PlanningPage() {
                                     title: item.title,
                                     description: item.description || "Aucune description.",
                                     instructor: item.instructor_name,
+                                    location: item.location,
                                     start: time,
                                     credits: item.credits_required || 0,
                                     spots: spotsLeft,
@@ -480,7 +517,8 @@ export default function PlanningPage() {
                              </div>
                           </div>
 
-                          <div className="md:hidden flex flex-col gap-0.5">
+                          <div className="md:hidden flex flex-col gap-3 py-1">
+                            {/* Line 1: Time and Title */}
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3 min-w-0">
                                 <span className="text-slate-900 font-bold text-sm flex-shrink-0">{time}</span>
@@ -497,7 +535,6 @@ export default function PlanningPage() {
                                     <span className="text-slate-700 font-semibold">{item.credits_required}</span>
                                   </div>
                                 )}
-                                <div className="flex items-center gap-1">
                                 <button 
                                    onClick={() => {
                                      setSelectedItem({
@@ -506,6 +543,7 @@ export default function PlanningPage() {
                                        title: item.title,
                                        description: item.description || "Aucune description.",
                                        instructor: item.instructor_name,
+                                       location: item.location,
                                        start: time,
                                        credits: item.credits_required || 0,
                                        spots: spotsLeft,
@@ -521,58 +559,68 @@ export default function PlanningPage() {
                                   </svg>
                                 </button>
                               </div>
-                             </div>
-                          </div>
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-6 text-[11px] font-medium">
+                            </div>
+
+                            {/* Line 2: Coach and Location */}
+                            <div className="flex items-center gap-6 text-[11px] font-medium pl-1">
+                              <span className="truncate text-slate-400 flex items-center gap-1.5">
+                                <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                                {item.instructor_name}
+                              </span>
+                              {item.location && (
                                 <span className="truncate text-slate-400 flex items-center gap-1.5">
-                                  <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                  </svg>
-                                  {item.instructor_name}
+                                  <span>📍</span>
+                                  {item.location}
                                 </span>
-                                <span className={`flex-shrink-0 font-semibold tracking-tight ${isFull ? 'text-rose-400' : (spotsLeft <= 3 ? 'text-amber-500' : 'text-emerald-500')}`}>
-                                  {isFull ? (isEvent ? 'Event complet' : 'Séance complète') : `${spotsLeft} places dispos`}
-                                </span>
-                              </div>
-                             <div className="flex justify-end pr-0.5">
-                               {booked ? (
-                                  isWaitlisted ? (
-                                    <div className="w-[72px] py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-amber-50 text-amber-600 border border-amber-100 shadow-sm">Sur liste</div>
-                                  ) : isEvent ? (
-                                    <div className="w-[72px] py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm">Inscrit</div>
-                                  ) : (
-                                    <div className="w-[72px] py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm">Réservé</div>
-                                  )
-                               ) : canWaitlist ? (
-                                  <button 
-                                      disabled={bookingLoading === item.id}
-                                      onClick={() => handleBooking(item.id)}
-                                      className="w-[72px] py-2 bg-amber-500 text-white font-medium rounded-xl text-[11px] shadow-sm hover:bg-amber-600 transition-all active:scale-95 text-center"
-                                  >
-                                      {bookingLoading === item.id ? "..." : "En attente"}
-                                  </button>
-                               ) : isFull ? (
-                                  <div className="w-[72px]"></div>
-                               ) : (
-                                  isEvent ? (
-                                     <Link 
-                                         href={`/dashboard/events/checkout/${item.id}`}
-                                         className="w-[72px] py-2 bg-blue-600 text-white font-medium rounded-xl text-[11px] shadow-md hover:bg-blue-700 transition-all active:scale-95 text-center"
-                                     >
-                                         S’inscrire
-                                     </Link>
+                              )}
+                            </div>
+
+                            {/* Line 3: Spots and Button */}
+                            <div className="flex items-center justify-between">
+                              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border shadow-sm ${isFull ? 'text-rose-400 bg-rose-50/50 border-rose-100/50' : (spotsLeft <= 3 ? 'text-amber-500 bg-amber-50/50 border-amber-100/50' : 'text-emerald-500 bg-emerald-50/50 border-emerald-100/50')}`}>
+                                <span className="text-xs">👥</span> {isFull ? 'Complet' : `${spotsLeft} PLACES`}
+                              </span>
+
+                              <div className="flex justify-end">
+                                {booked ? (
+                                   isWaitlisted ? (
+                                     <div className="w-[84px] py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-amber-50 text-amber-600 border border-amber-100 shadow-sm">Sur liste</div>
+                                   ) : isEvent ? (
+                                     <div className="w-[84px] py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm">Inscrit</div>
                                    ) : (
-                                     <button 
-                                         disabled={bookingLoading === item.id}
-                                         onClick={() => handleBooking(item.id)}
-                                         className="w-[72px] py-2 bg-slate-900 text-white font-medium rounded-xl text-[11px] shadow-md hover:bg-slate-800 transition-all active:scale-95 text-center"
-                                     >
-                                         {bookingLoading === item.id ? "..." : "Réserver"}
-                                     </button>
-                                  )
-                               )}
-                             </div>
+                                     <div className="w-[84px] py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm">Réservé</div>
+                                   )
+                                ) : canWaitlist ? (
+                                   <button 
+                                       disabled={bookingLoading === item.id}
+                                       onClick={() => handleBooking(item.id)}
+                                       className="w-[84px] py-2 bg-amber-500 text-white font-medium rounded-xl text-[11px] shadow-sm hover:bg-amber-600 transition-all active:scale-95 text-center"
+                                   >
+                                       {bookingLoading === item.id ? "..." : "En attente"}
+                                   </button>
+                                ) : isFull ? (
+                                   <div className="w-[84px]"></div>
+                                ) : (
+                                   isEvent ? (
+                                      <Link 
+                                          href={`/dashboard/events/checkout/${item.id}`}
+                                          className="w-[84px] py-2 bg-blue-600 text-white font-medium rounded-xl text-[11px] shadow-md hover:bg-blue-700 transition-all active:scale-95 text-center"
+                                      >
+                                          S’inscrire
+                                      </Link>
+                                    ) : (
+                                      <button 
+                                          disabled={bookingLoading === item.id}
+                                          onClick={() => handleBooking(item.id)}
+                                          className="w-[84px] py-2 bg-slate-900 text-white font-medium rounded-xl text-[11px] shadow-md hover:bg-slate-800 transition-all active:scale-95 text-center"
+                                      >
+                                          {bookingLoading === item.id ? "..." : "Réserver"}
+                                      </button>
+                                   )
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -661,7 +709,7 @@ export default function PlanningPage() {
                    </p>
                  )}
                  
-                 <div className="flex items-center justify-center gap-6 mb-8 text-slate-500">
+                 <div className="flex flex-wrap items-center justify-center gap-6 mb-8 text-slate-500">
                     <div className="flex items-center gap-2">
                       <span className="text-base">🕒</span>
                       <span className="text-xs font-medium">{selectedItem.start}</span>
@@ -672,6 +720,12 @@ export default function PlanningPage() {
                       </svg>
                       <span className="text-xs font-medium">{selectedItem.instructor}</span>
                     </div>
+                    {selectedItem.location && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-base transition-all group-hover:scale-110">📍</span>
+                        <span className="text-xs font-medium">{selectedItem.location}</span>
+                      </div>
+                    )}
                  </div>
 
                  <div className="p-4 bg-slate-50/30 rounded-2xl border border-slate-100/30">

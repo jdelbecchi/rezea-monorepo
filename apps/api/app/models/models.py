@@ -8,7 +8,7 @@ from sqlalchemy import (
     Column, String, Integer, DateTime, Boolean, ForeignKey,
     Numeric, Text, Enum as SQLEnum, Index, CheckConstraint, Date, Time
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSON
 from sqlalchemy.orm import relationship
 import uuid
 import enum
@@ -96,6 +96,9 @@ class Tenant(Base):
     # Emails
     confirmation_email_body = Column(Text, nullable=True)
     
+    # Lieux et Espaces
+    locations = Column(JSON, default=list) # Liste des noms de salles autorisées
+    
     # Options de paiement
     allow_pay_later = Column(Boolean, default=True)
     payment_redirect_link = Column(String(500), nullable=True)
@@ -108,6 +111,30 @@ class Tenant(Base):
     # Relations
     users = relationship("User", back_populates="tenant", cascade="all, delete-orphan")
     sessions = relationship("Session", back_populates="tenant", cascade="all, delete-orphan")
+    email_templates = relationship("EmailTemplate", back_populates="tenant", cascade="all, delete-orphan")
+
+
+class EmailTemplate(Base):
+    """Modèle d'email pré-enregistré par le club"""
+    __tablename__ = "email_templates"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    
+    name = Column(String(255), nullable=False)
+    subject = Column(String(255), nullable=False)
+    content = Column(Text, nullable=False)
+    
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relations
+    tenant = relationship("Tenant", back_populates="email_templates")
+
+    __table_args__ = (
+        Index("idx_email_templates_tenant", "tenant_id"),
+    )
 
 
 class SysAdmin(Base):
@@ -194,10 +221,12 @@ class Session(Base):
     description = Column(Text)
     activity_type = Column(String(100))  # Ex: Tennis, Yoga, Fitness
     instructor_name = Column(String(255))  # Attribution / animateur
+    location = Column(String(255))  # Salle / Lieu
     
     # Planning
     start_time = Column(DateTime, nullable=False)
     end_time = Column(DateTime, nullable=False)
+    recurrence_id = Column(UUID(as_uuid=True), index=True, nullable=True)
     
     # Capacité
     max_participants = Column(Integer, nullable=False)
@@ -331,7 +360,8 @@ class Offer(Base):
     
     # Configuration
     is_active = Column(Boolean, default=True)
-    display_order = Column(Integer, default=0)
+    display_order = Column(Integer, default=0) # N° d'offre
+    category_display_order = Column(Integer, default=0) # N° de rubrique
     
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -436,6 +466,7 @@ class Event(Base):
 
     # Attribution
     instructor_name = Column(String(255), nullable=False)
+    location = Column(String(255))  # Salle / Lieu
 
     # Capacité
     max_places = Column(Integer, nullable=False)
