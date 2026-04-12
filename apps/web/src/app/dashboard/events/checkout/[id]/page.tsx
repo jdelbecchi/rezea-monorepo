@@ -6,8 +6,6 @@ import Link from "next/link";
 import { api, Event, Tenant, User } from "@/lib/api";
 import BottomNav from "@/components/BottomNav";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
 export default function EventCheckoutPage() {
     const params = useParams();
     const router = useRouter();
@@ -19,9 +17,8 @@ export default function EventCheckoutPage() {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [tariff, setTariff] = useState<'member' | 'external'>('member');
-    const [success, setSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [payLater, setPayLater] = useState(true); // Default to true as per shop behavior
+    const [payLater, setPayLater] = useState(true);
 
     const [showSuccess, setShowSuccess] = useState(false);
 
@@ -36,6 +33,11 @@ export default function EventCheckoutPage() {
                 setEvent(eventData);
                 setTenant(tenantData);
                 setUser(userData);
+                
+                // If payment link is missing, force payLater
+                if (!tenantData.payment_redirect_link) {
+                    setPayLater(true);
+                }
             } catch (err) {
                 console.error(err);
                 setError("Impossible de charger les détails de l'événement.");
@@ -60,8 +62,6 @@ export default function EventCheckoutPage() {
     };
 
     if (loading) return <div className="p-8 text-center bg-gray-50 min-h-screen">Chargement...</div>;
-
-    const currentPrice = tariff === 'member' ? event?.price_member_cents : event?.price_external_cents;
 
     return (
         <div className="min-h-screen bg-white flex flex-col md:flex-row pb-20 md:pb-0 overflow-x-hidden">
@@ -174,27 +174,37 @@ export default function EventCheckoutPage() {
                             {/* Confirmation Section */}
                             <div className="mt-10 space-y-6">
                                 <div className="space-y-4">
-                                    <label className="flex items-center justify-center md:justify-start gap-3 cursor-pointer group">
-                                        <div className="relative flex items-center h-5">
-                                            <input
-                                                type="checkbox"
-                                                checked={payLater}
-                                                onChange={(e) => setPayLater(e.target.checked)}
-                                                className="peer h-5 w-5 cursor-pointer appearance-none rounded border border-slate-300 transition-all checked:border-slate-900 checked:bg-slate-900"
-                                            />
-                                            <span className="absolute text-white opacity-0 peer-checked:opacity-100 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity pointer-events-none">
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor" stroke="currentColor" strokeWidth="1">
-                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                                </svg>
-                                            </span>
-                                        </div>
-                                        <span className="text-sm font-semibold text-slate-700">Option &quot;Payer plus tard&quot;</span>
-                                    </label>
+                                    {tenant?.payment_redirect_link ? (
+                                        <>
+                                            <label className="flex items-center justify-center md:justify-start gap-3 cursor-pointer group">
+                                                <div className="relative flex items-center h-5">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={payLater}
+                                                        onChange={(e) => setPayLater(e.target.checked)}
+                                                        className="peer h-5 w-5 cursor-pointer appearance-none rounded border border-slate-300 transition-all checked:border-slate-900 checked:bg-slate-900"
+                                                    />
+                                                    <span className="absolute text-white opacity-0 peer-checked:opacity-100 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity pointer-events-none">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor" stroke="currentColor" strokeWidth="1">
+                                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                        </svg>
+                                                    </span>
+                                                </div>
+                                                <span className="text-sm font-semibold text-slate-700">Option &quot;Payer plus tard&quot;</span>
+                                            </label>
 
-                                    {payLater && (
-                                        <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300">
-                                            <p className="text-xs text-amber-800 leading-relaxed text-center md:text-left">
-                                                <strong>Attention !</strong> Si vous choisissez le paiement différé, vous n&apos;êtes pas redirigé vers le lien de paiement. Votre inscription est enregistrée, mais le règlement est à effectuer selon les conditions de l&apos;établissement.
+                                            {payLater && (
+                                                <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300">
+                                                    <p className="text-xs text-amber-800 leading-relaxed text-center md:text-left">
+                                                        <strong>Attention !</strong> Si vous choisissez le paiement différé, vous n&apos;êtes pas redirigé vers le lien de paiement. Votre inscription est enregistrée, mais le règlement est à effectuer selon les conditions de l&apos;établissement.
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300">
+                                            <p className="text-xs text-blue-800 leading-relaxed text-center md:text-left">
+                                                L&apos;établissement ne propose pas de règlement en ligne pour le moment. Votre inscription sera validée immédiatement et le règlement sera à effectuer selon les modalités de l&apos;établissement.
                                             </p>
                                         </div>
                                     )}
@@ -235,13 +245,18 @@ export default function EventCheckoutPage() {
                             <p className="text-slate-500 text-sm leading-relaxed">
                                 Votre inscription à l'événement <span className="text-blue-600 font-bold">{event?.title}</span> est bien enregistrée.
                             </p>
+                            {!tenant?.payment_redirect_link && (
+                                <p className="text-xs text-slate-400 mt-2 italic leading-relaxed">
+                                    Le règlement sera à effectuer selon les modalités de l'établissement.
+                                </p>
+                            )}
                         </div>
 
                         <button
                             onClick={() => router.push('/dashboard/planning')}
                             className="w-full py-4 rounded-2xl bg-slate-900 text-white font-medium text-sm hover:bg-blue-600 transition-all duration-300 shadow-xl"
                         >
-                            Retour au planning
+                            {tenant?.payment_redirect_link ? "Retour au planning" : "Retour au planning"}
                         </button>
                     </div>
                 </div>

@@ -3,7 +3,8 @@ Schémas Pydantic pour validation des requêtes/réponses
 """
 from datetime import datetime, date
 from typing import Optional, List
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from decimal import Decimal
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 from uuid import UUID
 
 from app.models.models import UserRole, BookingStatus, CreditTransactionType, WaitlistStatus, OrderPaymentStatus
@@ -75,6 +76,7 @@ class UserUpdate(BaseModel):
     facebook_handle: Optional[str] = None
     role: Optional[UserRole] = None
     is_active: Optional[bool] = None
+    is_active_override: Optional[bool] = None
     is_blacklisted: Optional[bool] = None
     blacklist_reason: Optional[str] = None
     remind_before_session: Optional[bool] = None
@@ -89,6 +91,8 @@ class UserResponse(UserBase):
     tenant_id: UUID
     role: UserRole
     is_active: bool
+    is_active_override: Optional[bool] = False
+    created_by_admin: bool = False
     is_active_member: bool = False
     email_verified: bool
     docs_accepted_at: Optional[datetime] = None
@@ -98,6 +102,12 @@ class UserResponse(UserBase):
     blacklist_reason: Optional[str] = None
     remind_before_session: bool = True
     receive_marketing_emails: bool = True
+
+    @field_validator('is_active_override', 'created_by_admin', mode='before')
+    @classmethod
+    def validate_nullable_bools(cls, v):
+        """Assure que None est transformé en False pour éviter les erreurs de validation"""
+        return v if v is not None else False
 
 
 # ==================== Tenant ====================
@@ -120,7 +130,7 @@ class TenantSettingsUpdate(BaseModel):
     logo_url: Optional[str] = None
     banner_url: Optional[str] = None
     primary_color: Optional[str] = Field(None, pattern="^#[0-9a-fA-F]{6}$")
-    welcome_message: Optional[str] = Field(None, max_length=500)
+    welcome_message: Optional[str] = Field(None, max_length=2000)
     cgv_url: Optional[str] = None
     rules_url: Optional[str] = None
     registration_limit_mins: Optional[int] = Field(None, ge=0)
@@ -195,7 +205,7 @@ class SessionBase(BaseModel):
     start_time: datetime
     end_time: datetime
     max_participants: int = Field(..., gt=0)
-    credits_required: float = Field(1.0, ge=0)
+    credits_required: Decimal = Field(Decimal("1.0"), ge=0)
     allow_waitlist: bool = True
 
 
@@ -212,9 +222,10 @@ class SessionUpdate(BaseModel):
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     max_participants: Optional[int] = None
-    credits_required: Optional[float] = None
+    credits_required: Optional[Decimal] = None
     is_active: Optional[bool] = None
     location: Optional[str] = None
+    allow_waitlist: Optional[bool] = None
 
 
 class SessionResponse(SessionBase):
@@ -228,6 +239,7 @@ class SessionResponse(SessionBase):
     created_at: datetime
     available_spots: int = 0
     is_full: bool = False
+    waitlist_count: int = 0
     
     def model_post_init(self, __context):
         """Calcul des champs dérivés"""
@@ -250,7 +262,7 @@ class BookingResponse(BaseModel):
     user_id: UUID
     session_id: UUID
     status: BookingStatus
-    credits_used: float
+    credits_used: Decimal
     notes: Optional[str] = None
     created_at: datetime
     updated_at: datetime
@@ -269,9 +281,9 @@ class CreditAccountResponse(BaseModel):
     
     id: UUID
     user_id: UUID
-    balance: float
-    total_purchased: float
-    total_used: float
+    balance: Decimal
+    total_purchased: Decimal
+    total_used: Decimal
     created_at: datetime
 
 
@@ -281,8 +293,8 @@ class CreditTransactionResponse(BaseModel):
     
     id: UUID
     transaction_type: CreditTransactionType
-    amount: float
-    balance_after: float
+    amount: Decimal
+    balance_after: Decimal
     description: Optional[str] = None
     payment_provider: Optional[str] = None
     created_at: datetime
@@ -297,7 +309,7 @@ class CreditPurchaseRequest(BaseModel):
 class CreditPurchaseResponse(BaseModel):
     """Réponse d'achat de crédits"""
     transaction_id: UUID
-    amount: float  # Nombre de cours/crédits
+    amount: Decimal  # Nombre de cours/crédits
     payment_url: str
     payment_id: str
 
@@ -342,11 +354,12 @@ class OfferUpdate(BaseModel):
     recurring_count: Optional[int] = Field(None, ge=1)
     featured_pricing: Optional[str] = None
     period: Optional[str] = Field(None, max_length=50)
-    classes_included: Optional[float] = Field(None, gt=0)
+    classes_included: Optional[int] = Field(None, gt=0)
     is_unlimited: Optional[bool] = None
-    validity_days: Optional[int] = Field(None, gt=0)
+    validity_days: Optional[int] = None
     validity_unit: Optional[str] = None
     deadline_date: Optional[date] = None
+    is_validity_unlimited: Optional[bool] = None
     is_unique: Optional[bool] = None
     is_active: Optional[bool] = None
     display_order: Optional[int] = None
@@ -419,6 +432,7 @@ class EventCreate(BaseModel):
     max_places: int = Field(..., gt=0)
     location: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = None
+    allow_waitlist: bool = True
 
 
 class EventUpdate(BaseModel):
@@ -433,6 +447,8 @@ class EventUpdate(BaseModel):
     max_places: Optional[int] = Field(None, gt=0)
     location: Optional[str] = None
     description: Optional[str] = None
+    allow_waitlist: Optional[bool] = None
+    is_active: Optional[bool] = None
 
 
 class EventResponse(BaseModel):
@@ -448,9 +464,12 @@ class EventResponse(BaseModel):
     instructor_name: str
     max_places: int
     registrations_count: int
+    waitlist_count: int = 0
     is_registered: Optional[bool] = False
     location: Optional[str] = None
     description: Optional[str] = None
+    allow_waitlist: bool = True
+    is_active: bool = True
     created_at: datetime
     updated_at: datetime
 
@@ -471,61 +490,13 @@ class OrderUpdate(BaseModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     price_cents: Optional[int] = None
-    credits_total: Optional[float] = None
+    credits_total: Optional[Decimal] = None
     is_unlimited: Optional[bool] = None
     status: Optional[str] = None
     payment_status: Optional[OrderPaymentStatus] = None
     comment: Optional[str] = None
     invoice_number: Optional[str] = None
     invoice_url: Optional[str] = None
-
-
-class OrderResponse(BaseModel):
-    """Réponse commande pour la table admin"""
-    id: UUID
-    tenant_id: UUID
-    user_id: UUID
-    offer_id: UUID
-    # Champs directs
-    start_date: date
-    end_date: Optional[date] = None
-    is_validity_unlimited: bool = False
-    credits_total: Optional[float] = None
-    is_unlimited: bool = False
-    price_cents: int
-    payment_status: OrderPaymentStatus
-    comment: Optional[str] = None
-    created_by_admin: bool = False
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-    # Facturation
-    invoice_number: Optional[str] = None
-    invoice_url: Optional[str] = None
-    # Champs calculés / joints
-    user_name: str = ""
-    user_email: str = ""
-    offer_code: str = ""
-    offer_name: str = ""
-    offer_period: Optional[str] = None
-    offer_featured_pricing: Optional[str] = None
-    offer_price_recurring_cents: Optional[int] = None
-    offer_price_lump_sum_cents: Optional[int] = None
-    offer_recurring_count: Optional[int] = None
-    credits_used: float = 0.0
-    balance: Optional[float] = None
-    status: str = "en_cours"
-    # Snapshots contractuels (Optionnels pour compatibilité avec anciennes commandes)
-    offer_snap_name: Optional[str] = None
-    offer_snap_description: Optional[str] = None
-    offer_snap_validity_days: Optional[int] = None
-    offer_snap_validity_unit: Optional[str] = None
-    offer_snap_is_validity_unlimited: Optional[bool] = False
-    # Financial summary for installments
-    received_cents: int = 0
-    pending_cents: int = 0
-    error_cents: int = 0
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 class InstallmentResponse(BaseModel):
@@ -541,6 +512,59 @@ class InstallmentResponse(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class OrderResponse(BaseModel):
+    """Réponse commande pour la table admin"""
+    id: UUID
+    tenant_id: UUID
+    user_id: UUID
+    offer_id: UUID
+    # Champs directs
+    start_date: date
+    end_date: Optional[date] = None
+    is_validity_unlimited: bool = False
+    credits_total: Optional[Decimal] = None
+    is_unlimited: bool = False
+    price_cents: int
+    payment_status: OrderPaymentStatus
+    comment: Optional[str] = None
+    created_by_admin: bool = False
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    # Facturation
+    invoice_number: Optional[str] = None
+    invoice_url: Optional[str] = None
+    # Champs calculés / joints
+    user_name: str = ""
+    user_email: str = ""
+    user_is_suspended: bool = False
+    offer_code: str = ""
+    offer_name: str = ""
+    offer_period: Optional[str] = None
+    offer_featured_pricing: Optional[str] = None
+    offer_price_recurring_cents: Optional[int] = None
+    offer_price_lump_sum_cents: Optional[int] = None
+    offer_recurring_count: Optional[int] = None
+    credits_used: Decimal = Decimal("0.0")
+    balance: Optional[Decimal] = None
+    status: str = "active"
+    # Snapshots contractuels (Optionnels pour compatibilité avec anciennes commandes)
+    offer_snap_name: Optional[str] = None
+    offer_snap_description: Optional[str] = None
+    offer_snap_validity_days: Optional[int] = None
+    offer_snap_validity_unit: Optional[str] = None
+    offer_snap_is_validity_unlimited: Optional[bool] = False
+    # Financial summary for installments
+    received_cents: int = 0
+    pending_cents: int = 0
+    error_cents: int = 0
+    # Échéances
+    installments: List[InstallmentResponse] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 
 
 
@@ -565,7 +589,7 @@ class AdminBookingResponse(BaseModel):
     user_id: UUID
     session_id: UUID
     status: BookingStatus
-    credits_used: float
+    credits_used: Decimal
     created_by_admin: bool = False
     cancellation_type: Optional[str] = None
     notes: Optional[str] = None

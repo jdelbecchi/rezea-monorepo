@@ -1,4 +1,5 @@
 """Routes pour la gestion des offres/forfaits"""
+from datetime import date
 from typing import List
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,6 +26,22 @@ async def list_offers(
     - Admin: Peut voir toutes les offres
     """
     tenant_id = request.state.tenant_id
+    today = date.today()
+    
+    # Désactiver automatiquement les offres dont la date limite est passée
+    await db.execute(
+        update(Offer)
+        .where(
+            and_(
+                Offer.tenant_id == tenant_id,
+                Offer.is_active == True,
+                Offer.is_validity_unlimited == False,
+                Offer.deadline_date < today
+            )
+        )
+        .values(is_active=False)
+    )
+    await db.commit()
     
     query = select(Offer).where(Offer.tenant_id == tenant_id)
     

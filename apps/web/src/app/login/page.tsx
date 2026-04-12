@@ -65,15 +65,15 @@ export default function LoginPage() {
 
           <div className="rounded-md shadow-sm space-y-4">
             <div>
-              <label htmlFor="tenant_slug" className="block text-sm font-medium text-gray-700 mb-1">
-                Code de votre établissement
+              <label htmlFor="tenant_slug" className={`block text-sm font-medium mb-1 ${!formData.tenant_slug ? 'text-red-500' : 'text-gray-700'}`}>
+                Code de votre établissement *
               </label>
               <input
                 id="tenant_slug"
                 name="tenant_slug"
                 type="text"
                 required
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                className={`appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm ${!formData.tenant_slug ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
                 placeholder="mon-club"
                 value={formData.tenant_slug}
                 onChange={(e) =>
@@ -83,8 +83,8 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email
+              <label htmlFor="email" className={`block text-sm font-medium mb-1 ${!formData.email ? 'text-red-500' : 'text-gray-700'}`}>
+                Email *
               </label>
               <input
                 id="email"
@@ -92,7 +92,7 @@ export default function LoginPage() {
                 type="email"
                 autoComplete="email"
                 required
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                className={`appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm ${!formData.email ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
                 placeholder="votre@email.com"
                 value={formData.email}
                 onChange={(e) =>
@@ -102,8 +102,8 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                Mot de passe
+              <label htmlFor="password" className={`block text-sm font-medium mb-1 ${!formData.password ? 'text-red-500' : 'text-gray-700'}`}>
+                Mot de passe *
               </label>
               <div className="relative">
                 <input
@@ -112,7 +112,7 @@ export default function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   required
-                  className="appearance-none relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  className={`appearance-none relative block w-full px-3 py-2 pr-10 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm ${!formData.password ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) =>

@@ -113,6 +113,8 @@ export interface User {
   instagram_handle?: string;
   facebook_handle?: string;
   is_active: boolean;
+  is_active_override: boolean;
+  created_by_admin?: boolean;
   is_active_member?: boolean;
   email_verified?: boolean;
   created_at?: string;
@@ -139,6 +141,8 @@ export interface Session {
   allow_waitlist: boolean;
   instructor_name?: string;
   location?: string;
+  waitlist_count?: number;
+  waitlist_users?: { first_name: string; last_name: string; email: string }[];
 }
 
 export interface EventRegistration {
@@ -180,6 +184,9 @@ export interface Event {
   registrations_count: number;
   is_registered?: boolean;
   location?: string;
+  allow_waitlist: boolean;
+  waitlist_count?: number;
+  waitlist_users?: { first_name: string; last_name: string; email: string }[];
   created_at?: string;
   updated_at?: string;
 }
@@ -251,6 +258,7 @@ export interface OrderItem {
   updated_at: string | null;
   user_name: string;
   user_email: string;
+  user_is_suspended?: boolean;
   offer_code: string;
   offer_name: string;
   offer_period: string | null;
@@ -617,6 +625,7 @@ export const api = {
     credits_required: number;
     instructor_name?: string;
     location?: string;
+    allow_waitlist?: boolean;
   }) => {
     const response = await apiClient.post('/api/planning', sessionData);
     return response.data;
@@ -707,6 +716,7 @@ export const api = {
     instructor_name: string;
     max_places: number;
     description?: string | null;
+    allow_waitlist?: boolean;
   }) => {
     const response = await apiClient.post('/api/admin/events', data);
     return response.data;
@@ -719,6 +729,16 @@ export const api = {
 
   deleteAdminEvent: async (eventId: string) => {
     const response = await apiClient.delete(`/api/admin/events/${eventId}`);
+    return response.data;
+  },
+
+  cancelAdminEvent: async (eventId: string) => {
+    const response = await apiClient.post(`/api/admin/events/${eventId}/cancel`);
+    return response.data;
+  },
+
+  reactivateAdminEvent: async (eventId: string) => {
+    const response = await apiClient.post(`/api/admin/events/${eventId}/reactivate`);
     return response.data;
   },
 

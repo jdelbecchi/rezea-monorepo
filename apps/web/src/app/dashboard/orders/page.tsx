@@ -96,7 +96,6 @@ export default function MemberOrdersPage() {
     const getGeneralStatusLabel = (status: string) => {
         switch (status) {
             case 'active': return 'Active';
-            case 'en_cours': return 'Active';
             case 'termine': return 'Terminée';
             case 'expiree': return 'Expirée';
             case 'en_pause': return 'En pause';

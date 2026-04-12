@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { api, User, Offer } from "@/lib/api";
+import { api, User, Offer, Tenant } from "@/lib/api";
 import BottomNav from "@/components/BottomNav";
+import DateInputZen from "@/components/DateInputZen";
 
 export default function CheckoutPage() {
     const router = useRouter();
@@ -13,6 +14,7 @@ export default function CheckoutPage() {
 
     const [user, setUser] = useState<User | null>(null);
     const [offer, setOffer] = useState<Offer | null>(null);
+    const [tenant, setTenant] = useState<Tenant | null>(null);
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
     const [payLater, setPayLater] = useState(false);
@@ -23,11 +25,19 @@ export default function CheckoutPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [userData, offersData] = await Promise.all([
+                const [userData, offersData, tenantData] = await Promise.all([
                     api.getCurrentUser(),
-                    api.getOffers(true) // Include all to find this specific one
+                    api.getOffers(true),
+                    api.getTenantSettings()
                 ]);
                 setUser(userData);
+                setTenant(tenantData);
+                
+                // If payment link is missing, force payLater
+                if (!tenantData.payment_redirect_link) {
+                    setPayLater(true);
+                }
+
                 const foundOffer = offersData.find((o: Offer) => o.id === offerId);
                 if (!foundOffer) {
                     router.push("/dashboard/credits");
@@ -44,11 +54,11 @@ export default function CheckoutPage() {
         fetchData();
     }, [offerId, router]);
 
-    const handleCheckout = async (payLater: boolean) => {
+    const handleCheckout = async (payLaterValue: boolean) => {
         if (!offer) return;
         setProcessing(true);
         try {
-            const res = await api.createShopOrder(offer.id, payLater, startDate);
+            const res = await api.createShopOrder(offer.id, payLaterValue, startDate);
             setSuccessData(res);
             setShowSuccess(true);
         } catch (err: any) {
@@ -58,10 +68,11 @@ export default function CheckoutPage() {
     };
 
     const handleFinalRedirect = () => {
-        if (successData?.redirect_url) {
-            window.location.href = successData.redirect_url;
+        if (successData?.redirect_url && tenant?.payment_redirect_link) {
+            window.open(successData.redirect_url, '_blank');
+            router.push("/dashboard");
         } else {
-            router.push("/dashboard/orders"); // Redirige vers "Mes commandes"
+            router.push("/dashboard");
         }
     };
 
@@ -69,7 +80,7 @@ export default function CheckoutPage() {
     if (!offer) return null;
 
     return (
-        <div className="min-h-screen bg-white flex flex-col md:flex-row pb-20 md:pb-0 overflow-x-hidden">
+        <div className="min-h-screen bg-white flex flex-col md:flex-row pb-20 md:pb-0">
             {/* PWA Mobile Header */}
             <header className="fixed top-0 left-0 right-0 h-14 bg-white/80 backdrop-blur-lg border-b border-slate-100 flex items-center px-4 z-40 md:hidden safe-top shadow-sm">
                 <Link href="/dashboard/credits" className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-50 active:scale-95 transition-all text-slate-400">
@@ -157,52 +168,58 @@ export default function CheckoutPage() {
                                             <span>A quelle date souhaitez vous <br className="md:hidden" /> que votre offre débute ?</span>
                                         </label>
                                         <div className="max-w-xs mx-auto md:mx-0">
-                                            <input
-                                                type="date"
+                                            <DateInputZen 
                                                 value={startDate}
-                                                onChange={(e) => setStartDate(e.target.value)}
-                                                className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring- focus:ring-blue-100 transition-all outline-none font-medium text-slate-700 bg-slate-50/50 text-sm md:text-base"
+                                                onChange={setStartDate}
                                             />
                                             <p className="text-[10px] text-slate-400 italic mt-1.5 text-center md:text-left">Par défaut, l&apos;offre débute aujourd&apos;hui.</p>
                                         </div>
                                     </div>
 
-                                    <div className="space-y-4">
-                                        <label className="flex items-center justify-center md:justify-start gap-3 cursor-pointer group mt-8 md:mt-4">
-                                            <div className="relative flex items-center h-5">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={payLater}
-                                                    onChange={(e) => setPayLater(e.target.checked)}
-                                                    className="peer h-5 w-5 cursor-pointer appearance-none rounded border border-slate-300 transition-all checked:border-slate-900 checked:bg-slate-900"
-                                                />
-                                                <span className="absolute text-white opacity-0 peer-checked:opacity-100 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity pointer-events-none">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor" stroke="currentColor" strokeWidth="1">
-                                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                                    </svg>
-                                                </span>
-                                            </div>
-                                            <span className="text-sm font-semibold text-slate-700">Option &quot;Payer plus tard&quot;</span>
-                                        </label>
+                                    {tenant?.payment_redirect_link ? (
+                                        <div className="space-y-4">
+                                            <label className="flex items-center justify-center md:justify-start gap-3 cursor-pointer group mt-8 md:mt-4">
+                                                <div className="relative flex items-center h-5">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={payLater}
+                                                        onChange={(e) => setPayLater(e.target.checked)}
+                                                        className="peer h-5 w-5 cursor-pointer appearance-none rounded border border-slate-300 transition-all checked:border-slate-900 checked:bg-slate-900"
+                                                    />
+                                                    <span className="absolute text-white opacity-0 peer-checked:opacity-100 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity pointer-events-none">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor" stroke="currentColor" strokeWidth="1">
+                                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                        </svg>
+                                                    </span>
+                                                </div>
+                                                <span className="text-sm font-semibold text-slate-700">Option &quot;Payer plus tard&quot;</span>
+                                            </label>
 
-                                        {payLater && (
-                                            <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300">
-                                                <p className="text-xs text-amber-800 leading-relaxed text-center md:text-left">
-                                                    <strong>Attention !</strong> Si vous choisissez le paiement différé, vous n&apos;êtes pas redirigé vers le lien de paiement. Vos crédits sont disponibles dès maintenant pour réserver vos séances. Le règlement est à effectuer selon les conditions de l&apos;établissement.
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
-                                 </div>
- 
-                                 <button
-                                     onClick={() => handleCheckout(payLater)}
-                                     disabled={processing}
-                                     className="w-full py-3.5 rounded-[1.5rem] bg-slate-900 text-white text-sm font-medium hover:bg-blue-600 shadow-xl shadow-slate-100 transition-all duration-300 disabled:opacity-50"
-                                 >
-                                     {processing ? "Traitement..." : "Confirmer la commande"}
-                                 </button>
-                             </div>
+                                            {payLater && (
+                                                <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300">
+                                                    <p className="text-xs text-amber-800 leading-relaxed text-center md:text-left">
+                                                        <strong>Attention !</strong> Si vous choisissez le paiement différé, vous n&apos;êtes pas redirigé vers le lien de paiement. Vos crédits sont disponibles dès maintenant pour réserver vos séances. Le règlement est à effectuer selon les conditions de l&apos;établissement.
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300">
+                                            <p className="text-xs text-blue-800 leading-relaxed text-center md:text-left">
+                                                L&apos;établissement ne propose pas de règlement en ligne pour le moment. Votre commande sera validée immédiatement et le règlement sera à effectuer selon les modalités de l&apos;établissement.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <button
+                                    onClick={() => handleCheckout(payLater)}
+                                    disabled={processing}
+                                    className="w-full py-3.5 rounded-[1.5rem] bg-slate-900 text-white text-sm font-medium hover:bg-blue-600 shadow-xl shadow-slate-100 transition-all duration-300 disabled:opacity-50"
+                                >
+                                    {processing ? "Traitement..." : "Confirmer la commande"}
+                                </button>
+                            </div>
                         </div>
                         
                         <div className="bg-slate-50 p-6 border-t border-slate-100 flex items-center gap-4">
@@ -225,7 +242,7 @@ export default function CheckoutPage() {
                             ✓
                         </div>
                         <div className="space-y-2">
-                            <h2 className="text-xl font-semibold text-slate-900 capitalize tracking-tight">Commande validée !</h2>
+                            <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Commande validée !</h2>
                             <p className="text-slate-500 text-sm leading-relaxed">
                                 {successData?.message || "Votre commande a été enregistrée avec succès."}
                             </p>
@@ -235,7 +252,7 @@ export default function CheckoutPage() {
                             onClick={handleFinalRedirect}
                             className="w-full py-4 rounded-2xl bg-slate-900 text-white font-medium text-sm hover:bg-blue-600 transition-all duration-300 shadow-xl"
                         >
-                            {successData?.redirect_url ? "Procéder au paiement" : "Voir mes commandes"}
+                            {(successData?.redirect_url && tenant?.payment_redirect_link) ? "Procéder au paiement" : "Retour à l'accueil"}
                         </button>
                     </div>
                 </div>

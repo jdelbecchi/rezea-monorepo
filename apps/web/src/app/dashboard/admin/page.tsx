@@ -19,6 +19,7 @@ export default function AdminDashboardPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
+                // 1. Get user and check permissions
                 const userData = await api.getCurrentUser();
                 if (userData.role !== 'owner' && userData.role !== 'manager') {
                     router.push("/dashboard");
@@ -26,19 +27,23 @@ export default function AdminDashboardPage() {
                 }
                 setUser(userData);
 
-                // Fetch stats
-                const [offers, sessions] = await Promise.all([
-                    api.getOffers(false),
-                    api.getSessions()
-                ]);
+                // 2. Fetch stats (non-critical, don't redirect to login if failed)
+                try {
+                    const [offers, sessions] = await Promise.all([
+                        api.getOffers(false).catch(e => { console.warn("Failed to fetch offers stats", e); return []; }),
+                        api.getSessions().catch(e => { console.warn("Failed to fetch sessions stats", e); return []; })
+                    ]);
 
-                setStats({
-                    activeOffers: offers.length,
-                    upcomingSessions: sessions.filter((s: any) => new Date(s.start_time) > new Date()).length,
-                    totalUsers: 0 // TODO: Add API endpoint for user count
-                });
+                    setStats({
+                        activeOffers: offers.length,
+                        upcomingSessions: sessions.filter((s: any) => new Date(s.start_time) > new Date()).length,
+                        totalUsers: 0
+                    });
+                } catch (statsErr) {
+                    console.error("Non-critical error while fetching admin stats:", statsErr);
+                }
             } catch (err) {
-                console.error(err);
+                console.error("Critical error in admin dashboard (likely auth):", err);
                 router.push("/login");
             } finally {
                 setLoading(false);

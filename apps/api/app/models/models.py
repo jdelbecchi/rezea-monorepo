@@ -40,6 +40,7 @@ class EventRegistrationStatus(str, enum.Enum):
     CANCELLED = "cancelled"              # Annulé par le manager
     ABSENT = "absent"                    # Ne s'est pas présenté
     EVENT_DELETED = "event_deleted"       # L'événement a été supprimé
+    EVENT_CANCELLED = "event_cancelled"   # L'événement a été annulé par l'admin (réversible)
 
 
 class CreditTransactionType(str, enum.Enum):
@@ -83,7 +84,7 @@ class Tenant(Base):
     logo_url = Column(String(500), nullable=True)
     banner_url = Column(String(500), nullable=True)
     primary_color = Column(String(7), default="#7c3aed")
-    welcome_message = Column(String(500), nullable=True)
+    welcome_message = Column(Text, nullable=True)
     
     # Documents légaux
     cgv_url = Column(String(500), nullable=True)
@@ -178,6 +179,8 @@ class User(Base):
     
     # Statut
     is_active = Column(Boolean, default=True)
+    is_active_override = Column(Boolean, default=False)
+    created_by_admin = Column(Boolean, default=False)
     email_verified = Column(Boolean, default=False)
     docs_accepted_at = Column(DateTime, nullable=True)
     
@@ -231,7 +234,8 @@ class Session(Base):
     # Capacité
     max_participants = Column(Integer, nullable=False)
     current_participants = Column(Integer, default=0, nullable=False)
-    credits_required = Column(Numeric(10, 2), default=1.0, nullable=False)
+    waitlist_count = Column(Integer, default=0, nullable=False)
+    credits_required = Column(Numeric(10, 2), default=1, nullable=False)
     
     # Configuration
     allow_waitlist = Column(Boolean, default=True)
@@ -266,9 +270,9 @@ class CreditAccount(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     
     # Crédits
-    balance = Column(Numeric(10, 2), default=0.0, nullable=False)
-    total_purchased = Column(Numeric(10, 2), default=0.0, nullable=False)
-    total_used = Column(Numeric(10, 2), default=0.0, nullable=False)
+    balance = Column(Numeric(10, 2), default=0, nullable=False)
+    total_purchased = Column(Numeric(10, 2), default=0, nullable=False)
+    total_used = Column(Numeric(10, 2), default=0, nullable=False)
     
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -471,9 +475,12 @@ class Event(Base):
     # Capacité
     max_places = Column(Integer, nullable=False)
     registrations_count = Column(Integer, default=0)
+    waitlist_count = Column(Integer, default=0)
 
     # Description
     description = Column(Text)
+    allow_waitlist = Column(Boolean, default=True)
+    is_active = Column(Boolean, default=True)
 
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

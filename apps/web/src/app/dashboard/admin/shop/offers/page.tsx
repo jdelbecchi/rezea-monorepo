@@ -79,8 +79,8 @@ function AdminOffersContent() {
                 offer_code: formData.offer_code,
                 name: formData.name,
                 description: formData.description || null,
-                price_lump_sum_cents: formData.price_lump_sum ? Math.round(parseFloat(formData.price_lump_sum) * 100) : null,
-                price_recurring_cents: formData.price_recurring ? Math.round(parseFloat(formData.price_recurring) * 100) : null,
+                price_lump_sum_cents: formData.price_lump_sum ? Math.round(parseFloat(formData.price_lump_sum.replace(',', '.')) * 100) : null,
+                price_recurring_cents: formData.price_recurring ? Math.round(parseFloat(formData.price_recurring.replace(',', '.')) * 100) : null,
                 recurring_count: formData.price_recurring ? (parseInt(formData.recurring_count) || null) : null,
                 featured_pricing: formData.featured_pricing,
                 period: formData.period || null,
@@ -108,7 +108,16 @@ function AdminOffersContent() {
             await fetchOffers();
             resetForm();
         } catch (err: any) {
-            setMessage({ type: "error", text: err.response?.data?.detail || "Erreur lors de la sauvegarde" });
+            const errorData = err.response?.data?.detail;
+            let errorText = "Erreur lors de la sauvegarde";
+            if (typeof errorData === 'string') {
+                errorText = errorData;
+            } else if (Array.isArray(errorData)) {
+                errorText = errorData.map(e => `${e.loc.join('.')}: ${e.msg}`).join(', ');
+            } else if (typeof errorData === 'object') {
+                errorText = JSON.stringify(errorData);
+            }
+            setMessage({ type: "error", text: errorText });
         } finally {
             setSaving(false);
         }
@@ -163,6 +172,9 @@ function AdminOffersContent() {
         const matchesStatus = statusFilter === "all" || (statusFilter === "active" && o.is_active) || (statusFilter === "inactive" && !o.is_active);
         return matchesSearch && matchesStatus;
     }).sort((a,b) => (a.category_display_order || 0) - (b.category_display_order || 0) || (a.display_order || 0) - (b.display_order || 0));
+
+    // Liste unique des catégories pour les suggestions
+    const existingCategories = Array.from(new Set(offers.map(o => o.category).filter((c): c is string => !!c))).sort();
 
     if (loading) return <div className="p-8 text-center bg-gray-50 min-h-screen">Chargement...</div>;
 
@@ -259,7 +271,12 @@ function AdminOffersContent() {
                                                 </td>
                                                 <td className="px-3 py-4 whitespace-nowrap text-xs font-bold text-slate-800 text-center">{o.display_order || "-"}</td>
                                                 <td className="px-3 py-4 whitespace-nowrap">
-                                                    <span className="text-sm font-bold text-slate-900">{o.name}</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-sm font-bold text-slate-900">{o.name}</span>
+                                                        {o.is_unique && (
+                                                            <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 rounded text-[9px] font-black uppercase tracking-tighter">Achat unique</span>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className="px-3 py-4 whitespace-nowrap">
                                                     <div className="flex flex-col">
@@ -288,7 +305,10 @@ function AdminOffersContent() {
                                                     ) : o.deadline_date ? (
                                                         <span className="text-xs font-medium">{new Date(o.deadline_date).toLocaleDateString("fr-FR")}</span>
                                                     ) : (
-                                                        <span className="text-xs font-bold text-slate-600 lowercase">{o.validity_days || 0} {o.validity_unit === 'months' ? 'Mois' : 'Jours'}</span>
+                                                        <span className="text-xs font-bold text-slate-600 lowercase group-hover:text-blue-600 transition-colors">
+                                                            {o.validity_unit === 'months' ? Math.round((o.validity_days || 0) / 30) : (o.validity_days || 0)} 
+                                                            {' '}{o.validity_unit === 'months' ? 'Mois' : 'Jours'}
+                                                        </span>
                                                     )}
                                                 </td>
                                                 <td className="px-3 py-4 whitespace-nowrap text-xs font-mono font-bold text-slate-400 uppercase tracking-tighter">{o.offer_code}</td>
@@ -337,18 +357,30 @@ function AdminOffersContent() {
                                     <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider border-b pb-1">Identification</h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Code Offre *</label>
-                                            <input type="text" required value={formData.offer_code} onChange={e => setFormData({...formData, offer_code: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" placeholder="ex: FORFAIT-10" />
+                                            <label className={`block text-sm font-medium mb-1 ${!formData.offer_code ? 'text-red-500' : 'text-slate-700'}`}>Code Offre *</label>
+                                            <input type="text" required value={formData.offer_code} onChange={e => setFormData({...formData, offer_code: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm ${!formData.offer_code ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="ex: FORFAIT-10" />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Nom Commercial *</label>
-                                            <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" />
+                                            <label className={`block text-sm font-medium mb-1 ${!formData.name ? 'text-red-500' : 'text-slate-700'}`}>Nom Commercial *</label>
+                                            <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm ${!formData.name ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} />
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                         <div>
                                             <label className="block text-sm font-medium text-slate-700 mb-1">Rubrique</label>
-                                            <input type="text" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" />
+                                            <input 
+                                                type="text" 
+                                                value={formData.category} 
+                                                onChange={e => setFormData({...formData, category: e.target.value})} 
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" 
+                                                list="categories-list"
+                                                placeholder="ex: Abonnement, Formation..."
+                                            />
+                                            <datalist id="categories-list">
+                                                {existingCategories.map(cat => (
+                                                    <option key={cat} value={cat} />
+                                                ))}
+                                            </datalist>
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-slate-700 mb-1">N° Rubrique</label>
@@ -389,9 +421,18 @@ function AdminOffersContent() {
                                         </div>
                                         <div className="space-y-3">
                                             <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-1">Durée de validité</label>
+                                                <label className={`block text-sm font-medium mb-1 ${!formData.is_validity_unlimited && !formData.deadline_date && !formData.validity_duration ? 'text-red-500' : 'text-slate-700'}`}>
+                                                    Durée de validité {!formData.is_validity_unlimited && !formData.deadline_date && '*'}
+                                                </label>
                                                 <div className="flex gap-2 items-center">
-                                                    <input type="number" disabled={formData.is_validity_unlimited} value={formData.validity_duration} onChange={e => setFormData({...formData, validity_duration: e.target.value})} className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm disabled:bg-gray-100" />
+                                                    <input 
+                                                        type="number" 
+                                                        required={!formData.is_validity_unlimited && !formData.deadline_date}
+                                                        disabled={formData.is_validity_unlimited} 
+                                                        value={formData.validity_duration} 
+                                                        onChange={e => setFormData({...formData, validity_duration: e.target.value})} 
+                                                        className={`w-20 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm disabled:bg-gray-100 ${!formData.is_validity_unlimited && !formData.deadline_date && !formData.validity_duration ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} 
+                                                    />
                                                     <select disabled={formData.is_validity_unlimited} value={formData.validity_unit} onChange={e => setFormData({...formData, validity_unit: e.target.value as any})} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm disabled:bg-gray-100">
                                                         <option value="months">Mois</option>
                                                         <option value="days">Jours</option>

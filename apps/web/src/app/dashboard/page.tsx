@@ -6,6 +6,7 @@ import Link from "next/link";
 import { api, User, CreditAccount, Tenant, Booking, Event, OrderItem } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
+import { formatCredits } from "@/lib/formatters";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -90,9 +91,7 @@ export default function DashboardPage() {
       if (!o.end_date) return false;
       const expiry = new Date(o.end_date);
       
-      // Une commande est pertinente si elle est "active" ou "en_cours"
-      // même si le paiement est en attente (cas du Pay Later)
-      const isActive = o.status === 'active' || o.status === 'en_cours';
+      const isActive = o.status === 'active';
       
       // On affiche l'alerte du jour J (jusqu'à minuit) jusqu'à J+30
       const expiryEndDay = new Date(expiry);
@@ -185,7 +184,7 @@ export default function DashboardPage() {
                     {credits && (credits.balance > 0 || myOrders.length > 0) && (
                         <div className="w-[30%] py-1.5 shrink-0 flex flex-col">
                             <p className="text-[11px] font-medium text-blue-600 mb-0.5">Mon crédit</p>
-                            <p className="text-2xl font-bold text-slate-900 leading-none">{credits.balance}</p>
+                            <p className="text-xl font-bold text-slate-900 leading-none">{formatCredits(credits.balance)}</p>
                         </div>
                     )}
                     
@@ -258,7 +257,7 @@ export default function DashboardPage() {
                         className="w-full py-3.5 mb-8 bg-slate-900 text-white flex items-center justify-center gap-4 shadow-xl shadow-slate-900/20 active:scale-[0.98] transition-all hover:bg-slate-800"
                     >
                         <span className="text-base animate-pulse">⚙️</span>
-                        <span className="text-sm font-medium">accès administration</span>
+                        <span className="text-sm font-medium">Accès administration</span>
                     </button>
                 )}
 

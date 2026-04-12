@@ -7,9 +7,10 @@ import Sidebar from "@/components/Sidebar";
 import MultiSelect from "@/components/MultiSelect";
 
 const STATUS_LABELS: Record<string, string> = {
-    confirmed: "Confirmée",
+    confirmed: "Inscrit",
+    pending_payment: "Inscrit",
     waiting_list: "Sur liste",
-    cancelled: "Annulée",
+    cancelled: "Annulé",
     absent: "Absent",
 };
 
@@ -269,14 +270,13 @@ th{background:#f1f5f9}
 
     const getStatusBadge = (r: AdminEventRegistrationItem) => {
         switch (r.status) {
-            case "pending_payment":
-                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-yellow-100 text-yellow-800">💳 En attente de paiement</span>;
             case "confirmed":
-                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-green-100 text-green-800">✅ Confirmée</span>;
+            case "pending_payment":
+                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-green-100 text-green-800">✅ Inscrit</span>;
             case "waiting_list":
                 return <span className="px-2 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-800">⏳ Sur liste</span>;
             case "cancelled":
-                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-red-100 text-red-800">🚫 Annulée</span>;
+                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-red-100 text-red-800">🚫 Annulé</span>;
             case "absent":
                 return <span className="px-2 py-1 text-xs font-bold rounded-full bg-purple-100 text-purple-800">❌ Absent</span>;
             case "event_deleted":
@@ -306,10 +306,9 @@ th{background:#f1f5f9}
             return [{ value: "event_deleted", label: "🗑️ Supprimée" }];
         }
         return [
-            { value: "confirmed", label: "✅ Confirmée" },
-            { value: "pending_payment", label: "💳 En attente de paiement" },
+            { value: "confirmed", label: "✅ Inscrit" },
             { value: "waiting_list", label: "⏳ Sur liste" },
-            { value: "cancelled", label: "🚫 Annulée" },
+            { value: "cancelled", label: "🚫 Annulé" },
             { value: "absent", label: "❌ Absent" },
         ];
     };
@@ -353,10 +352,10 @@ th{background:#f1f5f9}
                                 <MultiSelect
                                     label="Statut(s)"
                                     options={[
-                                        { id: "confirmed", label: "✅ Confirmées" },
-                                        { id: "waiting_list", label: "⏳ Sur liste" },
-                                        { id: "cancelled", label: "🚫 Annulées" },
-                                        { id: "absent", label: "❌ Absents" },
+                                        { id: "confirmed", label: "Inscrit" },
+                                        { id: "waiting_list", label: "Sur liste" },
+                                        { id: "cancelled", label: "Annulé" },
+                                        { id: "absent", label: "Absent" },
                                     ]}
                                     selected={filterStatuses}
                                     onChange={setFilterStatuses}
@@ -367,10 +366,10 @@ th{background:#f1f5f9}
                                 <MultiSelect
                                     label="Paiement(s)"
                                     options={[
-                                        { id: "a_valider", label: "⏳ À valider" },
-                                        { id: "en_attente", label: "📁 En attente" },
-                                        { id: "paye", label: "💰 Payé" },
-                                        { id: "rembourse", label: "↩️ Remboursé" },
+                                        { id: "a_valider", label: "À valider" },
+                                        { id: "en_attente", label: "En attente" },
+                                        { id: "paye", label: "Payé" },
+                                        { id: "rembourse", label: "Remboursé" },
                                     ]}
                                     selected={filterPayments}
                                     onChange={setFilterPayments}

@@ -53,6 +53,7 @@ export default function AdminUsersPage() {
         birth_date: "",
         instagram_handle: "",
         facebook_handle: "",
+        is_active_override: false,
     });
     const [creating, setCreating] = useState(false);
     const [createMessage, setCreateMessage] = useState("");
@@ -144,7 +145,7 @@ export default function AdminUsersPage() {
                 "first_name", "last_name", "email", "phone",
                 "street", "zip_code", "city", "birth_date",
                 "instagram_handle", "facebook_handle", "role", "is_active",
-                "is_blacklisted", "blacklist_reason",
+                "is_active_override", "is_blacklisted", "blacklist_reason",
             ];
             for (const field of editableFields) {
                 if ((data as any)[field] !== undefined) {
@@ -214,6 +215,7 @@ export default function AdminUsersPage() {
                     first_name: "", last_name: "", email: "", password: "",
                     role: "user", phone: "", street: "", zip_code: "",
                     city: "", birth_date: "", instagram_handle: "", facebook_handle: "",
+                    is_active_override: false,
                 });
             }, 1000);
         } catch (err: any) {
@@ -279,6 +281,7 @@ export default function AdminUsersPage() {
                                     placeholder="🔍 Rechercher par nom, prénom ou email..."
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
+                                    autoComplete="off"
                                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                                 />
                             </div>
@@ -347,6 +350,7 @@ export default function AdminUsersPage() {
                                                     <div className="flex items-center gap-2">
                                                         <div className="font-medium text-slate-900">
                                                             {user.first_name} {user.last_name}
+                                                            {user.created_by_admin && <span title="Créé par le manager" className="ml-1 text-amber-500">🛡️</span>}
                                                         </div>
                                                         {user.is_blacklisted && (
                                                             <span title={user.blacklist_reason || "Utilisateur en Black List"} className="cursor-help text-lg">🚩</span>
@@ -367,6 +371,7 @@ export default function AdminUsersPage() {
                                                         : "bg-red-100 text-red-800"
                                                         }`}>
                                                         {user.is_active ? "Actif" : "Inactif"}
+                                                        {user.is_active_override && <span className="ml-1" title="Statut forcé par admin">🛡️</span>}
                                                     </span>
                                                 </td>
                                                 <td className="py-3 px-4 text-slate-600">
@@ -459,6 +464,7 @@ export default function AdminUsersPage() {
                                             type="email"
                                             value={editingUser.email || ""}
                                             onChange={(e) => updateEditField("email", e.target.value)}
+                                            autoComplete="none"
                                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                                         />
                                     </div>
@@ -468,6 +474,7 @@ export default function AdminUsersPage() {
                                             type="text"
                                             value={editingUser.phone || ""}
                                             onChange={(e) => updateEditField("phone", e.target.value)}
+                                            autoComplete="none"
                                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                                         />
                                     </div>
@@ -555,6 +562,7 @@ export default function AdminUsersPage() {
                                             value={editPassword}
                                             onChange={(e) => setEditPassword(e.target.value)}
                                             placeholder="Laisser vide pour ne pas modifier"
+                                            autoComplete="new-password"
                                             className="w-full px-3 py-2 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                                         />
                                         <button
@@ -595,6 +603,25 @@ export default function AdminUsersPage() {
                                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                                         />
                                     </div>
+                                </div>
+                            </div>
+                            
+                            {/* Status Override */}
+                            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                                <h3 className="text-sm font-semibold text-blue-800 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                    🛡️ Contrôle du Statut
+                                </h3>
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="checkbox"
+                                        id="edit_is_active_override"
+                                        checked={editingUser.is_active_override || false}
+                                        onChange={(e) => updateEditField("is_active_override", e.target.checked)}
+                                        className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                                    />
+                                    <label htmlFor="edit_is_active_override" className="text-sm font-medium text-slate-700">
+                                        Forcer le statut actif (pour les comptes sans commande)
+                                    </label>
                                 </div>
                             </div>
                             
@@ -737,6 +764,7 @@ export default function AdminUsersPage() {
                                         <label className="block text-sm font-medium text-slate-700 mb-1">Email *</label>
                                         <input type="email" value={newUser.email}
                                             onChange={(e) => updateNewUserField("email", e.target.value)}
+                                            autoComplete="none"
                                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" />
                                     </div>
                                     <div>
@@ -745,6 +773,7 @@ export default function AdminUsersPage() {
                                             <input type={showPassword ? "text" : "password"} value={newUser.password}
                                                 onChange={(e) => updateNewUserField("password", e.target.value)}
                                                 placeholder="Min. 8 caractères"
+                                                autoComplete="new-password"
                                                 className="w-full px-3 py-2 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" />
                                             <button
                                                 type="button"
@@ -815,6 +844,25 @@ export default function AdminUsersPage() {
                                     <input type="text" placeholder="Facebook" value={newUser.facebook_handle}
                                         onChange={(e) => updateNewUserField("facebook_handle", e.target.value)}
                                         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" />
+                                </div>
+                            </div>
+
+                            {/* Status Override Create */}
+                            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                                <h3 className="text-sm font-semibold text-blue-800 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                    🛡️ Contrôle du Statut
+                                </h3>
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="checkbox"
+                                        id="create_is_active_override"
+                                        checked={newUser.is_active_override}
+                                        onChange={(e) => updateNewUserField("is_active_override", e.target.checked)}
+                                        className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                                    />
+                                    <label htmlFor="create_is_active_override" className="text-sm font-medium text-slate-700">
+                                        Forcer le statut actif (Manager / Staff / Utilisateur spécial)
+                                    </label>
                                 </div>
                             </div>
 

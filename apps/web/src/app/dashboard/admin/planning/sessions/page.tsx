@@ -6,6 +6,7 @@ import { api, User, Session } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { formatDuration } from "@/lib/formatters";
 
 type RecurrenceType = "none" | "daily" | "weekly" | "monthly";
 
@@ -16,9 +17,10 @@ const emptyForm = {
     date: "",
     time: "",
     duration_minutes: 60,
-    max_participants: 10,
+    max_participants: 12,
     credits_required: 1,
     location: "",
+    allow_waitlist: true,
     recurrence: "none" as RecurrenceType,
     recurrence_count: 4,
 };
@@ -39,6 +41,15 @@ function AdminSessionsContent() {
     const [editingSession, setEditingSession] = useState<Session | null>(null);
     const [showDuplicateModal, setShowDuplicateModal] = useState(false);
     const [duplicateData, setDuplicateData] = useState({ source_start: "", source_end: "", target_start: "" });
+
+    // Confirmation Modal
+    const [confirmModal, setConfirmModal] = useState<{
+        show: boolean;
+        title: string;
+        message: string;
+        onConfirm: () => void;
+        type: 'danger' | 'warning' | 'info';
+    }>({ show: false, title: "", message: "", onConfirm: () => {}, type: 'info' });
 
     const fetchSessions = useCallback(async () => {
         try {
@@ -110,6 +121,7 @@ function AdminSessionsContent() {
                     max_participants: formData.max_participants,
                     credits_required: formData.credits_required,
                     location: formData.location || undefined,
+                    allow_waitlist: formData.allow_waitlist,
                 });
             }
 
@@ -139,8 +151,11 @@ function AdminSessionsContent() {
                 max_participants: formData.max_participants,
                 credits_required: formData.credits_required,
                 location: formData.location || undefined,
+                allow_waitlist: formData.allow_waitlist,
             });
             setEditingSession(null);
+            setShowForm(false);
+            setFormData({ ...emptyForm });
             await fetchSessions();
         } catch (err) {
             alert("Erreur lors de la modification");
@@ -164,12 +179,60 @@ function AdminSessionsContent() {
             max_participants: s.max_participants,
             credits_required: s.credits_required,
             location: s.location || "",
+            allow_waitlist: s.allow_waitlist,
             recurrence: "none",
             recurrence_count: 1,
         });
         setShowForm(true);
     };
 
+    const handleCancelSession = async (session: Session) => {
+        setConfirmModal({
+            show: true,
+            title: "Annuler la séance ?",
+            message: `Êtes-vous sûr de vouloir annuler "${session.title}" ? Les participants seront remboursés et recevront une notification.`,
+            type: 'warning',
+            onConfirm: async () => {
+                try {
+                    await api.cancelSession(session.id);
+                    await fetchSessions();
+                    setConfirmModal(prev => ({ ...prev, show: false }));
+                } catch (err) { alert("Erreur lors de l'annulation"); }
+            }
+        });
+    };
+
+    const handleReactivateSession = async (session: Session) => {
+        setConfirmModal({
+            show: true,
+            title: "Réactiver la séance ?",
+            message: `Souhaitez-vous réactiver "${session.title}" ? Elle sera de nouveau visible et réservable.`,
+            type: 'info',
+            onConfirm: async () => {
+                try {
+                    await api.reactivateSession(session.id);
+                    await fetchSessions();
+                    setConfirmModal(prev => ({ ...prev, show: false }));
+                } catch (err) { alert("Erreur lors de la réactivation"); }
+            }
+        });
+    };
+
+    const handleDeleteSession = async (session: Session) => {
+        setConfirmModal({
+            show: true,
+            title: "Supprimer définitivement ?",
+            message: `Attention : cette action est irréversible. Les inscriptions liées à "${session.title}" seront supprimées.`,
+            type: 'danger',
+            onConfirm: async () => {
+                try {
+                    await api.deleteSession(session.id);
+                    await fetchSessions();
+                    setConfirmModal(prev => ({ ...prev, show: false }));
+                } catch (err) { alert("Erreur lors de la suppression"); }
+            }
+        });
+    };
     const handleDuplicate = async () => {
         try {
             await api.duplicateSessions({
@@ -317,7 +380,7 @@ function AdminSessionsContent() {
                                                     <span className="text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">✏️</span>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-5 text-sm font-medium text-slate-500 text-center">{Math.round((new Date(s.end_time).getTime() - date.getTime())/60000)} min</td>
+                                            <td className="px-6 py-5 text-sm font-medium text-slate-500 text-center">{formatDuration(Math.round((new Date(s.end_time).getTime() - date.getTime())/60000))}</td>
                                             <td className="px-6 py-5">
                                                 {s.location ? (
                                                     <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 text-slate-600 rounded-lg text-[10px] font-black uppercase tracking-wider border border-slate-100">
@@ -338,14 +401,45 @@ function AdminSessionsContent() {
                                                             : "bg-blue-50 text-blue-500 border-blue-100"
                                                 }`}>
                                                     {s.current_participants}/{s.max_participants}
+                                                    {s.allow_waitlist && (s.waitlist_count ?? 0) > 0 && (
+                                                        <span className="flex items-center gap-0.5 ml-1 text-orange-600" title="Liste d'attente">
+                                                            <span>⏳</span>
+                                                            <span className="text-[10px]">({s.waitlist_count})</span>
+                                                        </span>
+                                                    )}
+                                                    {s.allow_waitlist && (s.waitlist_count ?? 0) === 0 && (
+                                                        <span className="ml-1 opacity-50" title="Liste d'attente autorisée">⏳</span>
+                                                    )}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-5 text-center text-sm font-black text-slate-600">{s.credits_required}</td>
                                             <td className="px-8 py-5 text-right">
                                                 <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all">
                                                     <button onClick={() => openEdit(s)} className="p-2 hover:bg-blue-50 text-blue-500 rounded-lg transition-all" title="Modifier">✏️</button>
-                                                    <button className="p-2 hover:bg-rose-50 text-rose-300 rounded-lg transition-all" title="Désactiver">🚫</button>
-                                                    <button onClick={async () => { if(confirm("Supprimer?")) { await api.deleteSession(s.id); fetchSessions(); } }} className="p-2 hover:bg-rose-100 text-rose-500 rounded-lg transition-all" title="Supprimer">🗑️</button>
+                                                    {s.is_active ? (
+                                                        <button 
+                                                            onClick={() => handleCancelSession(s)}
+                                                            className="p-2 hover:bg-amber-50 text-amber-500 rounded-lg transition-all" 
+                                                            title="Annuler"
+                                                        >
+                                                            🚫
+                                                        </button>
+                                                    ) : (
+                                                        <button 
+                                                            onClick={() => handleReactivateSession(s)}
+                                                            className="p-2 hover:bg-emerald-50 text-emerald-500 rounded-lg transition-all" 
+                                                            title="Réactiver"
+                                                        >
+                                                            🔄
+                                                        </button>
+                                                    )}
+                                                    <button 
+                                                        onClick={() => handleDeleteSession(s)}
+                                                        className="p-2 hover:bg-rose-100 text-rose-500 rounded-lg transition-all" 
+                                                        title="Supprimer"
+                                                    >
+                                                        🗑️
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -372,8 +466,8 @@ function AdminSessionsContent() {
                         <form onSubmit={editingSession ? handleEditSubmit : handleSubmit} className="space-y-6">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Intitulé *</label>
-                                    <input type="text" required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-slate-900 outline-none font-bold text-slate-700" />
+                                    <label className={`text-[10px] font-black uppercase tracking-widest ml-1 ${!formData.title ? 'text-red-500' : 'text-slate-400'}`}>Intitulé *</label>
+                                    <input type="text" required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className={`w-full px-5 py-3.5 border rounded-2xl focus:ring-2 focus:ring-slate-900 outline-none font-bold text-slate-700 ${!formData.title ? 'border-red-300 bg-red-50' : 'bg-slate-50 border-slate-100'}`} />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Lieu / Salle</label>
@@ -391,17 +485,79 @@ function AdminSessionsContent() {
                             </div>
                             <div className="grid grid-cols-3 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Date *</label>
-                                    <input type="date" required value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-slate-900 outline-none font-bold text-slate-700" />
+                                    <label className={`text-[10px] font-black uppercase tracking-widest ml-1 ${!formData.date ? 'text-red-500' : 'text-slate-400'}`}>Date *</label>
+                                    <input type="date" required value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className={`w-full px-5 py-3.5 border rounded-2xl focus:ring-2 focus:ring-slate-900 outline-none font-bold text-slate-700 ${!formData.date ? 'border-red-300 bg-red-50' : 'bg-slate-50 border-slate-100'}`} />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Heure *</label>
-                                    <input type="time" required value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-slate-900 outline-none font-bold text-slate-700" />
+                                    <label className={`text-[10px] font-black uppercase tracking-widest ml-1 ${!formData.time ? 'text-red-500' : 'text-slate-400'}`}>Heure *</label>
+                                    <input type="time" required value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className={`w-full px-5 py-3.5 border rounded-2xl focus:ring-2 focus:ring-slate-900 outline-none font-bold text-slate-700 ${!formData.time ? 'border-red-300 bg-red-50' : 'bg-slate-50 border-slate-100'}`} />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Durée (min)</label>
-                                    <input type="number" required value={formData.duration_minutes} onChange={e => setFormData({...formData, duration_minutes: parseInt(e.target.value)})} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-slate-900 outline-none font-bold text-slate-700" />
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Durée</label>
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex-1 relative">
+                                            <input 
+                                                type="number" 
+                                                min="0"
+                                                placeholder="HH"
+                                                value={Math.floor(formData.duration_minutes / 60) || ""} 
+                                                onChange={e => {
+                                                    const h = parseInt(e.target.value) || 0;
+                                                    const m = formData.duration_minutes % 60;
+                                                    setFormData({...formData, duration_minutes: h * 60 + m});
+                                                }} 
+                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-slate-900 outline-none font-bold text-slate-700 text-center" 
+                                            />
+                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-300 pointer-events-none">H</span>
+                                        </div>
+                                        <div className="flex-1 relative">
+                                            <input 
+                                                type="number" 
+                                                min="0"
+                                                max="59"
+                                                placeholder="MM"
+                                                value={formData.duration_minutes % 60 || ""} 
+                                                onChange={e => {
+                                                    const m = Math.min(59, parseInt(e.target.value) || 0);
+                                                    const h = Math.floor(formData.duration_minutes / 60);
+                                                    setFormData({...formData, duration_minutes: h * 60 + m});
+                                                }} 
+                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-slate-900 outline-none font-bold text-slate-700 text-center" 
+                                            />
+                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-300 pointer-events-none">MIN</span>
+                                        </div>
+                                    </div>
                                 </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Attribution (Intervenant)</label>
+                                    <input type="text" value={formData.instructor_name} onChange={e => setFormData({...formData, instructor_name: e.target.value})} placeholder="Ex: Jean Expert" className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-slate-900 outline-none font-bold text-slate-700" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className={`text-[10px] font-black uppercase tracking-widest ml-1 ${!formData.max_participants && formData.max_participants !== 0 ? 'text-red-500' : 'text-slate-400'}`}>Capacité *</label>
+                                        <input type="number" min="1" required value={formData.max_participants} onChange={e => setFormData({...formData, max_participants: parseInt(e.target.value)})} className={`w-full px-5 py-3.5 border rounded-2xl focus:ring-2 focus:ring-slate-900 outline-none font-bold text-slate-700 ${!formData.max_participants && formData.max_participants !== 0 ? 'border-red-300 bg-red-50' : 'bg-slate-50 border-slate-100'}`} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className={`text-[10px] font-black uppercase tracking-widest ml-1 ${!formData.credits_required && formData.credits_required !== 0 ? 'text-red-500' : 'text-slate-400'}`}>Crédits *</label>
+                                        <input type="number" min="0" step="0.5" required value={formData.credits_required} onChange={e => setFormData({...formData, credits_required: parseFloat(e.target.value)})} className={`w-full px-5 py-3.5 border rounded-2xl focus:ring-2 focus:ring-slate-900 outline-none font-bold text-slate-700 ${!formData.credits_required && formData.credits_required !== 0 ? 'border-red-300 bg-red-50' : 'bg-slate-50 border-slate-100'}`} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                <input 
+                                    type="checkbox" 
+                                    id="allow_waitlist" 
+                                    checked={formData.allow_waitlist} 
+                                    onChange={e => setFormData({...formData, allow_waitlist: e.target.checked})}
+                                    className="w-5 h-5 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                                />
+                                <label htmlFor="allow_waitlist" className="text-xs font-bold text-slate-700 cursor-pointer select-none">
+                                    Autoriser la liste d'attente (Illimitée)
+                                </label>
                             </div>
                             {!editingSession && (
                                 <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-4">
@@ -455,6 +611,38 @@ function AdminSessionsContent() {
                                 <button type="button" onClick={() => setShowDuplicateModal(false)} className="flex-1 px-8 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px]">Annuler</button>
                                 <button onClick={handleDuplicate} className="flex-1 px-8 py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] hover:bg-emerald-700 shadow-xl shadow-emerald-900/20">Confirmer</button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Confirmation Modal */}
+            {confirmModal.show && (
+                <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-xl flex items-center justify-center z-[200] p-4 animate-in fade-in duration-300">
+                    <div className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl border border-slate-100">
+                        <div className={`w-16 h-16 rounded-3xl flex items-center justify-center text-3xl mb-6 ${
+                            confirmModal.type === 'danger' ? 'bg-rose-50 text-rose-500' : 
+                            confirmModal.type === 'warning' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'
+                        }`}>
+                            {confirmModal.type === 'danger' ? '⚠️' : confirmModal.type === 'warning' ? '🚫' : '🔄'}
+                        </div>
+                        <h3 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">{confirmModal.title}</h3>
+                        <p className="text-slate-500 font-bold text-sm leading-relaxed mb-8">{confirmModal.message}</p>
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}
+                                className="flex-1 px-6 py-4 bg-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all"
+                            >
+                                Annuler
+                            </button>
+                            <button 
+                                onClick={confirmModal.onConfirm}
+                                className={`flex-1 px-6 py-4 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg ${
+                                    confirmModal.type === 'danger' ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-200' : 
+                                    confirmModal.type === 'warning' ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-200' : 'bg-blue-500 hover:bg-blue-600 shadow-blue-200'
+                                }`}
+                            >
+                                Confirmer
+                            </button>
                         </div>
                     </div>
                 </div>

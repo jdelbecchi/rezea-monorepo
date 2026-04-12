@@ -27,6 +27,7 @@ async def lifespan(app: FastAPI):
     
     # Création des tables (en dev, en prod on utilise Alembic)
     if settings.ENVIRONMENT == "development":
+        print(f"DEBUG: SECRET_KEY='{settings.SECRET_KEY}'")
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
     
@@ -67,6 +68,8 @@ async def inject_tenant_context(request: Request, call_next):
                 origin=headers.get("Origin"),
                 tenant_slug=headers.get("X-Tenant-Slug"),
                 has_auth=bool(headers.get("Authorization")))
+    # DEBUG - Print headers to see what's actually received
+    print(f"DEBUG MIDI: path={path} auth={headers.get('Authorization')} slug={headers.get('X-Tenant-Slug')}")
     
     # 1. Tentative de récupération via Token JWT (Privé)
     auth_header = request.headers.get("Authorization")
@@ -83,8 +86,12 @@ async def inject_tenant_context(request: Request, call_next):
                 if u_id:
                     request.state.user_id = UUID(str(u_id))
                 logger.debug("Middleware: Auth token valid", user_id=str(request.state.user_id), tenant_id=str(request.state.tenant_id))
+                # DEBUG
+                print(f"DEBUG MIDI: SUCCESS! tenant={request.state.tenant_id} user={request.state.user_id}")
         except Exception as e:
             logger.warning("Échec auth token dans middleware", error=str(e))
+            # DEBUG
+            print(f"DEBUG MIDI: FAILED verify_token: {str(e)}")
 
     # 2. Tentative de récupération via Header X-Tenant-Slug (Public ou Fallback)
     if not request.state.tenant_id:
@@ -99,6 +106,13 @@ async def inject_tenant_context(request: Request, call_next):
                         logger.debug("Middleware: Resolved tenant from slug", slug=tenant_slug, tenant_id=str(t_id))
             except Exception as e:
                 logger.error("Erreur lors de la résolution du tenant par slug", error=str(e))
+
+    # DEBUG - Résumé du contexte résolu
+    if not request.state.tenant_id:
+        logger.warning("Middleware resolution failed", 
+                       has_auth=bool(auth_header), 
+                       has_slug=bool(headers.get("X-Tenant-Slug")),
+                       path=path)
 
     # 3. Détermination du type de route
     public_paths = [
@@ -123,35 +137,22 @@ async def inject_tenant_context(request: Request, call_next):
     if not is_global_public:
         if not request.state.tenant_id and not is_public:
             logger.warning("Middleware block: Missing tenant_id", path=path)
-            # On ajoute des headers CORS manuellement en secours
-            origin = request.headers.get("Origin", "*")
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                content={"detail": "Identification de l'établissement requise (Slug ou Token manquant)"},
-                headers={
-                    "Access-Control-Allow-Origin": origin,
-                    "Access-Control-Allow-Credentials": "true",
-                    "Access-Control-Allow-Methods": "*",
-                    "Access-Control-Allow-Headers": "*"
-                }
+                content={"detail": "Identification de l'établissement requise (Flux ou Token manquant)"}
             )
         
         # Pour les routes privées, on exige user_id
         if not is_public and not request.state.user_id:
             logger.warning("Middleware block: Missing user_id", path=path)
-            origin = request.headers.get("Origin", "*")
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                content={"detail": "Session expirée ou invalide"},
-                headers={
-                    "Access-Control-Allow-Origin": origin,
-                    "Access-Control-Allow-Credentials": "true",
-                    "Access-Control-Allow-Methods": "*",
-                    "Access-Control-Allow-Headers": "*"
-                }
+                content={"detail": "Session expirée ou invalide"}
             )
 
-    return await call_next(request)
+    # 5. Appel de la suite
+    response = await call_next(request)
+    return response
 
 
 @app.exception_handler(Exception)

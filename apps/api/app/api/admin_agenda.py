@@ -10,7 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.session import get_db
-from app.models.models import User, UserRole, Session, Booking, BookingStatus, Event
+from app.models.models import (
+    User, UserRole, Session, Booking, BookingStatus, Event, 
+    WaitlistEntry, WaitlistStatus, EventRegistration, EventRegistrationStatus
+)
 
 router = APIRouter()
 
@@ -59,7 +62,8 @@ async def get_agenda(
     session_query = (
         select(Session)
         .options(
-            selectinload(Session.bookings).selectinload(Booking.user)
+            selectinload(Session.bookings).selectinload(Booking.user),
+            selectinload(Session.waitlist_entries).selectinload(WaitlistEntry.user)
         )
         .where(
             Session.tenant_id == tenant_id,
@@ -86,13 +90,18 @@ async def get_agenda(
     for s in sessions:
         # Get confirmed/pending bookings' user names
         registered_users = []
-        for booking in s.bookings:
-            if booking.status in (BookingStatus.CONFIRMED, BookingStatus.PENDING):
-                if booking.user:
-                    registered_users.append({
-                        "first_name": booking.user.first_name,
-                        "last_name": booking.user.last_name,
-                    })
+        waitlist_users = []
+        for b in s.bookings:
+            if not b.user: continue
+            user_info = {
+                "first_name": b.user.first_name,
+                "last_name": b.user.last_name,
+                "email": b.user.email,
+            }
+            if b.status == BookingStatus.CONFIRMED:
+                registered_users.append(user_info)
+            elif b.status == BookingStatus.PENDING:
+                waitlist_users.append(user_info)
 
         sessions_data.append({
             "id": str(s.id),
@@ -109,7 +118,11 @@ async def get_agenda(
             "max_participants": s.max_participants,
             "current_participants": s.current_participants,
             "credits_required": s.credits_required,
+            "location": s.location,
+            "allow_waitlist": s.allow_waitlist,
             "registered_users": registered_users,
+            "waitlist_users": waitlist_users,
+            "waitlist_count": len(waitlist_users),
         })
 
     # ---- Events ----
@@ -119,6 +132,9 @@ async def get_agenda(
             Event.tenant_id == tenant_id,
             Event.event_date >= start_date.date(),
             Event.event_date <= end_date.date(),
+        )
+        .options(
+            selectinload(Event.registrations).selectinload(EventRegistration.user)
         )
         .order_by(Event.event_date, Event.event_time)
     )
@@ -137,6 +153,20 @@ async def get_agenda(
 
     events_data = []
     for e in events:
+        # Separate registrations into confirmed and waitlist
+        registered_users = []
+        waitlist_users = []
+        for reg in e.registrations:
+            user_info = {
+                "first_name": reg.user.first_name if reg.user else "Utilisateur",
+                "last_name": reg.user.last_name if reg.user else "Inconnu",
+                "email": reg.user.email if reg.user else "",
+            }
+            if reg.status == EventRegistrationStatus.CONFIRMED:
+                registered_users.append(user_info)
+            elif reg.status == EventRegistrationStatus.WAITING_LIST:
+                waitlist_users.append(user_info)
+
         events_data.append({
             "id": str(e.id),
             "type": "event",
@@ -150,7 +180,11 @@ async def get_agenda(
             "price_external_cents": e.price_external_cents,
             "max_places": e.max_places,
             "registrations_count": e.registrations_count or 0,
-            "registered_users": [],  # Events don't have booking relations yet
+            "waitlist_count": len(waitlist_users),
+            "location": e.location,
+            "allow_waitlist": e.allow_waitlist,
+            "registered_users": registered_users,
+            "waitlist_users": waitlist_users,
         })
 
     return {

@@ -13,6 +13,7 @@ from sqlalchemy.orm import joinedload, selectinload
 from app.db.session import get_db
 from app.models.models import User, UserRole, Order, Offer, Booking, BookingStatus, OrderPaymentStatus, Installment
 from app.schemas.schemas import OrderCreate, OrderUpdate, OrderResponse, InstallmentResponse
+from app.services import orders as order_service
 
 router = APIRouter()
 
@@ -43,146 +44,7 @@ async def require_manager(request: Request, db: AsyncSession = Depends(get_db)) 
     return user
 
 
-def compute_end_date(offer: Offer, start_date: date) -> Optional[date]:
-    """Calcule la date de fin en fonction de l'offre. Retourne None si illimitée."""
-    if offer.is_validity_unlimited:
-        return None
-    if offer.validity_days:
-        if offer.validity_unit == "months":
-            return start_date + relativedelta(months=offer.validity_days)
-        return start_date + timedelta(days=offer.validity_days)
-    if offer.deadline_date:
-        return offer.deadline_date
-    # Fallback: 1 an
-    return start_date + timedelta(days=365)
-
-
-def normalize_status(status_str: Optional[str]) -> Optional[str]:
-    """Normalise les statuts pour éviter les doublons (casse, accents)"""
-    if not status_str:
-        return None
-    s = status_str.strip()
-    lower_s = s.lower()
-    
-    # Mappings standards
-    if lower_s in ["en cours", "en_cours", "encours", "active"]:
-        return "active"
-    if lower_s in ["termine", "terminé", "terminée", "terminé ", "termine "]:
-        return "termine"
-    if lower_s in ["expire", "expiré", "expirée", "expiree"]:
-        return "expiree"
-    if lower_s in ["pause", "en pause", "en_pause"]:
-        return "en_pause"
-    
-    return s
-
-
-async def compute_credits_used(db: AsyncSession, user_id, tenant_id, start_date: date, end_date: Optional[date]) -> int:
-    """Compte les crédits consommés par les bookings confirmés dans la période"""
-    conditions = [
-        Booking.user_id == user_id,
-        Booking.tenant_id == tenant_id,
-        Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.COMPLETED]),
-        Booking.created_at >= datetime.combine(start_date, datetime.min.time()),
-    ]
-    if end_date:
-        conditions.append(Booking.created_at <= datetime.combine(end_date, datetime.max.time()))
-    
-    result = await db.execute(
-        select(func.coalesce(func.sum(Booking.credits_used), 0)).where(and_(*conditions))
-    )
-    return result.scalar() or 0
-
-
-def build_order_response(order: Order, credits_used: int) -> dict:
-    """Construit la réponse avec les champs calculés"""
-    balance = None
-    if not order.is_unlimited and order.credits_total is not None:
-        balance = order.credits_total - credits_used
-
-    # Logic: use manual status if present, otherwise calculate automatic one
-    today = date.today()
-    display_status = order.status
-    
-    # Check balance
-    balance = None
-    if not order.is_unlimited and order.credits_total is not None:
-        balance = order.credits_total - credits_used
-    
-    has_credits = order.is_unlimited or (balance is not None and balance > 0)
-    is_past = not order.is_validity_unlimited and order.end_date and order.end_date < today
-
-    if display_status == "en_pause":
-        # Keep it as is
-        pass
-    elif not has_credits:
-        display_status = "termine"
-    elif is_past:
-        display_status = "expiree"
-    else:
-        display_status = "active"
-
-    # Installments status logic
-    # Perçu = J+7 passés (non erreur) OR resolved_at
-    # À venir = J+7 futurs (non erreur)
-    # Impayés = is_error (non résolu)
-    
-    received_cents = 0
-    pending_cents = 0
-    error_cents = 0
-    
-    today = date.today()
-    for inst in order.installments:
-        amount = int(inst.amount_cents)
-        if inst.is_error and not inst.resolved_at:
-            error_cents += amount
-        elif inst.is_paid or inst.resolved_at or (inst.due_date + timedelta(days=7) <= today):
-            received_cents += amount
-        else:
-            pending_cents += amount
-
-    # If the order is NOT installment/issue, it might be a lump sum
-    if order.payment_status == OrderPaymentStatus.PAID:
-        received_cents = order.price_cents
-        pending_cents = 0
-    elif order.payment_status == OrderPaymentStatus.WAITING or order.payment_status == OrderPaymentStatus.PENDING:
-        received_cents = 0
-        pending_cents = order.price_cents
-
-    return OrderResponse(
-        id=order.id,
-        tenant_id=order.tenant_id,
-        user_id=order.user_id,
-        offer_id=order.offer_id,
-        start_date=order.start_date,
-        end_date=order.end_date,
-        is_validity_unlimited=order.is_validity_unlimited,
-        credits_total=order.credits_total,
-        is_unlimited=order.is_unlimited,
-        price_cents=order.price_cents,
-        payment_status=order.payment_status,
-        comment=order.comment,
-        created_by_admin=order.created_by_admin,
-        created_at=order.created_at,
-        updated_at=order.updated_at,
-        invoice_number=order.invoice_number,
-        invoice_url=order.invoice_url,
-        user_name=f"{order.user.first_name} {order.user.last_name}",
-        user_email=order.user.email or "",
-        offer_code=order.offer.offer_code,
-        offer_name=order.offer.name,
-        offer_period=order.offer.period,
-        offer_featured_pricing=order.offer.featured_pricing,
-        offer_price_recurring_cents=order.offer.price_recurring_cents,
-        offer_price_lump_sum_cents=order.offer.price_lump_sum_cents,
-        offer_recurring_count=order.offer.recurring_count,
-        credits_used=credits_used,
-        balance=balance,
-        status=display_status,
-        received_cents=received_cents,
-        pending_cents=pending_cents,
-        error_cents=error_cents,
-    )
+# (Removed: compute_end_date, normalize_status, compute_credits_used, build_order_response - now in order_service)
 
 
 def generate_installments(order: Order, offer: Offer, tenant_id) -> List[Installment]:
@@ -231,10 +93,10 @@ async def list_orders(
 
     responses = []
     for order in orders:
-        credits_used = await compute_credits_used(
+        credits_used = await order_service.compute_credits_used(
             db, order.user_id, order.tenant_id, order.start_date, order.end_date
         )
-        responses.append(build_order_response(order, credits_used))
+        responses.append(order_service.build_order_response(order, credits_used))
 
     return responses
 
@@ -254,11 +116,17 @@ async def list_order_statuses(
         .where(Order.tenant_id == tenant_id, Order.status != None)
         .distinct()
     )
+    distinct_rows = result.all()
+    normalized = set()
+    for row in distinct_rows:
+        norm = order_service.normalize_status(row[0])
+        if norm:
+            normalized.add(norm)
+            
     base_statuses = ["active", "termine", "expiree", "en_pause"]
-    manual_statuses = [row[0] for row in result.all() if row[0] not in base_statuses]
-    all_statuses = base_statuses + sorted(manual_statuses)
+    manual_statuses = sorted([s for s in normalized if s not in base_statuses])
     
-    return all_statuses
+    return base_statuses + manual_statuses
 
 
 # ---- CREATE ----
@@ -287,7 +155,7 @@ async def create_order(
     if not offer:
         raise HTTPException(status_code=404, detail="Offre non trouvée")
 
-    end_date = compute_end_date(offer, data.start_date)
+    end_date = order_service.compute_end_date(offer, data.start_date)
     
     # Initial status calculation logic
     today = date.today()
@@ -318,7 +186,7 @@ async def create_order(
         price_cents=price,
         payment_status=payment_status,
         comment=data.comment,
-        status=normalize_status(initial_status),
+        status=order_service.normalize_status(initial_status),
         created_by_admin=True,
     )
     db.add(order)
@@ -337,10 +205,10 @@ async def create_order(
     )
     order = result.unique().scalar_one()
 
-    credits_used = await compute_credits_used(
+    credits_used = await order_service.compute_credits_used(
         db, order.user_id, order.tenant_id, order.start_date, order.end_date
     )
-    return build_order_response(order, credits_used)
+    return order_service.build_order_response(order, credits_used)
 
 
 # ---- UPDATE ----
@@ -364,7 +232,7 @@ async def update_order(
 
     update_data = data.model_dump(exclude_unset=True)
     if "status" in update_data:
-        update_data["status"] = normalize_status(update_data["status"])
+        update_data["status"] = order_service.normalize_status(update_data["status"])
         
     for field, value in update_data.items():
         setattr(order, field, value)
@@ -389,10 +257,10 @@ async def update_order(
     )
     order = result.unique().scalar_one()
 
-    credits_used = await compute_credits_used(
+    credits_used = await order_service.compute_credits_used(
         db, order.user_id, order.tenant_id, order.start_date, order.end_date
     )
-    return build_order_response(order, credits_used)
+    return order_service.build_order_response(order, credits_used)
 
 
 # ---- DELETE ----

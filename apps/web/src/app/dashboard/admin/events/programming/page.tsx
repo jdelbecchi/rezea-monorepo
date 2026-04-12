@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, User } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
+import { formatDuration } from "@/lib/formatters";
 
 interface EventItem {
     id: string;
@@ -16,8 +17,11 @@ interface EventItem {
     instructor_name: string;
     max_places: number;
     registrations_count: number;
+    waitlist_count: number;
+    allow_waitlist: boolean;
     location: string | null;
     description: string | null;
+    is_active: boolean;
 }
 
 const emptyForm = {
@@ -31,6 +35,7 @@ const emptyForm = {
     max_places: "",
     location: "",
     description: "",
+    allow_waitlist: true,
 };
 
 export default function AdminEventsProgrammingPage() {
@@ -42,11 +47,19 @@ export default function AdminEventsProgrammingPage() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [showForm, setShowForm] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [exportFrom, setExportFrom] = useState("");
     const [exportTo, setExportTo] = useState("");
     const [tenant, setTenant] = useState<any>(null);
+
+    // Confirmation Modal
+    const [confirmModal, setConfirmModal] = useState<{
+        show: boolean;
+        title: string;
+        message: string;
+        onConfirm: () => void;
+        type: 'danger' | 'warning' | 'info';
+    }>({ show: false, title: "", message: "", onConfirm: () => {}, type: 'info' });
 
     useEffect(() => {
         fetchData();
@@ -82,7 +95,6 @@ export default function AdminEventsProgrammingPage() {
             const memberPriceStr = formData.price_member_cents || "";
             const externalPriceStr = formData.price_external_cents || "";
             
-            // Si l'un est vide, on prend la valeur de l'autre pour avoir un tarif unique
             const memberVal = memberPriceStr || externalPriceStr || "0";
             const externalVal = externalPriceStr || memberPriceStr || "0";
 
@@ -97,6 +109,7 @@ export default function AdminEventsProgrammingPage() {
                 max_places: parseInt(formData.max_places),
                 location: formData.location || null,
                 description: formData.description || null,
+                allow_waitlist: formData.allow_waitlist,
             };
 
             if (editingId) {
@@ -127,23 +140,60 @@ export default function AdminEventsProgrammingPage() {
             max_places: event.max_places.toString(),
             location: event.location || "",
             description: event.description || "",
+            allow_waitlist: event.allow_waitlist,
         });
         setEditingId(event.id);
         setShowForm(true);
     };
 
-    const handleDelete = async (eventId: string) => {
-        try {
-            await api.deleteAdminEvent(eventId);
-            const updated = await api.getAdminEvents();
-            setEvents(updated);
-            setDeleteConfirmId(null);
-        } catch (err: any) {
-            alert(err.response?.data?.detail || "Erreur lors de la suppression");
-        }
+    const handleCancelEvent = async (event: EventItem) => {
+        setConfirmModal({
+            show: true,
+            title: "Annuler l'évènement ?",
+            message: `Êtes-vous sûr de vouloir annuler "${event.title}" ? Les participants seront informés et remboursés le cas échéant.`,
+            type: 'warning',
+            onConfirm: async () => {
+                try {
+                    await api.cancelAdminEvent(event.id);
+                    await fetchData();
+                    setConfirmModal(prev => ({ ...prev, show: false }));
+                } catch (err) { alert("Erreur lors de l'annulation"); }
+            }
+        });
     };
 
-    // Sort newest first and filter by search
+    const handleReactivateEvent = async (event: EventItem) => {
+        setConfirmModal({
+            show: true,
+            title: "Réactiver l'évènement ?",
+            message: `Souhaitez-vous réactiver "${event.title}" ? Il sera de nouveau visible et réservable.`,
+            type: 'info',
+            onConfirm: async () => {
+                try {
+                    await api.reactivateAdminEvent(event.id);
+                    await fetchData();
+                    setConfirmModal(prev => ({ ...prev, show: false }));
+                } catch (err) { alert("Erreur lors de la réactivation"); }
+            }
+        });
+    };
+
+    const handleDeleteEvent = async (event: EventItem) => {
+        setConfirmModal({
+            show: true,
+            title: "Suppression définitive ?",
+            message: `Attention : cette action est irréversible. Toutes les données associées à "${event.title}" seront supprimées.`,
+            type: 'danger',
+            onConfirm: async () => {
+                try {
+                    await api.deleteAdminEvent(event.id);
+                    await fetchData();
+                    setConfirmModal(prev => ({ ...prev, show: false }));
+                } catch (err) { alert("Erreur lors de la suppression"); }
+            }
+        });
+    };
+
     const filteredEvents = events
         .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())
         .filter((e) => {
@@ -202,7 +252,6 @@ export default function AdminEventsProgrammingPage() {
 
             <main className="flex-1 p-8 overflow-auto">
                 <div className="max-w-7xl mx-auto space-y-6">
-                    {/* Header */}
                     <div className="flex items-center justify-between">
                         <div>
                             <h1 className="text-3xl font-bold text-slate-900">🎉 Programmation des évènements</h1>
@@ -216,7 +265,6 @@ export default function AdminEventsProgrammingPage() {
                         </button>
                     </div>
 
-                    {/* Search + Export bar */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
                         <div className="flex flex-col md:flex-row gap-3 items-end">
                             <div className="flex-1">
@@ -248,71 +296,84 @@ export default function AdminEventsProgrammingPage() {
                                 </button>
                             </div>
                         </div>
-                        {(searchTerm || exportFrom || exportTo) && (
-                            <div className="mt-2 text-xs text-slate-500">
-                                {filteredEvents.length} événement{filteredEvents.length > 1 ? "s" : ""} affiché{filteredEvents.length > 1 ? "s" : ""}
-                                {(exportFrom || exportTo) && (
-                                    <span> · Export : {exportFrom || "…"} → {exportTo || "…"}</span>
-                                )}
-                            </div>
-                        )}
                     </div>
 
-                    {/* Form (shown conditionally) */}
                     {showForm && (
                         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                             <h2 className="text-xl font-bold text-slate-900 mb-4">
                                 {editingId ? "Modifier l'événement" : "Créer un événement"}
                             </h2>
                             <form onSubmit={handleSubmit} className="space-y-4">
-                                {/* Row 1: Date, Heure, Intitulé */}
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Date *</label>
+                                        <label className={`block text-sm font-medium mb-1 ${!formData.event_date ? 'text-red-500' : 'text-slate-700'}`}>Date *</label>
                                         <input
                                             type="date"
                                             required
                                             value={formData.event_date}
                                             onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${!formData.event_date ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Heure *</label>
+                                        <label className={`block text-sm font-medium mb-1 ${!formData.event_time ? 'text-red-500' : 'text-slate-700'}`}>Heure *</label>
                                         <input
                                             type="time"
                                             required
                                             value={formData.event_time}
                                             onChange={(e) => setFormData({ ...formData, event_time: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${!formData.event_time ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
                                         />
                                     </div>
                                     <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Intitulé *</label>
+                                        <label className={`block text-sm font-medium mb-1 ${!formData.title ? 'text-red-500' : 'text-slate-700'}`}>Intitulé *</label>
                                         <input
                                             type="text"
                                             required
                                             value={formData.title}
                                             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${!formData.title ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
                                             placeholder="Ex: Cours de Yoga"
                                         />
                                     </div>
                                 </div>
 
-                                {/* Row 2: Durée, Tarifs */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Durée (minutes) *</label>
-                                        <input
-                                            type="number"
-                                            required
-                                            min="1"
-                                            value={formData.duration_minutes}
-                                            onChange={(e) => setFormData({ ...formData, duration_minutes: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            placeholder="60"
-                                        />
+                                        <label className={`block text-sm font-medium mb-1 ${!formData.duration_minutes || formData.duration_minutes === "0" ? 'text-red-500' : 'text-slate-700'}`}>Durée *</label>
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-1 relative">
+                                                <input 
+                                                    type="number" 
+                                                    min="0"
+                                                    placeholder="HH"
+                                                    value={Math.floor(parseInt(formData.duration_minutes || "0") / 60) || ""} 
+                                                    onChange={e => {
+                                                        const h = parseInt(e.target.value) || 0;
+                                                        const m = parseInt(formData.duration_minutes || "0") % 60;
+                                                        setFormData({...formData, duration_minutes: (h * 60 + m).toString()});
+                                                    }} 
+                                                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center ${!formData.duration_minutes || formData.duration_minutes === "0" ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} 
+                                                />
+                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-300 pointer-events-none">H</span>
+                                            </div>
+                                            <div className="flex-1 relative">
+                                                <input 
+                                                    type="number" 
+                                                    min="0"
+                                                    max="59"
+                                                    placeholder="MM"
+                                                    value={parseInt(formData.duration_minutes || "0") % 60 || ""} 
+                                                    onChange={e => {
+                                                        const m = Math.min(59, parseInt(e.target.value) || 0);
+                                                        const h = Math.floor(parseInt(formData.duration_minutes || "0") / 60);
+                                                        setFormData({...formData, duration_minutes: (h * 60 + m).toString()});
+                                                    }} 
+                                                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center ${!formData.duration_minutes || formData.duration_minutes === "0" ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} 
+                                                />
+                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-300 pointer-events-none">MIN</span>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 mb-1">Tarif Membre (€)</label>
@@ -340,60 +401,33 @@ export default function AdminEventsProgrammingPage() {
                                     </div>
                                 </div>
 
-                                {/* Row 3: Attribution, Places */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Attribution (animateur) *</label>
+                                        <label className={`block text-sm font-medium mb-1 ${!formData.instructor_name ? 'text-red-500' : 'text-slate-700'}`}>Attribution (animateur) *</label>
                                         <input
                                             type="text"
                                             required
                                             value={formData.instructor_name}
                                             onChange={(e) => setFormData({ ...formData, instructor_name: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${!formData.instructor_name ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
                                             placeholder="Ex: Jean Dupont"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">places disponibles *</label>
+                                        <label className={`block text-sm font-medium mb-1 ${!formData.max_places ? 'text-red-500' : 'text-slate-700'}`}>places disponibles *</label>
                                         <input
                                             type="number"
                                             required
                                             min="1"
                                             value={formData.max_places}
                                             onChange={(e) => setFormData({ ...formData, max_places: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${!formData.max_places ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
                                             placeholder="20"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Lieu / Salle</label>
-                                        <select
-                                            value={formData.location}
-                                            onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                                        >
-                                            <option value="">Aucun lieu spécifique</option>
-                                            {(tenant?.locations || []).map((loc: string) => (
-                                                <option key={loc} value={loc}>{loc}</option>
-                                            ))}
-                                        </select>
-                                    </div>
                                 </div>
 
-                                {/* Description */}
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-                                    <textarea
-                                        value={formData.description}
-                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        rows={2}
-                                        placeholder="Description de l'événement (optionnel)..."
-                                    />
-                                </div>
-
-                                {/* Buttons */}
-                                <div className="flex gap-2">
                                     <button
                                         type="submit"
                                         disabled={saving}
@@ -404,7 +438,7 @@ export default function AdminEventsProgrammingPage() {
                                     <button
                                         type="button"
                                         onClick={resetForm}
-                                        className="px-6 py-2 bg-gray-200 text-slate-900 rounded-lg font-bold hover:bg-gray-300 transition-colors"
+                                        className="ml-2 px-6 py-2 bg-gray-200 text-slate-900 rounded-lg font-bold hover:bg-gray-300 transition-colors"
                                     >
                                         Annuler
                                     </button>
@@ -413,7 +447,6 @@ export default function AdminEventsProgrammingPage() {
                         </div>
                     )}
 
-                    {/* Events Table */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full">
@@ -422,86 +455,38 @@ export default function AdminEventsProgrammingPage() {
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Heure</th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Intitulé</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Durée</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tarif Membre</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tarif Ext.</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lieu</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attribution</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">places</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tarifs</th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inscriptions</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {filteredEvents.map((event) => (
-                                        <tr key={event.id} className="hover:bg-gray-50">
+                                        <tr key={event.id} className={`hover:bg-gray-50 transition-all ${!event.is_active ? 'opacity-50' : ''}`}>
                                             <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-900">
                                                 {new Date(event.event_date).toLocaleDateString("fr-FR")}
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-900">
-                                                {event.event_time}
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-900">{event.event_time}</td>
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                <span className={`text-sm font-medium text-slate-900 ${!event.is_active ? 'line-through text-slate-400' : ''}`}>{event.title}</span>
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
+                                                M: {(event.price_member_cents / 100).toFixed(2)}€ / E: {(event.price_external_cents / 100).toFixed(2)}€
                                             </td>
                                             <td className="px-4 py-3 whitespace-nowrap">
-                                                <div className="flex items-center gap-1">
-                                                    <span className="text-sm font-medium text-slate-900">{event.title}</span>
-                                                    {event.description && (
-                                                        <span title={event.description} className="text-blue-400 cursor-help">📝</span>
-                                                    )}
-                                                </div>
+                                                <span className="text-sm font-bold">{event.registrations_count}/{event.max_places}</span>
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
-                                                {event.duration_minutes} min
-                                            </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
-                                                {(event.price_member_cents / 100).toFixed(2)}€
-                                            </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
-                                                {(event.price_external_cents / 100).toFixed(2)}€
-                                            </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
-                                                {event.location || <span className="text-gray-300 italic">—</span>}
-                                            </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
-                                                {event.instructor_name}
-                                            </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
-                                                {event.max_places}
-                                            </td>
-                                            <td className="px-4 py-3 whitespace-nowrap">
-                                                <span className={`px-2 py-1 text-xs font-bold rounded-full ${event.registrations_count >= event.max_places
-                                                    ? "bg-red-100 text-red-800"
-                                                    : event.registrations_count > 0
-                                                        ? "bg-blue-100 text-blue-800"
-                                                        : "bg-gray-100 text-gray-600"
-                                                    }`}>
-                                                    {event.registrations_count}/{event.max_places}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm space-x-1">
-                                                <button
-                                                    onClick={() => handleEdit(event)}
-                                                    className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                    title="Modifier"
-                                                >
-                                                    ✏️
-                                                </button>
-                                                <button
-                                                    onClick={() => setDeleteConfirmId(event.id)}
-                                                    className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                    title="Supprimer"
-                                                >
-                                                    🗑️
-                                                </button>
+                                            <td className="px-4 py-3 whitespace-nowrap text-right space-x-2">
+                                                <button onClick={() => handleEdit(event)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">✏️</button>
+                                                {event.is_active ? (
+                                                    <button onClick={() => handleCancelEvent(event)} className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Annuler">🚫</button>
+                                                ) : (
+                                                    <button onClick={() => handleReactivateEvent(event)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Réactiver">🔄</button>
+                                                )}
+                                                <button onClick={() => handleDeleteEvent(event)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Supprimer">🗑️</button>
                                             </td>
                                         </tr>
                                     ))}
-                                    {filteredEvents.length === 0 && (
-                                        <tr>
-                                            <td colSpan={10} className="px-6 py-8 text-center text-slate-500">
-                                                {searchTerm ? "Aucun événement ne correspond à la recherche" : "Aucun événement programmé"}
-                                            </td>
-                                        </tr>
-                                    )}
                                 </tbody>
                             </table>
                         </div>
@@ -509,27 +494,23 @@ export default function AdminEventsProgrammingPage() {
                 </div>
             </main>
 
-            {/* Delete Confirmation Modal */}
-            {deleteConfirmId && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-2xl">
-                        <h3 className="text-lg font-bold text-slate-900 mb-2">Confirmer la suppression</h3>
-                        <p className="text-slate-600 mb-4">
-                            Êtes-vous sûr de vouloir supprimer cet événement ? Cette action est irréversible.
-                        </p>
-                        <div className="flex gap-2 justify-end">
-                            <button
-                                onClick={() => setDeleteConfirmId(null)}
-                                className="px-4 py-2 bg-gray-200 text-slate-900 rounded-lg font-medium hover:bg-gray-300"
-                            >
-                                Annuler
-                            </button>
-                            <button
-                                onClick={() => handleDelete(deleteConfirmId)}
-                                className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700"
-                            >
-                                Supprimer
-                            </button>
+            {confirmModal.show && (
+                <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-xl flex items-center justify-center z-[200] p-4 animate-in fade-in duration-300">
+                    <div className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl border border-slate-100">
+                        <div className={`w-16 h-16 rounded-3xl flex items-center justify-center text-3xl mb-6 ${
+                            confirmModal.type === 'danger' ? 'bg-rose-50 text-rose-500' : 
+                            confirmModal.type === 'warning' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'
+                        }`}>
+                            {confirmModal.type === 'danger' ? '⚠️' : confirmModal.type === 'warning' ? '🚫' : '🔄'}
+                        </div>
+                        <h3 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">{confirmModal.title}</h3>
+                        <p className="text-slate-500 font-bold text-sm leading-relaxed mb-8">{confirmModal.message}</p>
+                        <div className="flex gap-3">
+                            <button onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))} className="flex-1 px-6 py-4 bg-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Annuler</button>
+                            <button onClick={confirmModal.onConfirm} className={`flex-1 px-6 py-4 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg ${
+                                confirmModal.type === 'danger' ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-200' : 
+                                confirmModal.type === 'warning' ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-200' : 'bg-blue-500 hover:bg-blue-600 shadow-blue-200'
+                            }`}>Confirmer</button>
                         </div>
                     </div>
                 </div>

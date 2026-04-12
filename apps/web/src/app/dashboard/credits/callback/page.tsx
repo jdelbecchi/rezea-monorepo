@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { formatCredits } from "@/lib/formatters";
 
 function CreditsCallbackContent() {
     const router = useRouter();
@@ -68,7 +69,7 @@ function CreditsCallbackContent() {
                         {newBalance !== null && (
                             <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-6 text-white mb-6">
                                 <p className="text-blue-100 text-sm">Nouveau solde</p>
-                                <p className="text-4xl font-bold mt-2">{newBalance}</p>
+                                <p className="text-4xl font-bold mt-2">{formatCredits(newBalance)}</p>
                                 <p className="text-blue-100 text-sm mt-1">crédits</p>
                             </div>
                         )}

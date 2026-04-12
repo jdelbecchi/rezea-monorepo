@@ -1,6 +1,6 @@
 """Routes réservations avec gestion FIFO des crédits"""
 from datetime import datetime, timedelta
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
@@ -18,6 +18,85 @@ import structlog
 
 logger = structlog.get_logger()
 router = APIRouter()
+
+
+async def auto_restitute_expired_waitlist(
+    db: AsyncSession,
+    tenant_id: UUID,
+    user_id: Optional[UUID] = None
+) -> int:
+    """
+    Identifie les inscriptions 'pending' pour des séances passées et restitue les crédits.
+    Retourne le nombre d'inscriptions traitées.
+    """
+    now = datetime.utcnow()
+    
+    # 1. Trouver les inscriptions concernées
+    query = (
+        select(Booking)
+        .join(Session, Booking.session_id == Session.id)
+        .where(
+            and_(
+                Booking.tenant_id == tenant_id,
+                Booking.status == BookingStatus.PENDING,
+                Session.start_time < now
+            )
+        )
+    )
+    if user_id:
+        query = query.where(Booking.user_id == user_id)
+        
+    result = await db.execute(query)
+    expired_bookings = result.scalars().all()
+    
+    count = 0
+    for booking in expired_bookings:
+        # Vérifier si un remboursement a déjà été fait (sécurité double remboursement)
+        # On regarde s'il existe une transaction REFUND liée à ce booking_id
+        tx_check = await db.execute(
+            select(CreditTransaction).where(
+                and_(
+                    CreditTransaction.tenant_id == tenant_id,
+                    CreditTransaction.transaction_type == CreditTransactionType.REFUND,
+                    CreditTransaction.reference == str(booking.id)
+                )
+            )
+        )
+        if tx_check.scalar_one_or_none():
+            continue
+            
+        # Procéder à la restitution
+        if booking.credits_used > 0:
+            acct_result = await db.execute(
+                select(CreditAccount).where(
+                    and_(
+                        CreditAccount.tenant_id == tenant_id,
+                        CreditAccount.user_id == booking.user_id
+                    )
+                )
+            )
+            account = acct_result.scalar_one_or_none()
+            if account:
+                account.balance += booking.credits_used
+                account.total_used -= booking.credits_used
+                
+                tx = CreditTransaction(
+                    tenant_id=tenant_id,
+                    account_id=account.id,
+                    transaction_type=CreditTransactionType.REFUND,
+                    amount=booking.credits_used,
+                    balance_after=account.balance,
+                    description=f"Restitution automatique (Liste d'attente expirée)",
+                    reference=str(booking.id),
+                    consumed_at=now
+                )
+                db.add(tx)
+                count += 1
+                
+    if count > 0:
+        await db.commit()
+        
+    return count
 
 
 async def consume_credits_fifo(
@@ -105,19 +184,12 @@ async def create_booking(
             detail="Séance non trouvée"
         )
     
-    # Vérifier la disponibilité
-    if session.current_participants >= session.max_participants:
-        # Si liste d'attente activée, proposer de s'inscrire
-        if session.allow_waitlist:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Séance complète. Voulez-vous rejoindre la liste d'attente?"
-            )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Séance complète"
-            )
+    # Vérifier la disponibilité (simplifié car géré par le statut)
+    if session.current_participants >= session.max_participants and not session.allow_waitlist:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Séance complète"
+        )
     
     # Vérifier si l'utilisateur n'a pas déjà une réservation
     result = await db.execute(
@@ -137,6 +209,10 @@ async def create_booking(
             status_code=status.HTTP_409_CONFLICT,
             detail="Vous avez déjà une réservation pour cette séance"
         )
+
+    # Déterminer le statut initial
+    is_full = session.current_participants >= session.max_participants
+    booking_status = BookingStatus.CONFIRMED if not is_full else BookingStatus.PENDING
     
     try:
         # Consommer les crédits
@@ -149,7 +225,7 @@ async def create_booking(
             tenant_id=tenant_id,
             user_id=user_id,
             session_id=booking_data.session_id,
-            status=BookingStatus.CONFIRMED,
+            status=booking_status,
             credits_used=session.credits_required,
             transaction_id=transaction_id,
             notes=booking_data.notes
@@ -157,8 +233,9 @@ async def create_booking(
         
         db.add(booking)
         
-        # Incrémenter le compteur
-        session.current_participants += 1
+        # Incrémenter le compteur seulement si confirmé
+        if booking_status == BookingStatus.CONFIRMED:
+            session.current_participants += 1
         
         await db.commit()
         await db.refresh(booking)
@@ -193,6 +270,9 @@ async def list_bookings(
     """Liste les réservations de l'utilisateur"""
     tenant_id = request.state.tenant_id
     user_id = request.state.user_id
+    
+    # Restitution automatique des crédits pour les listes d'attente expirées
+    await auto_restitute_expired_waitlist(db, tenant_id, user_id)
     
     query = select(Booking, Session).join(
         Session, Booking.session_id == Session.id
@@ -328,37 +408,7 @@ async def cancel_booking(
         if next_booking:
             next_booking.status = BookingStatus.CONFIRMED
             session.current_participants += 1
-            
-            # Gérer les crédits du promu
-            credits_needed = session.credits_required
-            if credits_needed > 0:
-                acct_result = await db.execute(
-                    select(CreditAccount).where(
-                        and_(
-                            CreditAccount.tenant_id == tenant_id,
-                            CreditAccount.user_id == next_booking.user_id,
-                        )
-                    )
-                )
-                next_account = acct_result.scalar_one_or_none()
-                if next_account and next_account.balance >= credits_needed:
-                    next_account.balance -= credits_needed
-                    next_account.total_used += credits_needed
-                    tx = CreditTransaction(
-                        tenant_id=tenant_id,
-                        account_id=next_account.id,
-                        transaction_type=CreditTransactionType.BOOKING,
-                        amount=-credits_needed,
-                        balance_after=next_account.balance,
-                        description="Réservation (promotion liste d'attente)",
-                        consumed_at=datetime.utcnow(),
-                    )
-                    db.add(tx)
-                    await db.flush()
-                    next_booking.transaction_id = tx.id
-                    next_booking.credits_used = credits_needed
-                else:
-                    next_booking.credits_used = 0
+            # Redondant car déjà débité lors de l'entrée en liste d'attente
             
             logger.info(
                 "Promotion automatique liste d'attente",

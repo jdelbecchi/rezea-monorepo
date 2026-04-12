@@ -18,6 +18,7 @@ from app.models.models import (
 from app.schemas.schemas import (
     AdminBookingCreate, AdminBookingUpdate, AdminBookingResponse,
 )
+from app.api.bookings import auto_restitute_expired_waitlist
 
 router = APIRouter()
 
@@ -92,7 +93,7 @@ async def auto_promote_waitlist(db: AsyncSession, tenant_id, session_id):
     if not next_booking:
         return None
 
-    # Promouvoir
+    # Statut promu
     next_booking.status = BookingStatus.CONFIRMED
 
     # Récupérer la séance pour incrémenter le compteur
@@ -102,36 +103,7 @@ async def auto_promote_waitlist(db: AsyncSession, tenant_id, session_id):
     session = sess_result.scalar_one_or_none()
     if session:
         session.current_participants += 1
-
-    # Gérer les crédits pour le promu
-    credits_used = session.credits_required if session else 0
-    if credits_used > 0:
-        acct = await db.execute(
-            select(CreditAccount).where(
-                CreditAccount.tenant_id == tenant_id,
-                CreditAccount.user_id == next_booking.user_id,
-            )
-        )
-        account = acct.scalar_one_or_none()
-        if account and account.balance >= credits_used:
-            account.balance -= credits_used
-            account.total_used += credits_used
-            tx = CreditTransaction(
-                tenant_id=tenant_id,
-                account_id=account.id,
-                transaction_type=CreditTransactionType.BOOKING,
-                amount=-credits_used,
-                balance_after=account.balance,
-                description="Réservation de séance (promotion liste d'attente)",
-                consumed_at=datetime.utcnow(),
-            )
-            db.add(tx)
-            await db.flush()
-            next_booking.transaction_id = tx.id
-            next_booking.credits_used = credits_used
-        else:
-            # Pas assez de crédits, on confirme quand même
-            next_booking.credits_used = 0
+        session.waitlist_count = max(0, session.waitlist_count - 1)
 
     return next_booking
 
@@ -173,6 +145,10 @@ async def list_bookings(
     session_id: Optional[str] = Query(None, alias="session_id"),
 ):
     tenant_id = request.state.tenant_id
+    
+    # Restitution automatique des crédits pour les listes d'attente expirées de tout le tenant
+    await auto_restitute_expired_waitlist(db, tenant_id)
+    
     query = (
         select(Booking)
         .where(Booking.tenant_id == tenant_id)
@@ -273,11 +249,12 @@ async def create_booking(
         session.current_participants += 1
     else:
         booking_status = BookingStatus.PENDING
+        session.waitlist_count += 1
 
-    # Gérer les crédits (seulement si confirmé)
+    # Gérer les crédits (immédiatement, même pour la liste d'attente)
     transaction_id = None
     credits_used = session.credits_required
-    if booking_status == BookingStatus.CONFIRMED:
+    if credits_used > 0:
         acct = await db.execute(
             select(CreditAccount).where(
                 CreditAccount.tenant_id == tenant_id,
@@ -286,7 +263,8 @@ async def create_booking(
         )
         account = acct.scalar_one_or_none()
 
-        if account and account.balance >= credits_used:
+        if account:
+            # Débit systématique (permet le négatif pour le manager)
             account.balance -= credits_used
             account.total_used += credits_used
             tx = CreditTransaction(
@@ -295,13 +273,14 @@ async def create_booking(
                 transaction_type=CreditTransactionType.BOOKING,
                 amount=-credits_used,
                 balance_after=account.balance,
-                description="Réservation de séance (admin)",
+                description=f"Réservation de séance ({booking_status.value})",
                 consumed_at=datetime.utcnow(),
             )
             db.add(tx)
             await db.flush()
             transaction_id = tx.id
         else:
+            # Si pas de compte crédit, on ne peut pas débiter (cas rare)
             credits_used = 0
 
     booking = Booking(
@@ -370,6 +349,9 @@ async def update_booking(
                 if booking.session:
                     booking.session.current_participants = max(0, booking.session.current_participants - 1)
                 
+                if old_status == BookingStatus.PENDING and booking.session:
+                    booking.session.waitlist_count = max(0, booking.session.waitlist_count - 1)
+                
                 # Rembourser les crédits si l'annulation est valide
                 if booking.credits_used > 0:
                     acct = await db.execute(
@@ -409,12 +391,15 @@ async def update_booking(
                 if booking.session:
                     booking.session.current_participants += 1
                 
+                if old_status == BookingStatus.PENDING and booking.session:
+                    booking.session.waitlist_count = max(0, booking.session.waitlist_count - 1)
+                
                 booking.cancelled_at = None
                 booking.cancellation_type = None
 
-                # Débiter les crédits si nécessaire
+                # Débiter les crédits SEULEMENT si ils n'ont pas déjà été débités (cas d'une reprise après annulation)
                 credits_to_deduct = booking.session.credits_required if booking.session else 0
-                if credits_to_deduct > 0:
+                if credits_to_deduct > 0 and (booking.credits_used == 0 or booking.transaction_id is None):
                     acct = await db.execute(
                         select(CreditAccount).where(
                             CreditAccount.tenant_id == tenant_id,
@@ -482,6 +467,10 @@ async def delete_booking(
     if booking.status == BookingStatus.CONFIRMED and booking.session:
         booking.session.current_participants = max(
             0, booking.session.current_participants - 1
+        )
+    if booking.status == BookingStatus.PENDING and booking.session:
+        booking.session.waitlist_count = max(
+            0, booking.session.waitlist_count - 1
         )
 
     # Rembourser les crédits si applicable

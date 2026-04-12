@@ -7,9 +7,9 @@ import Sidebar from "@/components/Sidebar";
 import MultiSelect from "@/components/MultiSelect";
 
 const STATUS_LABELS: Record<string, string> = {
-    confirmed: "Confirmée",
+    confirmed: "Inscrit",
     pending: "Sur liste",
-    cancelled: "Annulée",
+    cancelled: "Annulé",
     session_cancelled: "Séance annulée",
     absent: "Absent",
 };
@@ -47,6 +47,13 @@ export default function AdminBookingsPage() {
     useEffect(() => {
         fetchData();
     }, [router]);
+
+    useEffect(() => {
+        if (message) {
+            const timer = setTimeout(() => setMessage(null), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [message]);
 
     useEffect(() => {
         if (user) loadBookings();
@@ -87,7 +94,20 @@ export default function AdminBookingsPage() {
                 api.getAdminSessions(),
             ]);
             setUsers(usersData);
-            setSessions(sessionsData);
+            
+            // On limite l'affichage des séances passées à 7 jours d'antériorité
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+            
+            const filteredSessions = (sessionsData || []).filter(s => {
+                try {
+                    return new Date(s.start_time) >= oneWeekAgo;
+                } catch (e) {
+                    return true; // En cas d'erreur de date, on garde la séance par sécurité
+                }
+            });
+            
+            setSessions(filteredSessions);
         } catch (err) {
             console.error("Error loading form options:", err);
         }
@@ -186,11 +206,11 @@ export default function AdminBookingsPage() {
     const getStatusBadge = (b: AdminBookingItem) => {
         switch (b.status) {
             case "confirmed":
-                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-green-100 text-green-800">✅ Confirmée</span>;
+                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-green-100 text-green-800">✅ Inscrit</span>;
             case "pending":
                 return <span className="px-2 py-1 text-xs font-bold rounded-full bg-yellow-100 text-yellow-800">⏳ Sur liste</span>;
             case "cancelled":
-                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-red-100 text-red-800">🚫 Annulée</span>;
+                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-red-100 text-red-800">🚫 Annulé</span>;
             case "session_cancelled":
                 return <span className="px-2 py-1 text-xs font-bold rounded-full bg-orange-100 text-orange-800">🚫 Séance annulée</span>;
             case "absent":
@@ -209,9 +229,9 @@ export default function AdminBookingsPage() {
             ];
         }
         return [
-            { value: "confirmed", label: "✅ Confirmée" },
+            { value: "confirmed", label: "✅ Inscrit" },
             { value: "pending", label: "⏳ Sur liste" },
-            { value: "cancelled", label: "🚫 Annulée" },
+            { value: "cancelled", label: "🚫 Annulé" },
             { value: "absent", label: "❌ Absent" },
         ];
     };
@@ -258,11 +278,11 @@ export default function AdminBookingsPage() {
                                 <MultiSelect
                                     label="Statut(s)"
                                     options={[
-                                        { id: "confirmed", label: "✅ Confirmées" },
-                                        { id: "pending", label: "⏳ Sur liste" },
-                                        { id: "cancelled", label: "🚫 Annulées" },
-                                        { id: "session_cancelled", label: "🚫 Séances annulées" },
-                                        { id: "absent", label: "❌ Absents" },
+                                        { id: "confirmed", label: "Inscrit" },
+                                        { id: "pending", label: "Sur liste" },
+                                        { id: "cancelled", label: "Annulé" },
+                                        { id: "session_cancelled", label: "Séance annulée" },
+                                        { id: "absent", label: "Absent" },
                                     ]}
                                     selected={filterStatuses}
                                     onChange={setFilterStatuses}
@@ -309,7 +329,7 @@ export default function AdminBookingsPage() {
                                     {filteredBookings.map((booking) => (
                                         <tr key={booking.id} className="hover:bg-gray-50">
                                             <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
-                                                {booking.session_date ? new Date(booking.session_date).toLocaleDateString("fr-FR") : "—"}
+                                                {booking.session_date ? booking.session_date.split('-').reverse().join('/') : "—"}
                                             </td>
                                             <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
                                                 {booking.session_time || "—"}
@@ -414,7 +434,7 @@ export default function AdminBookingsPage() {
                         <div className="mb-4 p-3 bg-slate-50 rounded-lg text-sm text-slate-600">
                             <p><strong>Séance :</strong> {editBooking.session_title}</p>
                             <p><strong>Utilisateur :</strong> {editBooking.user_name}</p>
-                            <p><strong>Date :</strong> {editBooking.session_date ? new Date(editBooking.session_date).toLocaleDateString("fr-FR") : "—"} à {editBooking.session_time}</p>
+                            <p><strong>Date :</strong> {editBooking.session_date ? editBooking.session_date.split('-').reverse().join('/') : "—"} à {editBooking.session_time}</p>
                         </div>
                         <form onSubmit={handleEditSubmit} className="space-y-4">
                             <div>

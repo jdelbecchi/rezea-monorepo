@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, User, OrderItem, InstallmentItem } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
+import { formatCredits } from "@/lib/formatters";
 import MultiSelect from "@/components/MultiSelect";
 
 const PAYMENT_LABELS: Record<string, string> = {
@@ -55,7 +56,7 @@ export default function AdminShopOrdersPage() {
     // Filters
     const [searchTerm, setSearchTerm] = useState("");
     const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
-    const [dynamicStatuses, setDynamicStatuses] = useState<string[]>(["en_cours", "termine"]);
+    const [dynamicStatuses, setDynamicStatuses] = useState<string[]>(["active", "termine"]);
     const [filterPayments, setFilterPayments] = useState<string[]>([]);
     const [filterExpiry, setFilterExpiry] = useState("");
     const [exportFrom, setExportFrom] = useState("");
@@ -99,6 +100,13 @@ export default function AdminShopOrdersPage() {
     useEffect(() => {
         fetchData();
     }, [router]);
+
+    useEffect(() => {
+        if (message) {
+            const timer = setTimeout(() => setMessage(null), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [message]);
 
     const fetchData = async () => {
         try {
@@ -168,7 +176,7 @@ export default function AdminShopOrdersPage() {
             payment_status: order.payment_status,
             comment: order.comment || "",
         });
-        const isStd = order.status === "en_cours" || order.status === "termine" || order.status === "" || !order.status;
+        const isStd = order.status === "active" || order.status === "termine" || order.status === "" || !order.status;
         setShowCustomStatus(!isStd);
     };
 
@@ -179,7 +187,7 @@ export default function AdminShopOrdersPage() {
             await api.updateAdminOrder(editOrder.id, {
                 start_date: editForm.start_date || undefined,
                 end_date: editForm.end_date || undefined,
-                price_cents: Math.round(parseFloat(editForm.price_cents) * 100),
+                price_cents: Math.round(parseFloat(editForm.price_cents.replace(',', '.')) * 100),
                 credits_total: editForm.is_unlimited ? null : (editForm.credits_total ? parseInt(editForm.credits_total) : null),
                 is_unlimited: editForm.is_unlimited,
                 status: editForm.status || undefined,
@@ -281,9 +289,20 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
         if (!installmentsOrder) return;
         try {
             await api.markInstallmentError(installmentsOrder.id, installmentId);
-            const data = await api.getInstallments(installmentsOrder.id);
-            setInstallments(data);
-            fetchData(); // Refresh order status
+            
+            // Refresh data
+            const [instData, ordersData] = await Promise.all([
+                api.getInstallments(installmentsOrder.id),
+                api.getAdminOrders()
+            ]);
+            
+            setInstallments(instData);
+            setOrders(ordersData);
+            
+            // Update the current modal order to refresh totals
+            const updatedOrder = ordersData.find(o => o.id === installmentsOrder.id);
+            if (updatedOrder) setInstallmentsOrder(updatedOrder);
+
             setMessage({ type: "success", text: "Échéance marquée en erreur." });
         } catch (err: any) {
             setMessage({ type: "error", text: "Erreur lors du signalement." });
@@ -294,9 +313,20 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
         if (!installmentsOrder) return;
         try {
             await api.resolveInstallment(installmentsOrder.id, installmentId);
-            const data = await api.getInstallments(installmentsOrder.id);
-            setInstallments(data);
-            fetchData(); // Refresh order status
+            
+            // Refresh data
+            const [instData, ordersData] = await Promise.all([
+                api.getInstallments(installmentsOrder.id),
+                api.getAdminOrders()
+            ]);
+            
+            setInstallments(instData);
+            setOrders(ordersData);
+            
+            // Update the current modal order to refresh totals
+            const updatedOrder = ordersData.find(o => o.id === installmentsOrder.id);
+            if (updatedOrder) setInstallmentsOrder(updatedOrder);
+
             setMessage({ type: "success", text: "Échéance régularisée." });
         } catch (err: any) {
             setMessage({ type: "error", text: "Erreur lors de la régularisation." });
@@ -307,9 +337,20 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
         if (!installmentsOrder) return;
         try {
             await api.payInstallment(installmentsOrder.id, installmentId);
-            const data = await api.getInstallments(installmentsOrder.id);
-            setInstallments(data);
-            fetchData(); // Refresh order status
+            
+            // Refresh data
+            const [instData, ordersData] = await Promise.all([
+                api.getInstallments(installmentsOrder.id),
+                api.getAdminOrders()
+            ]);
+            
+            setInstallments(instData);
+            setOrders(ordersData);
+            
+            // Update the current modal order to refresh totals
+            const updatedOrder = ordersData.find(o => o.id === installmentsOrder.id);
+            if (updatedOrder) setInstallmentsOrder(updatedOrder);
+
             setMessage({ type: "success", text: "Échéance marquée comme payée." });
         } catch (err: any) {
             setMessage({ type: "error", text: "Erreur lors du marquage comme payé." });
@@ -321,6 +362,9 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
         try {
             const result = await api.toggleSuspendUser(userId);
             setMessage({ type: "success", text: result.is_suspended ? "Crédits suspendus." : "Crédits réactivés." });
+            // Refresh orders to update icons and indicators
+            const updatedOrders = await api.getAdminOrders();
+            setOrders(updatedOrders);
         } catch (err: any) {
             setMessage({ type: "error", text: "Erreur lors de la suspension." });
         }
@@ -353,10 +397,10 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
             o.user_name,
             o.offer_code,
             new Date(o.start_date).toLocaleDateString("fr-FR"),
-            o.end_date ? new Date(o.end_date).toLocaleDateString("fr-FR") : "Illimité",
-            (o.price_cents / 100).toFixed(2),
+            o.end_date ? o.end_date.split('-').reverse().join('/') : "Illimité",
+            (o.price_cents / 100).toFixed(2).replace('.', ','),
             o.is_unlimited ? "∞" : o.credits_total,
-            o.is_unlimited ? "∞" : o.balance,
+            o.is_unlimited ? "∞" : formatCredits(o.balance),
             PAYMENT_LABELS[o.payment_status],
             STATUS_LABELS[o.status] || o.status,
             (o.comment || "").replace(/[\n;]/g, " "),
@@ -413,7 +457,9 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                             <div className="flex-1 min-w-[200px]">
                                 <MultiSelect
                                     label="Statut(s)"
-                                    options={dynamicStatuses.map(s => ({ id: s, label: STATUS_LABELS[s] || s }))}
+                                    options={dynamicStatuses
+                                        .filter(s => s !== "en_cours")
+                                        .map(s => ({ id: s, label: STATUS_LABELS[s] || s }))}
                                     selected={filterStatuses}
                                     onChange={setFilterStatuses}
                                     placeholder="Tous"
@@ -507,11 +553,16 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                         return (
                                             <tr key={order.id} className="hover:bg-gray-50">
                                                 <td className="px-3 py-3 whitespace-nowrap text-sm text-slate-700 hidden md:table-cell">
-                                                    {new Date(order.created_at).toLocaleDateString("fr-FR")}
+                                                    {order.created_at ? new Date(order.created_at).toLocaleDateString("fr-FR") : "—"}
                                                 </td>
                                                 <td className="px-3 py-3 whitespace-nowrap text-sm">
                                                     <div className="flex items-center gap-1">
-                                                        <span className="font-medium text-slate-900">{order.user_name}</span>
+                                                        <span className={`font-medium ${order.user_is_suspended ? "text-slate-400" : "text-slate-900"}`}>
+                                                            {order.user_name}
+                                                        </span>
+                                                        {order.user_is_suspended && (
+                                                            <span title="Crédits suspendus" className="text-red-400">🚫</span>
+                                                        )}
                                                         {order.created_by_admin && (
                                                             <span title="Créé par le manager" className="text-amber-500">🛡️</span>
                                                         )}
@@ -558,7 +609,7 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                                             (order.balance ?? 0) <= 2 ? "bg-orange-100 text-orange-800" :
                                                             "bg-green-100 text-green-800"
                                                         }`}>
-                                                            {order.balance}
+                                                            {formatCredits(order.balance)}
                                                         </span>
                                                     )}
                                                 </td>
@@ -579,7 +630,15 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                                     )}
                                                     <button onClick={() => openEdit(order)} className="text-blue-600 hover:text-blue-800 font-medium" title="Modifier">✏️</button>
                                                     <button onClick={() => openInvoice(order)} className="text-green-600 hover:text-green-800 font-medium" title="Facture">🧾</button>
-                                                    <button onClick={() => handleSuspend(order.user_id)} className="text-orange-500 hover:text-orange-700" title="Suspendre/Réactiver crédits">⏸️</button>
+                                                    {order.user_is_suspended ? (
+                                                        <button onClick={() => handleSuspend(order.user_id)} className="text-slate-300 hover:text-slate-500" title="Réactiver les crédits">
+                                                            <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 inline-block align-middle"><path d="M8 5v14l11-7z" /></svg>
+                                                        </button>
+                                                    ) : (
+                                                        <button onClick={() => handleSuspend(order.user_id)} className="text-orange-500 hover:text-orange-700" title="Suspendre les crédits">
+                                                            <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 inline-block align-middle"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+                                                        </button>
+                                                    )}
                                                     <button onClick={() => setDeleteConfirmId(order.id)} className="text-red-600 hover:text-red-800 font-medium" title="Supprimer">🗑️</button>
                                                 </td>
                                             </tr>
@@ -724,7 +783,7 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                             <option value="termine">Terminée</option>
                                             <option value="expiree">Expirée</option>
                                             <option value="en_pause">En pause</option>
-                                            {dynamicStatuses.filter(s => !["active", "termine", "expiree", "en_pause", "en_cours", "Terminé", "terminé"].includes(s)).map(s => (
+                                            {dynamicStatuses.filter(s => !["active", "termine", "expiree", "en_pause", "Terminé", "terminé"].includes(s)).map(s => (
                                                 <option key={s} value={s}>{s}</option>
                                             ))}
                                             <option value="_custom">+ Autre (saisie libre)...</option>

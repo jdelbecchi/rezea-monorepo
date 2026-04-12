@@ -5,6 +5,7 @@ import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
 import { api, Session, Event, User, CreditAccount, Tenant, Booking } from "@/lib/api";
+import { formatDuration, calculateDuration, formatCredits } from "@/lib/formatters";
 import { 
   format, 
   startOfMonth, 
@@ -56,6 +57,7 @@ export default function PlanningPage() {
     instructor?: string;
     location?: string;
     start?: string;
+    duration?: string;
     credits?: number;
     spots?: number;
     max?: number;
@@ -95,8 +97,8 @@ export default function PlanningPage() {
       setLoading(true);
       setError(null);
       try {
-        const start = format(selectedDate, 'yyyy-MM-dd') + 'T00:00:00';
-        const end = format(selectedDate, 'yyyy-MM-dd') + 'T23:59:59';
+        const start = format(selectedDate, "yyyy-MM-dd") + "T00:00:00";
+        const end = format(selectedDate, "yyyy-MM-dd") + "T23:59:59";
         
         const [sessionsData, eventsData] = await Promise.all([
           api.getSessions({ start_date: start, end_date: end }),
@@ -138,9 +140,11 @@ export default function PlanningPage() {
       setMyBookings(newBookings);
       setAllUpcomingEvents(upcomingEventsData);
       
-      const start = format(selectedDate, 'yyyy-MM-dd') + 'T00:00:00';
-      const end = format(selectedDate, 'yyyy-MM-dd') + 'T23:59:59';
-      const sessionsData = await api.getSessions({ start_date: start, end_date: end });
+      const startDate = new Date(selectedDate);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(selectedDate);
+      endDate.setHours(23, 59, 59, 999);
+      const sessionsData = await api.getSessions({ start_date: startDate.toISOString(), end_date: endDate.toISOString() });
       setSessions(sessionsData);
   };
 
@@ -309,7 +313,7 @@ export default function PlanningPage() {
                   </div>
                   <span className="text-[11px] text-slate-400 font-medium leading-none mb-1">Mes crédits</span>
                   <div className="flex items-baseline gap-2">
-                      <span className="text-3xl font-semibold text-slate-900 leading-none">{credits?.balance || 0}</span>
+                      <span className="text-3xl font-semibold text-slate-900 leading-none">{formatCredits(credits?.balance)}</span>
                       <span className="text-xs text-slate-500 font-medium">unités</span>
                   </div>
                   <button 
@@ -324,7 +328,7 @@ export default function PlanningPage() {
                 <div className="md:flex-1"></div>
                 <div className="flex items-center gap-2 px-4 py-1 rounded-2xl">
                   <span className="text-sm text-slate-400 font-medium">Mes crédits :</span>
-                  <span className="text-sm md:text-base font-semibold text-slate-900">{credits?.balance || 0}</span>
+                  <span className="text-sm md:text-base font-semibold text-slate-900">{formatCredits(credits?.balance)}</span>
                   <button 
                     onClick={() => window.location.href = '/dashboard/credits'}
                     className="w-7 h-7 flex items-center justify-center bg-slate-100 text-slate-500 rounded-full text-lg font-medium shadow-sm shadow-slate-100 hover:bg-slate-200 active:scale-95 transition-all ml-1"
@@ -463,6 +467,7 @@ export default function PlanningPage() {
                                     instructor: item.instructor_name,
                                     location: item.location,
                                     start: time,
+                                    duration: isEvent ? formatDuration(item.duration_minutes) : formatDuration(calculateDuration(item.start_time, item.end_time)),
                                     credits: item.credits_required || 0,
                                     spots: spotsLeft,
                                     max: isEvent ? item.max_places : item.max_participants
@@ -545,6 +550,7 @@ export default function PlanningPage() {
                                        instructor: item.instructor_name,
                                        location: item.location,
                                        start: time,
+                                       duration: isEvent ? formatDuration(item.duration_minutes) : formatDuration(calculateDuration(item.start_time, item.end_time)),
                                        credits: item.credits_required || 0,
                                        spots: spotsLeft,
                                        max: isEvent ? item.max_places : item.max_participants
@@ -713,6 +719,10 @@ export default function PlanningPage() {
                     <div className="flex items-center gap-2">
                       <span className="text-base">🕒</span>
                       <span className="text-xs font-medium">{selectedItem.start}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">⏳</span>
+                      <span className="text-xs font-medium">{selectedItem.duration}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <svg className="w-4 h-4 text-slate-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">

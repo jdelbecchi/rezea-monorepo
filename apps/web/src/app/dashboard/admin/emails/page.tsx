@@ -37,7 +37,24 @@ function AdminEmailsContent() {
     const [templateName, setTemplateName] = useState("");
     const [isSavingTemplate, setIsSavingTemplate] = useState(false);
     
+    const [templateToDelete, setTemplateToDelete] = useState<EmailTemplate | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    
     const quillRef = useRef<any>(null);
+
+    useEffect(() => {
+        // Configure Quill for inline styles (alignment)
+        const configureQuill = async () => {
+            try {
+                const { default: Quill } = await import('quill');
+                const Align = Quill.import('attributors/style/align');
+                Quill.register(Align, true);
+            } catch (err) {
+                console.warn("Quill could not be configured for inline styles", err);
+            }
+        };
+        configureQuill();
+    }, []);
 
     useEffect(() => {
         api.getCurrentUser().then(setUser).catch(() => { });
@@ -85,6 +102,7 @@ function AdminEmailsContent() {
                 [{ 'header': [1, 2, 3, false] }],
                 ['bold', 'italic', 'underline', 'strike'],
                 [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                [{ 'align': [] }],
                 [{ 'color': [] }, { 'background': [] }],
                 ['link', 'image'],
                 ['clean']
@@ -152,15 +170,20 @@ function AdminEmailsContent() {
         }
     };
 
-    const handleDeleteTemplate = async (e: React.MouseEvent, id: string) => {
-        e.stopPropagation();
-        if (!confirm("Supprimer ce modèle ?")) return;
+    const handleDeleteTemplate = async () => {
+        if (!templateToDelete) return;
         
+        setIsDeleting(true);
         try {
-            await api.deleteEmailTemplate(id);
-            setTemplates(prev => prev.filter(t => t.id !== id));
+            await api.deleteEmailTemplate(templateToDelete.id);
+            setTemplates(prev => prev.filter(t => t.id !== templateToDelete.id));
+            setTemplateToDelete(null);
+            setMessage({ type: "success", text: "Modèle supprimé avec succès." });
         } catch (error) {
             console.error("Delete failed", error);
+            setMessage({ type: "error", text: "Erreur lors de la suppression du modèle." });
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -279,7 +302,10 @@ function AdminEmailsContent() {
                                             className="min-w-[220px] max-w-[220px] bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group relative"
                                         >
                                             <button 
-                                                onClick={(e) => handleDeleteTemplate(e, t.id)}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setTemplateToDelete(t);
+                                                }}
                                                 className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all text-xs z-20"
                                                 title="Supprimer le modèle"
                                             >
@@ -305,13 +331,14 @@ function AdminEmailsContent() {
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Objet de l'email</label>
+                                    <label className={`block text-sm font-medium mb-1 ${!subject ? 'text-red-500' : 'text-slate-700'}`}>Objet de l'email *</label>
                                     <input
                                         type="text"
+                                        required
                                         value={subject}
                                         onChange={(e) => setSubject(e.target.value)}
                                         placeholder="Note d'information : [Sujet]"
-                                        className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
+                                        className={`w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none ${!subject ? 'border-red-300 bg-red-50' : 'border-slate-200'}`}
                                     />
                                 </div>
                                 <div>
@@ -466,6 +493,36 @@ function AdminEmailsContent() {
                                     className="flex-1 py-4 rounded-2xl font-bold bg-slate-900 text-white hover:bg-slate-800 disabled:bg-slate-200 disabled:cursor-not-allowed transition-all shadow-lg active:scale-95"
                                 >
                                     {isSavingTemplate ? "..." : "Enregistrer"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Modal de suppression de modèle */}
+            {templateToDelete && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-[2.5rem] w-full max-w-sm shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-10 text-center">
+                            <div className="w-20 h-20 bg-rose-50 text-rose-500 rounded-3xl flex items-center justify-center text-3xl mx-auto mb-8 shadow-inner">
+                                🗑️
+                            </div>
+                            <h3 className="text-2xl font-bold text-slate-900 mb-2">Supprimer le modèle ?</h3>
+                            <p className="text-sm text-slate-500 mb-8 leading-relaxed">Cette action est irréversible. Le modèle <b>"{templateToDelete.name}"</b> sera définitivement supprimé.</p>
+                            
+                            <div className="flex gap-4">
+                                <button 
+                                    onClick={() => setTemplateToDelete(null)}
+                                    className="flex-1 py-4 rounded-2xl font-medium text-slate-500 hover:bg-slate-50 transition-all active:scale-95"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    onClick={handleDeleteTemplate}
+                                    disabled={isDeleting}
+                                    className="flex-1 py-4 rounded-2xl font-bold bg-rose-500 text-white hover:bg-rose-600 disabled:bg-slate-200 disabled:cursor-not-allowed transition-all shadow-lg shadow-rose-200 active:scale-95"
+                                >
+                                    {isDeleting ? "..." : "Supprimer"}
                                 </button>
                             </div>
                         </div>

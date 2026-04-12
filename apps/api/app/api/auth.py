@@ -4,7 +4,7 @@ Routes d'authentification
 from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from app.db.session import get_db
 from app.core.security import (
@@ -181,10 +181,28 @@ async def login(
             detail="Identifiants incorrects"
         )
     
-    if not user.is_active:
+    # 1. Manager/Staff sont toujours actifs
+    is_effectively_active = False
+    if user.role in ("owner", "manager", "staff"):
+        is_effectively_active = True
+    elif user.is_active_override:
+        is_effectively_active = True
+    else:
+        # 2. Vérifier si membre actif par commande
+        from app.models.models import Order
+        order_result = await db.execute(
+            select(func.count(Order.id)).where(
+                Order.user_id == user.id,
+                Order.status == "active"
+            )
+        )
+        if order_result.scalar() > 0:
+            is_effectively_active = True
+
+    if not is_effectively_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Compte désactivé"
+            detail="Compte désactivé ou inactif"
         )
     
     # Créer le token

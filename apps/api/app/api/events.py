@@ -7,7 +7,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 from app.db.session import get_db
-from app.models.models import Event, EventRegistration, EventRegistrationStatus, OrderPaymentStatus
+from app.models.models import Event, EventRegistration, EventRegistrationStatus, OrderPaymentStatus, Tenant
 from app.schemas.schemas import EventResponse, EventRegistrationResponse
 
 router = APIRouter()
@@ -223,22 +223,22 @@ async def event_checkout(
     # 4. Calculer le prix
     price_cents = event.price_member_cents if tariff == "member" else event.price_external_cents
     
-    # 5. Créer l'inscription
-    # Si pay_later = True, payment_status = WAITING, else on pourrait imaginer un redirect
-    # Pour l'instant on suit la logique de la boutique
-    payment_status = OrderPaymentStatus.WAITING if pay_later else OrderPaymentStatus.WAITING
-    # NOTE: En fait boutique met WAITING par défaut si "pay_later" est coché.
-    # Si non coché, it might go to HelloAsso/Stripe but here we just initialize it as WAITING for now
-    # until we have the payment link integration for events too.
+    # 4.5 Récupérer le tenant pour vérifier le lien de paiement
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = result.scalar_one_or_none()
     
+    # Si aucun lien de redirection, on force le paiement différé
+    is_link_missing = not tenant.payment_redirect_link if tenant else False
+    effective_pay_later = pay_later or is_link_missing
+
     registration = EventRegistration(
         tenant_id=tenant_id,
         user_id=user_id,
         event_id=event_id,
         price_paid_cents=price_cents,
-        payment_status=OrderPaymentStatus.WAITING if pay_later else OrderPaymentStatus.PENDING,
-        status=EventRegistrationStatus.PENDING_PAYMENT,
-        notes=f"Inscription via PWA (Tarif {tariff}) {' - Paiement différé' if pay_later else ''}"
+        payment_status=OrderPaymentStatus.WAITING if effective_pay_later else OrderPaymentStatus.PENDING,
+        status=EventRegistrationStatus.CONFIRMED,
+        notes=f"Inscription via PWA (Tarif {tariff}) {' - Paiement différé' if effective_pay_later else ''}"
     )
     
     db.add(registration)

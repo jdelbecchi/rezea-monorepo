@@ -91,8 +91,8 @@ export default function RegisterPage() {
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="relative group">
             <input
-                className="w-full bg-slate-50 border border-slate-200 p-4 pl-12 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all font-medium"
-                placeholder="Code Établissement"
+                className={`w-full p-4 pl-12 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all font-medium border ${!formData.tenant_slug ? 'border-red-300 bg-red-50' : 'bg-slate-50 border-slate-200'}`}
+                placeholder="Code Établissement *"
                 value={formData.tenant_slug}
                 onChange={e => setFormData({ ...formData, tenant_slug: e.target.value.toLowerCase() })}
                 required
@@ -108,8 +108,8 @@ export default function RegisterPage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="relative">
                 <input
-                    className="w-full bg-slate-50 border border-slate-200 p-4 pl-11 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all font-medium"
-                    placeholder="Prénom"
+                    className={`w-full p-4 pl-11 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all font-medium border ${!formData.first_name ? 'border-red-300 bg-red-50' : 'bg-slate-50 border-slate-200'}`}
+                    placeholder="Prénom *"
                     value={formData.first_name}
                     onChange={e => setFormData({ ...formData, first_name: e.target.value })}
                     required
@@ -118,8 +118,8 @@ export default function RegisterPage() {
             </div>
             <div className="relative">
                 <input
-                    className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all font-medium"
-                    placeholder="Nom"
+                    className={`w-full p-4 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all font-medium border ${!formData.last_name ? 'border-red-300 bg-red-50' : 'bg-slate-50 border-slate-200'}`}
+                    placeholder="Nom *"
                     value={formData.last_name}
                     onChange={e => setFormData({ ...formData, last_name: e.target.value })}
                     required
@@ -129,9 +129,9 @@ export default function RegisterPage() {
 
           <div className="relative">
             <input
-                className="w-full bg-slate-50 border border-slate-200 p-4 pl-12 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all font-medium"
+                className={`w-full p-4 pl-12 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all font-medium border ${!formData.email ? 'border-red-300 bg-red-50' : 'bg-slate-50 border-slate-200'}`}
                 type="email"
-                placeholder="Email"
+                placeholder="Email *"
                 value={formData.email}
                 onChange={e => setFormData({ ...formData, email: e.target.value })}
                 required
@@ -141,9 +141,9 @@ export default function RegisterPage() {
 
           <div className="relative">
             <input
-                className="w-full bg-slate-50 border border-slate-200 p-4 pl-12 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all font-medium"
+                className={`w-full p-4 pl-12 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all font-medium border ${!formData.password ? 'border-red-300 bg-red-50' : 'bg-slate-50 border-slate-200'}`}
                 type="password"
-                placeholder="Mot de passe"
+                placeholder="Mot de passe *"
                 value={formData.password}
                 onChange={e => setFormData({ ...formData, password: e.target.value })}
                 required

@@ -178,11 +178,8 @@ async def auto_promote_event_waitlist(db: AsyncSession, tenant_id, event_id):
     if not next_reg:
         return None
 
-    # Déterminer le nouveau statut selon le paiement
-    if next_reg.payment_status == OrderPaymentStatus.PAID:
-        next_reg.status = EventRegistrationStatus.CONFIRMED
-    else:
-        next_reg.status = EventRegistrationStatus.PENDING_PAYMENT
+    # Toujours CONFIRMED si promu de liste d'attente (la place se libère)
+    next_reg.status = EventRegistrationStatus.CONFIRMED
 
     # Incrémenter le compteur de l'événement
     event_result = await db.execute(
@@ -246,14 +243,12 @@ async def create_registration(
     if price == 0 and event.price_member_cents > 0:
         price = event.price_member_cents
 
-    # Déterminer le statut initial en fonction du paiement et de la place
+    # Déterminer le statut initial : WAITING_LIST si plein, sinon CONFIRMED (Inscrit)
     payment = data.payment_status or OrderPaymentStatus.PENDING
     if is_waitlist:
         reg_status = EventRegistrationStatus.WAITING_LIST
-    elif payment == OrderPaymentStatus.PAID:
-        reg_status = EventRegistrationStatus.CONFIRMED
     else:
-        reg_status = EventRegistrationStatus.PENDING_PAYMENT
+        reg_status = EventRegistrationStatus.CONFIRMED
 
     registration = EventRegistration(
         tenant_id=tenant_id,

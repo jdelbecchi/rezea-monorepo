@@ -166,35 +166,36 @@ export default function ProfilePage() {
                             </h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-slate-700 ml-1">Prénom <span className="text-slate-900">*</span></label>
+                                    <label className={`text-sm font-semibold ml-1 ${!formData.first_name ? 'text-red-500' : 'text-slate-700'}`}>Prénom *</label>
                                     <input
                                         type="text"
                                         name="first_name"
                                         value={formData.first_name || ""}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all outline-none text-slate-900 font-medium"
+                                        className={`w-full px-4 py-3 border rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all outline-none text-slate-900 font-medium ${!formData.first_name ? 'border-red-300 bg-red-50' : 'bg-slate-50 border-slate-200'}`}
                                         required
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-slate-700 ml-1">Nom <span className="text-slate-900">*</span></label>
+                                    <label className={`text-sm font-semibold ml-1 ${!formData.last_name ? 'text-red-500' : 'text-slate-700'}`}>Nom *</label>
                                     <input
                                         type="text"
                                         name="last_name"
                                         value={formData.last_name || ""}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all outline-none text-slate-900 font-medium"
+                                        className={`w-full px-4 py-3 border rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all outline-none text-slate-900 font-medium ${!formData.last_name ? 'border-red-300 bg-red-50' : 'bg-slate-50 border-slate-200'}`}
                                         required
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-slate-700 ml-1">Date de naissance <span className="text-slate-900">*</span></label>
+                                    <label className={`text-sm font-semibold ml-1 ${!formData.birth_date ? 'text-red-500' : 'text-slate-700'}`}>Date de naissance *</label>
                                     <input
                                         type="date"
                                         name="birth_date"
+                                        required
                                         value={formData.birth_date || ""}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all outline-none text-slate-900 font-medium"
+                                        className={`w-full px-4 py-3 border rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all outline-none text-slate-900 font-medium ${!formData.birth_date ? 'border-red-300 bg-red-50' : 'bg-slate-50 border-slate-200'}`}
                                     />
                                 </div>
                             </div>
@@ -207,24 +208,25 @@ export default function ProfilePage() {
                             </h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-slate-700 ml-1">Email <span className="text-slate-900">*</span></label>
+                                    <label className={`text-sm font-semibold ml-1 ${!formData.email ? 'text-red-500' : 'text-slate-700'}`}>Email *</label>
                                     <input
                                         type="email"
                                         name="email"
                                         value={formData.email || ""}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all outline-none text-slate-900 font-medium"
+                                        className={`w-full px-4 py-3 border rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all outline-none text-slate-900 font-medium ${!formData.email ? 'border-red-300 bg-red-50' : 'bg-slate-50 border-slate-200'}`}
                                         required
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-slate-700 ml-1">Téléphone <span className="text-slate-900">*</span></label>
+                                    <label className={`text-sm font-semibold ml-1 ${!formData.phone ? 'text-red-500' : 'text-slate-700'}`}>Téléphone *</label>
                                     <input
                                         type="tel"
                                         name="phone"
+                                        required
                                         value={formData.phone || ""}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all outline-none text-slate-900 font-medium"
+                                        className={`w-full px-4 py-3 border rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all outline-none text-slate-900 font-medium ${!formData.phone ? 'border-red-300 bg-red-50' : 'bg-slate-50 border-slate-200'}`}
                                     />
                                 </div>
                             </div>
@@ -258,13 +260,14 @@ export default function ProfilePage() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm font-semibold text-slate-700 ml-1">Ville <span className="text-slate-900">*</span></label>
+                                        <label className={`text-sm font-semibold ml-1 ${!formData.city ? 'text-red-500' : 'text-slate-700'}`}>Ville *</label>
                                         <input
                                             type="text"
                                             name="city"
+                                            required
                                             value={formData.city || ""}
                                             onChange={handleChange}
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all outline-none text-slate-900 font-medium"
+                                            className={`w-full px-4 py-3 border rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all outline-none text-slate-900 font-medium ${!formData.city ? 'border-red-300 bg-red-50' : 'bg-slate-50 border-slate-200'}`}
                                         />
                                     </div>
                                 </div>

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { api, User, Offer, Tenant } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
+import { formatCredits } from "@/lib/formatters";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -97,7 +98,7 @@ export default function CreditsPage() {
                         <div className="bg-white px-6 py-4 md:px-8 md:py-5 rounded-[2rem] border border-slate-200 shadow-sm flex items-center justify-center gap-4 md:gap-6 self-center">
                             <span className="text-[10px] md:text-xs font-medium text-slate-400 capitalize tracking-tight whitespace-nowrap">Mon solde :</span>
                             <div className="flex items-baseline gap-2">
-                                <span className="text-2xl md:text-4xl font-semibold text-slate-900 leading-none">{balance}</span>
+                                <span className="text-2xl md:text-4xl font-semibold text-slate-900 leading-none">{formatCredits(balance)}</span>
                                 <span className="text-xs md:text-base font-medium text-slate-500 lowercase">crédits</span>
                             </div>
                         </div>

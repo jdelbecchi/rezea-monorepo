@@ -41,6 +41,9 @@ export default function GestionInscriptionsPage() {
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [showEditSessionModal, setShowEditSessionModal] = useState(false);
     const [confirmingSessionId, setConfirmingSessionId] = useState<string | null>(null);
+    const [confirmingReactivateId, setConfirmingReactivateId] = useState<string | null>(null);
+    const [restorationErrorUsers, setRestorationErrorUsers] = useState<string[] | null>(null);
+    const [viewingContact, setViewingContact] = useState<AdminBookingItem | AdminEventRegistrationItem | null>(null);
 
     // Form for editing session
     const [editFormData, setEditFormData] = useState({
@@ -122,19 +125,18 @@ export default function GestionInscriptionsPage() {
         setSelectedDate(day);
     };
 
-    const handleToggleParticipants = async (item: any, type: 'session' | 'event') => {
-        if (expandedId === item.id) {
-            setExpandedId(null);
-            return;
-        }
-        
-        setExpandedId(item.id);
-        setSelectedItem({ type, data: item });
+    const loadParticipants = async (item: any, type: 'session' | 'event') => {
         setLoadingParticipants(true);
         try {
             if (type === 'session') {
                 const regs = await api.getAdminBookings({ session_id: item.id });
-                setParticipants(regs.filter(r => r.status !== 'cancelled' && r.status !== 'session_cancelled'));
+                // En mode session annulée, on veut voir les "session_cancelled"
+                // En mode session active, on les ignore pour ne pas polluer avec d'anciennes annulations
+                if (item.is_active === false) {
+                    setParticipants(regs.filter(r => r.status === 'session_cancelled' || r.status === 'absent' || r.status === 'confirmed'));
+                } else {
+                    setParticipants(regs.filter(r => r.status !== 'cancelled' && r.status !== 'session_cancelled'));
+                }
             } else {
                 const regs = await api.getAdminEventRegistrations({ event_id: item.id });
                 setParticipants(regs.filter(r => r.status !== 'cancelled' && r.status !== 'event_deleted'));
@@ -144,6 +146,17 @@ export default function GestionInscriptionsPage() {
         } finally {
             setLoadingParticipants(false);
         }
+    };
+
+    const handleToggleParticipants = async (item: any, type: 'session' | 'event') => {
+        if (expandedId === item.id) {
+            setExpandedId(null);
+            return;
+        }
+        
+        setExpandedId(item.id);
+        setSelectedItem({ type, data: item });
+        await loadParticipants(item, type);
     };
 
     const handleOpenEditSession = async (item: any) => {
@@ -220,8 +233,58 @@ export default function GestionInscriptionsPage() {
         }
     };
 
+    const handleReactivateSession = async (item: any) => {
+        if (confirmingReactivateId !== item.id) {
+            setConfirmingReactivateId(item.id);
+            return;
+        }
+
+        try {
+            await api.reactivateSession(item.id);
+            setConfirmingReactivateId(null);
+            
+            // Recharger les données du mois
+            await loadMonthData(currentMonth);
+            
+            // Vérifier s'il reste des gens en "session_cancelled" (échec de restauration)
+            const regs = await api.getAdminBookings({ session_id: item.id });
+            const failed = regs.filter(r => r.status === 'session_cancelled');
+            if (failed.length > 0) {
+                setRestorationErrorUsers(failed.map(f => f.user_name));
+            }
+
+            // Rafraîchir les participants affichés si besoin
+            if (expandedId === item.id) {
+                await loadParticipants(item, 'session');
+            }
+        } catch (err) {
+            alert("Erreur lors du rétablissement de la séance");
+        }
+    };
+
     const handleContactEmail = (participantIds: string[]) => {
         router.push(`/dashboard/admin/emails?recipientIds=${participantIds.join(',')}`);
+    };
+
+    const handleMarkAbsent = async (participant: any, type: 'session' | 'event') => {
+        try {
+            const nextStatus = participant.status === 'absent' ? 'confirmed' : 'absent';
+            if (type === 'session') {
+                await api.updateAdminBooking(participant.id, { status: nextStatus });
+            } else {
+                await api.updateAdminEventRegistration(participant.id, { status: nextStatus });
+            }
+            // Refresh participants without toggling the whole UI
+            if (selectedItem) {
+                await loadParticipants(selectedItem.data, type);
+            }
+        } catch (err) {
+            alert("Erreur lors de la mise à jour");
+        }
+    };
+
+    const handleViewContact = (p: AdminBookingItem | AdminEventRegistrationItem) => {
+        setViewingContact(p);
     };
 
     if (loading) return <div className="min-h-screen flex items-center justify-center bg-white text-slate-400">Chargement...</div>;
@@ -400,7 +463,7 @@ export default function GestionInscriptionsPage() {
                                                                             </button>
                                                                         </div>
                                                                     </div>
-                                                                ) : session.is_active && (
+                                                                ) : session.is_active ? (
                                                                     <>
                                                                         <button 
                                                                             onClick={() => handleOpenEditSession(session)}
@@ -417,6 +480,31 @@ export default function GestionInscriptionsPage() {
                                                                             <span className="text-xs">🚫</span>
                                                                         </button>
                                                                     </>
+                                                                ) : (
+                                                                    <div className="flex items-center">
+                                                                        {confirmingReactivateId === session.id ? (
+                                                                            <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right-2 duration-300">
+                                                                                <span className="text-[10px] font-medium text-violet-600 tracking-tight">Rétablir ?</span>
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <button onClick={() => setConfirmingReactivateId(null)} className="text-[10px] font-medium text-slate-400">Non</button>
+                                                                                    <button 
+                                                                                        onClick={() => handleReactivateSession(session)}
+                                                                                        className="px-3 py-1 bg-violet-600 text-white rounded-full text-[9px] font-medium tracking-widest"
+                                                                                    >
+                                                                                        Oui
+                                                                                    </button>
+                                                                                </div>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <button 
+                                                                                onClick={() => handleReactivateSession(session)}
+                                                                                className="p-1 hover:bg-violet-50 rounded-lg text-slate-300 hover:text-violet-600 transition-colors"
+                                                                                title="Rétablir la séance"
+                                                                            >
+                                                                                <span className="text-xs">🔄</span>
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
                                                                 )}
                                                             </div>
                                                         </div>
@@ -474,16 +562,27 @@ export default function GestionInscriptionsPage() {
                                                                                 return (
                                                                                     <div key={p.id} className="bg-white/80 rounded-2xl border border-slate-100/50 p-2 pl-4 flex items-center justify-between group/p">
                                                                                         <div className="flex items-center gap-3 min-w-0">
-                                                                                            <div className={`w-2 h-2 rounded-full shrink-0 ${hasWarning ? 'bg-orange-500' : (isWaitlist ? 'bg-slate-300' : 'bg-emerald-500')}`} />
+                                                                                            <div className={`w-2 h-2 rounded-full shrink-0 ${hasWarning ? 'bg-orange-500' : (p.status === 'absent' ? 'bg-slate-300' : (isWaitlist ? 'bg-slate-300' : 'bg-emerald-500'))}`} />
                                                                                             <span className={`truncate text-xs tracking-tight ${isWaitlist ? 'text-slate-400 font-medium' : 'text-slate-700 font-bold'}`}>
                                                                                                 {p.user_name}
                                                                                             </span>
+                                                                                            {p.status === 'session_cancelled' && (
+                                                                                                <span className="text-[9px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded-md font-medium">Session annulée</span>
+                                                                                            )}
                                                                                         </div>
                                                                                         
                                                                                         <div className="flex items-center gap-1">
                                                                                             <button 
+                                                                                                onClick={() => handleMarkAbsent(p, 'session')}
+                                                                                                className={`w-7 h-7 flex items-center justify-center border rounded-full transition-all active:scale-95 ${p.status === 'absent' ? 'bg-rose-500 border-rose-500 text-white' : 'bg-slate-50 border-slate-100 text-slate-300 hover:text-rose-500 hover:bg-rose-50'}`}
+                                                                                                title={p.status === 'absent' ? "Présent" : "Signaler absent"}
+                                                                                            >
+                                                                                                <span className="text-[10px]">{p.status === 'absent' ? '✖' : '👤'}</span>
+                                                                                            </button>
+                                                                                            <button 
+                                                                                                onClick={() => handleViewContact(p)}
                                                                                                 className="w-7 h-7 flex items-center justify-center bg-slate-50 border border-slate-100 rounded-full text-slate-300 hover:text-slate-600 transition-all hover:bg-slate-100 active:scale-95"
-                                                                                                title="Contact"
+                                                                                                title="Consulter le contact"
                                                                                             >
                                                                                                 <span className="text-[10px]">📞</span>
                                                                                             </button>
@@ -580,7 +679,7 @@ export default function GestionInscriptionsPage() {
                                                                             {participants.sort((a,b) => (a.user_name || '').localeCompare(b.user_name || '')).map((p) => (
                                                                                 <div key={p.id} className="bg-white/80 rounded-2xl border border-slate-100/50 p-2 pl-4 flex items-center justify-between group/p">
                                                                                     <div className="flex items-center gap-3 min-w-0">
-                                                                                        <div className="w-2 h-2 rounded-full shrink-0 bg-emerald-500" />
+                                                                                        <div className={`w-2 h-2 rounded-full shrink-0 ${p.status === 'absent' ? 'bg-slate-300' : 'bg-emerald-500'}`} />
                                                                                         <span className="text-slate-700 font-semibold text-xs tracking-tight truncate">
                                                                                             {p.user_name}
                                                                                         </span>
@@ -588,8 +687,16 @@ export default function GestionInscriptionsPage() {
                                                                                     
                                                                                     <div className="flex items-center gap-1">
                                                                                         <button 
+                                                                                            onClick={() => handleMarkAbsent(p, 'event')}
+                                                                                            className={`w-7 h-7 flex items-center justify-center border rounded-full transition-all active:scale-95 ${p.status === 'absent' ? 'bg-rose-500 border-rose-500 text-white' : 'bg-slate-50 border-slate-100 text-slate-300 hover:text-rose-500 hover:bg-rose-50'}`}
+                                                                                            title={p.status === 'absent' ? "Présent" : "Signaler absent"}
+                                                                                        >
+                                                                                            <span className="text-[10px]">{p.status === 'absent' ? '✖' : '👤'}</span>
+                                                                                        </button>
+                                                                                        <button 
+                                                                                            onClick={() => handleViewContact(p)}
                                                                                             className="w-7 h-7 flex items-center justify-center bg-slate-50 border border-slate-100 rounded-full text-slate-300 hover:text-slate-600 transition-all hover:bg-slate-100 active:scale-95"
-                                                                                            title="Contact"
+                                                                                            title="Consulter le contact"
                                                                                         >
                                                                                             <span className="text-[10px]">📞</span>
                                                                                         </button>
@@ -761,6 +868,122 @@ export default function GestionInscriptionsPage() {
             )}
 
             <BottomNav userRole={user?.role} />
+
+            {/* Fiche Contact Modal */}
+            {viewingContact && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="absolute inset-0" onClick={() => setViewingContact(null)}></div>
+                    <div className="bg-white rounded-[2.5rem] w-full max-w-sm overflow-hidden shadow-2xl border border-slate-100 p-8 animate-in zoom-in-95 duration-200 relative">
+                        <header className="mb-8">
+                            <h2 className="text-xl font-medium text-slate-900 tracking-tight mb-1">Informations de contact</h2>
+                            <p className="text-slate-400 font-medium text-xs">Pour {viewingContact.user_name}</p>
+                        </header>
+
+                        <div className="space-y-4">
+                            {/* Téléphone */}
+                            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between group">
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-0.5">Téléphone</p>
+                                    <p className="text-slate-800 font-medium text-sm">{viewingContact.user_phone || "Non renseigné"}</p>
+                                </div>
+                                {viewingContact.user_phone && (
+                                    <button 
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(viewingContact.user_phone!);
+                                        }}
+                                        className="w-8 h-8 rounded-full bg-white border border-slate-100 text-slate-400 flex items-center justify-center hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all active:scale-90"
+                                        title="Copier le numéro"
+                                    >
+                                        <span className="text-xs">📋</span>
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Réseaux Sociaux */}
+                            {(viewingContact.instagram_handle || viewingContact.facebook_handle) ? (
+                                <div className="grid grid-cols-1 gap-3">
+                                    {viewingContact.instagram_handle && (
+                                        <a 
+                                            href={`https://instagram.com/${viewingContact.instagram_handle.replace('@', '')}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="p-4 rounded-2xl bg-violet-50/50 border border-violet-100 flex items-center justify-between hover:bg-violet-50 transition-colors group"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-lg">📸</span>
+                                                <div className="min-w-0">
+                                                    <p className="text-[10px] font-bold text-violet-300 uppercase tracking-widest mb-0.5">Instagram</p>
+                                                    <p className="text-violet-600 font-medium text-sm truncate">{viewingContact.instagram_handle}</p>
+                                                </div>
+                                            </div>
+                                            <span className="text-violet-300 group-hover:translate-x-1 transition-transform">→</span>
+                                        </a>
+                                    )}
+                                    {viewingContact.facebook_handle && (
+                                        <a 
+                                            href={viewingContact.facebook_handle.startsWith('http') ? viewingContact.facebook_handle : `https://facebook.com/${viewingContact.facebook_handle}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="p-4 rounded-2xl bg-blue-50/50 border border-blue-100 flex items-center justify-between hover:bg-blue-50 transition-colors group"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-lg">👤</span>
+                                                <div className="min-w-0">
+                                                    <p className="text-[10px] font-bold text-blue-300 uppercase tracking-widest mb-0.5">Facebook</p>
+                                                    <p className="text-blue-600 font-medium text-sm truncate">{viewingContact.facebook_handle}</p>
+                                                </div>
+                                            </div>
+                                            <span className="text-blue-300 group-hover:translate-x-1 transition-transform">→</span>
+                                        </a>
+                                    )}
+                                </div>
+                            ) : (
+                                <p className="text-center py-4 text-slate-300 italic text-[11px]">Aucun réseau social renseigné</p>
+                            )}
+                        </div>
+
+                        <button 
+                            onClick={() => setViewingContact(null)}
+                            className="w-full py-4 mt-8 bg-slate-900 text-white rounded-2xl font-medium hover:bg-slate-800 transition-all active:scale-95 text-xs tracking-widest uppercase"
+                        >
+                            Fermer
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Alerte Erreur Restauration */}
+            {restorationErrorUsers && (
+                <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-rose-900/40 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="bg-white rounded-[2.5rem] w-full max-w-sm overflow-hidden shadow-2xl border border-rose-100 p-8 animate-in zoom-in-95 duration-300">
+                        <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mb-6">
+                            <span className="text-3xl">⚠️</span>
+                        </div>
+                        <h2 className="text-xl font-medium text-slate-900 tracking-tight mb-2">Restauration incomplète</h2>
+                        <p className="text-slate-500 text-xs mb-6 leading-relaxed">
+                            La séance a été rétablie, mais les personnes suivantes n'ont pas pu être réinscrites automatiquement (crédits insuffisants ou compte expiré) :
+                        </p>
+                        
+                        <div className="bg-rose-50/50 rounded-2xl p-4 max-h-40 overflow-y-auto mb-8 border border-rose-100">
+                            <ul className="space-y-2">
+                                {restorationErrorUsers.map((name, idx) => (
+                                    <li key={idx} className="text-rose-700 text-xs font-bold flex items-center gap-2">
+                                        <div className="w-1 h-1 bg-rose-400 rounded-full" />
+                                        {name}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+
+                        <button 
+                            onClick={() => setRestorationErrorUsers(null)}
+                            className="w-full py-4 bg-rose-600 text-white rounded-2xl font-medium hover:bg-rose-700 transition-all active:scale-95 text-xs tracking-widest uppercase shadow-lg shadow-rose-100"
+                        >
+                            Compris
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <style jsx global>{`
                 @supports (-webkit-touch-callout: none) {

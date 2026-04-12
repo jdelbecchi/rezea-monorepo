@@ -32,6 +32,7 @@ class AdminUserCreate(BaseModel):
     birth_date: Optional[date] = None
     instagram_handle: Optional[str] = None
     facebook_handle: Optional[str] = None
+    is_active_override: bool = False
 
 
 async def require_manager(request: Request, db: AsyncSession = Depends(get_db)) -> User:
@@ -93,12 +94,28 @@ async def create_user(
         birth_date=user_data.birth_date,
         instagram_handle=user_data.instagram_handle,
         facebook_handle=user_data.facebook_handle,
-        is_active=False,
+        is_active_override=user_data.is_active_override,
+        created_by_admin=True,
+        is_active=True, 
     )
 
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
+
+    # Calculer le statut initial pour la réponse
+    from app.models.models import Order
+    order_result = await db.execute(
+        select(func.count(Order.id)).where(Order.user_id == new_user.id, Order.status == "active")
+    )
+    has_active_order = order_result.scalar() > 0
+    new_user.is_active_member = has_active_order
+    
+    # Manager/Staff -> Actif
+    if new_user.role in (UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF):
+        new_user.is_active = True
+    else:
+        new_user.is_active = new_user.is_active_override or has_active_order
 
     return new_user
 
@@ -144,6 +161,27 @@ async def list_users(
 
     result = await db.execute(query)
     users = result.scalars().all()
+
+    # Logique pour calculer is_active et is_active_member dynamiquement
+    from app.models.models import Order
+    for user in users:
+        # 1. Manager/Staff -> Toujours Actif
+        if user.role in (UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF):
+            user.is_active = True
+            user.is_active_member = False # Pas forcément un "membre" payant
+        else:
+            # 2. Vérifier si membre actif par commande
+            order_result = await db.execute(
+                select(func.count(Order.id)).where(
+                    Order.user_id == user.id,
+                    Order.status == "active"
+                )
+            )
+            has_active_order = order_result.scalar() > 0
+            user.is_active_member = has_active_order
+            
+            # 3. Statut final : Override OU Commande Active
+            user.is_active = user.is_active_override or has_active_order
 
     return users
 
@@ -212,6 +250,19 @@ async def get_user(
             detail="Utilisateur non trouvé"
         )
 
+    # Calcul dynamique du statut
+    from app.models.models import Order
+    order_result = await db.execute(
+        select(func.count(Order.id)).where(Order.user_id == user.id, Order.status == "active")
+    )
+    has_active_order = order_result.scalar() > 0
+    user.is_active_member = has_active_order
+    
+    if user.role in (UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF):
+        user.is_active = True
+    else:
+        user.is_active = user.is_active_override or has_active_order
+
     return user
 
 
@@ -265,6 +316,19 @@ async def update_user(
 
     await db.commit()
     await db.refresh(user)
+
+    # Calcul dynamique du statut après mise à jour
+    from app.models.models import Order
+    order_result = await db.execute(
+        select(func.count(Order.id)).where(Order.user_id == user.id, Order.status == "active")
+    )
+    has_active_order = order_result.scalar() > 0
+    user.is_active_member = has_active_order
+    
+    if user.role in (UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF):
+        user.is_active = True
+    else:
+        user.is_active = user.is_active_override or has_active_order
 
     return user
 

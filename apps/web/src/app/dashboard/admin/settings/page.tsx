@@ -208,12 +208,13 @@ export default function AdminSettingsPage() {
                                         <h3 className="text-xl font-bold flex items-center gap-2">📝 Informations Générales</h3>
                                         <div className="grid grid-cols-1 gap-6">
                                             <div>
-                                                <label className="block text-sm font-bold text-slate-700 mb-2">Nom de l&apos;établissement</label>
+                                                <label className={`block text-sm font-bold mb-2 ${!formData.name ? 'text-red-500' : 'text-slate-700'}`}>Nom de l'établissement *</label>
                                                 <input
                                                     type="text"
+                                                    required
                                                     value={formData.name || ""}
                                                     onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-medium"
+                                                    className={`w-full px-4 py-3 border rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-medium ${!formData.name ? 'border-red-300 bg-red-50' : 'bg-slate-50 border-slate-200'}`}
                                                 />
                                             </div>
                                             <div>
@@ -313,11 +314,11 @@ export default function AdminSettingsPage() {
 
                                             <div>
                                                 <label className="block text-sm font-bold text-slate-700 mb-2">Message d&apos;accueil</label>
-                                                <input
-                                                    type="text"
+                                                <textarea
                                                     value={formData.welcome_message || ""}
                                                     onChange={e => setFormData({ ...formData, welcome_message: e.target.value })}
                                                     placeholder="Bienvenue chez nous !"
+                                                    rows={4}
                                                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-medium"
                                                 />
                                             </div>
@@ -366,7 +367,7 @@ export default function AdminSettingsPage() {
                                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">🚫</span>
                                                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">minutes</span>
                                             </div>
-                                            <p className="text-xs text-slate-400 font-medium">Passé ce délai, le crédit ne sera pas remboursé</p>
+                                            <p className="text-xs text-slate-400 font-medium">Passé ce délai, le crédit ne sera pas restitué</p>
                                         </div>
                                     </div>
                                 </section>
@@ -435,7 +436,7 @@ export default function AdminSettingsPage() {
                                         <div className="p-8 bg-blue-50/50 rounded-3xl border border-blue-100/50 space-y-4">
                                             <div className="flex items-center gap-3 mb-2">
                                                 <span className="text-2xl">🔗</span>
-                                                <label className="text-lg font-bold text-slate-800">Lien de redirection de paiement</label>
+                                                <label className="text-lg font-bold text-slate-800">Lien de redirection de paiement <span className="text-slate-400 font-medium text-sm">(optionnel)</span></label>
                                             </div>
                                             <input
                                                 type="url"

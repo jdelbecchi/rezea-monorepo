@@ -7,11 +7,12 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select, func
+from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.db.session import get_db
-from app.models.models import User, UserRole, Event
+from app.models.models import User, UserRole, Event, EventRegistration, EventRegistrationStatus
 from app.schemas.schemas import EventCreate, EventUpdate, EventResponse
 
 router = APIRouter()
@@ -209,6 +210,75 @@ async def update_event(
     for key, value in update_dict.items():
         setattr(event, key, value)
 
+    await db.commit()
+    await db.refresh(event)
+
+    return {
+        **{c.name: getattr(event, c.name) for c in event.__table__.columns},
+        "event_time": event.event_time.strftime("%H:%M"),
+    }
+
+
+# ---- CANCEL / REACTIVATE ----
+@router.post("/{event_id}/cancel", response_model=EventResponse)
+async def cancel_event(
+    event_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_manager),
+):
+    """Annule un événement et marque les inscriptions comme annulées"""
+    tenant_id = request.state.tenant_id
+    result = await db.execute(
+        select(Event)
+        .where(Event.id == event_id, Event.tenant_id == tenant_id)
+        .options(selectinload(Event.registrations))
+    )
+    event = result.scalar_one_or_none()
+    if not event:
+        raise HTTPException(status_code=404, detail="Événement non trouvé")
+
+    event.is_active = False
+    
+    # Marquer les inscriptions comme annulées par l'événement
+    for reg in event.registrations:
+        if reg.status in [EventRegistrationStatus.CONFIRMED, EventRegistrationStatus.PENDING_PAYMENT]:
+            reg.status = EventRegistrationStatus.EVENT_CANCELLED
+    
+    await db.commit()
+    await db.refresh(event)
+
+    return {
+        **{c.name: getattr(event, c.name) for c in event.__table__.columns},
+        "event_time": event.event_time.strftime("%H:%M"),
+    }
+
+
+@router.post("/{event_id}/reactivate", response_model=EventResponse)
+async def reactivate_event(
+    event_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_manager),
+):
+    """Réactive un événement annulé"""
+    tenant_id = request.state.tenant_id
+    result = await db.execute(
+        select(Event)
+        .where(Event.id == event_id, Event.tenant_id == tenant_id)
+        .options(selectinload(Event.registrations))
+    )
+    event = result.scalar_one_or_none()
+    if not event:
+        raise HTTPException(status_code=404, detail="Événement non trouvé")
+
+    event.is_active = True
+    
+    # Restaurer les inscriptions (à confirmer si on veut les remettre en CONFIRMED d'office)
+    for reg in event.registrations:
+        if reg.status == EventRegistrationStatus.EVENT_CANCELLED:
+            reg.status = EventRegistrationStatus.CONFIRMED
+            
     await db.commit()
     await db.refresh(event)
 
