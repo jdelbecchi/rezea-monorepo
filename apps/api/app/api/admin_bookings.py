@@ -1,7 +1,7 @@
 """
 API admin pour la gestion des inscriptions aux séances
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
@@ -117,9 +117,16 @@ async def list_sessions_for_bookings(
 ):
     """Liste les séances actives pour le formulaire d'inscription"""
     tenant_id = request.state.tenant_id
+    now = datetime.utcnow()
+    seven_days_ago = now - timedelta(days=7)
+    
     result = await db.execute(
         select(Session)
-        .where(Session.tenant_id == tenant_id, Session.is_active == True)
+        .where(
+            Session.tenant_id == tenant_id, 
+            Session.is_active == True,
+            Session.start_time >= seven_days_ago
+        )
         .order_by(Session.start_time.desc())
     )
     sessions = result.scalars().all()

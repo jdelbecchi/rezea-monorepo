@@ -210,6 +210,22 @@ async def create_booking(
             detail="Vous avez déjà une réservation pour cette séance"
         )
 
+    # --- Vérification du délai d'inscription ---
+    tenant_res = await db.execute(select(Tenant.registration_limit_mins).where(Tenant.id == tenant_id))
+    reg_limit_mins = tenant_res.scalar() or 0
+    
+    now = datetime.utcnow()
+    reg_limit_time = session.start_time - timedelta(minutes=reg_limit_mins)
+    if now > reg_limit_time:
+        detail = "Le délai d'inscription est dépassé."
+        if reg_limit_mins > 0:
+            detail = f"Le délai d'inscription est dépassé ({reg_limit_mins} min avant le début)."
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=detail
+        )
+    # -------------------------------------------
+
     # Déterminer le statut initial
     is_full = session.current_participants >= session.max_participants
     booking_status = BookingStatus.CONFIRMED if not is_full else BookingStatus.PENDING
@@ -335,14 +351,16 @@ async def cancel_booking(
     result = await db.execute(select(Tenant.cancellation_limit_mins).where(Tenant.id == tenant_id))
     limit_mins = result.scalar() or 0
     
-    if limit_mins > 0:
-        now = datetime.utcnow()
-        limit_time = session.start_time - timedelta(minutes=limit_mins)
-        if now > limit_time:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Le délai d'annulation est dépassé ({limit_mins} min avant le début)."
-            )
+    now = datetime.utcnow()
+    limit_time = session.start_time - timedelta(minutes=limit_mins)
+    if now > limit_time:
+        detail = "Le délai d'annulation est dépassé."
+        if limit_mins > 0:
+            detail = f"Le délai d'annulation est dépassé ({limit_mins} min avant le début)."
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=detail
+        )
     # ------------------------------------------
     
     if booking.status == BookingStatus.CANCELLED:

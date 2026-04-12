@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import List
 from uuid import UUID
 
@@ -202,6 +202,23 @@ async def event_checkout(
     event = result.scalar_one_or_none()
     if not event:
         raise HTTPException(status_code=404, detail="Événement non trouvé")
+        
+    # 1.5 Vérifier le délai d'inscription
+    tenant_res = await db.execute(select(Tenant.registration_limit_mins).where(Tenant.id == tenant_id))
+    reg_limit_mins = tenant_res.scalar() or 0
+    
+    now = datetime.utcnow()
+    event_start = datetime.combine(event.event_date, event.event_time)
+    reg_limit_time = event_start - timedelta(minutes=reg_limit_mins)
+    
+    if now > reg_limit_time:
+        detail = "Le délai d'inscription est dépassé."
+        if reg_limit_mins > 0:
+            detail = f"Le délai d'inscription est dépassé ({reg_limit_mins} min avant le début)."
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=detail
+        )
         
     # 2. Vérifier si complet
     if (event.registrations_count or 0) >= event.max_places:

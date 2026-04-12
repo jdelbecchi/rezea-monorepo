@@ -152,15 +152,24 @@ export default function PlanningPage() {
     setBookingLoading(sessionId);
     setError(null);
     setSuccess(null);
+    let successState = false;
     try {
       await api.createBooking(sessionId);
       setSuccess("Séance réservée avec succès !");
       setTimeout(() => setSuccess(null), 3000);
-      await refreshData();
+      successState = true;
     } catch (err: any) {
       setError(err.response?.data?.detail || "Erreur lors de la réservation.");
     } finally {
       setBookingLoading(null);
+    }
+
+    if (successState) {
+        try {
+            await refreshData();
+        } catch (err) {
+            console.error("Refresh failed after booking", err);
+        }
     }
   };
 
@@ -174,18 +183,27 @@ export default function PlanningPage() {
     
     setBookingLoading(bookingToCancel.id);
     setError(null);
+    let successState = false;
     try {
       await api.cancelBooking(bookingToCancel.id);
       setShowCancelModal(false);
       setBookingToCancel(null);
       setSuccess("Inscription annulée.");
       setTimeout(() => setSuccess(null), 3000);
-      await refreshData();
+      successState = true;
     } catch (err: any) {
       setError(err.response?.data?.detail || "Impossible d'annuler (délai dépassé ?)");
       setShowCancelModal(false);
     } finally {
       setBookingLoading(null);
+    }
+
+    if (successState) {
+        try {
+            await refreshData();
+        } catch (err) {
+            console.error("Refresh failed after cancellation", err);
+        }
     }
   };
 
@@ -198,14 +216,16 @@ export default function PlanningPage() {
   const isAdminMode = false;
 
   const myRegistrations = useMemo(() => {
-      const now = new Date();
-      
-      const futureBookings = myBookings
-        .filter(b => b.status === 'confirmed' || b.status === 'pending')
-        .filter(b => {
-             const start = b.session?.start_time ? parseISO(b.session.start_time) : null;
-             return start && isAfter(start, now);
-        })
+    const now = new Date();
+    
+    const futureBookings = myBookings
+      .filter(b => b.status === 'confirmed' || b.status === 'pending')
+      .filter(b => {
+           if (!b.session?.start_time) return false;
+           const start = parseISO(b.session.start_time);
+           // Ne montrer que ce qui commence dans le futur
+           return isAfter(start, now);
+      })
         .map(b => ({
             id: b.id,
             title: b.session?.title || 'Séance',
@@ -418,7 +438,13 @@ export default function PlanningPage() {
                       const isWaitlisted = !isEvent && myBookings.find(b => b.session_id === item.id && (b.status === 'confirmed' || b.status === 'pending'))?.status === 'pending';
                       const spotsLeft = isEvent ? (item.max_places - item.registrations_count) : item.available_spots;
                       const isFull = isEvent ? (spotsLeft <= 0) : item.is_full;
-                       const canWaitlist = !isEvent && item.allow_waitlist && isFull;
+                      const canWaitlist = !isEvent && item.allow_waitlist && isFull;
+                      
+                      // Gestion des délais limite
+                      const now = new Date();
+                      const limit = (isEvent ? tenant?.registration_limit_mins : tenant?.registration_limit_mins) || 0;
+                      const startTime = parseISO(isEvent ? `${item.event_date}T${item.event_time}:00` : item.start_time);
+                      const isClosed = isAfter(now, new Date(startTime.getTime() - limit * 60000));
                       
                       return (
                         <div key={item.id} className="group bg-white rounded-3xl shadow-sm border border-slate-100 py-2.5 px-4 md:p-2 relative transition-all hover:shadow-md hover:border-violet-100 overflow-hidden">
@@ -598,6 +624,10 @@ export default function PlanningPage() {
                                    ) : (
                                      <div className="w-[84px] py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm">Réservé</div>
                                    )
+                                ) : isClosed ? (
+                                  <div className="w-[84px] py-2 rounded-xl text-[11px] font-black uppercase tracking-widest flex items-center justify-center bg-slate-100 text-slate-400 border border-slate-200 cursor-default">
+                                    Fermé
+                                  </div>
                                 ) : canWaitlist ? (
                                    <button 
                                        disabled={bookingLoading === item.id}
@@ -680,17 +710,26 @@ export default function PlanningPage() {
                                 )}
                              </div>
                           </div>
-                          {item.uType === "session" && (
-                            <button 
-                               onClick={() => openCancelModal(item.id, item.title)}
-                               className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-all"
-                               title="Annuler ma réservation"
-                            >
-                               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                               </svg>
-                            </button>
-                          )}
+                          {item.uType === "session" && (() => {
+                            const now = new Date();
+                            const limit = tenant?.cancellation_limit_mins || 0;
+                            const startTime = parseISO(item.start_time);
+                            const isCancellationClosed = isAfter(now, new Date(startTime.getTime() - limit * 60000));
+                            
+                            if (isCancellationClosed) return null;
+                            
+                            return (
+                              <button 
+                                 onClick={() => openCancelModal(item.id, item.title)}
+                                 className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-all"
+                                 title="Annuler ma réservation"
+                              >
+                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                 </svg>
+                              </button>
+                            );
+                          })()}
                         </div>
                       ))}
                     </div>

@@ -42,7 +42,7 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
 
     const handleLogout = () => {
         localStorage.clear();
-        router.push("/login");
+        router.push("/");
     };
 
     const isActive = (path: string) => {

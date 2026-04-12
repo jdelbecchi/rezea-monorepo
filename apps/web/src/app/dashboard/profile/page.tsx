@@ -18,7 +18,7 @@ export default function ProfilePage() {
 
     const handleLogout = () => {
         localStorage.clear();
-        router.push("/login");
+        router.push("/");
     };
 
     useEffect(() => {
@@ -354,7 +354,7 @@ export default function ProfilePage() {
                                     />
                                     <div className="flex flex-col text-left">
                                         <span className="text-sm font-semibold text-slate-700">Rappels de réservation</span>
-                                        <span className="text-[10px] text-slate-400">Recevoir un rappel email la veille de mes séances</span>
+                                        <span className="text-[10px] text-slate-400">Recevoir des rappels par email la veille de mes séances</span>
                                     </div>
                                 </label>
 
@@ -367,8 +367,8 @@ export default function ProfilePage() {
                                         className="w-5 h-5 rounded-lg border-slate-300 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer"
                                     />
                                     <div className="flex flex-col text-left">
-                                        <span className="text-sm font-semibold text-slate-700">Actualités et promotions</span>
-                                        <span className="text-[10px] text-slate-400">Recevoir les emails d'information de {tenantSettings?.name || "votre club"}</span>
+                                        <span className="text-sm font-semibold text-slate-700">Actualités, promos et évènements</span>
+                                        <span className="text-[10px] text-slate-400">Recevoir les actualités, les promos et les annonces d&apos;évènement</span>
                                     </div>
                                 </label>
                             </div>

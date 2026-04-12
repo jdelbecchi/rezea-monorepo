@@ -29,117 +29,104 @@ export default function ForgotPasswordPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-md w-full space-y-8">
-                <div>
-                    <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-                        Mot de passe oublié
-                    </h2>
-                    <p className="mt-2 text-center text-sm text-gray-600">
+        <div className="min-h-screen relative overflow-hidden bg-[#fbfcfd] flex items-center justify-center p-4">
+            {/* Background Abstract Shapes - Zen Blobs */}
+            <div className="absolute top-[-5%] left-[-5%] w-[45%] h-[45%] bg-blue-400/30 rounded-full blur-[80px] animate-pulse"></div>
+            <div className="absolute bottom-[-10%] right-[-5%] w-[55%] h-[55%] bg-indigo-400/25 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '2s' }}></div>
+            <div className="absolute top-[30%] right-[10%] w-[25%] h-[25%] bg-emerald-300/20 rounded-full blur-[70px] animate-pulse" style={{ animationDelay: '4s' }}></div>
+
+            <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 p-8 md:p-10 w-full max-w-sm relative z-10 transition-all">
+                <div className="mb-8 text-center px-4">
+                    <h1 className="text-3xl font-semibold text-slate-900 tracking-tight mb-4 uppercase">Rezea</h1>
+                    <h3 className="text-lg font-semibold text-slate-800 tracking-tight">Mot de passe oublié</h3>
+                    <p className="text-slate-500 font-medium text-xs mt-2 leading-relaxed">
                         Entrez votre email et le code de votre établissement pour recevoir un lien de réinitialisation.
                     </p>
                 </div>
 
                 {submitted ? (
-                    <div className="rounded-md bg-green-50 p-6 text-center">
-                        <svg
-                            className="mx-auto h-12 w-12 text-green-400 mb-4"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth={2}
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                        </svg>
-                        <h3 className="text-lg font-medium text-green-800 mb-2">
-                            Demande envoyée !
-                        </h3>
-                        <p className="text-sm text-green-700 mb-4">
-                            Si un compte existe avec cet email, un lien de réinitialisation a été envoyé.
-                            Vérifiez votre boîte de réception.
+                    <div className="rounded-2xl bg-emerald-50/50 border border-emerald-100 p-6 text-center animate-in fade-in zoom-in duration-300">
+                        <div className="h-12 w-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg className="h-6 w-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                        <h3 className="text-base font-semibold text-emerald-900 mb-2">Demande envoyée !</h3>
+                        <p className="text-xs text-emerald-700 mb-6 leading-relaxed">
+                            Si un compte existe, un lien de réinitialisation a été envoyé. Vérifiez votre boîte de réception.
                         </p>
-                        <Link
-                            href="/login"
-                            className="font-medium text-blue-600 hover:text-blue-500"
-                        >
+                        <Link href="/" className="text-sm font-medium text-slate-900 hover:underline">
                             Retour à la connexion
                         </Link>
                     </div>
                 ) : (
-                    <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                    <form className="space-y-5" onSubmit={handleSubmit}>
                         {error && (
-                            <div className="rounded-md bg-red-50 p-4">
-                                <p className="text-sm text-red-800">{error}</p>
+                            <div className="p-3 bg-rose-50 border border-rose-100 text-rose-700 rounded-xl text-[11px] font-medium animate-in shake duration-300">
+                                {error}
                             </div>
                         )}
 
-                        <div className="rounded-md shadow-sm space-y-4">
-                            <div>
-                                <label
-                                    htmlFor="tenant_slug"
-                                    className="block text-sm font-medium text-gray-700 mb-1"
-                                >
-                                    Code de votre établissement
-                                </label>
-                                <input
-                                    id="tenant_slug"
-                                    name="tenant_slug"
-                                    type="text"
-                                    required
-                                    className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                    placeholder="mon-club"
-                                    value={tenantSlug}
-                                    onChange={(e) => setTenantSlug(e.target.value)}
-                                />
+                        <div className="space-y-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[13px] font-medium text-slate-500 px-1">Code de votre établissement</label>
+                                <div className="relative group">
+                                    <input
+                                        required
+                                        className="w-full p-3 pl-11 bg-slate-50/50 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-slate-100 focus:border-slate-400 transition-all font-medium text-slate-900 text-sm"
+                                        placeholder="mon-club"
+                                        value={tenantSlug}
+                                        onChange={(e) => setTenantSlug(e.target.value)}
+                                    />
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 opacity-50 group-focus-within:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                    </svg>
+                                </div>
                             </div>
 
-                            <div>
-                                <label
-                                    htmlFor="email"
-                                    className="block text-sm font-medium text-gray-700 mb-1"
-                                >
-                                    Email
-                                </label>
-                                <input
-                                    id="email"
-                                    name="email"
-                                    type="email"
-                                    autoComplete="email"
-                                    required
-                                    className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                    placeholder="votre@email.com"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                />
+                            <div className="space-y-1.5">
+                                <label className="text-[13px] font-medium text-slate-500 px-1">Adresse email</label>
+                                <div className="relative group">
+                                    <input
+                                        type="email"
+                                        required
+                                        className="w-full p-3 pl-11 bg-slate-50/50 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-slate-100 focus:border-slate-400 transition-all font-medium text-slate-900 text-sm"
+                                        placeholder="votre@email.com"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                    />
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 opacity-50 group-focus-within:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
                             </div>
                         </div>
 
-                        <div>
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {loading ? "Envoi en cours..." : "Envoyer le lien"}
-                            </button>
-                        </div>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full py-3 bg-slate-900 text-white font-medium text-sm rounded-xl hover:bg-slate-800 transition-all active:scale-[0.98] shadow-sm disabled:opacity-50 mt-2"
+                        >
+                            {loading ? "Envoi en cours..." : "Envoyer le lien"}
+                        </button>
 
-                        <div className="text-center">
-                            <Link
-                                href="/login"
-                                className="font-medium text-blue-600 hover:text-blue-500"
-                            >
+                        <div className="text-center pt-2">
+                            <Link href="/" className="text-xs font-normal text-slate-400 hover:text-slate-600 transition-colors">
                                 Retour à la connexion
                             </Link>
                         </div>
                     </form>
                 )}
             </div>
+
+            <style jsx>{`
+                @keyframes shake {
+                    0%, 100% { transform: translateX(0); }
+                    25% { transform: translateX(-4px); }
+                    75% { transform: translateX(4px); }
+                }
+                .shake { animation: shake 0.3s ease-in-out; }
+            `}</style>
         </div>
     );
 }

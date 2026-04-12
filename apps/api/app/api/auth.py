@@ -91,6 +91,14 @@ async def register(
         first_name=user_data.first_name,
         last_name=user_data.last_name,
         phone=user_data.phone,
+        street=user_data.street,
+        zip_code=user_data.zip_code,
+        city=user_data.city,
+        birth_date=user_data.birth_date,
+        instagram_handle=user_data.instagram_handle,
+        facebook_handle=user_data.facebook_handle,
+        remind_before_session=user_data.remind_before_session,
+        receive_marketing_emails=user_data.receive_marketing_emails,
         docs_accepted_at=datetime.utcnow() if user_data.docs_accepted else None
     )
     

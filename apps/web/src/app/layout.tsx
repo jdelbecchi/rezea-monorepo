@@ -10,8 +10,8 @@ const livvic = Livvic({
 });
 
 export const metadata: Metadata = {
-  title: "REZEA - Gestion de Réservations Sportives",
-  description: "Plateforme de réservation pour établissements sportifs",
+  title: "REZEA - Gestion de Réservations Simplifiée",
+  description: "La plateforme de réservation intelligente et intuitive pour tous vos projets.",
   manifest: "/manifest.json",
   themeColor: "#000000",
   viewport: "width=device-width, initial-scale=1, maximum-scale=1",

@@ -371,6 +371,14 @@ export const api = {
     last_name: string;
     tenant_slug: string;
     phone?: string;
+    street?: string;
+    zip_code?: string;
+    city?: string;
+    birth_date?: string;
+    instagram_handle?: string;
+    facebook_handle?: string;
+    remind_before_session?: boolean;
+    receive_marketing_emails?: boolean;
     docs_accepted?: boolean;
   }) => {
     const response = await apiClient.post('/api/auth/register', userData);

@@ -59,6 +59,8 @@ class UserCreate(UserBase):
     password: str = Field(..., min_length=8)
     tenant_slug: str
     docs_accepted: bool = False
+    remind_before_session: bool = True
+    receive_marketing_emails: bool = True
 
 
 class UserUpdate(BaseModel):
