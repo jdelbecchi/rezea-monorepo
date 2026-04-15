@@ -122,9 +122,11 @@ export default function AdminShopOrdersPage() {
             ]);
             setOrders(ordersData);
             setDynamicStatuses(statusesData);
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            router.push("/login");
+            if (err.response?.status === 401) {
+                router.push("/login");
+            }
         } finally {
             setLoading(false);
         }

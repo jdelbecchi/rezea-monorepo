@@ -34,11 +34,18 @@ apiClient.interceptors.request.use(
         }
       }
 
-      // Injection automatique du X-Tenant-Slug depuis l'URL
+      // Injection automatique du X-Tenant-Slug
       const segments = window.location.pathname.split('/');
-      const slug = segments[1];
-      // On évite d'injecter si c'est une route racine réservée (ex: /login, /dashboard)
-      if (slug && !['login', 'register', 'sysadmin', 'dashboard', 'reset-password'].includes(slug)) {
+      let slug = segments[1];
+
+      // Si le slug n'est pas dans l'URL (ex: route racine ou réservée), on le récupère du localStorage
+      const reservedPaths = ['login', 'register', 'sysadmin', 'dashboard', 'reset-password', 'forgot-password'];
+      if (!slug || reservedPaths.includes(slug)) {
+          const storedSlug = localStorage.getItem('tenant_slug');
+          if (storedSlug) slug = storedSlug;
+      }
+
+      if (slug && !reservedPaths.includes(slug)) {
         config.headers['X-Tenant-Slug'] = slug;
       }
     }
@@ -48,7 +55,7 @@ apiClient.interceptors.request.use(
 );
 
 // Intercepteur pour gérer les erreurs
-// IMPORTANT : Ne redirige vers /login QUE si le serveur a explicitement
+// IMPORTANT : Ne redirige vers la racine QUE si le serveur a explicitement
 // répondu 401. Les erreurs réseau (backend down, timeout, 500) ne doivent
 // PAS détruire la session de l'utilisateur.
 apiClient.interceptors.response.use(
@@ -83,9 +90,10 @@ apiClient.interceptors.response.use(
           return Promise.reject(error);
         }
 
-        // Pour les pages normales, rediriger vers /login
+        // Pour les pages normales, rediriger vers la racine
         localStorage.removeItem('access_token');
-        window.location.href = '/login';
+        localStorage.removeItem('tenant_slug');
+        window.location.href = '/';
       }
     }
 
@@ -199,6 +207,9 @@ export interface Tenant {
   logo_url?: string;
   banner_url?: string;
   primary_color: string;
+  login_primary_color?: string;
+  login_background_url?: string;
+  login_description?: string;
   welcome_message?: string;
   cgv_url?: string;
   rules_url?: string;
@@ -705,6 +716,24 @@ export const api = {
 
   getTenantBySlug: async (slug: string): Promise<Tenant> => {
     const response = await apiClient.get(`/api/tenants/by-slug/${slug}`);
+    return response.data;
+  },
+
+  searchTenants: async (query: string): Promise<Tenant[]> => {
+    const response = await apiClient.get(`/api/tenants/search`, {
+      params: { q: query }
+    });
+    return response.data;
+  },
+
+  uploadLoginBackground: async (file: File): Promise<{ login_background_url: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post('/api/uploads/login-bg', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   },
 

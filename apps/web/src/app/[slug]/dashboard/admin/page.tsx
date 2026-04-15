@@ -42,9 +42,11 @@ export default function AdminDashboardPage() {
                 } catch (statsErr) {
                     console.error("Non-critical error while fetching admin stats:", statsErr);
                 }
-            } catch (err) {
+            } catch (err: any) {
                 console.error("Critical error in admin dashboard (likely auth):", err);
-                router.push("/login");
+                if (err.response?.status === 401) {
+                    router.push("/login");
+                }
             } finally {
                 setLoading(false);
             }

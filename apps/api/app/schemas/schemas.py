@@ -132,6 +132,9 @@ class TenantSettingsUpdate(BaseModel):
     logo_url: Optional[str] = None
     banner_url: Optional[str] = None
     primary_color: Optional[str] = Field(None, pattern="^#[0-9a-fA-F]{6}$")
+    login_primary_color: Optional[str] = Field(None, pattern="^#[0-9a-fA-FA-F]{6}$")
+    login_background_url: Optional[str] = None
+    login_description: Optional[str] = None
     welcome_message: Optional[str] = Field(None, max_length=2000)
     cgv_url: Optional[str] = None
     rules_url: Optional[str] = None
@@ -155,6 +158,9 @@ class TenantResponse(TenantBase):
     logo_url: Optional[str] = None
     banner_url: Optional[str] = None
     primary_color: Optional[str] = "#7c3aed"
+    login_primary_color: Optional[str] = None
+    login_background_url: Optional[str] = None
+    login_description: Optional[str] = None
     welcome_message: Optional[str] = None
     cgv_url: Optional[str] = None
     rules_url: Optional[str] = None
@@ -330,7 +336,7 @@ class OfferBase(BaseModel):
     period: Optional[str] = Field(None, max_length=50)
     classes_included: Optional[int] = Field(None, gt=0)
     is_unlimited: bool = False
-    validity_days: Optional[int] = Field(None, gt=0)
+    validity_days: Optional[int] = Field(None, ge=0)
     validity_unit: str = "days"
     deadline_date: Optional[date] = None
     is_validity_unlimited: Optional[bool] = False

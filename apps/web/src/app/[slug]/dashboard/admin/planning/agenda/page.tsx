@@ -125,9 +125,11 @@ export default function AdminAgendaPage() {
                 const updated = flattenedItems.find(i => i.id === selectedItem.id && i.type === selectedItem.type);
                 if (updated) setSelectedItem(updated);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            router.push("/login");
+            if (err.response?.status === 401) {
+                router.push("/login");
+            }
         } finally {
             setLoading(false);
         }

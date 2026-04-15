@@ -18,6 +18,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 const TABS = [
     { id: "identity", label: "Identité", icon: "🏢" },
+    { id: "portal", label: "Portail", icon: "🌐" },
     { id: "rules", label: "Règles", icon: "⚖️" },
     { id: "payment", label: "Paiements", icon: "💳" },
     { id: "docs", label: "Documents légaux", icon: "📁" },
@@ -27,12 +28,13 @@ export default function AdminSettingsPage() {
     const router = useRouter();
     const bannerInputRef = useRef<HTMLInputElement>(null);
     const logoInputRef = useRef<HTMLInputElement>(null);
+    const loginBgInputRef = useRef<HTMLInputElement>(null);
     const cgvInputRef = useRef<HTMLInputElement>(null);
     const rulesInputRef = useRef<HTMLInputElement>(null);
 
     const [user, setUser] = useState<User | null>(null);
     const [tenant, setTenant] = useState<Tenant | null>(null);
-    const [activeTab, setActiveTab] = useState("identity");
+    const [activeTab, setActiveTab] = useState<string>("identity");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState<string | null>(null);
@@ -40,9 +42,54 @@ export default function AdminSettingsPage() {
 
     // Form states
     const [formData, setFormData] = useState<Partial<Tenant>>({});
+    const [structuredDescription, setStructuredDescription] = useState<{intro: string, items: string[]}>({
+        intro: "",
+        items: [""]
+    });
     const [previewBanner, setPreviewBanner] = useState<string | null>(null);
     const [previewLogo, setPreviewLogo] = useState<string | null>(null);
+    const [previewLoginBg, setPreviewLoginBg] = useState<string | null>(null);
     const [newLocation, setNewLocation] = useState("");
+    const [showPreview, setShowPreview] = useState(false);
+    const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
+
+    // Helpers for structured description
+    const parseDescription = (html: string) => {
+        if (!html) return { intro: "", items: [""] };
+        const temp = document.createElement("div");
+        temp.innerHTML = html;
+        
+        // Extract all paragraphs for the intro
+        const paragraphs = Array.from(temp.querySelectorAll("p")).map(p => p.innerText);
+        const intro = paragraphs.length > 0 ? paragraphs.join('\n') : temp.childNodes[0]?.textContent?.trim() || "";
+        
+        const items = Array.from(temp.querySelectorAll("li")).map(li => li.innerText);
+        
+        // If it's old messy HTML without clear P or LI, use raw text as intro
+        if (items.length === 0 && paragraphs.length === 0 && html) {
+            return { intro: temp.innerText.trim(), items: [""] };
+        }
+        
+        return { 
+            intro: intro, 
+            items: items.length > 0 ? items : [""] 
+        };
+    };
+
+    const serializeDescription = (intro: string, items: string[]) => {
+        // Convert intro lines to paragraphs
+        const introHtml = intro.split('\n')
+            .filter(line => line.trim() !== '')
+            .map(line => `<p>${line}</p>`)
+            .join('');
+            
+        let html = introHtml;
+        const validItems = items.filter(i => i.trim() !== "");
+        if (validItems.length > 0) {
+            html += "<ul>" + validItems.map(i => `<li>${i}</li>`).join("") + "</ul>";
+        }
+        return html;
+    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -64,15 +111,31 @@ export default function AdminSettingsPage() {
                 if (tenantData.logo_url) {
                     setPreviewLogo(`${API_URL}${tenantData.logo_url}`);
                 }
-            } catch (err) {
+                if (tenantData.login_background_url) {
+                    setPreviewLoginBg(`${API_URL}${tenantData.login_background_url}`);
+                }
+
+                // Initialize structured description
+                if (tenantData.login_description) {
+                    setStructuredDescription(parseDescription(tenantData.login_description));
+                }
+            } catch (err: any) {
                 console.error(err);
-                router.push("/login");
+                if (err.response?.status === 401) {
+                    router.push("/login");
+                }
             } finally {
                 setLoading(false);
             }
         };
         fetchData();
     }, [router]);
+
+    // Update formData when structuredDescription changes
+    useEffect(() => {
+        const html = serializeDescription(structuredDescription.intro, structuredDescription.items);
+        setFormData(prev => ({ ...prev, login_description: html }));
+    }, [structuredDescription]);
 
     const showMessage = (text: string, type: string) => {
         setMessage({ text, type });
@@ -94,8 +157,12 @@ export default function AdminSettingsPage() {
                 result = await api.uploadLogo(file);
                 setPreviewLogo(`${API_URL}${result.logo_url}`);
                 setFormData(prev => ({ ...prev, logo_url: result.logo_url }));
+            } else if ((type as string) === 'login-bg') {
+                result = await api.uploadLoginBackground(file);
+                setPreviewLoginBg(`${API_URL}${result.login_background_url}`);
+                setFormData(prev => ({ ...prev, login_background_url: result.login_background_url }));
             } else {
-                result = await api.uploadDocument(file, type);
+                result = await api.uploadDocument(file, type as any);
                 setFormData(prev => ({ ...prev, [`${type}_url`]: result.url }));
             }
             showMessage("Fichier mis à jour !", "success");
@@ -134,6 +201,27 @@ export default function AdminSettingsPage() {
     const handleRemoveLocation = (loc: string) => {
         const current = formData.locations || [];
         setFormData({ ...formData, locations: current.filter(l => l !== loc) });
+    };
+
+    const handleAddAtout = () => {
+        setStructuredDescription(prev => ({
+            ...prev,
+            items: [...prev.items, ""]
+        }));
+    };
+
+    const handleUpdateAtout = (index: number, val: string) => {
+        const newItems = [...structuredDescription.items];
+        newItems[index] = val;
+        setStructuredDescription(prev => ({ ...prev, items: newItems }));
+    };
+
+    const handleRemoveAtout = (index: number) => {
+        const newItems = structuredDescription.items.filter((_, i) => i !== index);
+        setStructuredDescription(prev => ({ 
+            ...prev, 
+            items: newItems.length > 0 ? newItems : [""] 
+        }));
     };
 
     const quillModules = {
@@ -321,6 +409,135 @@ export default function AdminSettingsPage() {
                                                     rows={4}
                                                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-medium"
                                                 />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* PORTAL TAB */}
+                        {activeTab === "portal" && (
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                <div className="space-y-8">
+                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
+                                        <div className="flex items-center justify-between">
+                                            <h3 className="text-xl font-bold flex items-center gap-2">🎨 Apparence du portail</h3>
+                                            <button 
+                                                onClick={() => setShowPreview(true)}
+                                                className="px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl font-bold text-xs transition-all flex items-center gap-2"
+                                            >
+                                                <span>👁️</span> Aperçu du portail
+                                            </button>
+                                        </div>
+                                        
+                                        <div className="space-y-6">
+                                            <div>
+                                                <label className="block text-sm font-bold text-slate-700 mb-2">Couleur dédiée au portail</label>
+                                                <p className="text-xs text-slate-400 mb-4">Si non définie, la couleur d'accentuation du club sera utilisée.</p>
+                                                <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                                    <input
+                                                        type="color"
+                                                        value={formData.login_primary_color || formData.primary_color || "#7c3aed"}
+                                                        onChange={e => setFormData({ ...formData, login_primary_color: e.target.value })}
+                                                        className="w-12 h-12 rounded-xl border-2 border-white shadow-sm cursor-pointer"
+                                                    />
+                                                    <div className="flex-1">
+                                                        <input
+                                                            type="text"
+                                                            value={formData.login_primary_color || ""}
+                                                            placeholder={formData.primary_color}
+                                                            onChange={e => setFormData({ ...formData, login_primary_color: e.target.value })}
+                                                            className="bg-transparent border-none p-0 font-mono font-bold text-base outline-none w-full"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-bold text-slate-700 mb-2">Image de fond du portail</label>
+                                                <div className="w-full h-48 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group mb-3 shadow-inner">
+                                                    {previewLoginBg ? (
+                                                        <img src={previewLoginBg} className="w-full h-full object-cover" alt="Login Background" />
+                                                    ) : (
+                                                        <div className="text-center space-y-2">
+                                                            <span className="text-4xl block">🖼️</span>
+                                                            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Aucune image</p>
+                                                        </div>
+                                                    )}
+                                                    {uploading === 'login-bg' && (
+                                                        <div className="absolute inset-0 bg-white/80 flex items-center justify-center backdrop-blur-sm">
+                                                            <div className="h-8 w-8 border-2 border-blue-600 border-t-transparent animate-spin rounded-full"></div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <input type="file" ref={loginBgInputRef} className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'login-bg' as any)} />
+                                                <button 
+                                                    onClick={() => loginBgInputRef.current?.click()}
+                                                    className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs transition-all shadow-lg shadow-slate-200"
+                                                >
+                                                    Changer l&apos;image de fond
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-8">
+                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6 min-h-[400px]">
+                                        <h3 className="text-xl font-bold flex items-center gap-2">✨ Textes personnalisés</h3>
+                                        <div>
+                                            <p className="text-xs text-slate-400 mb-6 font-medium leading-relaxed italic bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                                💡 <b>le conseil Rezea :</b> une introduction courte suivie de 3 à 5 atouts majeurs est le format idéal pour convertir vos visiteurs !
+                                            </p>
+                                            
+                                            <div className="space-y-8">
+                                                {/* Introduction Field */}
+                                                <div className="space-y-2">
+                                                    <label className="block text-sm font-bold text-slate-700 mb-2">Description courte</label>
+                                                    <textarea 
+                                                        value={structuredDescription.intro}
+                                                        onChange={e => setStructuredDescription(prev => ({ ...prev, intro: e.target.value }))}
+                                                        placeholder="Ex: Bienvenue dans votre club de bien-être..."
+                                                        className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:bg-white transition-all outline-none font-medium text-slate-700 resize-none min-h-[100px]"
+                                                    />
+                                                </div>
+
+                                                {/* Key Assets List */}
+                                                <div className="space-y-4">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <label className="block text-sm font-bold text-slate-700">Points forts et atouts</label>
+                                                        <button 
+                                                            onClick={handleAddAtout}
+                                                            className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full hover:bg-blue-100 transition-all"
+                                                        >
+                                                            + Ajouter un point
+                                                        </button>
+                                                    </div>
+                                                    
+                                                    <div className="space-y-3">
+                                                        {structuredDescription.items.map((item, idx) => (
+                                                            <div key={idx} className="group relative flex items-center gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
+                                                                <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 font-bold text-xs">
+                                                                    {idx + 1}
+                                                                </div>
+                                                                <input 
+                                                                    type="text"
+                                                                    value={item}
+                                                                    onChange={e => handleUpdateAtout(idx, e.target.value)}
+                                                                    placeholder={`Atout n°${idx + 1}...`}
+                                                                    className="flex-1 px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-50 focus:border-blue-400 outline-none transition-all font-medium text-slate-700"
+                                                                />
+                                                                <button 
+                                                                    onClick={() => handleRemoveAtout(idx)}
+                                                                    className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                                                                >
+                                                                    🗑️
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -556,6 +773,95 @@ export default function AdminSettingsPage() {
                         )}
                     </div>
                 </div>
+
+                {/* PORTAL PREVIEW MODAL */}
+                {showPreview && (
+                    <div className="fixed inset-0 z-[100] flex flex-col bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-300">
+                        {/* Modal Header */}
+                        <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm">
+                            <div className="flex items-center gap-4">
+                                <h2 className="text-lg font-bold text-slate-900">Aperçu du Portail</h2>
+                                <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+                                    <button 
+                                        onClick={() => setPreviewMode("desktop")}
+                                        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${previewMode === "desktop" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                                    >
+                                        Ordinateur
+                                    </button>
+                                    <button 
+                                        onClick={() => setPreviewMode("mobile")}
+                                        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${previewMode === "mobile" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                                    >
+                                        Mobile
+                                    </button>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => setShowPreview(false)}
+                                className="w-10 h-10 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full transition-all font-bold"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        {/* Modal Content - The actual Mock Portal */}
+                        <div className="flex-1 overflow-auto p-4 md:p-12 flex items-center justify-center">
+                            <div className={`bg-white shadow-2xl overflow-hidden transition-all duration-500 ${previewMode === "mobile" ? "w-[375px] h-[667px] rounded-[3rem] border-[8px] border-slate-900" : "w-full max-w-5xl h-[600px] rounded-3xl"}`}>
+                                <div 
+                                    className={`h-full flex ${previewMode === "mobile" ? "flex-col" : "flex-row"} relative bg-white`}
+                                    style={{ "--primary-color": formData.login_primary_color || formData.primary_color || "#0f172a" } as any}
+                                >
+                                    {/* Left Panel (Branding) */}
+                                    <div className={`${previewMode === "mobile" ? "pt-8 pb-4 px-8 text-center" : "flex-1 p-12"} relative z-10 bg-white flex flex-col justify-center`}>
+                                        <div className={`space-y-6 ${previewMode === "mobile" ? "flex flex-col items-center" : ""}`}>
+                                            <div className="flex items-center gap-4">
+                                                {previewLogo ? (
+                                                    <img src={previewLogo} className="h-12 object-contain" alt="Logo" />
+                                                ) : (
+                                                    <div className="w-12 h-12 rounded-xl bg-slate-900 flex items-center justify-center text-white font-bold">RZ</div>
+                                                )}
+                                                <h1 className="text-2xl md:text-4xl font-black tracking-tighter text-slate-900 truncate">
+                                                    {formData.name || "Rezea Club"}
+                                                </h1>
+                                            </div>
+                                            <div 
+                                                className="portal-description text-sm md:text-base text-slate-500 font-medium leading-relaxed max-w-md pointer-events-none"
+                                                dangerouslySetInnerHTML={{ __html: formData.login_description || "<p>Votre description apparaîtra ici...</p>" }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Right Panel (Image & Form) */}
+                                    <div className={`relative flex-1 flex items-center justify-center overflow-hidden bg-slate-50 ${previewMode === "mobile" ? "min-h-[300px] pt-2 pb-8 px-6" : ""}`}>
+                                        {/* Background Image logic mirror */}
+                                        {previewLoginBg ? (
+                                            <div className="absolute inset-0">
+                                                <img src={previewLoginBg} className="w-full h-full object-cover" alt="" />
+                                                <div className={`absolute top-0 left-0 w-full h-full ${previewMode === "mobile" ? "bg-gradient-to-b" : "bg-gradient-to-r"} from-white via-white/40 to-transparent`} />
+                                                <div className="absolute inset-0 bg-slate-900/10 backdrop-blur-[2px]" />
+                                            </div>
+                                        ) : (
+                                            <div className="absolute inset-0 opacity-10" style={{ background: `radial-gradient(circle at center, ${formData.primary_color}, transparent)` }} />
+                                        )}
+                                        
+                                        {/* Mock Form */}
+                                        <div className="relative z-10 w-full max-w-[280px] scale-90 md:scale-100">
+                                            <div className="bg-white/95 backdrop-blur-sm p-6 rounded-3xl shadow-xl border border-white/50 space-y-4">
+                                                <h4 className="text-sm font-bold text-slate-900">Accédez à votre espace</h4>
+                                                <div className="space-y-2">
+                                                    <div className="h-9 bg-slate-100 rounded-lg animate-pulse" />
+                                                    <div className="h-9 bg-slate-100 rounded-lg animate-pulse" />
+                                                </div>
+                                                <div className="h-9 rounded-lg" style={{ backgroundColor: formData.login_primary_color || formData.primary_color || "#0f172a" }} />
+                                                <div className="text-[10px] text-center text-slate-400">Pas encore de compte ? S'inscrire</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </main>
 
             <style jsx global>{`
@@ -564,7 +870,31 @@ export default function AdminSettingsPage() {
                 .ql-editor { font-size: 16px; line-height: 1.6; color: #1e293b; min-height: 200px; padding: 24px !important; }
                 .no-scrollbar::-webkit-scrollbar { display: none; }
                 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+                
+                /* Portal Description Styles in Preview */
+                .portal-description p { margin-bottom: 0.75rem; }
+                .portal-description h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; }
+                .portal-description ul { list-style: none; padding: 0; margin-bottom: 0.75rem; }
+                .portal-description li { position: relative; padding-left: 1.25rem; margin-bottom: 0.4rem; }
+                .portal-description li::before {
+                    content: "";
+                    position: absolute;
+                    left: 0;
+                    top: 0.25rem;
+                    width: 0.8rem;
+                    height: 0.8rem;
+                    background-color: var(--primary-color);
+                    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+                    mask-repeat: no-repeat;
+                    mask-size: contain;
+                    mask-position: center;
+                    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+                    -webkit-mask-repeat: no-repeat;
+                    -webkit-mask-size: contain;
+                    -webkit-mask-position: center;
+                }
             `}</style>
         </div>
     );
 }
+

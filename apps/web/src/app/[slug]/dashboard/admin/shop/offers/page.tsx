@@ -62,8 +62,10 @@ function AdminOffersContent() {
                 }
                 setUser(userData);
                 await fetchOffers();
-            } catch (err) {
-                router.push("/login");
+            } catch (err: any) {
+                if (err.response?.status === 401) {
+                    router.push("/login");
+                }
             } finally {
                 setLoading(false);
             }

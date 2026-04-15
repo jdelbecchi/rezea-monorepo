@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useParams } from "next/navigation";
 
 interface User {
     id: string;
@@ -38,16 +38,23 @@ interface AdminNavItem {
 export default function Sidebar({ user, tenant }: SidebarProps) {
     const pathname = usePathname();
     const router = useRouter();
+    const params = useParams();
+    const slug = params?.slug as string;
     const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
     const handleLogout = () => {
-        localStorage.clear();
-        router.push("/");
+        // Remove only session-related items, keep preferences
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("user_id");
+        localStorage.removeItem("tenant_id");
+        window.location.href = "/";
     };
 
+    const basePath = slug ? `/${slug}/dashboard` : "/dashboard";
+
     const isActive = (path: string) => {
-        if (path === "/dashboard") {
-            return pathname === "/dashboard";
+        if (path === basePath) {
+            return pathname === basePath;
         }
         return pathname === path;
     };
@@ -74,44 +81,44 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
     };
 
     const navItems: NavItem[] = [
-        { path: "/dashboard", label: "Accueil", icon: "🏠" },
-        { path: "/dashboard/profile", label: "Mon profil", icon: "👤" },
-        { path: "/dashboard/credits", label: "Boutique", icon: "🛍️" },
-        { path: "/dashboard/planning", label: "Planning et réservations", icon: "📋" },
-        { path: "/dashboard/orders", label: "Mes commandes", icon: "📦" },
+        { path: basePath, label: "Accueil", icon: "🏠" },
+        { path: `${basePath}/profile`, label: "Mon profil", icon: "👤" },
+        { path: `${basePath}/credits`, label: "Boutique", icon: "🛍️" },
+        { path: `${basePath}/planning`, label: "Planning et réservations", icon: "📋" },
+        { path: `${basePath}/orders`, label: "Mes commandes", icon: "📦" },
     ];
 
     // Menus visibles par owner, manager et staff uniquement
     const isStaffOrAbove = user?.role === "owner" || user?.role === "manager" || user?.role === "staff";
 
     const staffNavItems: NavItem[] = [
-        { path: "/dashboard/gestion-inscriptions", label: "Suivi des inscriptions", icon: "📝" },
+        { path: `${basePath}/gestion-inscriptions`, label: "Suivi des inscriptions", icon: "📝" },
     ];
 
     const adminNavItems: AdminNavItem[] = [
-        { path: "/dashboard/admin", label: "Tableau de bord", icon: "📊" },
-        { path: "/dashboard/admin/shop/offers", label: "Catalogue d'offres", icon: "🏷️" },
-        { path: "/dashboard/admin/shop/orders", label: "Gestion des commandes", icon: "📦" },
-        { path: "/dashboard/admin/planning/agenda", label: "Agenda", icon: "📅" },
+        { path: `${basePath}/admin`, label: "Tableau de bord", icon: "📊" },
+        { path: `${basePath}/admin/shop/offers`, label: "Catalogue d'offres", icon: "🏷️" },
+        { path: `${basePath}/admin/shop/orders`, label: "Gestion des commandes", icon: "📦" },
+        { path: `${basePath}/admin/planning/agenda`, label: "Agenda", icon: "📅" },
         {
             label: "Programmation du planning",
             icon: "📋",
             children: [
-                { path: "/dashboard/admin/planning/sessions", label: "Séances" },
-                { path: "/dashboard/admin/events/programming", label: "Evènements" },
+                { path: `${basePath}/admin/planning/sessions`, label: "Séances" },
+                { path: `${basePath}/admin/events/programming`, label: "Evènements" },
             ],
         },
         {
             label: "Gestion des inscriptions",
             icon: "📝",
             children: [
-                { path: "/dashboard/admin/planning/bookings", label: "Inscriptions aux séances" },
-                { path: "/dashboard/admin/events/registrations", label: "Inscriptions aux évènements" },
+                { path: `${basePath}/admin/planning/bookings`, label: "Inscriptions aux séances" },
+                { path: `${basePath}/admin/events/registrations`, label: "Inscriptions aux évènements" },
             ],
         },
-        { path: "/dashboard/admin/users", label: "Utilisateurs", icon: "👥" },
-        { path: "/dashboard/admin/emails", label: "Emails", icon: "📧" },
-        { path: "/dashboard/admin/settings", label: "Paramètres", icon: "⚙️" },
+        { path: `${basePath}/admin/users`, label: "Utilisateurs", icon: "👥" },
+        { path: `${basePath}/admin/emails`, label: "Emails", icon: "📧" },
+        { path: `${basePath}/admin/settings`, label: "Paramètres", icon: "⚙️" },
     ];
 
     const isAdmin = user?.role === "owner" || user?.role === "manager";
@@ -141,7 +148,7 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
             {/* Bouton de bascule rapide vers Vue Client */}
             <div className="mb-6">
                 <Link 
-                    href="/dashboard"
+                    href={basePath}
                     className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-medium transition-all shadow-lg shadow-blue-900/20 active:scale-[0.98]"
                     onClick={() => setIsMobileMenuOpen(false)}
                 >

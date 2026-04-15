@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useParams } from "next/navigation";
 
 interface BottomNavProps {
     userRole?: string;
@@ -9,6 +9,8 @@ interface BottomNavProps {
 
 export default function BottomNav({ userRole }: BottomNavProps) {
     const pathname = usePathname();
+    const params = useParams();
+    const slug = params?.slug as string;
 
     const icons = {
         home: (
@@ -43,17 +45,19 @@ export default function BottomNav({ userRole }: BottomNavProps) {
         )
     };
 
+    const basePath = slug ? `/${slug}/dashboard` : "/dashboard";
+
     const navItems = [
-        { path: "/dashboard", icon: icons.home, label: "Accueil" },
-        { path: "/dashboard/planning", icon: icons.planning, label: "Planning" },
-        { path: "/dashboard/credits", icon: icons.shop, label: "Boutique" },
-        { path: "/dashboard/orders", icon: icons.orders, label: "Commandes" },
-        ...(userRole === "staff" ? [{ path: "/dashboard/gestion-inscriptions", icon: icons.admin, label: "Inscriptions" }] : []),
-        { path: "/dashboard/profile", icon: icons.profile, label: "Profil" },
+        { path: basePath, icon: icons.home, label: "Accueil" },
+        { path: `${basePath}/planning`, icon: icons.planning, label: "Planning" },
+        { path: `${basePath}/credits`, icon: icons.shop, label: "Boutique" },
+        { path: `${basePath}/orders`, icon: icons.orders, label: "Commandes" },
+        ...(userRole === "staff" ? [{ path: `${basePath}/gestion-inscriptions`, icon: icons.admin, label: "Inscriptions" }] : []),
+        { path: `${basePath}/profile`, icon: icons.profile, label: "Profil" },
     ];
 
     const isActive = (path: string) => {
-        if (path === "/dashboard") return pathname === "/dashboard";
+        if (path === basePath) return pathname === basePath;
         return pathname.startsWith(path);
     };
 

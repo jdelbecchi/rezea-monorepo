@@ -82,8 +82,10 @@ function AdminSessionsContent() {
                     const target = data.find(s => s.id === editId);
                     if (target) openEdit(target);
                 }
-            } catch (err) {
-                router.push("/login");
+            } catch (err: any) {
+                if (err.response?.status === 401) {
+                    router.push("/login");
+                }
             } finally {
                 setLoading(false);
             }
