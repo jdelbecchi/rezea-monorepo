@@ -472,7 +472,7 @@ function AdminSessionsContent() {
             {/* Modal Form Image 2 Style */}
             {showForm && (
                 <div className="fixed inset-0 bg-[#0f172a]/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[2.5rem] p-10 max-w-2xl w-full shadow-2xl border border-slate-100 overflow-y-auto max-h-[90vh]">
+                    <div className="bg-white rounded-3xl p-10 max-w-2xl w-full shadow-2xl border border-slate-100 overflow-y-auto max-h-[90vh]">
                         <h2 className="text-3xl font-black text-slate-900 mb-8 tracking-tight">
                             {editingSession ? "Modifier la séance" : "Créer une séance"}
                         </h2>
@@ -573,7 +573,7 @@ function AdminSessionsContent() {
                                 </label>
                             </div>
                             {!editingSession && (
-                                <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-4">
+                                <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-4">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-2">Récurrence</label>
                                     <div className="grid grid-cols-2 gap-4">
                                         <select value={formData.recurrence} onChange={e => setFormData({...formData, recurrence: e.target.value as any})} className="px-5 py-3.5 bg-white border border-slate-100 rounded-2xl font-bold text-slate-700">
@@ -602,7 +602,7 @@ function AdminSessionsContent() {
             {/* Duplicate Modal */}
             {showDuplicateModal && (
                 <div className="fixed inset-0 bg-[#0f172a]/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-                    <div className="bg-white rounded-[2.5rem] p-10 max-w-lg w-full shadow-2xl">
+                    <div className="bg-white rounded-3xl p-10 max-w-lg w-full shadow-2xl">
                         <h3 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Dupliquer des séances</h3>
                         <p className="text-slate-400 text-sm mb-8 font-medium italic">Copiez un bloc de séances vers une autre période</p>
                         <div className="space-y-6">
@@ -631,7 +631,7 @@ function AdminSessionsContent() {
             {/* Confirmation Modal */}
             {confirmModal.show && (
                 <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-xl flex items-center justify-center z-[200] p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl border border-slate-100">
+                    <div className="bg-white rounded-3xl p-10 max-w-md w-full shadow-2xl border border-slate-100">
                         <div className={`w-16 h-16 rounded-3xl flex items-center justify-center text-3xl mb-6 ${
                             confirmModal.type === 'danger' ? 'bg-rose-50 text-rose-500' : 
                             confirmModal.type === 'warning' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'

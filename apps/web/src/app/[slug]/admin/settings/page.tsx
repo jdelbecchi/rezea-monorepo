@@ -551,7 +551,7 @@ export default function AdminSettingsPage() {
                         {/* RULES TAB */}
                         {activeTab === "rules" && (
                             <div className="space-y-8">
-                                <section className="bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm space-y-8">
+                                <section className="bg-white rounded-3xl p-10 border border-slate-200 shadow-sm space-y-8">
                                     <div className="space-y-2">
                                         <h3 className="text-2xl font-black tracking-tight flex items-center gap-3">
                                             ⏱️ Délais de gestion
@@ -593,7 +593,7 @@ export default function AdminSettingsPage() {
                                 </section>
 
                                 {/* LOCATIONS SECTION */}
-                                <section className="bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm space-y-8">
+                                <section className="bg-white rounded-3xl p-10 border border-slate-200 shadow-sm space-y-8">
                                     <div className="space-y-2">
                                         <h3 className="text-2xl font-black tracking-tight flex items-center gap-3">
                                             📍 Locaux & Espaces
@@ -645,7 +645,7 @@ export default function AdminSettingsPage() {
                         {/* PAYMENT TAB */}
                         {activeTab === "payment" && (
                             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                <section className="bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm space-y-8">
+                                <section className="bg-white rounded-3xl p-10 border border-slate-200 shadow-sm space-y-8">
                                     <div className="space-y-2">
                                         <h3 className="text-2xl font-black tracking-tight flex items-center gap-3">💶 Paramètres de Paiement</h3>
                                         <p className="text-slate-500 font-medium">Gérez comment vos membres règlent leurs commandes</p>
@@ -691,7 +691,7 @@ export default function AdminSettingsPage() {
                                 </section>
 
                                 {/* Confirmation Email section */}
-                                <section className="bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm space-y-8">
+                                <section className="bg-white rounded-3xl p-10 border border-slate-200 shadow-sm space-y-8">
                                     <div className="space-y-2">
                                         <h3 className="text-2xl font-black tracking-tight flex items-center gap-3">✉️ Email de Confirmation</h3>
                                         <p className="text-slate-500 font-medium">Personnalisez le message envoyé automatiquement après une commande</p>
@@ -725,7 +725,7 @@ export default function AdminSettingsPage() {
                         {/* DOCUMENTS TAB */}
                         {activeTab === "docs" && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm space-y-8 text-center relative overflow-hidden group">
+                                <div className="bg-white rounded-3xl p-10 border border-slate-200 shadow-sm space-y-8 text-center relative overflow-hidden group">
                                     {formData.cgv_url && (
                                         <div className="absolute top-4 right-4 bg-emerald-100 text-emerald-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">Actif</div>
                                     )}
@@ -749,7 +749,7 @@ export default function AdminSettingsPage() {
                                     </div>
                                 </div>
 
-                                <div className="bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm space-y-8 text-center relative overflow-hidden group">
+                                <div className="bg-white rounded-3xl p-10 border border-slate-200 shadow-sm space-y-8 text-center relative overflow-hidden group">
                                     {formData.rules_url && (
                                         <div className="absolute top-4 right-4 bg-emerald-100 text-emerald-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">Actif</div>
                                     )}
@@ -809,7 +809,7 @@ export default function AdminSettingsPage() {
 
                         {/* Modal Content - The actual Mock Portal */}
                         <div className="flex-1 overflow-auto p-4 md:p-12 flex items-center justify-center">
-                            <div className={`bg-white shadow-2xl overflow-hidden transition-all duration-500 ${previewMode === "mobile" ? "w-[375px] h-[667px] rounded-[3rem] border-[8px] border-slate-900" : "w-full max-w-5xl h-[600px] rounded-3xl"}`}>
+                            <div className={`bg-white shadow-2xl overflow-hidden transition-all duration-500 ${previewMode === "mobile" ? "w-[375px] h-[667px] rounded-3xl border-[8px] border-slate-900" : "w-full max-w-5xl h-[600px] rounded-3xl"}`}>
                                 <div 
                                     className={`h-full flex ${previewMode === "mobile" ? "flex-col" : "flex-row"} relative bg-white`}
                                     style={{ "--primary-color": formData.login_primary_color || formData.primary_color || "#0f172a" } as any}

@@ -97,7 +97,7 @@ export default function CreditsPage() {
                         </div>
                         
                         {/* More discrete balance display - Compact on mobile */}
-                        <div className="bg-white px-6 py-4 md:px-8 md:py-5 rounded-[2rem] border border-slate-200 shadow-sm flex items-center justify-center gap-4 md:gap-6 self-center">
+                        <div className="bg-white px-6 py-4 md:px-8 md:py-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-center gap-4 md:gap-6 self-center">
                             <span className="text-[10px] md:text-xs font-medium text-slate-400 capitalize tracking-tight whitespace-nowrap">Mon solde :</span>
                             <div className="flex items-baseline gap-2">
                                 <span className="text-2xl md:text-4xl font-semibold text-slate-900 leading-none">{formatCredits(balance)}</span>

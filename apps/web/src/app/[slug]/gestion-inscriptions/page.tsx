@@ -324,42 +324,58 @@ export default function GestionInscriptionsPage() {
                                 <p className="text-slate-500 font-medium text-[11px] md:text-xs">Gérez vos séances et participants</p>
                             </header>
 
-                            <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-4">
-                                <div className="flex items-center justify-between mb-4 px-2">
-                                    <h2 className="font-semibold text-slate-800 capitalize text-sm md:text-base">
+                            <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-1.5 md:p-2">
+                                <div className="flex items-center justify-between mb-1 px-2">
+                                    <h2 className="font-semibold text-slate-800 capitalize text-[13px] md:text-sm">
                                         {format(currentMonth, 'MMMM yyyy', { locale: fr })}
                                     </h2>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-2 hover:bg-slate-100 rounded-full text-slate-400">←</button>
-                                        <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-2 hover:bg-slate-100 rounded-full text-slate-400">→</button>
+                                    <div className="flex gap-1">
+                                        <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400">←</button>
+                                        <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400">→</button>
                                     </div>
                                 </div>
                                 
-                                <div className="grid grid-cols-7 gap-1">
+                                <div className="grid grid-cols-7 gap-0.5 md:gap-1">
                                     {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((day, i) => (
-                                        <div key={i} className="text-center text-[10px] font-medium text-slate-400 py-2 tracking-tight">{day}</div>
+                                        <div key={i} className="text-center text-[9px] md:text-[10px] font-bold text-slate-400 py-1 uppercase tracking-tight">{day}</div>
                                     ))}
                                     {calendarDays.map((day, i) => {
                                         const { sessions: sCount, events: eCount } = itemsForDay(day);
                                         const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
                                         const isToday = isSameDay(day, new Date());
                                         const isSelected = isSameDay(day, selectedDate);
-                                        const hasActivity = sCount.length > 0 || eCount.length > 0;
-
+                                        const clubColor = tenant?.primary_color;
+                                        if (!clubColor && isToday && !isSelected) {
+                                            return (
+                                                <button
+                                                    key={i}
+                                                    onClick={() => handleSelectDay(day)}
+                                                    className="relative py-2 md:py-0 rounded-xl text-xs md:text-sm transition-all flex flex-col items-center justify-center md:aspect-square hover:bg-slate-50 text-slate-700 font-bold"
+                                                >
+                                                    <span>{day.getDate()}</span>
+                                                    <div className="absolute bottom-1 w-3 md:w-5 h-[2px] rounded-full bg-slate-200" />
+                                                </button>
+                                            );
+                                        }
                                         return (
                                             <button
                                                 key={i}
                                                 onClick={() => handleSelectDay(day)}
                                                 className={`
-                                                    relative p-2 rounded-xl text-xs md:text-sm transition-all flex flex-col items-center justify-center aspect-square
+                                                    relative py-2 md:py-0 rounded-xl text-xs md:text-sm transition-all flex flex-col items-center justify-center md:aspect-square
                                                     ${!isCurrentMonth ? 'opacity-20' : 'opacity-100'}
-                                                    ${isSelected ? 'bg-violet-600 text-white shadow-lg' : 'hover:bg-slate-50 text-slate-700'}
-                                                    ${isToday && !isSelected ? 'text-violet-600 font-bold' : ''}
+                                                    ${isSelected ? 'shadow-lg text-white font-bold' : 'hover:bg-slate-50 text-slate-700 font-medium'}
                                                 `}
+                                                style={{ 
+                                                    backgroundColor: isSelected ? (clubColor || '#cbd5e1') : undefined,
+                                                    color: isSelected ? 'white' : (isToday && !isSelected ? (clubColor || '#94a3b8') : undefined)
+                                                }}
                                             >
-                                                <span className={isSelected ? 'font-semibold' : 'font-medium'}>{day.getDate()}</span>
+                                                <span>{day.getDate()}</span>
                                                 {isToday && (
-                                                    <div className={`absolute bottom-2 w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-violet-600'}`} />
+                                                    <div className={`absolute bottom-1 w-3 md:w-5 h-[2px] rounded-full ${isSelected ? 'bg-white' : ''}`} 
+                                                         style={{ backgroundColor: !isSelected ? (clubColor || '#cbd5e1') : undefined }}
+                                                    />
                                                 )}
                                             </button>
                                         );
@@ -404,7 +420,7 @@ export default function GestionInscriptionsPage() {
                             )}
                             
                             {!hasItems ? (
-                                <div className="bg-white rounded-[2.5rem] p-16 text-center border border-dashed border-slate-200">
+                                <div className="bg-white rounded-3xl p-16 text-center border border-dashed border-slate-200">
                                     <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                                       <span className="text-3xl">🎈</span>
                                     </div>
@@ -421,7 +437,7 @@ export default function GestionInscriptionsPage() {
                                         return (
                                             <div 
                                                 key={session.id} 
-                                                className={`bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden group transition-all hover:border-violet-100 ${!session.is_active ? 'opacity-50' : ''}`}
+                                                className={`bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden group transition-all hover:border-violet-100 ${!session.is_active ? 'opacity-50' : ''}`}
                                             >
                                                 {/* Entête Séance */}
                                                 <div className="p-4 md:p-5">
@@ -433,7 +449,7 @@ export default function GestionInscriptionsPage() {
                                                                     {format(new Date(session.start_time), "HH:mm")}
                                                                 </span>
                                                                 <div className="flex items-center gap-1.5 min-w-0">
-                                                                    <h4 className="font-medium text-sm md:text-base text-slate-800 first-letter:uppercase truncate">
+                                                                    <h4 className="font-medium text-sm md:text-base text-slate-800 first-letter:uppercase leading-tight">
                                                                         {session.title}
                                                                     </h4>
                                                                     {!session.is_active && (
@@ -611,7 +627,7 @@ export default function GestionInscriptionsPage() {
                                         return (
                                             <div 
                                                 key={event.id} 
-                                                className={`bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden group transition-all hover:border-amber-100 ${event.cancelled_at ? 'opacity-50' : ''}`}
+                                                className={`bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden group transition-all hover:border-amber-100 ${event.cancelled_at ? 'opacity-50' : ''}`}
                                             >
                                                 {/* Entête Événement */}
                                                 <div className="p-4 md:p-5">
@@ -623,7 +639,7 @@ export default function GestionInscriptionsPage() {
                                                                     {event.event_time}
                                                                 </span>
                                                                 <div className="flex items-center gap-1.5 min-w-0">
-                                                                    <h4 className="font-medium text-sm md:text-base text-slate-800 first-letter:uppercase truncate">
+                                                                    <h4 className="font-medium text-sm md:text-base text-slate-800 first-letter:uppercase leading-tight">
                                                                         {event.title}
                                                                     </h4>
                                                                     <span className="text-sm shrink-0">✨</span>
@@ -724,7 +740,7 @@ export default function GestionInscriptionsPage() {
             {/* Modal Edit Session */}
             {showEditSessionModal && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
-                    <div className="bg-white rounded-[3rem] w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 p-1 animate-in zoom-in duration-300">
+                    <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 p-1 animate-in zoom-in duration-300">
                         <form onSubmit={handleUpdateSession} className="p-6 md:p-10">
                             <div className="flex justify-between items-start mb-6">
                                 <div>
@@ -874,7 +890,7 @@ export default function GestionInscriptionsPage() {
             {viewingContact && (
                 <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="absolute inset-0" onClick={() => setViewingContact(null)}></div>
-                    <div className="bg-white rounded-[2.5rem] w-full max-w-sm overflow-hidden shadow-2xl border border-slate-100 p-8 animate-in zoom-in-95 duration-200 relative">
+                    <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl border border-slate-100 p-8 animate-in zoom-in-95 duration-200 relative">
                         <header className="mb-8">
                             <h2 className="text-xl font-medium text-slate-900 tracking-tight mb-1">Informations de contact</h2>
                             <p className="text-slate-400 font-medium text-xs">Pour {viewingContact.user_name}</p>
@@ -956,7 +972,7 @@ export default function GestionInscriptionsPage() {
             {/* Alerte Erreur Restauration */}
             {restorationErrorUsers && (
                 <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-rose-900/40 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[2.5rem] w-full max-w-sm overflow-hidden shadow-2xl border border-rose-100 p-8 animate-in zoom-in-95 duration-300">
+                    <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl border border-rose-100 p-8 animate-in zoom-in-95 duration-300">
                         <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mb-6">
                             <span className="text-3xl">⚠️</span>
                         </div>

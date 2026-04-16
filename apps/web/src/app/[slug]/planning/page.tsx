@@ -22,11 +22,18 @@ import {
 } from "date-fns";
 import { fr } from "date-fns/locale";
 
+const DiamondToken = ({ className = "w-5 h-5" }: { className?: string }) => (
+  <div className={`flex items-center justify-center shrink-0 ${className}`}>
+    <span className="text-sm">💎</span>
+  </div>
+);
+
 export default function PlanningPage() {
   const params = useParams();
   const slug = params.slug;
   const [selectedDate, setSelectedDate] = useState<Date>(startOfToday());
-  const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
+  const [currentMonth, setCurrentMonth] = useState(startOfToday());
 
   // Persistance de la date
   useEffect(() => {
@@ -51,27 +58,13 @@ export default function PlanningPage() {
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [myBookings, setMyBookings] = useState<Booking[]>([]);
   
-  const [showModal, setShowModal] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<{
-    id: string;
-    type: 'session' | 'event';
-    title: string;
-    description?: string;
-    instructor?: string;
-    location?: string;
-    start?: string;
-    duration?: string;
-    credits?: number;
-    spots?: number;
-    max?: number;
-  } | null>(null);
-
   const [bookingLoading, setBookingLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [bookingToCancel, setBookingToCancel] = useState<{ id: string; title: string } | null>(null);
   const [locationFilter, setLocationFilter] = useState("all");
+  const [isLocationMenuOpen, setIsLocationMenuOpen] = useState(false);
 
   useEffect(() => {
     const initData = async () => {
@@ -143,11 +136,10 @@ export default function PlanningPage() {
       setMyBookings(newBookings);
       setAllUpcomingEvents(upcomingEventsData);
       
-      const startDate = new Date(selectedDate);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(selectedDate);
-      endDate.setHours(23, 59, 59, 999);
-      const sessionsData = await api.getSessions({ start_date: startDate.toISOString(), end_date: endDate.toISOString() });
+      // Assurer le même format de date que fetchPlanning pour éviter les décalages de cache/timezone
+      const start = format(selectedDate, "yyyy-MM-dd") + "T00:00:00";
+      const end = format(selectedDate, "yyyy-MM-dd") + "T23:59:59";
+      const sessionsData = await api.getSessions({ start_date: start, end_date: end });
       setSessions(sessionsData);
   };
 
@@ -222,11 +214,10 @@ export default function PlanningPage() {
     const now = new Date();
     
     const futureBookings = myBookings
-      .filter(b => b.status === 'confirmed' || b.status === 'pending')
+      .filter(b => (b.status === 'confirmed' || b.status === 'pending'))
       .filter(b => {
            if (!b.session?.start_time) return false;
            const start = parseISO(b.session.start_time);
-           // Ne montrer que ce qui commence dans le futur
            return isAfter(start, now);
       })
         .map(b => ({
@@ -286,43 +277,63 @@ export default function PlanningPage() {
                 <p className="text-slate-500 font-medium text-[11px] md:text-xs">Réservez vos séances et évènements</p>
               </header>
 
-              <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-4">
-                <div className="flex items-center justify-between mb-4 px-2">
-                  <h2 className="font-semibold text-slate-800 capitalize text-sm md:text-base">
+              <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-1.5 md:p-2">
+                <div className="flex items-center justify-between mb-1 px-2">
+                  <h2 className="font-semibold text-slate-800 capitalize text-[13px] md:text-sm">
                     {format(currentMonth, 'MMMM yyyy', { locale: fr })}
                   </h2>
-                  <div className="flex gap-2">
-                    <button onClick={handlePrevMonth} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">←</button>
-                    <button onClick={handleNextMonth} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">→</button>
+                  <div className="flex gap-1">
+                    <button onClick={handlePrevMonth} className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">←</button>
+                    <button onClick={handleNextMonth} className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">→</button>
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-7 gap-1">
+                <div className="grid grid-cols-7 gap-0.5 md:gap-1">
                   {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((day, i) => (
-                    <div key={i} className="text-center text-[9px] font-bold text-slate-400 py-2 uppercase tracking-tighter">{day}</div>
+                    <div key={i} className="text-center text-[9px] md:text-[10px] font-bold text-slate-400 py-1 uppercase tracking-tight">{day}</div>
                   ))}
                   {(() => {
                     const firstDay = startOfMonth(currentMonth).getDay();
                     const offset = firstDay === 0 ? 6 : firstDay - 1;
                     return Array.from({ length: offset }, (_, i) => (
-                      <div key={`empty-${i}`} className="p-2 aspect-square" />
+                      <div key={`empty-${i}`} className="p-1 md:p-2 md:aspect-square" />
                     ));
                   })()}
                   {daysInMonth.map((day, i) => {
                     const isSelected = isSameDay(day, selectedDate);
                     const isToday = isSameDay(day, startOfToday());
+                    const clubColor = tenant?.primary_color;
+                    if (!clubColor && isToday && !isSelected) {
+                        return (
+                          <button
+                            key={i}
+                            onClick={() => handleSetDate(day)}
+                            className="relative py-2 md:py-0 rounded-xl text-xs md:text-sm transition-all flex flex-col items-center justify-center md:aspect-square hover:bg-slate-50 text-slate-700 font-bold"
+                          >
+                            <span>{day.getDate()}</span>
+                            <div className="absolute bottom-1 w-3 md:w-5 h-[2px] rounded-full bg-slate-200" />
+                          </button>
+                        );
+                    }
                     return (
                       <button
                         key={i}
                         onClick={() => handleSetDate(day)}
                         className={`
-                          relative p-2 rounded-xl text-xs md:text-sm transition-all flex flex-col items-center justify-center aspect-square
-                          ${isSelected ? 'bg-violet-600 text-white shadow-lg' : 'hover:bg-slate-50 text-slate-700'}
+                          relative py-2 md:py-0 rounded-xl text-xs md:text-sm transition-all flex flex-col items-center justify-center md:aspect-square
+                          ${isSelected ? 'shadow-lg text-white font-bold' : 'hover:bg-slate-50 text-slate-700 font-medium'}
                         `}
+                        style={{ 
+                          backgroundColor: isSelected ? clubColor : undefined,
+                          color: isSelected ? 'white' : (isToday ? clubColor : undefined)
+                        }}
                       >
-                        {day.getDate()}
-                        {isToday && !isSelected && (
-                          <div className="absolute bottom-1 w-1 h-1 bg-violet-600 rounded-full"></div>
+                        <span>{day.getDate()}</span>
+                        {isToday && (
+                          <div 
+                            className={`absolute bottom-1 w-3 md:w-5 h-[2px] rounded-full ${isSelected ? 'bg-white' : ''}`}
+                            style={{ backgroundColor: !isSelected ? clubColor : undefined }}
+                          ></div>
                         )}
                       </button>
                     );
@@ -331,26 +342,32 @@ export default function PlanningPage() {
               </div>
 
               <div className="hidden md:flex flex-col gap-2 p-6 bg-slate-50 rounded-3xl border border-slate-100 relative overflow-hidden group shadow-sm transition-all hover:shadow-md">
-                  <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform">
-                      <span className="text-4xl text-slate-900">💳</span>
+                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+                      <DiamondToken className="w-12 h-12" />
                   </div>
-                  <span className="text-[11px] text-slate-400 font-medium leading-none mb-1">Mes crédits</span>
+                  <span className="text-[11px] text-slate-400 font-medium leading-none mb-1 flex items-center gap-1.5">
+                    Mes crédits <DiamondToken className="w-4 h-4" />
+                  </span>
                   <div className="flex items-baseline gap-2">
                       <span className="text-3xl font-semibold text-slate-900 leading-none">{formatCredits(credits?.balance)}</span>
                       <span className="text-xs text-slate-500 font-medium">unités</span>
                   </div>
                   <button 
                     onClick={() => window.location.href = `/${slug}/credits`}
-                    className="mt-4 w-full py-3 bg-white text-slate-900 font-medium rounded-2xl text-xs shadow-sm hover:shadow-md hover:bg-violet-600 hover:text-white transition-all active:scale-95 border border-slate-100"
+                    className="mt-4 w-full py-3 bg-white text-slate-900 font-medium rounded-2xl text-xs shadow-sm hover:shadow-md hover:bg-slate-900 hover:text-white transition-all active:scale-95 border border-slate-100"
                   >
                     Recharger mon compte
                   </button>
               </div>
               
-              <div className="md:hidden sticky top-14 z-30 -mx-5 px-5 py-0 bg-white/90 backdrop-blur-md flex items-center justify-between border-b border-slate-100/50">
+              <div className="md:hidden sticky top-14 z-30 -mx-5 px-5 py-0 bg-white/90 backdrop-blur-md flex items-center justify-between !mt-2 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
                 <div className="md:flex-1"></div>
                 <div className="flex items-center gap-2 px-4 py-1 rounded-2xl">
-                  <span className="text-sm text-slate-400 font-medium">Mes crédits :</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm text-slate-400 font-medium whitespace-nowrap">Mes crédits</span>
+                    <DiamondToken className="w-4 h-4" />
+                    <span className="text-sm text-slate-400 font-medium">:</span>
+                  </div>
                   <span className="text-sm md:text-base font-semibold text-slate-900">{formatCredits(credits?.balance)}</span>
                   <button 
                     onClick={() => window.location.href = `/${slug}/credits`}
@@ -362,43 +379,67 @@ export default function PlanningPage() {
               </div>
             </aside>
 
-            <div className="space-y-6 pt-4 md:pt-2">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between px-1 mb-1">
-                  <h3 className="flex items-center gap-2 font-medium text-slate-400 text-sm">
+            <div className="space-y-4 pt-2 md:pt-1">
+              <div className="space-y-3">
+                <div className="h-px w-full bg-slate-300 mb-4"></div>
+                <div className="flex items-center justify-between gap-4 px-1 mb-4">
+                  <h3 className="font-medium text-slate-400 text-sm lowercase whitespace-nowrap">
                     {format(selectedDate, 'eeee d MMMM', { locale: fr })}
                   </h3>
-                  {loading && <div className="w-4 h-4 border-2 border-violet-600 border-t-transparent rounded-full animate-spin"></div>}
-                </div>
-
-                {/* Location Filter Chips */}
-                {!loading && tenant && (tenant.locations || []).length > 1 && (
-                  <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-1 px-1 no-scrollbar">
-                    <button
-                      onClick={() => setLocationFilter("all")}
-                      className={`px-4 py-2 rounded-2xl text-[11px] font-black uppercase tracking-widest whitespace-nowrap transition-all border ${
-                        locationFilter === "all" 
-                          ? "bg-violet-600 text-white border-violet-600 shadow-md" 
-                          : "bg-white text-slate-400 border-slate-100 hover:border-slate-200"
-                      }`}
-                    >
-                      Tous les lieux
-                    </button>
-                    {(tenant.locations || []).map((loc: string) => (
-                      <button
-                        key={loc}
-                        onClick={() => setLocationFilter(loc)}
-                        className={`px-4 py-2 rounded-2xl text-[11px] font-black uppercase tracking-widest whitespace-nowrap transition-all border ${
-                          locationFilter === loc
-                            ? "bg-violet-600 text-white border-violet-600 shadow-md"
-                            : "bg-white text-slate-400 border-slate-100 hover:border-slate-200"
-                        }`}
+                  
+                  {!loading && tenant && (tenant.locations || []).length > 1 && (
+                    <div className="relative inline-block w-auto shrink-0">
+                      <button 
+                        onClick={() => setIsLocationMenuOpen(!isLocationMenuOpen)}
+                        className="flex items-center justify-between bg-white border border-slate-100 text-slate-600 text-[11px] md:text-[12px] font-medium rounded-2xl px-3 md:px-4 py-2 md:py-2.5 outline-none transition-all cursor-pointer shadow-sm hover:shadow-md hover:border-slate-200 gap-2"
                       >
-                        {loc}
+                        <span className="truncate max-w-[100px] md:max-w-[150px]">
+                          {locationFilter === "all" ? "Tous les lieux" : locationFilter}
+                        </span>
+                        <svg className={`w-3 h-3 md:w-4 md:h-4 text-slate-400 transition-transform duration-200 ${isLocationMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                        </svg>
                       </button>
-                    ))}
-                  </div>
-                )}
+
+                      {isLocationMenuOpen && (
+                        <>
+                          <div 
+                            className="fixed inset-0 z-40" 
+                            onClick={() => setIsLocationMenuOpen(false)}
+                          />
+                          <div className="absolute top-full right-0 mt-2 z-50 w-48 md:w-64 bg-white border border-slate-100 rounded-2xl shadow-xl shadow-slate-200/50 p-2 animate-in fade-in slide-in-from-top-2">
+                            <button
+                              onClick={() => {
+                                setLocationFilter("all");
+                                setIsLocationMenuOpen(false);
+                              }}
+                              className={`w-full text-left px-4 py-2.5 rounded-xl text-[12px] font-medium transition-colors ${
+                                locationFilter === "all" ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"
+                              }`}
+                            >
+                              Tous les lieux
+                            </button>
+                            {(tenant.locations || []).map((loc: string) => (
+                              <button
+                                key={loc}
+                                onClick={() => {
+                                  setLocationFilter(loc);
+                                  setIsLocationMenuOpen(false);
+                                }}
+                                className={`w-full text-left px-4 py-2.5 rounded-xl text-[12px] font-medium transition-colors mt-1 ${
+                                  locationFilter === loc ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"
+                                }`}
+                              >
+                                {loc}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {loading && <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin"></div>}
+                </div>
 
                 {error && (
                   <div className="p-4 bg-rose-50 border border-rose-100 text-rose-700 rounded-2xl text-xs font-semibold flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
@@ -420,10 +461,10 @@ export default function PlanningPage() {
                   </div>
                 ) : sessions.length === 0 && events.length === 0 ? (
                   <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-slate-300">
-                    <p className="text-slate-500 text-xs">Aucun créneau programmé aujourd'hui.</p>
+                    <p className="text-slate-500 text-xs italic">Aucun créneau programmé aujourd'hui.</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {[
                       ...events.map(e => ({ ...e, uType: 'event' })),
                       ...sessions.map(s => ({ ...s, uType: 'session' }))
@@ -439,227 +480,140 @@ export default function PlanningPage() {
                       const time = isEvent ? item.event_time : format(parseISO(item.start_time), 'HH:mm');
                       const booked = isEvent ? item.is_registered : isAlreadyBooked(item.id);
                       const isWaitlisted = !isEvent && myBookings.find(b => b.session_id === item.id && (b.status === 'confirmed' || b.status === 'pending'))?.status === 'pending';
-                      const spotsLeft = isEvent ? (item.max_places - item.registrations_count) : item.available_spots;
+                      const spotsLeft = isEvent ? (item.max_places - (item.registrations_count || 0)) : item.available_spots;
                       const isFull = isEvent ? (spotsLeft <= 0) : item.is_full;
                       const canWaitlist = !isEvent && item.allow_waitlist && isFull;
                       
-                      // Gestion des délais limite
                       const now = new Date();
-                      const limit = (isEvent ? tenant?.registration_limit_mins : tenant?.registration_limit_mins) || 0;
+                      const limit = (isEvent ? (tenant?.registration_limit_mins || 0) : (tenant?.registration_limit_mins || 0));
                       const startTime = parseISO(isEvent ? `${item.event_date}T${item.event_time}:00` : item.start_time);
                       const isClosed = isAfter(now, new Date(startTime.getTime() - limit * 60000));
                       
+                      const isExpanded = !!expandedItems[item.id];
+                      const durationValue = isEvent ? item.duration_minutes : calculateDuration(item.start_time, item.end_time);
+
+                      const handleToggleExpand = () => {
+                        setExpandedItems(prev => ({
+                          ...prev,
+                          [item.id]: !prev[item.id]
+                        }));
+                      };
+
                       return (
-                        <div key={item.id} className="group bg-white rounded-3xl shadow-sm border border-slate-100 py-2.5 px-4 md:p-2 relative transition-all hover:shadow-md hover:border-violet-100 overflow-hidden">
-                          <div className="hidden md:flex items-center gap-6">
-                            <div className="w-16">
-                              <span className="text-slate-900 font-bold text-base tracking-tight">{time}</span>
+                        <div key={item.id} className="group bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden transition-all hover:shadow-md hover:border-violet-100/50 flex flex-col">
+                          {/* 1. HEADER : Heure + Titre */}
+                          <div className="px-5 py-2.5">
+                            <div className="flex items-center gap-4">
+                              <span className="text-sm font-bold text-slate-900 tracking-tight">{time}</span>
+                              <div className="flex items-center gap-2 min-w-0">
+                                 <h4 className="text-sm md:text-base font-medium text-slate-800 first-letter:uppercase leading-tight">{item.title}</h4>
+                                 {isEvent && <span className="text-base md:text-lg">✨</span>}
+                              </div>
                             </div>
-                            <div className="flex-1 min-w-0">
-                               <div className="flex items-center gap-2 min-w-0">
-                                  <h4 className="font-medium text-base text-slate-800 first-letter:uppercase truncate">{item.title}</h4>
-                                  {isEvent && <span className="text-base font-medium">✨</span>}
-                               </div>
-                            </div>
-                            <div className="w-32 flex items-center gap-2 text-slate-400 text-sm truncate">
-                               <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                               </svg>
-                               <span className="truncate">{item.instructor_name}</span>
-                            </div>
-                            <div className="w-32 flex items-center gap-2 text-slate-400 text-sm truncate">
-                               <span className="text-sm flex-shrink-0">📍</span>
-                               <span className="truncate">{item.location || "N/A"}</span>
-                            </div>
-                            <div className="w-44 flex items-center justify-center">
-                              <span className={`text-[11px] md:text-xs px-3 py-1 rounded-full font-semibold tracking-tight shadow-sm ${isFull ? 'text-rose-400 bg-rose-50/50' : (spotsLeft <= 3 ? 'text-amber-500 bg-amber-50/50' : 'text-emerald-500 bg-emerald-50/50')}`}>
-                                {isFull ? (isEvent ? 'Event complet' : 'Séance complète') : `${spotsLeft} places dispos`}
-                              </span>
-                            </div>
-                            <div className="w-14 flex items-center justify-end pr-2">
-                              {!isEvent && item.credits_required > 0 && (
-                                <div className="flex items-center gap-1.5 text-slate-400 font-black text-xs">
-                                  <span className="text-sm">🎫</span>
-                                  <span className="opacity-50 text-[10px]">x</span>
-                                  <span className="text-slate-700 text-xs">{item.credits_required}</span>
-                                </div>
-                              )}
-                            </div>
-                            <div className="w-10">
-                              <button 
-                                onClick={() => {
-                                  setSelectedItem({
-                                    id: item.id,
-                                    type: isEvent ? 'event' : 'session',
-                                    title: item.title,
-                                    description: item.description || "Aucune description.",
-                                    instructor: item.instructor_name,
-                                    location: item.location,
-                                    start: time,
-                                    duration: isEvent ? formatDuration(item.duration_minutes) : formatDuration(calculateDuration(item.start_time, item.end_time)),
-                                    credits: item.credits_required || 0,
-                                    spots: spotsLeft,
-                                    max: isEvent ? item.max_places : item.max_participants
-                                  });
-                                  setShowModal(true);
-                                }}
-                                className="w-10 h-10 flex items-center justify-center hover:bg-slate-50 transition-all rounded-full"
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-slate-400/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <circle cx="12" cy="12" r="10" strokeWidth={1.5} />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 16h.01M12 8v4" />
-                                </svg>
-                              </button>
-                            </div>
-                             <div className="w-24 flex justify-end">
-                               {booked ? (
-                                  isWaitlisted ? (
-                                    <div className="w-24 py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-amber-50 text-amber-600 border border-amber-100 shadow-sm">Sur liste</div>
-                                  ) : isEvent ? (
-                                    <div className="w-24 py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm">Inscrit</div>
-                                  ) : (
-                                    <div className="w-24 py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm">Réservé</div>
-                                  )
-                               ) : canWaitlist ? (
-                                  <button 
-                                      disabled={bookingLoading === item.id}
-                                      onClick={() => handleBooking(item.id)}
-                                      className="w-24 py-2 bg-amber-500 text-white font-medium rounded-xl text-[11px] shadow-sm hover:bg-amber-600 transition-all active:scale-95 text-center"
-                                  >
-                                      {bookingLoading === item.id ? "..." : "En attente"}
-                                  </button>
-                               ) : isFull ? (
-                                  <div className="w-24"></div>
-                               ) : (
-                                     isEvent ? (
-                                     <Link 
-                                         href={`/${slug}/events/checkout/${item.id}`}
-                                         className="w-24 py-2 bg-blue-600 text-white font-medium rounded-xl text-[11px] shadow-md hover:bg-blue-700 transition-all active:scale-95 text-center"
-                                     >
-                                         S’inscrire
-                                     </Link>
-                                   ) : (
-                                     <button 
-                                         disabled={bookingLoading === item.id}
-                                         onClick={() => handleBooking(item.id)}
-                                         className="w-24 py-2 bg-slate-900 text-white font-medium rounded-xl text-[11px] shadow-md hover:bg-slate-800 transition-all active:scale-95 text-center"
-                                     >
-                                         {bookingLoading === item.id ? "..." : "Réserver"}
-                                     </button>
-                                  )
-                               )}
-                             </div>
                           </div>
 
-                          <div className="md:hidden flex flex-col gap-3 py-1">
-                            {/* Line 1: Time and Title */}
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3 min-w-0">
-                                <span className="text-slate-900 font-bold text-sm flex-shrink-0">{time}</span>
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                    <h4 className="font-medium text-sm text-slate-800 first-letter:uppercase truncate">{item.title}</h4>
-                                    {isEvent && <span className="text-sm font-medium">✨</span>}
+                          {/* 2. RÉSUMÉ : Durée, Crédits | Bouton + d'infos */}
+                          <div className="px-5 py-2 flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-6">
+                              <div className="flex items-center gap-2 text-slate-400 font-medium text-[11px] md:text-xs">
+                                <span className="text-sm">🕒</span>
+                                <span>{formatDuration(durationValue)}</span>
+                              </div>
+                              {!isEvent && item.credits_required > 0 && (
+                                <div className="flex items-center gap-1.5 text-slate-700 font-bold text-[11px] md:text-xs">
+                                  <DiamondToken className="w-5 h-5" />
+                                  <span>{formatCredits(item.credits_required)}</span>
                                 </div>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                {!isEvent && item.credits_required > 0 && (
-                                  <div className="flex items-center gap-1 text-slate-400 font-medium text-[10px]">
-                                    <span>🎫</span>
-                                    <span className="opacity-50 text-[10px]">x</span>
-                                    <span className="text-slate-700 font-semibold">{item.credits_required}</span>
-                                  </div>
-                                )}
-                                <button 
-                                   onClick={() => {
-                                     setSelectedItem({
-                                       id: item.id,
-                                       type: isEvent ? 'event' : 'session',
-                                       title: item.title,
-                                       description: item.description || "Aucune description.",
-                                       instructor: item.instructor_name,
-                                       location: item.location,
-                                       start: time,
-                                       duration: isEvent ? formatDuration(item.duration_minutes) : formatDuration(calculateDuration(item.start_time, item.end_time)),
-                                       credits: item.credits_required || 0,
-                                       spots: spotsLeft,
-                                       max: isEvent ? item.max_places : item.max_participants
-                                     });
-                                     setShowModal(true);
-                                   }}
-                                   className="w-8 h-8 flex items-center justify-center rounded-full"
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-slate-400/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <circle cx="12" cy="12" r="10" strokeWidth={1.5} />
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 16h.01M12 8v4" />
-                                  </svg>
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* Line 2: Coach and Location */}
-                            <div className="flex items-center gap-6 text-[11px] font-medium pl-1">
-                              <span className="truncate text-slate-400 flex items-center gap-1.5">
-                                <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                </svg>
-                                {item.instructor_name}
-                              </span>
-                              {item.location && (
-                                <span className="truncate text-slate-400 flex items-center gap-1.5">
-                                  <span>📍</span>
-                                  {item.location}
-                                </span>
                               )}
                             </div>
 
-                            {/* Line 3: Spots and Button */}
-                            <div className="flex items-center justify-between">
-                              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border shadow-sm ${isFull ? 'text-rose-400 bg-rose-50/50 border-rose-100/50' : (spotsLeft <= 3 ? 'text-amber-500 bg-amber-50/50 border-amber-100/50' : 'text-emerald-500 bg-emerald-50/50 border-emerald-100/50')}`}>
-                                <span className="text-xs">👥</span> {isFull ? 'Complet' : `${spotsLeft} PLACES`}
-                              </span>
+                            <button 
+                              onClick={handleToggleExpand}
+                              className={`px-4 py-2 rounded-xl text-[11px] font-medium lowercase transition-all active:scale-95 flex items-center gap-2 ${
+                                isExpanded ? 'bg-slate-200 text-slate-600' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
+                              }`}
+                            >
+                              <span>{isExpanded ? '-' : '+'} d'infos</span>
+                            </button>
+                          </div>
 
-                              <div className="flex justify-end">
+                          {/* 3. ACCORDÉON (Détails) */}
+                          <div className={`px-5 overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[500px] mb-1 opacity-100' : 'max-h-0 opacity-0'}`}>
+                            <div className="pt-1 space-y-2">
+                              <div className="flex flex-wrap items-center gap-y-2 gap-x-6">
+                                <div className="flex items-center gap-2 text-slate-400 text-xs font-medium">
+                                  <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                  </svg>
+                                  <span>{item.instructor_name}</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-slate-400 text-xs font-medium">
+                                  <span className="text-sm">📍</span>
+                                  <span>{item.location || "Salle principale"}</span>
+                                </div>
+                              </div>
+
+                              {item.description && (
+                                <div className="px-4 py-2.5 bg-slate-100/80 rounded-xl border border-slate-200/50">
+                                  <p className="text-slate-600 text-[11px] md:text-xs leading-relaxed italic text-center">
+                                    {item.description}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* 4. ACTION FOOTER (Séparateur + Places + Bouton) */}
+                          <div className="px-5 py-2 bg-slate-50/10 flex items-center justify-between gap-4 mt-auto">
+                            <span 
+                              className={`text-[11px] md:text-xs font-medium lowercase tracking-tight ${
+                                isFull ? 'text-slate-300' : (spotsLeft <= 3 ? 'text-amber-500' : 'text-emerald-500')
+                              }`}
+                            >
+                              {isFull ? (isEvent ? 'événement complet' : 'séance complète') : `${spotsLeft} places dispos`}
+                            </span>
+
+                            <div className="shrink-0">
                                 {booked ? (
                                    isWaitlisted ? (
-                                     <div className="w-[84px] py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-amber-50 text-amber-600 border border-amber-100 shadow-sm">Sur liste</div>
+                                     <div className="px-5 py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-amber-50 text-amber-600 border border-amber-100 shadow-sm min-w-[80px]">sur liste</div>
                                    ) : isEvent ? (
-                                     <div className="w-[84px] py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm">Inscrit</div>
+                                     <div className="px-5 py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm min-w-[80px]">inscrit</div>
                                    ) : (
-                                     <div className="w-[84px] py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm">Réservé</div>
+                                     <div className="px-5 py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm min-w-[80px]">inscrit</div>
                                    )
                                 ) : isClosed ? (
-                                  <div className="w-[84px] py-2 rounded-xl text-[11px] font-black uppercase tracking-widest flex items-center justify-center bg-slate-100 text-slate-400 border border-slate-200 cursor-default">
-                                    Fermé
+                                  <div className="px-5 py-2 rounded-xl text-[11px] font-medium lowercase flex items-center justify-center bg-slate-100 text-slate-400 border border-slate-200 cursor-default opacity-50 min-w-[80px]">
+                                    fermé
                                   </div>
                                 ) : canWaitlist ? (
                                    <button 
                                        disabled={bookingLoading === item.id}
                                        onClick={() => handleBooking(item.id)}
-                                       className="w-[84px] py-2 bg-amber-500 text-white font-medium rounded-xl text-[11px] shadow-sm hover:bg-amber-600 transition-all active:scale-95 text-center"
+                                       className="px-5 py-2 bg-amber-500 text-white font-medium rounded-xl text-[11px] shadow-sm hover:bg-amber-600 transition-all active:scale-95 lowercase"
                                    >
-                                       {bookingLoading === item.id ? "..." : "En attente"}
+                                       {bookingLoading === item.id ? "..." : "s’inscrire"}
                                    </button>
                                 ) : isFull ? (
-                                   <div className="w-[84px]"></div>
+                                   <span className="text-[10px] text-slate-300 lowercase italic">complet</span>
                                 ) : (
-                                     isEvent ? (
-                                      <Link 
-                                          href={`/${slug}/events/checkout/${item.id}`}
-                                          className="w-[84px] py-2 bg-blue-600 text-white font-medium rounded-xl text-[11px] shadow-md hover:bg-blue-700 transition-all active:scale-95 text-center"
-                                      >
-                                          S’inscrire
-                                      </Link>
-                                    ) : (
-                                      <button 
-                                          disabled={bookingLoading === item.id}
-                                          onClick={() => handleBooking(item.id)}
-                                          className="w-[84px] py-2 bg-slate-900 text-white font-medium rounded-xl text-[11px] shadow-md hover:bg-slate-800 transition-all active:scale-95 text-center"
-                                      >
-                                          {bookingLoading === item.id ? "..." : "Réserver"}
-                                      </button>
-                                   )
+                                   isEvent ? (
+                                    <Link 
+                                        href={`/${slug}/events/checkout/${item.id}`}
+                                        className="block px-5 py-2 bg-slate-900 text-white font-medium rounded-xl text-[11px] shadow-md hover:bg-slate-800 transition-all active:scale-95 lowercase"
+                                    >
+                                        réserver
+                                    </Link>
+                                  ) : (
+                                    <button 
+                                        disabled={bookingLoading === item.id}
+                                        onClick={() => handleBooking(item.id)}
+                                        className="px-5 py-2 bg-slate-900 text-white font-medium rounded-xl text-[11px] shadow-md hover:bg-slate-800 transition-all active:scale-95 lowercase"
+                                    >
+                                        {bookingLoading === item.id ? "..." : "réserver"}
+                                    </button>
+                                 )
                                 )}
-                              </div>
                             </div>
                           </div>
                         </div>
@@ -669,23 +623,21 @@ export default function PlanningPage() {
                 )}
               </div>
 
-              <div className="mt-20 mb-24 px-1">
-                 <div className="flex items-center gap-3 mb-5">
-                    <div className="flex items-center gap-2">
-                       <span className="text-xl">📝</span>
-                       <h3 className="font-medium text-slate-800 text-base tracking-tight">Mes inscriptions</h3>
-                    </div>
-                    <div className="h-px flex-1 bg-slate-100"></div>
+              <div className="mt-8 mb-20 px-1">
+                 <div className="h-px w-full bg-slate-300 mb-8"></div>
+                 <div className="flex items-center gap-2 mb-5">
+                    <span className="text-xl">📝</span>
+                    <h3 className="font-medium text-slate-800 text-base tracking-tight">Mes inscriptions</h3>
                  </div>
                  
                  {myRegistrations.length === 0 ? (
-                   <div className="bg-slate-50/50 rounded-3xl p-8 border border-dashed border-slate-200 text-center">
+                   <div className="bg-slate-50/50 rounded-2xl p-8 border border-dashed border-slate-200 text-center">
                      <p className="text-xs text-slate-400 font-medium italic">Aucune réservation pour le moment.</p>
                    </div>
                  ) : (
-                    <div className="bg-white rounded-[2rem] border border-slate-100 divide-y divide-slate-50 overflow-hidden shadow-sm">
+                    <div className="bg-white rounded-2xl border border-slate-100 divide-y divide-slate-50 overflow-hidden shadow-sm">
                       {myRegistrations.map((item: any) => (
-                        <div key={item.id} className="flex items-center justify-between hover:bg-slate-50/50 transition-colors py-1.5 px-4">
+                        <div key={item.id} className="flex items-center justify-between hover:bg-slate-50/50 transition-colors py-2 px-4">
                           <div className="flex items-center gap-3 min-w-0">
                              <div className="flex-shrink-0 flex items-center justify-center w-5">
                                 {item.uType === "event" ? (
@@ -702,9 +654,9 @@ export default function PlanningPage() {
                              </div>
                              <div className="flex items-center gap-2 min-w-0">
                                 <p className="text-[11px] md:text-sm font-medium text-slate-400 whitespace-nowrap">
-                                   {item.start_time ? format(parseISO(item.start_time), "dd/MM/yy") : ""}
+                                   {item.start_time ? format(parseISO(item.start_time), "dd/MM") : (item.event_date ? format(parseISO(item.event_date), "dd/MM") : "")}
                                    <span className="mx-1 opacity-50">-</span>
-                                   {item.start_time ? format(parseISO(item.start_time), "HH:mm") : ""}
+                                   {item.start_time ? format(parseISO(item.start_time), "HH:mm") : (item.event_time ? item.event_time : "")}
                                 </p>
                                 <span className="mx-1 text-slate-200 opacity-50">-</span>
                                 <p className="font-medium text-slate-800 text-sm md:text-base truncate">{item.title}</p>
@@ -743,64 +695,10 @@ export default function PlanningPage() {
         </div>
       </main>
 
-      {/* Detail Modal */}
-      {showModal && selectedItem && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
-           <div className="bg-white rounded-[2.5rem] w-full max-w-sm overflow-hidden shadow-2xl border border-slate-100 animate-in zoom-in duration-300 p-8 text-center">
-              <div className="mb-8">
-                 <h2 className="text-xl md:text-2xl font-medium text-slate-900 mb-2 leading-tight tracking-tight first-letter:uppercase">
-                   {selectedItem.title}
-                 </h2>
-                 {selectedItem.type === 'event' && (
-                   <p className="text-xs font-medium text-violet-400 flex items-center justify-center gap-2 mb-6">
-                      événement <span className="text-sm">✨</span>
-                   </p>
-                 )}
-                 
-                 <div className="flex flex-wrap items-center justify-center gap-6 mb-8 text-slate-500">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">🕒</span>
-                      <span className="text-xs font-medium">{selectedItem.start}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">⏳</span>
-                      <span className="text-xs font-medium">{selectedItem.duration}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <svg className="w-4 h-4 text-slate-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                      <span className="text-xs font-medium">{selectedItem.instructor}</span>
-                    </div>
-                    {selectedItem.location && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-base transition-all group-hover:scale-110">📍</span>
-                        <span className="text-xs font-medium">{selectedItem.location}</span>
-                      </div>
-                    )}
-                 </div>
-
-                 <div className="p-4 bg-slate-50/30 rounded-2xl border border-slate-100/30">
-                    <p className="text-slate-500 text-[11px] md:text-xs leading-relaxed italic">
-                      {selectedItem.description}
-                    </p>
-                 </div>
-              </div>
-
-              <button 
-               onClick={() => setShowModal(false)}
-               className="w-full py-4 bg-slate-900 text-white font-medium rounded-2xl hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 text-xs"
-              >
-                 Fermer
-              </button>
-           </div>
-        </div>
-      )}
-
       {/* Cancel Confirmation Modal */}
       {showCancelModal && bookingToCancel && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
-           <div className="bg-white rounded-[2.5rem] w-full max-w-sm overflow-hidden shadow-2xl border border-slate-100 p-8 text-center animate-in zoom-in duration-300">
+           <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl border border-slate-100 p-8 text-center animate-in zoom-in duration-300">
               <h2 className="text-xl md:text-2xl font-medium text-slate-900 mb-2 tracking-tight">Annuler l'inscription</h2>
               <p className="text-slate-500 text-sm font-medium mb-8 leading-relaxed">
                 Confirmer l'annulation de <span className="text-slate-900 font-bold truncate inline-block max-w-[200px] align-bottom">"{bookingToCancel.title}"</span> ?

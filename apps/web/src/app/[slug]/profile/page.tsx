@@ -162,7 +162,7 @@ export default function ProfilePage() {
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {/* Identity Section */}
-                        <section className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-100">
+                        <section className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
                             <h2 className="text-[11px] font-medium text-slate-400 mb-6 flex items-center gap-2 px-1 tracking-widest">
                                 👤 Identité
                             </h2>
@@ -204,7 +204,7 @@ export default function ProfilePage() {
                         </section>
 
                         {/* Contact Section */}
-                        <section className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-100">
+                        <section className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
                             <h2 className="text-[11px] font-medium text-slate-400 mb-6 flex items-center gap-2 px-1 tracking-widest">
                                 📧 Contact
                             </h2>
@@ -235,7 +235,7 @@ export default function ProfilePage() {
                         </section>
 
                         {/* Address Section */}
-                        <section className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-100">
+                        <section className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
                             <h2 className="text-[11px] font-medium text-slate-400 mb-6 flex items-center gap-2 px-1 tracking-widest">
                                 📍 Adresse
                             </h2>
@@ -277,7 +277,7 @@ export default function ProfilePage() {
                         </section>
 
                         {/* Social Section */}
-                        <section className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-100">
+                        <section className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
                             <h2 className="text-[11px] font-medium text-slate-400 mb-6 flex items-center gap-2 px-1 tracking-widest">
                                 📱 Réseaux sociaux
                             </h2>
@@ -308,7 +308,7 @@ export default function ProfilePage() {
                         </section>
 
                         {/* Security Section */}
-                        <section className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-100">
+                        <section className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
                             <h2 className="text-[11px] font-medium text-slate-400 mb-6 flex items-center gap-2 px-1 tracking-widest">
                                 🔒 Sécurité
                             </h2>
@@ -341,7 +341,7 @@ export default function ProfilePage() {
                         </section>
 
                         {/* Preferences Section */}
-                        <section className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-100 mt-6">
+                        <section className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 mt-6">
                             <h2 className="text-[11px] font-medium text-slate-400 mb-6 flex items-center gap-2 px-1 tracking-widest">
                                 ⚙️ Préférences
                             </h2>

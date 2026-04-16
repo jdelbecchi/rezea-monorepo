@@ -236,7 +236,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
             <div className="flex flex-col gap-3 mb-6 w-full max-w-[440px] mx-auto lg:mx-0">
                 {/* Status Row */}
                 {/* Status Row - Balanced and Centered */}
-                <div className="flex border border-transparent rounded-2xl items-stretch w-full mb-1 px-6">
+                <div className="flex border border-transparent rounded-xl items-stretch w-full mb-1 px-6">
                     {/* Solde Crédits */}
                     {credits && (credits.balance > 0 || myOrders.length > 0) && (
                         <div className="w-[30%] py-1.5 shrink-0 flex flex-col">
@@ -266,7 +266,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                     <div className="flex flex-col gap-2 animate-in slide-in-from-right-4 duration-500">
                         {allAlerts.length === 1 ? (
                             // Single Alert: Direct display
-                            <div className="bg-amber-50/40 border border-amber-100 p-3 rounded-2xl flex items-center justify-center gap-3 shadow-sm">
+                            <div className="bg-amber-50/40 border border-amber-100 p-3 rounded-xl flex items-center justify-center gap-3 shadow-sm">
                                 <span className="text-sm shrink-0">{allAlerts[0].icon}</span>
                                 <p className="text-[11px] font-medium text-slate-700 leading-snug">
                                     {allAlerts[0].message}
@@ -274,7 +274,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                             </div>
                         ) : (
                             // Multiple Alerts: Collapsible Hub
-                            <div className="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden shadow-sm transition-all duration-300">
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-sm transition-all duration-300">
                                 <button 
                                     onClick={() => setIsAlertsExpanded(!isAlertsExpanded)}
                                     className="w-full p-3 flex items-center justify-between gap-3 hover:bg-slate-100/50 transition-colors"

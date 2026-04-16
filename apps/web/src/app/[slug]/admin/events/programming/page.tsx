@@ -502,7 +502,7 @@ export default function AdminEventsProgrammingPage() {
 
             {confirmModal.show && (
                 <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-xl flex items-center justify-center z-[200] p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl border border-slate-100">
+                    <div className="bg-white rounded-3xl p-10 max-w-md w-full shadow-2xl border border-slate-100">
                         <div className={`w-16 h-16 rounded-3xl flex items-center justify-center text-3xl mb-6 ${
                             confirmModal.type === 'danger' ? 'bg-rose-50 text-rose-500' : 
                             confirmModal.type === 'warning' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'

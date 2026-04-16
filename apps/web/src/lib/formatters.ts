@@ -38,5 +38,12 @@ export const formatCredits = (balance: any): string => {
     if (balance === null || balance === undefined) return "0";
     const num = Number(balance);
     if (isNaN(num)) return "0";
-    return num % 1 === 0 ? num.toString() : num.toFixed(2);
+    
+    // Si c'est un entier, on enlève les décimales
+    if (num % 1 === 0) {
+        return num.toString();
+    }
+    
+    // Sinon on garde 2 décimales (ex: 1.50)
+    return num.toFixed(2).replace(/\.00$/, "");
 };
