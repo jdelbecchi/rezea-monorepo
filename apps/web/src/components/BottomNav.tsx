@@ -45,10 +45,11 @@ export default function BottomNav({ userRole }: BottomNavProps) {
         )
     };
 
-    const basePath = slug ? `/${slug}/dashboard` : "/dashboard";
+    const basePath = slug ? `/${slug}` : "";
+    const homePath = slug ? `/${slug}/home` : "/home";
 
     const navItems = [
-        { path: basePath, icon: icons.home, label: "Accueil" },
+        { path: homePath, icon: icons.home, label: "Accueil" },
         { path: `${basePath}/planning`, icon: icons.planning, label: "Planning" },
         { path: `${basePath}/credits`, icon: icons.shop, label: "Boutique" },
         { path: `${basePath}/orders`, icon: icons.orders, label: "Commandes" },
@@ -57,7 +58,9 @@ export default function BottomNav({ userRole }: BottomNavProps) {
     ];
 
     const isActive = (path: string) => {
-        if (path === basePath) return pathname === basePath;
+        if (path === homePath || path === basePath) {
+            return pathname === path || (path === homePath && pathname === basePath);
+        }
         return pathname.startsWith(path);
     };
 

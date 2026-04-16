@@ -60,8 +60,12 @@ async def list_upcoming_events(
             "instructor_name": e.instructor_name,
             "max_places": e.max_places,
             "registrations_count": e.registrations_count or 0,
+            "waitlist_count": e.waitlist_count or 0,
             "is_registered": e.id in registered_event_ids,
+            "location": e.location,
             "description": e.description,
+            "allow_waitlist": e.allow_waitlist,
+            "is_active": e.is_active,
             "created_at": e.created_at,
             "updated_at": e.updated_at,
         }

@@ -123,7 +123,7 @@ async def list_order_statuses(
         if norm:
             normalized.add(norm)
             
-    base_statuses = ["active", "termine", "expiree", "en_pause"]
+    base_statuses = ["active", "termine", "expiree", "en_pause", "resiliee"]
     manual_statuses = sorted([s for s in normalized if s not in base_statuses])
     
     return base_statuses + manual_statuses

@@ -146,6 +146,58 @@ async def upload_logo(
     return {"logo_url": logo_url, "message": "Logo mis à jour avec succès"}
 
 
+@router.post("/login-bg")
+async def upload_login_bg(
+    request: Request,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_admin_user),
+):
+    """Upload de l'image de fond pour le portail de connexion (admin only)"""
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Format non supporté. Formats acceptés: {', '.join(ALLOWED_EXTENSIONS)}"
+        )
+    
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE * 2: # 10 MB for high-res backgrounds
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Fichier trop volumineux (max 10 Mo)"
+        )
+    
+    tenant_id = str(request.state.tenant_id)
+    tenant_dir = os.path.join(UPLOAD_DIR, tenant_id)
+    os.makedirs(tenant_dir, exist_ok=True)
+    
+    filename = f"login_bg_{uuid.uuid4().hex[:8]}{ext}"
+    filepath = os.path.join(tenant_dir, filename)
+    
+    with open(filepath, "wb") as f:
+        f.write(content)
+    
+    login_bg_url = f"/uploads/{tenant_id}/{filename}"
+    
+    result = await db.execute(
+        select(Tenant).where(Tenant.id == tenant_id)
+    )
+    tenant = result.scalar_one_or_none()
+    if tenant:
+        if tenant.login_background_url:
+            old_path = os.path.join(os.path.dirname(UPLOAD_DIR), tenant.login_background_url.lstrip("/"))
+            if os.path.exists(old_path):
+                os.remove(old_path)
+        
+        tenant.login_background_url = login_bg_url
+        await db.commit()
+    
+    logger.info("Login background uploaded", tenant_id=tenant_id, filename=filename)
+    
+    return {"login_background_url": login_bg_url, "message": "Image de fond du portail mise à jour avec succès"}
+
+
 @router.post("/document")
 async def upload_document(
     request: Request,

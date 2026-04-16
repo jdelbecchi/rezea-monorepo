@@ -21,7 +21,7 @@ export default function TenantPortal() {
     const savedSlug = localStorage.getItem("tenant_slug");
     
     if (token && savedSlug === slug) {
-      router.push(`/${slug}/dashboard`);
+      router.push(`/${slug}/home`);
       return;
     }
 

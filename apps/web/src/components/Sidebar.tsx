@@ -47,14 +47,16 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
         localStorage.removeItem("access_token");
         localStorage.removeItem("user_id");
         localStorage.removeItem("tenant_id");
-        window.location.href = "/";
+        // Rediriger vers le portail du club (login) plutôt que la racine globale
+        window.location.href = basePath || "/";
     };
 
-    const basePath = slug ? `/${slug}/dashboard` : "/dashboard";
+    const basePath = slug ? `/${slug}` : "";
+    const homePath = slug ? `/${slug}/home` : "/home";
 
     const isActive = (path: string) => {
-        if (path === basePath) {
-            return pathname === basePath;
+        if (path === homePath || path === basePath) {
+            return pathname === path || (path === homePath && pathname === basePath);
         }
         return pathname === path;
     };
@@ -81,7 +83,7 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
     };
 
     const navItems: NavItem[] = [
-        { path: basePath, label: "Accueil", icon: "🏠" },
+        { path: homePath, label: "Accueil", icon: "🏠" },
         { path: `${basePath}/profile`, label: "Mon profil", icon: "👤" },
         { path: `${basePath}/credits`, label: "Boutique", icon: "🛍️" },
         { path: `${basePath}/planning`, label: "Planning et réservations", icon: "📋" },
@@ -148,7 +150,7 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
             {/* Bouton de bascule rapide vers Vue Client */}
             <div className="mb-6">
                 <Link 
-                    href={basePath}
+                    href={homePath}
                     className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-medium transition-all shadow-lg shadow-blue-900/20 active:scale-[0.98]"
                     onClick={() => setIsMobileMenuOpen(false)}
                 >

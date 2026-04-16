@@ -41,6 +41,8 @@ def normalize_status(status_str: Optional[str]) -> Optional[str]:
         return "expiree"
     if lower_s in ["pause", "en pause", "en_pause"]:
         return "en_pause"
+    if lower_s in ["resilie", "resilié", "resiliée", "resiliee", "annule", "annulé", "annulée", "cancel", "cancelled"]:
+        return "resiliee"
     
     return s
 
@@ -76,7 +78,7 @@ def build_order_response(order: Order, credits_used: int) -> OrderResponse:
     has_credits = order.is_unlimited or (balance is not None and balance > 0)
     is_past = not order.is_validity_unlimited and order.end_date and order.end_date < today
 
-    if display_status == "en_pause":
+    if display_status in ["en_pause", "resiliee"]:
         # Keep it as is
         pass
     elif not has_credits:

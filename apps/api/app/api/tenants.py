@@ -1,7 +1,8 @@
 """Routes tenants"""
-from fastapi import APIRouter, Depends, Request, HTTPException, status
+from typing import List
+from fastapi import APIRouter, Depends, Request, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, or_
 
 from app.db.session import get_db
 from app.models.models import Tenant, User, UserRole
@@ -114,3 +115,24 @@ async def get_tenant_by_slug(
             detail="Établissement non trouvé"
         )
     return tenant
+@router.get("/search", response_model=List[TenantResponse])
+async def search_tenants(
+    q: str = Query("", min_length=0),
+    db: AsyncSession = Depends(get_db)
+):
+    """Recherche des établissements par nom ou par slug (Public)"""
+    if not q:
+        # Si pas de recherche, on peut retourner une liste par défaut ou vide
+        # Ici je retourne les 10 premiers pour l'init de la recherche
+        result = await db.execute(select(Tenant).limit(10))
+        return result.scalars().all()
+        
+    query = select(Tenant).where(
+        or_(
+            Tenant.name.ilike(f"%{q}%"),
+            Tenant.slug.ilike(f"%{q}%")
+        )
+    ).limit(20)
+    
+    result = await db.execute(query)
+    return result.scalars().all()

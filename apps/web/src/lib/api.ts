@@ -90,10 +90,25 @@ apiClient.interceptors.response.use(
           return Promise.reject(error);
         }
 
-        // Pour les pages normales, rediriger vers la racine
+        // Pour les pages normales, rediriger vers le portail du club si possible
         localStorage.removeItem('access_token');
+        
+        const segments = window.location.pathname.split('/');
+        const currentSlug = segments[1];
+        const reservedPaths = ['login', 'register', 'sysadmin', 'dashboard', 'reset-password', 'forgot-password'];
+        
+        if (currentSlug && !reservedPaths.includes(currentSlug)) {
+            window.location.href = `/${currentSlug}`;
+        } else {
+            const storedSlug = localStorage.getItem('tenant_slug');
+            if (storedSlug) {
+                window.location.href = `/${storedSlug}`;
+            } else {
+                window.location.href = '/';
+            }
+        }
+        
         localStorage.removeItem('tenant_slug');
-        window.location.href = '/';
       }
     }
 

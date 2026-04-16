@@ -126,6 +126,7 @@ async def inject_tenant_context(request: Request, call_next):
         path.startswith("/api/webhooks") or 
         path.startswith("/uploads") or
         path.startswith("/api/tenants/by-slug/") or
+        path == "/api/tenants/search" or
         path == "/api/offers" or # List is public
         path == "/api/auth/login"
     )

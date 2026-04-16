@@ -67,7 +67,7 @@ export default function LoginForm({ initialTenantSlug = "", hideTenantField = fa
         localStorage.setItem("remembered_email", formData.email);
       }
 
-      router.push(`/${formData.tenant_slug}/dashboard`);
+      router.push(`/${formData.tenant_slug}/home`);
     } catch (err: any) {
       setError(
         err.response?.data?.detail || "Erreur de connexion. Vérifiez vos identifiants."

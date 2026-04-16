@@ -9,7 +9,7 @@ export default function DashboardRedirect() {
     useEffect(() => {
         const slug = localStorage.getItem("tenant_slug");
         if (slug) {
-            router.replace(`/${slug}/dashboard`);
+            router.replace(`/${slug}/home`);
         } else {
             router.replace("/");
         }

@@ -84,6 +84,9 @@ class Tenant(Base):
     logo_url = Column(String(500), nullable=True)
     banner_url = Column(String(500), nullable=True)
     primary_color = Column(String(7), default="#7c3aed")
+    login_primary_color = Column(String(7), nullable=True)
+    login_background_url = Column(String(500), nullable=True)
+    login_description = Column(Text, nullable=True)
     welcome_message = Column(Text, nullable=True)
     
     # Documents légaux
