@@ -103,20 +103,40 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
 
   // Logic: Unified Alert Center
   const allAlerts = useMemo(() => {
-    const alerts: { id: string; message: string; icon: string; priority: number }[] = [];
+    const alerts: { id: string; message: string; iconType: string; priority: number }[] = [];
     const now = new Date();
 
-    // 1. Issues (Priority 1 - High)
+    // 1. Alerte (Priority 1 - High) - Payment Failed
     myOrders.filter(o => o.payment_status === PaymentStatus.A_REGULARISER).forEach(o => {
       alerts.push({
         id: `issue-${o.id}`,
-        message: `Vous avez une commande à régulariser : "${o.offer_name}"`,
-        icon: "🚨",
+        message: `Action requise : paiement à régulariser pour votre "${o.offer_name}"`,
+        iconType: "error",
         priority: 1
       });
     });
 
-    // 2. Expiry (Priority 2 - Warning)
+    // 2. Rappel (Priority 2 - Warning) - Pending Payments
+    // - Pending Orders (only EN_ATTENTE)
+    myOrders.filter(o => o.payment_status === PaymentStatus.EN_ATTENTE).forEach(o => {
+      alerts.push({
+        id: `pending-order-${o.id}`,
+        message: `Pensez à finaliser le réglement de votre "${o.offer_name}"`,
+        iconType: "warning",
+        priority: 2
+      });
+    });
+    // - Pending Event Registrations (only EN_ATTENTE)
+    myEventRegistrations.filter(r => r.payment_status === PaymentStatus.EN_ATTENTE).forEach(r => {
+      alerts.push({
+        id: `pending-event-${r.id}`,
+        message: `Pensez à finaliser le réglement de votre "${r.event_title}"`,
+        iconType: "warning",
+        priority: 2
+      });
+    });
+
+    // 3. Information (Priority 3 - Info) - Expiry
     const threshold = new Date();
     threshold.setDate(now.getDate() + 30);
     myOrders.filter(o => {
@@ -129,34 +149,37 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
       alerts.push({
         id: `expiry-${o.id}`,
         message: `Votre "${o.offer_name}" se termine le ${new Date(o.end_date!).toLocaleDateString('fr-FR')}`,
-        icon: "⚠️",
-        priority: 2
-      });
-    });
-
-    // 3. Pending Payments (Priority 3 - Reminder)
-    // - Pending Orders
-    myOrders.filter(o => o.payment_status === PaymentStatus.A_VALIDER || o.payment_status === PaymentStatus.EN_ATTENTE).forEach(o => {
-      alerts.push({
-        id: `pending-order-${o.id}`,
-        message: `Pensez à régler prochainement votre commande "${o.offer_name}"`,
-        icon: "⏳",
-        priority: 3
-      });
-    });
-    // - Pending Event Registrations
-    myEventRegistrations.filter(r => r.payment_status === PaymentStatus.A_VALIDER || r.payment_status === PaymentStatus.EN_ATTENTE).forEach(r => {
-      alerts.push({
-        id: `pending-event-${r.id}`,
-        message: `Pensez à régler prochainement votre inscription à "${r.event_title}"`,
-        icon: "✨",
+        iconType: "info",
         priority: 3
       });
     });
 
-    // Sort by priority then by creation date (implicitly or explicitly if available)
+    // Sort by priority then by creation date
     return alerts.sort((a, b) => a.priority - b.priority);
   }, [myOrders, myEventRegistrations]);
+
+  // Logic: One-time popup for new alerts
+  const [showNewAlertsPopup, setShowNewAlertsPopup] = useState(false);
+  const [newAlertsForPopup, setNewAlertsForPopup] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (allAlerts.length > 0) {
+      const seenAlerts = JSON.parse(localStorage.getItem('seenAlerts') || '[]');
+      const newAlerts = allAlerts.filter(alert => !seenAlerts.includes(alert.id));
+      
+      if (newAlerts.length > 0) {
+        setNewAlertsForPopup(newAlerts);
+        setShowNewAlertsPopup(true);
+      }
+    }
+  }, [allAlerts]);
+
+  const markAlertsAsSeen = () => {
+    const seenAlerts = JSON.parse(localStorage.getItem('seenAlerts') || '[]');
+    const allIds = Array.from(new Set([...seenAlerts, ...allAlerts.map(a => a.id)]));
+    localStorage.setItem('seenAlerts', JSON.stringify(allIds));
+    setShowNewAlertsPopup(false);
+  };
 
   if (loading) {
     return (
@@ -170,21 +193,21 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
   }
 
   const isAdminOrStaff = user?.role === "owner" || user?.role === "manager" || user?.role === "staff";
-  const color = tenantSettings?.primary_color || "#2563eb";
+  const primaryColor = tenantSettings?.primary_color || "#2563eb";
   const bannerUrl = tenantSettings?.banner_url ? `${API_URL}${tenantSettings.banner_url}` : null;
 
 
   // --- VIEW: PWA HOME (Default for everyone) ---
   return (
-    <div className="min-h-[100dvh] bg-white flex flex-col items-center overflow-x-hidden safe-top pb-20 md:pb-0">
+    <div className="min-h-[100dvh] bg-white flex flex-col items-center overflow-x-hidden safe-top md:pb-0">
       
       {/* Main Responsive Container: Max width on Desktop, Full on Mobile */}
-      <div className="w-full max-w-6xl mx-auto flex flex-col min-h-screen md:min-h-0 md:pt-16 bg-white lg:grid lg:grid-cols-2 lg:gap-24 lg:items-start px-0 md:px-12">
+      <div className="w-full max-w-6xl mx-auto flex flex-col md:min-h-0 md:pt-16 bg-white lg:grid lg:grid-cols-2 lg:gap-24 lg:items-start px-0 md:px-12">
         
         {/* Left Column (Desktop) / Top Section (Mobile): Banner & Identity */}
         <div className="flex flex-col h-full">
-            {/* 1. Header Discreet - More Compact on Mobile */}
-            <header className="px-5 py-3 flex items-center justify-between shrink-0 mb-1 md:mb-10">
+            {/* 1. Header - Club identity + Credits */}
+            <header className="px-5 py-3 flex items-center justify-between shrink-0 mb-3 md:mb-10">
                 <div className="flex items-center gap-3">
                     {tenantSettings?.logo_url ? (
                         <img src={`${API_URL}${tenantSettings.logo_url}`} className="h-8 w-8 object-contain" alt="Logo" />
@@ -197,27 +220,27 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                         {tenantSettings?.name || "rezea"}
                     </span>
                 </div>
-                
-                <div className="flex items-center gap-4">
-                    <span className="text-sm font-medium text-slate-900 tracking-tight">
-                        {user?.first_name}
-                    </span>
-                    <Link href={`${basePath}/profile`} className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 border border-slate-100 text-slate-400 hover:text-blue-600 hover:border-blue-100 transition-all shadow-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                    </Link>
-                </div>
             </header>
 
-            {/* 2. Banner (Editorial Style) - Reduced spacing on mobile */}
-            <div className="relative shrink-0 mb-1 md:mb-8 lg:mb-0">
+            {/* Admin Button - Black card style */}
+            {(user?.role === "owner" || user?.role === "manager") && (
+                <button 
+                    onClick={() => router.push(`${basePath}/admin`)}
+                    className="mx-5 mb-2 flex items-center justify-center gap-3 px-4 py-3.5 bg-slate-900 text-white rounded-2xl shadow-xl shadow-slate-900/20 active:scale-[0.98] transition-all duration-300 hover:bg-slate-800"
+                >
+                    <span className="text-base">⚙️</span>
+                    <span className="text-sm font-medium">Accès administration</span>
+                </button>
+            )}
+
+            {/* Banner */}
+            <div className="relative shrink-0 mb-0 md:mb-8 lg:mb-0">
                 <div 
                     className="aspect-video w-full shadow-2xl shadow-blue-900/10 relative group bg-slate-50 border border-slate-100 overflow-hidden"
                     style={{ 
                         background: bannerUrl 
                             ? `url(${bannerUrl}) center/cover no-repeat` 
-                            : `linear-gradient(135deg, ${color}20, ${color}40)` 
+                            : `linear-gradient(135deg, ${primaryColor}20, ${primaryColor}40)` 
                     }}
                 >
                     {bannerUrl && <div className="absolute inset-0 bg-black/5 group-hover:bg-transparent transition-all duration-700" />}
@@ -228,143 +251,199 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                     )}
                 </div>
             </div>
-        </div>
 
-        {/* Right Column (Desktop) / Bottom Section (Mobile): Actions & Stats */}
-        <div className="flex flex-col flex-1 px-5 h-full py-0 lg:py-0">
-            {/* 3. Reporting Section - Compacted font and p on mobile */}
-            <div className="flex flex-col gap-3 mb-6 w-full max-w-[440px] mx-auto lg:mx-0">
-                {/* Status Row */}
-                {/* Status Row - Balanced and Centered */}
-                <div className="flex border border-transparent rounded-xl items-stretch w-full mb-1 px-6">
-                    {/* Solde Crédits */}
-                    {credits && (credits.balance > 0 || myOrders.length > 0) && (
-                        <div className="w-[30%] py-1.5 shrink-0 flex flex-col">
-                            <p className="text-[11px] font-medium text-blue-600 mb-0.5">Mon crédit</p>
-                            <p className="text-xl font-bold text-slate-900 leading-none">{formatCredits(credits.balance)}</p>
-                        </div>
-                    )}
-                    
-                    {/* Vertical Divider */}
-                    {credits && nextRDV && (
-                        <div className="w-px bg-slate-100 self-stretch my-2 mx-1" />
-                    )}
-
-                    {/* Prochain RDV */}
-                    {nextRDV && (
-                        <div className="flex-1 py-1.5 px-3 min-w-0 flex flex-col">
-                            <p className="text-[11px] font-medium text-blue-500 mb-0.5 truncate">
-                                Prochain RDV le {nextRDV.date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} à {nextRDV.date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                            </p>
-                            <p className="text-[15px] font-semibold text-slate-900 truncate leading-tight">{nextRDV.title}</p>
-                        </div>
-                    )}
-                </div>
- 
-                {/* Unified Alert Hub */}
-                {allAlerts.length > 0 && (
-                    <div className="flex flex-col gap-2 animate-in slide-in-from-right-4 duration-500">
-                        {allAlerts.length === 1 ? (
-                            // Single Alert: Direct display
-                            <div className="bg-amber-50/40 border border-amber-100 p-3 rounded-xl flex items-center justify-center gap-3 shadow-sm">
-                                <span className="text-sm shrink-0">{allAlerts[0].icon}</span>
-                                <p className="text-[11px] font-medium text-slate-700 leading-snug">
-                                    {allAlerts[0].message}
-                                </p>
-                            </div>
-                        ) : (
-                            // Multiple Alerts: Collapsible Hub
-                            <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-sm transition-all duration-300">
-                                <button 
-                                    onClick={() => setIsAlertsExpanded(!isAlertsExpanded)}
-                                    className="w-full p-3 flex items-center justify-between gap-3 hover:bg-slate-100/50 transition-colors"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-sm shrink-0">⚠️</span>
-                                        <p className="text-[11px] font-semibold text-slate-900 leading-none">
-                                            {allAlerts.length} messages requièrent votre attention
-                                        </p>
-                                    </div>
-                                    <svg 
-                                        xmlns="http://www.w3.org/2000/svg" 
-                                        className={`h-4 w-4 text-slate-400 transition-transform duration-300 ${isAlertsExpanded ? 'rotate-180' : ''}`} 
-                                        fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                    >
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </button>
-                                
-                                {isAlertsExpanded && (
-                                    <div className="px-3 pb-3 flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                                        {allAlerts.map(alert => (
-                                            <div key={alert.id} className="flex items-center gap-3 p-2 bg-white/50 border border-slate-100 rounded-xl">
-                                                <span className="text-xs shrink-0">{alert.icon}</span>
-                                                <p className="text-[10px] font-medium text-slate-600 leading-snug">
-                                                    {alert.message}
-                                                </p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+            {/* Alert Hub - Full width below banner */}
+            {allAlerts.length > 0 && (
+                <button 
+                    onClick={() => setIsAlertsExpanded(!isAlertsExpanded)}
+                    className={`w-full flex items-center justify-center gap-3 py-3 px-6 transition-all
+                        ${allAlerts[0].priority === 1 ? 'bg-orange-50' : 
+                          allAlerts[0].priority === 2 ? 'bg-yellow-50/80' : 'bg-sky-50'}`}
+                >
+                    <span 
+                        className={`text-sm shrink-0 transition-colors duration-300 ${
+                            allAlerts[0].priority === 1 ? 'text-orange-500 [filter:drop-shadow(0_0_5px_rgba(249,115,22,0.4))]' : 
+                            allAlerts[0].priority === 2 ? 'text-yellow-500' : 'text-sky-500'
+                        }`}
+                    >
+                        🔔
+                    </span>
+                    <div className="flex items-center justify-center gap-4 flex-1 px-1 text-center">
+                        <p className={`text-[11px] font-medium tracking-tight leading-tight
+                            ${allAlerts[0].priority === 1 ? 'text-orange-800' : 
+                            allAlerts[0].priority === 2 ? 'text-yellow-700' : 'text-sky-800'}`}
+                        >
+                            {allAlerts[0].message}
+                        </p>
+                        {allAlerts.length > 1 && (
+                            <span className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full font-bold
+                                ${allAlerts[0].priority === 1 ? 'bg-orange-200 text-orange-900' : 
+                                allAlerts[0].priority === 2 ? 'bg-yellow-200/80 text-yellow-800' : 'bg-sky-200 text-sky-900'}`}
+                            >
+                                +{allAlerts.length - 1}
+                            </span>
                         )}
                     </div>
-                )}
-
-                {/* Horizontal Divider - Zen style */}
-                {allAlerts.length === 0 && (
-                    <div className="h-px bg-slate-100 w-full mt-2" />
-                )}
-            </div>
- 
-            {/* 4. Quick Actions Stack - Compact buttons on mobile */}
-            <div className="flex flex-col gap-3 mb-8 w-full max-w-[440px] mx-auto lg:mx-0">
-                {[
-                    { path: `${basePath}/planning`, label: "Planning", icon: "📅", color: "bg-purple-50 text-purple-600" },
-                    { path: `${basePath}/credits`, label: "Boutique", icon: "🛍️", color: "bg-pink-50 text-pink-600" },
-                    { path: `${basePath}/orders`, label: "Mes commandes", icon: "📦", color: "bg-blue-50 text-blue-600" },
-                    ...(user?.role === "owner" || user?.role === "manager" || user?.role === "staff" 
-                        ? [{ path: `${basePath}/gestion-inscriptions`, label: "Gestion des inscriptions", icon: "📝", color: "bg-emerald-50 text-emerald-600" }] 
-                        : []),
-                ].map((item) => (
-                    <Link 
-                        key={item.path} 
-                        href={item.path}
-                        className="flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-xl hover:border-blue-600/30 hover:shadow-xl hover:shadow-blue-900/5 transition-all active:scale-[0.98] group shadow-sm"
+                    <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        className={`h-3.5 w-3.5 shrink-0 transition-transform duration-500 ${isAlertsExpanded ? 'rotate-180' : ''}
+                            ${allAlerts[0].priority === 1 ? 'text-orange-300' : 
+                              allAlerts[0].priority === 2 ? 'text-yellow-300' : 'text-sky-300'}`} 
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor"
                     >
-                        <div className={`w-10 h-10 shrink-0 ${item.color} rounded-full flex items-center justify-center text-lg group-hover:scale-110 transition-transform shadow-sm`}>
-                            {item.icon}
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+            )}
+
+            {/* Expanded Alert List */}
+            {isAlertsExpanded && allAlerts.length > 0 && (
+                <div className={`px-5 pb-3 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-500 origin-top
+                    ${allAlerts[0].priority === 1 ? 'bg-orange-50/50' : 
+                      allAlerts[0].priority === 2 ? 'bg-yellow-50/50' : 'bg-sky-50/50'}`}
+                >
+                    {allAlerts.map(alert => (
+                        <div key={alert.id} className="flex items-start gap-3 p-3 bg-white/90 backdrop-blur-sm rounded-xl hover:bg-white transition-all border border-black/5 shadow-sm active:scale-[0.99]">
+                            <div className="mt-0.5 shrink-0">
+                                {alert.priority === 1 && (
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                )}
+                                {alert.priority === 2 && (
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                )}
+                                {alert.priority === 3 && (
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-sky-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                )}
+                            </div>
+                            <p className="text-[11px] font-medium text-slate-700 leading-snug">
+                                {alert.message}
+                            </p>
                         </div>
-                        <span className="text-sm font-medium text-slate-600 group-hover:text-slate-900 transition-colors">{item.label}</span>
-                        <span className="ml-auto text-slate-300 group-hover:text-blue-500 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
-                            </svg>
-                        </span>
-                    </Link>
-                ))}
-            </div>
+                    ))}
+                </div>
+            )}
+        </div>
 
-            {/* 5. Admin & Footer Area */}
-            <div className="mt-auto w-full max-w-[440px] mx-auto lg:mx-0">
-                {/* Admin Toggle (Managers only) */}
-                {(user?.role === "owner" || user?.role === "manager") && (
-                    <button 
-                        onClick={() => router.push(`${basePath}/admin`)}
-                        className="w-full py-3.5 mb-8 bg-slate-900 text-white flex items-center justify-center gap-4 shadow-xl shadow-slate-900/20 active:scale-[0.98] transition-all hover:bg-slate-800"
+        {/* Right Column (Desktop) / Bottom Section (Mobile): Menu Buttons */}
+        <div className="flex flex-col flex-1 px-5 h-full pt-3 lg:pt-0">
+
+            {/* Credits display */}
+            {credits && (credits.balance > 0 || myOrders.length > 0) && (
+                <div className="flex items-center justify-end gap-2 px-1 my-4">
+                    <div className="w-px h-5 bg-slate-300" />
+                    <span className="text-xs font-medium text-slate-900">Crédits</span>
+                    <span className="text-sm">💎</span>
+                    <p className="text-lg font-medium leading-none text-slate-900">{formatCredits(credits.balance)}</p>
+                </div>
+            )}
+
+            {/* 5. Quick Actions Stack */}
+            <div className="grid grid-cols-2 gap-2.5 mb-4 w-full mx-auto lg:mx-0 px-1 lg:px-0 lg:mt-28">
+
+                {/* Staff: Gestion des inscriptions */}
+                {isAdminOrStaff && (
+                    <Link 
+                        href={`${basePath}/gestion-inscriptions`}
+                        className="col-span-2 relative flex items-center justify-between px-6 py-5 text-white rounded-2xl active:scale-[0.98] transition-all duration-300 group overflow-hidden"
+                        style={{
+                            background: `linear-gradient(135deg, ${primaryColor}cc, ${primaryColor}88, ${primaryColor}aa)`,
+                            boxShadow: `3px 4px 14px -2px ${primaryColor}30`
+                        }}
                     >
-                        <span className="text-base animate-pulse">⚙️</span>
-                        <span className="text-sm font-medium">Accès administration</span>
-                    </button>
+                        <div className="flex items-center gap-4 relative z-10">
+                            <div className="text-3xl">📋</div>
+                            <div className="flex flex-col gap-0.5">
+                                <span className="text-sm font-medium leading-none">Gestion des inscriptions</span>
+                                <span className="text-[10px] font-light text-white/70">Profil Staff uniquement</span>
+                            </div>
+                        </div>
+                    </Link>
                 )}
 
-                <footer className="pt-6 border-t border-slate-100 flex items-center justify-between pb-8">
+                {/* Planning Hero Card */}
+                <Link 
+                    href={`${basePath}/planning`}
+                    className="col-span-2 relative flex items-center justify-between px-6 py-6 bg-white border rounded-2xl hover:shadow-xl transition-all duration-500 active:scale-[0.98] group overflow-hidden"
+                    style={{ 
+                        boxShadow: `3px 4px 16px -2px ${primaryColor}40`,
+                        borderColor: `${primaryColor}30`
+                    }}
+                >
+                    <div className="flex items-center gap-4 relative z-10">
+                        <div className="text-3xl group-hover:scale-110 transition-transform duration-500">🗓️</div>
+                        <div className="flex flex-col gap-1">
+                            <span className="text-sm font-medium text-slate-800 tracking-tight leading-none group-hover:text-slate-900 transition-colors">
+                                Planning & réservations
+                            </span>
+                            {nextRDV ? (
+                                <div className="flex items-center gap-2">
+                                    <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span className="text-[10px] font-medium text-emerald-600 bg-emerald-50/80 px-2 py-0.5 rounded-full">
+                                        Prochain RDV : {nextRDV.date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} à {nextRDV.date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} · {nextRDV.title}
+                                    </span>
+                                </div>
+                            ) : (
+                                <span className="text-[11px] font-normal text-slate-400">Réservez votre prochaine séance</span>
+                            )}
+                        </div>
+                    </div>
+                    <div className="absolute -right-6 -bottom-6 w-28 h-28 rounded-full blur-3xl opacity-0 group-hover:opacity-[0.06] transition-opacity duration-700" style={{ backgroundColor: primaryColor }} />
+                </Link>
+
+                {/* Boutique Card */}
+                <Link 
+                    href={`${basePath}/credits`}
+                    className="col-span-2 relative flex items-center justify-between px-6 py-5 bg-white border rounded-2xl hover:shadow-xl transition-all duration-500 active:scale-[0.98] group overflow-hidden"
+                    style={{ 
+                        boxShadow: `3px 4px 14px -2px ${primaryColor}35`,
+                        borderColor: `${primaryColor}25`
+                    }}
+                >
+                    <div className="flex items-center gap-4 relative z-10">
+                        <div className="text-3xl shrink-0 group-hover:scale-110 transition-transform duration-500">🛍️</div>
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-sm font-medium text-slate-800 group-hover:text-slate-900 transition-colors tracking-tight">Boutique</span>
+                            <span className="text-[10px] font-normal text-slate-400">Créditez votre compte</span>
+                        </div>
+                    </div>
+                    <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full blur-3xl opacity-0 group-hover:opacity-[0.04] transition-opacity duration-700" style={{ backgroundColor: primaryColor }} />
+                </Link>
+
+                {/* Commandes Card */}
+                <Link 
+                    href={`${basePath}/orders`}
+                    className="col-span-2 relative flex items-center justify-between px-6 py-5 bg-white border rounded-2xl hover:shadow-xl transition-all duration-500 active:scale-[0.98] group overflow-hidden"
+                    style={{ 
+                        boxShadow: `3px 4px 14px -2px ${primaryColor}35`,
+                        borderColor: `${primaryColor}25`
+                    }}
+                >
+                    <div className="flex items-center gap-4 relative z-10">
+                        <div className="text-3xl shrink-0 group-hover:scale-110 transition-transform duration-500">📦</div>
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-sm font-medium text-slate-800 group-hover:text-slate-900 transition-colors tracking-tight">Commandes</span>
+                            <span className="text-[10px] font-normal text-slate-400">Consultez vos commandes d'offres et évènements</span>
+                        </div>
+                    </div>
+                    <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full blur-3xl opacity-0 group-hover:opacity-[0.04] transition-opacity duration-700" style={{ backgroundColor: primaryColor }} />
+                </Link>
+            </div>
+
+            {/* 6. Footer Area */}
+            <div className="w-full max-w-[500px] mx-auto lg:mx-0 px-1">
+                <div className="pt-3 flex items-center justify-between pb-2 mb-14">
                     <div className="flex gap-8">
                         {tenantSettings?.cgv_url && (
                             <a 
                                 href={`${API_URL}${tenantSettings.cgv_url}`} 
                                 target="_blank" 
-                                className="text-[11px] font-medium transition-all text-slate-400 hover:text-blue-600"
+                                className="text-xs font-medium transition-all text-slate-400 hover:text-blue-600"
                             >
                                 CGV
                             </a>
@@ -373,22 +452,68 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                             <a 
                                 href={`${API_URL}${tenantSettings.rules_url}`} 
                                 target="_blank" 
-                                className="text-[11px] font-medium transition-all text-slate-400 hover:text-blue-600"
+                                className="text-xs font-medium transition-all text-slate-400 hover:text-blue-600"
                             >
                                 Règlement intérieur
                             </a>
                         )}
                     </div>
                     <div className="text-right">
-                        <span className="text-[11px] font-medium text-slate-400 tracking-tighter">@rezea</span>
+                        <span className="text-xs font-medium text-slate-400 tracking-tighter">@rezea</span>
                     </div>
-                </footer>
+                </div>
             </div>
         </div>
       </div>
       
       {/* Bottom Navigation for Mobile PWA Experience */}
       <BottomNav userRole={user?.role} />
+
+      {/* New Alerts Popup Modal */}
+      {showNewAlertsPopup && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/40 backdrop-blur-md animate-in fade-in duration-500">
+          <div className="w-full max-w-sm bg-white rounded-[2rem] shadow-2xl shadow-black/20 overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-10 duration-700">
+            <div className="p-8 flex flex-col items-center text-center">
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 animate-pulse
+                ${newAlertsForPopup[0].priority === 1 ? 'bg-orange-50' : 
+                  newAlertsForPopup[0].priority === 2 ? 'bg-yellow-50' : 'bg-sky-50'}`}
+              >
+                <span className="text-4xl">🔔</span>
+              </div>
+              
+              <h3 className="text-xl font-bold text-slate-900 mb-2">
+                Nouvelle notification
+              </h3>
+              
+              <p className="text-sm text-slate-500 mb-8 leading-relaxed">
+                {newAlertsForPopup.length === 1 
+                  ? "Vous avez 1 nouveau message à consulter"
+                  : `Vous avez ${newAlertsForPopup.length} nouveaux messages à consulter`}
+              </p>
+
+              <div className="w-full space-y-3 mb-8 max-h-[35vh] overflow-y-auto pr-2 no-scrollbar">
+                {newAlertsForPopup.map(alert => (
+                  <div key={alert.id} className="flex items-start gap-3 p-4 bg-slate-50 rounded-2xl text-left border border-slate-100 transition-colors hover:bg-slate-100/50">
+                    <div className="mt-1 shrink-0">
+                      {alert.priority === 1 && <div className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.4)]" />}
+                      {alert.priority === 2 && <div className="w-2 h-2 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.4)]" />}
+                      {alert.priority === 3 && <div className="w-2 h-2 rounded-full bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.4)]" />}
+                    </div>
+                    <p className="text-xs font-semibold text-slate-800 leading-snug">{alert.message}</p>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={markAlertsAsSeen}
+                className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/20 active:scale-[0.98] transition-all hover:bg-slate-800"
+              >
+                J'ai compris
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Global CSS fixes for PWA feel */}
       <style jsx global>{`
