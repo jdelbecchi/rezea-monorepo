@@ -60,7 +60,7 @@ export default function DateInputZen({ value, onChange, label }: DateInputZenPro
         className="w-full px-4 py-2.5 rounded-xl border border-slate-200 hover:border-slate-300 focus:ring-4 focus:ring-slate-100 transition-all outline-none font-medium text-slate-700 bg-slate-50/50 text-sm md:text-base flex items-center justify-between group shadow-sm"
       >
         <span>{format(selectedDate, 'dd/MM/yyyy', { locale: fr })}</span>
-        <span className="text-slate-400 group-hover:scale-110 transition-transform">📅</span>
+        <span className="text-slate-400 group-hover:scale-110 transition-transform">🏁</span>
       </button>
 
       {isOpen && (
@@ -69,7 +69,7 @@ export default function DateInputZen({ value, onChange, label }: DateInputZenPro
           <div className="absolute inset-0" onClick={() => setIsOpen(false)}></div>
           
           <div 
-            className="relative bg-white rounded-[2.5rem] shadow-2xl shadow-slate-900/10 border border-slate-100 p-6 w-full max-w-sm animate-in zoom-in-95 duration-200"
+            className="relative bg-white rounded-3xl shadow-2xl shadow-slate-900/10 border border-slate-100 p-6 w-full max-w-sm animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6 px-2">
@@ -126,12 +126,12 @@ export default function DateInputZen({ value, onChange, label }: DateInputZenPro
                 );
               })}
             </div>
-
-            <div className="mt-8">
+            
+            <div className="mt-8 flex justify-center">
                 <button 
                     type="button"
                     onClick={() => setIsOpen(false)}
-                    className="w-full py-4 bg-slate-900 text-white font-medium rounded-2xl text-[11px] shadow-xl shadow-slate-200 hover:bg-slate-800 transition-all active:scale-95 uppercase tracking-widest"
+                    className="px-10 py-3 bg-slate-900 text-white font-medium rounded-2xl text-xs shadow-xl shadow-slate-200 hover:bg-slate-800 transition-all active:scale-95"
                 >
                     Fermer
                 </button>

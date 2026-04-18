@@ -88,7 +88,7 @@ export default function MemberOrdersPage() {
             const amount = (order.offer_price_recurring_cents / 100).toFixed(2);
             const period = order.offer_period || "";
             const recurrence = order.offer_recurring_count ? ` x${order.offer_recurring_count}` : "";
-            return `${amount}€ /${period}${recurrence}`.trim();
+            return `${amount}€/${period}${recurrence}`.trim();
         }
         if (order.offer_featured_pricing === "lump_sum" && order.offer_price_lump_sum_cents) {
             return `${(order.offer_price_lump_sum_cents / 100).toFixed(2)}€`;

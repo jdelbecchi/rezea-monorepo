@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, Event, Tenant, User } from "@/lib/api";
+import { formatPrice } from "@/lib/formatters";
 import BottomNav from "@/components/BottomNav";
 
 export default function EventCheckoutPage() {
@@ -119,7 +120,7 @@ export default function EventCheckoutPage() {
                                     {event?.price_member_cents === event?.price_external_cents ? (
                                         <>
                                             <p className="text-xl md:text-2xl font-semibold text-slate-900 leading-none">
-                                                {(event?.price_member_cents || 0) / 100} €
+                                                {formatPrice(event?.price_member_cents)}
                                             </p>
                                             <p className="text-[10px] text-slate-500 italic mt-1.5">Tarif unique</p>
                                         </>
@@ -147,9 +148,9 @@ export default function EventCheckoutPage() {
                                                 : 'border-slate-100 bg-white hover:border-slate-200'
                                             }`}
                                         >
-                                            <p className={`text-[10px] font-semibold uppercase tracking-widest ${tariff === 'member' ? 'text-blue-600' : 'text-slate-400'}`}>Tarif Membre</p>
+                                            <p className={`text-[10px] font-semibold uppercase tracking-widest ${tariff === 'member' ? 'text-black' : 'text-slate-400'}`}>Tarif Membre</p>
                                             <div className="w-px h-4 bg-slate-200"></div>
-                                            <p className="text-base font-semibold text-slate-900">{(event?.price_member_cents || 0) / 100} €</p>
+                                            <p className={`text-base font-semibold ${tariff === 'member' ? 'text-black' : 'text-slate-900'}`}>{formatPrice(event?.price_member_cents)}</p>
                                         </button>
 
                                         <button
@@ -160,9 +161,9 @@ export default function EventCheckoutPage() {
                                                 : 'border-slate-100 bg-white hover:border-slate-200'
                                             }`}
                                         >
-                                            <p className={`text-[10px] font-semibold uppercase tracking-widest ${tariff === 'external' ? 'text-blue-600' : 'text-slate-400'}`}>Tarif Extérieur</p>
+                                            <p className={`text-[10px] font-semibold uppercase tracking-widest ${tariff === 'external' ? 'text-black' : 'text-slate-400'}`}>Tarif Extérieur</p>
                                             <div className="w-px h-4 bg-slate-200"></div>
-                                            <p className="text-base font-semibold text-slate-900">{(event?.price_external_cents || 0) / 100} €</p>
+                                            <p className={`text-base font-semibold ${tariff === 'external' ? 'text-black' : 'text-slate-900'}`}>{formatPrice(event?.price_external_cents)}</p>
                                         </button>
                                     </div>
                                     <p className="text-[10px] text-slate-400 italic px-2">
@@ -172,7 +173,7 @@ export default function EventCheckoutPage() {
                             ) : null}
 
                             {/* Confirmation Section */}
-                            <div className="mt-10 space-y-6">
+                            <div className="mt-10 md:mt-16 space-y-6">
                                 <div className="space-y-4">
                                     {tenant?.payment_redirect_link ? (
                                         <>
@@ -222,7 +223,7 @@ export default function EventCheckoutPage() {
 
                         <div className="bg-slate-50 p-6 border-t border-slate-100 flex items-center gap-4">
                             <div className="text-2xl">🛡️</div>
-                            <p className="text-[10px] text-slate-500 leading-relaxed font-medium">
+                            <p className="text-xs text-slate-500 leading-relaxed font-medium">
                                 En confirmant, vous acceptez les Conditions Générales de Vente (CGV) et le règlement intérieur de l&apos;établissement.
                             </p>
                         </div>

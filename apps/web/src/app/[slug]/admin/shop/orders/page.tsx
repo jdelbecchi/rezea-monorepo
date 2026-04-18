@@ -39,7 +39,7 @@ function formatPrice(order: OrderItem): string {
     if (order.offer_featured_pricing === "recurring" && order.offer_price_recurring_cents) {
         const amount = (order.offer_price_recurring_cents / 100).toFixed(2);
         const period = order.offer_period || "";
-        return `${amount}€ ${period}`.trim();
+        return `${amount}€${period}`.trim();
     }
     if (order.offer_featured_pricing === "lump_sum" && order.offer_price_lump_sum_cents) {
         return `${(order.offer_price_lump_sum_cents / 100).toFixed(2)}€`;

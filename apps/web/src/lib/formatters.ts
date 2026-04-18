@@ -47,3 +47,15 @@ export const formatCredits = (balance: any): string => {
     // Sinon on garde 2 décimales (ex: 1.50)
     return num.toFixed(2).replace(/\.00$/, "");
 };
+
+/**
+ * Formate un prix en centimes (ex: 1000 -> 10€, 1050 -> 10.50€, 0 -> OFFERT)
+ */
+export const formatPrice = (cents: number | null | undefined): string => {
+    if (cents === 0) return "OFFERT";
+    if (cents === null || cents === undefined) return "—";
+    
+    const amount = cents / 100;
+    const formattedAmount = amount % 1 === 0 ? amount.toString() : amount.toFixed(2);
+    return `${formattedAmount}€`;
+};
