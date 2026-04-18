@@ -251,8 +251,11 @@ export default function PlanningPage() {
       
       {!isAdminMode && (
           <header className="fixed top-0 left-0 right-0 h-14 bg-white/80 backdrop-blur-lg border-b border-slate-100 flex items-center px-4 z-40 md:hidden safe-top shadow-sm">
-              <Link href={`/${slug}/home`} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-50 active:scale-95 transition-all text-slate-400">
-                  <span className="text-lg">←</span>
+              <Link href={`/${slug}/home`} className="flex items-center gap-2 group text-slate-400 active:scale-95 transition-all">
+                  <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 ml-0.5" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span className="text-[13px] font-medium leading-none">Retour</span>
               </Link>
           </header>
       )}
@@ -262,8 +265,10 @@ export default function PlanningPage() {
           {!isAdminMode && (
               <div className="hidden md:flex items-center gap-2 mb-10">
                   <Link href={`/${slug}/home`} className="flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-slate-800 transition-colors group">
-                      <span className="text-lg group-hover:-translate-x-1 transition-transform">←</span>
-                      Retour
+                      <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 transition-transform group-hover:-translate-x-1" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <span className="leading-none">Retour</span>
                   </Link>
               </div>
           )}
@@ -277,7 +282,7 @@ export default function PlanningPage() {
                 <p className="text-slate-500 font-medium text-[11px] md:text-xs">Réservez vos séances et évènements</p>
               </header>
 
-              <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-1.5 md:p-2">
+              <div className="bg-white -mx-5 md:mx-0 rounded-none md:rounded-3xl shadow-xl shadow-blue-900/10 border-b md:border border-slate-200 p-4 md:p-2">
                 <div className="flex items-center justify-between mb-1 px-2">
                   <h2 className="font-semibold text-slate-800 capitalize text-[13px] md:text-sm">
                     {format(currentMonth, 'MMMM yyyy', { locale: fr })}
@@ -341,7 +346,7 @@ export default function PlanningPage() {
                 </div>
               </div>
 
-              <div className="hidden md:flex flex-col gap-2 p-6 bg-slate-50 rounded-3xl border border-slate-100 relative overflow-hidden group shadow-sm transition-all hover:shadow-md">
+              <div className="hidden md:flex flex-col gap-2 p-6 bg-slate-50 rounded-3xl border border-slate-100 relative overflow-hidden group shadow-sm transition-all hover:shadow-md !mt-10">
                   <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
                       <DiamondToken className="w-12 h-12" />
                   </div>
@@ -354,13 +359,17 @@ export default function PlanningPage() {
                   </div>
                   <button 
                     onClick={() => window.location.href = `/${slug}/credits`}
-                    className="mt-4 w-full py-3 bg-white text-slate-900 font-medium rounded-2xl text-xs shadow-sm hover:shadow-md hover:bg-slate-900 hover:text-white transition-all active:scale-95 border border-slate-100"
+                    className="mt-4 w-full py-3 text-white font-medium rounded-2xl text-xs transition-all active:scale-95 shadow-lg"
+                    style={{ 
+                        backgroundColor: tenant?.primary_color || '#2563eb',
+                        boxShadow: `0 4px 12px ${(tenant?.primary_color || '#2563eb')}40`
+                    }}
                   >
                     Recharger mon compte
                   </button>
               </div>
               
-              <div className="md:hidden sticky top-14 z-30 -mx-5 px-5 py-0 bg-white/90 backdrop-blur-md flex items-center justify-between !mt-2 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
+              <div className="md:hidden sticky top-14 z-30 -mx-5 px-5 py-0 bg-white/90 backdrop-blur-md flex items-center justify-between mt-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
                 <div className="md:flex-1"></div>
                 <div className="flex items-center gap-2 px-4 py-1 rounded-2xl">
                   <div className="flex items-center gap-1.5">
@@ -381,7 +390,7 @@ export default function PlanningPage() {
 
             <div className="space-y-4 pt-2 md:pt-1">
               <div className="space-y-3">
-                <div className="h-px w-full bg-slate-300 mb-4"></div>
+                <div className="h-px w-full md:hidden mb-4" style={{ backgroundColor: `${tenant?.primary_color || '#2563eb'}30` }}></div>
                 <div className="flex items-center justify-between gap-4 px-1 mb-4">
                   <h3 className="font-medium text-slate-400 text-sm lowercase whitespace-nowrap">
                     {format(selectedDate, 'eeee d MMMM', { locale: fr })}
@@ -500,7 +509,14 @@ export default function PlanningPage() {
                       };
 
                       return (
-                        <div key={item.id} className="group bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden transition-all hover:shadow-md hover:border-violet-100/50 flex flex-col">
+                        <div 
+                          key={item.id} 
+                          className="group bg-white rounded-2xl border transition-all duration-500 hover:shadow-xl flex flex-col overflow-hidden"
+                          style={{ 
+                            boxShadow: `3px 4px 14px -2px ${(tenant?.primary_color || '#2563eb')}40`,
+                            borderColor: `${(tenant?.primary_color || '#2563eb')}20`
+                          }}
+                        >
                           {/* 1. HEADER : Heure + Titre */}
                           <div className="px-5 py-2.5">
                             <div className="flex items-center gap-4">
@@ -624,10 +640,10 @@ export default function PlanningPage() {
               </div>
 
               <div className="mt-8 mb-20 px-1">
-                 <div className="h-px w-full bg-slate-300 mb-8"></div>
+                  <div className="h-px w-full mb-8" style={{ backgroundColor: `${tenant?.primary_color || '#2563eb'}30` }}></div>
                  <div className="flex items-center gap-2 mb-5">
                     <span className="text-xl">📝</span>
-                    <h3 className="font-medium text-slate-800 text-base tracking-tight">Mes inscriptions</h3>
+                    <h3 className="font-medium text-slate-800 text-base tracking-tight">Mes inscriptions à venir</h3>
                  </div>
                  
                  {myRegistrations.length === 0 ? (

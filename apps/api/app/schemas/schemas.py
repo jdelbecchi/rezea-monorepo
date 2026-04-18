@@ -694,6 +694,7 @@ class ShopCheckoutRequest(BaseModel):
     offer_id: UUID
     pay_later: bool = False
     start_date: Optional[date] = None
+    pricing_type: str = "lump_sum" # 'lump_sum' or 'recurring'
 
 
 class ShopCheckoutResponse(BaseModel):

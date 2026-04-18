@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.db.session import get_db
-from app.models.models import Order, Offer, OrderPaymentStatus, Tenant, CreditAccount, CreditTransaction, CreditTransactionType
+from app.models.models import Order, Offer, OrderPaymentStatus, Tenant, CreditAccount, CreditTransaction, CreditTransactionType, Installment
 from app.schemas.schemas import ShopCheckoutRequest, ShopCheckoutResponse, OrderResponse
 from app.services import orders as order_service
 
@@ -65,8 +65,14 @@ async def shop_checkout(
     is_link_missing = not tenant.payment_redirect_link
     effective_pay_later = checkout.pay_later or is_link_missing
     
-    payment_status = OrderPaymentStatus.WAITING if effective_pay_later else OrderPaymentStatus.PENDING
-    
+    # Determine price and payment status based on chosen pricing_type
+    if checkout.pricing_type == "recurring" and offer.price_recurring_cents:
+        price_cents = offer.price_recurring_cents
+        payment_status = OrderPaymentStatus.INSTALLMENT
+    else:
+        price_cents = offer.price_lump_sum_cents or offer.price_recurring_cents or 0
+        payment_status = OrderPaymentStatus.WAITING if effective_pay_later else OrderPaymentStatus.PENDING
+
     order = Order(
         tenant_id=tenant_id,
         user_id=user_id,
@@ -76,7 +82,7 @@ async def shop_checkout(
         is_validity_unlimited=offer.is_validity_unlimited,
         credits_total=offer.classes_included,
         is_unlimited=offer.is_unlimited,
-        price_cents=offer.price_lump_sum_cents or offer.price_recurring_cents or 0,
+        price_cents=price_cents,
         payment_status=payment_status,
         status="active",
         created_by_admin=False,
@@ -89,6 +95,20 @@ async def shop_checkout(
     )
     
     db.add(order)
+    await db.flush() # Get order.id for installments
+    
+    # 3.2 Create installments if recurring
+    if checkout.pricing_type == "recurring" and offer.price_recurring_cents and offer.recurring_count:
+        for i in range(offer.recurring_count):
+            due_date = start_date + relativedelta(months=i)
+            installment = Installment(
+                tenant_id=tenant_id,
+                order_id=order.id,
+                due_date=due_date,
+                amount_cents=offer.price_recurring_cents,
+                is_paid=False
+            )
+            db.add(installment)
     
     # 3.5 Créditer le compte immédiatement (Règle métier : le paiement ne bloque pas les crédits)
     # Récupérer ou créer le compte de crédits

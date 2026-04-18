@@ -569,7 +569,7 @@ export const api = {
     return response.data;
   },
 
-  createShopOrder: async (offerId: string, payLater: boolean, startDate?: string): Promise<{
+  createShopOrder: async (offerId: string, payLater: boolean, startDate?: string, pricingType: 'lump_sum' | 'recurring' = 'lump_sum'): Promise<{
     order: any;
     message: string;
     redirect_url: string | null;
@@ -577,7 +577,8 @@ export const api = {
     const response = await apiClient.post('/api/shop/checkout', {
       offer_id: offerId,
       pay_later: payLater,
-      start_date: startDate
+      start_date: startDate,
+      pricing_type: pricingType
     });
     return response.data;
   },

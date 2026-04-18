@@ -62,7 +62,7 @@ export default function MemberOrdersPage() {
     const getStatusStyle = (status: string) => {
         switch (status) {
             case 'en_attente': return 'bg-amber-100 text-amber-700 border-amber-200';
-            case 'a_valider': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+            case 'a_valider': return 'bg-slate-100 text-slate-600 border-slate-200';
             case 'paye': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
             case 'rembourse': return 'bg-slate-100 text-slate-500 border-slate-200';
             case 'echelonne': return 'bg-blue-100 text-blue-700 border-blue-200';
@@ -121,7 +121,7 @@ export default function MemberOrdersPage() {
     const getEventRegistrationStatusLabel = (status: string) => {
         switch (status) {
             case 'pending_payment': return 'En attente';
-            case 'confirmed': return 'Confirmé';
+            case 'confirmed': return 'Inscrit';
             case 'cancelled': return 'Annulé';
             case 'waiting_list': return 'Liste d\'attente';
             case 'absent': return 'Absent';
@@ -183,8 +183,11 @@ th{background:#f1f5f9}
             {/* PWA Mobile Header - Reduced Height and Tight Spacing */}
             {!isAdminMode && (
                 <header className="fixed top-0 left-0 right-0 h-14 bg-white/80 backdrop-blur-lg border-b border-slate-100 flex items-center px-4 z-40 md:hidden safe-top shadow-sm">
-                    <Link href={`/${slug}/home`} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-50 active:scale-95 transition-all text-slate-400">
-                        <span className="text-lg">←</span>
+                    <Link href={`/${slug}/home`} className="flex items-center gap-2 group text-slate-400 active:scale-95 transition-all">
+                        <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 ml-0.5" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        <span className="text-[13px] font-medium leading-none">Retour</span>
                     </Link>
                 </header>
             )}
@@ -195,8 +198,10 @@ th{background:#f1f5f9}
                     {!isAdminMode && (
                         <div className="hidden md:flex items-center gap-2 mb-10">
                             <Link href={`/${slug}/home`} className="flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-slate-800 transition-colors group">
-                                <span className="text-lg group-hover:-translate-x-1 transition-transform">←</span>
-                                Retour
+                                <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 transition-transform group-hover:-translate-x-1" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                                <span className="leading-none">Retour</span>
                             </Link>
                         </div>
                     )}
@@ -208,19 +213,37 @@ th{background:#f1f5f9}
                     </header>
 
                     {/* Tab Switcher */}
-                    <div className="flex gap-2 p-1 bg-slate-100/50 rounded-2xl mb-8 w-fit">
-                        <button 
-                            onClick={() => setActiveTab('offers')}
-                            className={`px-6 py-2.5 rounded-xl text-xs font-semibold transition-all ${activeTab === 'offers' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                            Offres et forfaits
-                        </button>
-                        <button 
-                            onClick={() => setActiveTab('events')}
-                            className={`px-6 py-2.5 rounded-xl text-xs font-semibold transition-all ${activeTab === 'events' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                            Événements
-                        </button>
+                    <div className="flex justify-center mb-8">
+                        <div className="flex gap-2 p-1.5 bg-slate-200/50 rounded-2xl w-fit">
+                            <button 
+                                onClick={() => setActiveTab('offers')}
+                                className={`px-6 py-2.5 rounded-xl text-[11px] font-medium transition-all duration-300 ${
+                                    activeTab === 'offers' 
+                                        ? 'text-white shadow-lg' 
+                                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                                }`}
+                                style={activeTab === 'offers' ? {
+                                    background: `linear-gradient(135deg, ${tenant?.primary_color || '#2563eb'}CC, ${tenant?.primary_color || '#2563eb'}EE)`,
+                                    boxShadow: `0 4px 12px ${(tenant?.primary_color || '#2563eb')}40`
+                                } : {}}
+                            >
+                                Offres et forfaits
+                            </button>
+                            <button 
+                                onClick={() => setActiveTab('events')}
+                                className={`px-6 py-2.5 rounded-xl text-[11px] font-medium transition-all duration-300 ${
+                                    activeTab === 'events' 
+                                        ? 'text-white shadow-lg' 
+                                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                                }`}
+                                style={activeTab === 'events' ? {
+                                    background: `linear-gradient(135deg, ${tenant?.primary_color || '#2563eb'}CC, ${tenant?.primary_color || '#2563eb'}EE)`,
+                                    boxShadow: `0 4px 12px ${(tenant?.primary_color || '#2563eb')}40`
+                                } : {}}
+                            >
+                                Événements
+                            </button>
+                        </div>
                     </div>
 
                     {loading ? (
@@ -246,24 +269,32 @@ th{background:#f1f5f9}
                         <div className="grid grid-cols-1 gap-4">
                             {activeTab === 'offers' ? (
                                 orders.map((order) => (
-                                    <div key={order.id} className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden group">
-                                        <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-bl-full -mr-16 -mt-16 opacity-50 pointer-events-none" />
+                                    <div 
+                                        key={order.id} 
+                                        className="bg-slate-50 p-5 md:p-6 rounded-3xl border transition-all duration-500 hover:shadow-xl hover:scale-[1.01] relative overflow-hidden group"
+                                        style={{ 
+                                            boxShadow: `4px 6px 18px -2px ${(tenant?.primary_color || '#2563eb')}45`,
+                                            borderColor: `${(tenant?.primary_color || '#2563eb')}20`
+                                        }}
+                                    >
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-bl-full -mr-16 -mt-16 opacity-40 pointer-events-none" />
                                         
                                         <div className="flex flex-col sm:flex-row justify-between items-start gap-4 relative z-10">
-                                            <div className="flex flex-col min-w-0 flex-1">
+                                            <div className="flex flex-col min-w-0 flex-1 w-full sm:w-auto">
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <h3 className="text-lg md:text-xl font-semibold text-slate-900 truncate pr-2 capitalize tracking-tight">{order.offer_name}</h3>
+                                                </div>
+                                                <div className="flex items-center justify-between w-full gap-4 mt-auto">
+                                                    <p className="text-slate-400 text-xs font-medium tracking-tight">
+                                                        Commandée le {new Date(order.created_at).toLocaleDateString("fr-FR")}
+                                                    </p>
                                                     <button 
                                                         onClick={() => { setSelectedOrder(order); setShowInfoModal(true); }}
-                                                        className="w-6 h-6 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-all flex-shrink-0"
-                                                        title="Détails de l'offre"
+                                                        className="px-3 py-1 bg-slate-200/50 text-slate-500 hover:text-slate-900 hover:bg-slate-200 rounded-lg transition-all text-[10px] font-medium flex items-center gap-1"
                                                     >
-                                                        ⓘ
+                                                        <span>+ d'infos</span>
                                                     </button>
                                                 </div>
-                                                <p className="text-slate-400 text-[11px] md:text-xs">
-                                                    Commandée le {new Date(order.created_at).toLocaleDateString("fr-FR")}
-                                                </p>
                                             </div>
                                             
                                             <div className="flex items-center gap-2 relative z-10 flex-wrap sm:flex-nowrap">
@@ -281,7 +312,7 @@ th{background:#f1f5f9}
                                         {/* Action Panel & Validity */}
                                         <div className="mt-4 pt-4 border-t border-dashed border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
                                             <div className="flex items-center gap-2">
-                                                <div className="w-8 h-8 flex items-center justify-center text-sm">📅</div>
+                                                <div className="w-8 h-8 flex items-center justify-center text-sm">⌛</div>
                                                 <div className="flex items-center gap-2">
                                                     <p className="text-xs text-slate-400 font-medium tracking-tight">Fin de validité :</p>
                                                     <p className={`text-sm font-semibold tracking-tight ${order.is_validity_unlimited ? 'text-emerald-600' : 'text-slate-900'}`}>
@@ -290,23 +321,23 @@ th{background:#f1f5f9}
                                                 </div>
                                             </div>
 
-                                            <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                                            <div className="flex flex-col items-center gap-3 w-full">
                                                 {/* Bouton Payer */}
                                                 {(order.payment_status?.toLowerCase().includes('attente')) && tenant?.payment_redirect_link && (
                                                     <a 
                                                         href={tenant.payment_redirect_link}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="flex-1 md:flex-none px-5 py-2.5 bg-blue-600 text-white text-xs font-medium rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2 group/btn"
+                                                        className="px-6 py-3 bg-slate-900 text-white text-[11px] font-medium rounded-xl transition-all shadow-lg flex items-center justify-center gap-4 group/btn active:scale-95 mx-auto"
                                                     >
-                                                        💳 Payer ma commande
-                                                        <span className="group-hover/btn:translate-x-1 transition-transform">→</span>
+                                                        <span>💳</span>
+                                                        <span>Payer ma commande</span>
                                                     </a>
                                                 )}
                                                 {order.invoice_number && (
                                                     <button 
                                                         onClick={() => downloadInvoice(order)}
-                                                        className="flex-1 md:flex-none px-4 py-2.5 bg-slate-900 text-white text-xs font-medium rounded-xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-sm"
+                                                        className="px-4 py-2 bg-slate-100 text-slate-600 text-[10px] font-medium rounded-lg hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
                                                     >
                                                         🧾 Facture
                                                     </button>
@@ -317,59 +348,76 @@ th{background:#f1f5f9}
                                 ))
                             ) : (
                                 registrations.map((reg) => (
-                                    <div key={reg.id} className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden group">
-                                        <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-bl-full -mr-16 -mt-16 opacity-50 pointer-events-none" />
+                                    <div 
+                                        key={reg.id} 
+                                        className="bg-slate-50 p-5 md:p-6 rounded-3xl border transition-all duration-500 hover:shadow-xl hover:scale-[1.01] relative overflow-hidden group"
+                                        style={{ 
+                                            boxShadow: `4px 6px 18px -2px ${(tenant?.primary_color || '#2563eb')}45`,
+                                            borderColor: `${(tenant?.primary_color || '#2563eb')}20`
+                                        }}
+                                    >
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-bl-full -mr-16 -mt-16 opacity-40 pointer-events-none" />
                                         
                                         <div className="flex flex-col sm:flex-row justify-between items-start gap-4 relative z-10">
-                                            <div className="flex flex-col min-w-0 flex-1">
+                                            <div className="flex flex-col min-w-0 flex-1 w-full sm:w-auto">
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <h3 className="text-lg md:text-xl font-semibold text-slate-900 truncate pr-2 capitalize tracking-tight">{reg.event_title}</h3>
                                                 </div>
-                                                <p className="text-slate-400 text-[11px] md:text-xs">
-                                                    Inscrit le {new Date(reg.created_at).toLocaleDateString("fr-FR")}
-                                                </p>
+                                                <div className="flex items-center justify-between w-full gap-4 mt-auto">
+                                                    <p className="text-slate-400 text-xs font-medium tracking-tight">
+                                                        Inscrit le {new Date(reg.created_at).toLocaleDateString("fr-FR")}
+                                                    </p>
+                                                    <div className="flex items-center gap-1.5 text-slate-500">
+                                                        <span className="text-xs">🏷️</span>
+                                                        <span className="text-[13px] font-medium">{formatEventPrice(reg)}</span>
+                                                    </div>
+                                                </div>
                                             </div>
                                             
-                                            <div className="flex items-center gap-2 relative z-10 flex-wrap sm:flex-nowrap">
-                                                <div className="flex flex-col items-end gap-1">
-                                                    <p className="text-lg font-bold text-slate-900 leading-none">
-                                                        {formatEventPrice(reg)}
-                                                    </p>
-                                                    <span className={`px-2 py-1 rounded-md text-[9px] font-bold border uppercase tracking-wider ${getEventRegistrationStatusStyle(reg.status)}`}>
-                                                        {getEventRegistrationStatusLabel(reg.status)}
-                                                    </span>
+                                            <div className="flex items-center gap-2 relative z-10 flex-wrap sm:flex-nowrap pt-1">
+                                                <div className="flex flex-col items-end gap-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold border ${getStatusStyle(reg.payment_status || 'en_attente')}`}>
+                                                            <span className="opacity-60 mr-1">Paiement :</span>
+                                                            {getStatusLabel(reg.payment_status || 'en_attente')}
+                                                        </span>
+                                                        <span className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold border ${getEventRegistrationStatusStyle(reg.status)}`}>
+                                                            <span className="opacity-60 mr-1">Statut :</span>
+                                                            {getEventRegistrationStatusLabel(reg.status)}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
 
                                         {/* Action Panel & Validity */}
                                         <div className="mt-4 pt-4 border-t border-dashed border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
-                                            <div className="flex items-center gap-4">
+                                            <div className="flex items-center gap-6">
                                                 <div className="flex items-center gap-2">
-                                                    <div className="w-6 h-6 flex items-center justify-center text-xs bg-slate-50 rounded-full">📅</div>
-                                                    <p className="text-xs font-semibold text-slate-700">
+                                                    <div className="w-8 h-8 flex items-center justify-center text-lg">📅</div>
+                                                    <p className="text-xs font-medium text-slate-600">
                                                         {new Date(reg.event_date).toLocaleDateString("fr-FR")}
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <div className="w-6 h-6 flex items-center justify-center text-xs bg-slate-50 rounded-full">⏰</div>
-                                                    <p className="text-xs font-semibold text-slate-700">
+                                                    <div className="w-8 h-8 flex items-center justify-center text-lg">🕒</div>
+                                                    <p className="text-xs font-medium text-slate-600">
                                                         {reg.event_time}
                                                     </p>
                                                 </div>
                                             </div>
 
-                                            <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                                            <div className="flex flex-col items-center gap-3 w-full">
                                                 {/* Bouton Payer */}
                                                 {(reg.payment_status?.toLowerCase().includes('attente') || reg.status?.toLowerCase().includes('payment')) && tenant?.payment_redirect_link && (
                                                     <a 
                                                         href={tenant.payment_redirect_link}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="flex-1 md:flex-none px-5 py-2 md:py-2.5 bg-blue-600 text-white text-[11px] font-medium rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2 group/btn"
+                                                        className="px-6 py-3 bg-slate-900 text-white text-[11px] font-medium rounded-xl transition-all shadow-lg flex items-center justify-center gap-4 group/btn active:scale-95 mx-auto"
                                                     >
-                                                        💳 Payer ma commande
-                                                        <span className="group-hover/btn:translate-x-1 transition-transform">→</span>
+                                                        <span>💳</span>
+                                                        <span>Payer ma commande</span>
                                                     </a>
                                                 )}
                                             </div>
@@ -382,57 +430,82 @@ th{background:#f1f5f9}
                 </div>
             </main>
 
-            {/* Detail Modal (Keep existing) */}
+            {/* Detail Modal */}
             {showInfoModal && selectedOrder && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
-                    {/* ... rest of modal ... */}
-                   <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl border border-slate-100 animate-in zoom-in duration-300 p-8 text-center">
-                      <div className="mb-8">
-                         <h2 className="text-xl md:text-2xl font-medium text-slate-900 mb-6 tracking-tight">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-300">
+                   <div className="bg-white/95 backdrop-blur-xl rounded-[2.5rem] w-full max-w-sm overflow-hidden shadow-2xl border border-white animate-in zoom-in duration-300 p-8 md:p-10 relative">
+                      {/* Decorative elements */}
+                      <div 
+                        className="absolute top-0 right-0 w-32 h-32 opacity-10 rounded-full -mr-16 -mt-16"
+                        style={{ backgroundColor: tenant?.primary_color || '#2563eb' }}
+                      />
+                      
+                      <div className="text-center relative z-10">
+                         <h2 className="text-xl md:text-2xl font-bold text-slate-900 mb-2 tracking-tight capitalize">
                              {selectedOrder.offer_snap_name || selectedOrder.offer_name}
                          </h2>
+                         <p className="text-[11px] text-slate-400 font-medium leading-relaxed mb-8 max-w-[280px] mx-auto italic">
+                             Données contractuelles de votre commande à la date de l'achat, avant toute modification ultérieure.
+                         </p>
                          
-                         <div className="space-y-3">
-                             <div className="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-slate-100/50">
-                                 <span className="text-xs text-slate-400 font-medium">Tarif initial</span>
-                                 <span className="text-sm font-semibold text-slate-900">
-                                     {formatPrice(selectedOrder)}
-                                     {selectedOrder.payment_status === 'echelonne' && !formatPrice(selectedOrder).includes('x') && selectedOrder.installments?.length > 0 && ` (x${selectedOrder.installments.length})`}
-                                 </span>
-                             </div>
-                             <div className="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-slate-100/50">
-                                 <span className="text-xs text-slate-400 font-medium">Crédits inclus</span>
-                                 <span className="text-sm font-semibold text-slate-900">
-                                     {selectedOrder.is_unlimited ? 'Illimité' : `${selectedOrder.credits_total} crédits`}
-                                 </span>
-                             </div>
-                             <div className="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-slate-100/50">
-                                 <span className="text-xs text-slate-400 font-medium">Validité initiale</span>
-                                 <span className="text-sm font-semibold text-slate-900">
-                                     {selectedOrder.offer_snap_is_validity_unlimited ? 'Illimitée' : 
-                                      (selectedOrder.offer_snap_validity_days ? 
-                                       `${selectedOrder.offer_snap_validity_days} ${selectedOrder.offer_snap_validity_unit === 'months' ? 'mois' : 'jours'}` : 
-                                       (selectedOrder.is_validity_unlimited ? 'Illimitée' : 
-                                        (selectedOrder.end_date ? new Date(selectedOrder.end_date).toLocaleDateString("fr-FR") : "N/A")))}
-                                 </span>
+                         <div className="relative mb-10 text-left max-w-[260px] mx-auto">
+                             {/* The "Accolade Rose" (Pink Brace) */}
+                             <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-rose-400 rounded-full opacity-60" />
+                             
+                             <div className="pl-6 space-y-5">
+                                 <div className="flex items-center gap-3">
+                                     <span className="text-lg w-6 text-center">🏷️</span>
+                                     <div className="flex flex-col">
+                                         <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium leading-none mb-1">Tarif d'achat</span>
+                                         <p className="text-sm font-medium text-slate-900 leading-none">
+                                            {formatPrice(selectedOrder)}
+                                            {selectedOrder.payment_status === 'echelonne' && !formatPrice(selectedOrder).includes('x') && selectedOrder.installments?.length > 0 && ` (x${selectedOrder.installments.length})`}
+                                         </p>
+                                     </div>
+                                 </div>
+                                 
+                                 <div className="flex items-center gap-3">
+                                     <span className="text-lg w-6 text-center">💎</span>
+                                     <div className="flex flex-col">
+                                         <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium leading-none mb-1">Crédits inclus</span>
+                                         <p className="text-sm font-medium text-slate-900 leading-none">
+                                            {selectedOrder.is_unlimited ? 'Illimité' : `${selectedOrder.credits_total} crédits`}
+                                         </p>
+                                     </div>
+                                 </div>
+                                 
+                                 <div className="flex items-center gap-3">
+                                     <span className="text-lg w-6 text-center">🕒</span>
+                                     <div className="flex flex-col">
+                                         <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium leading-none mb-1">Validité initiale</span>
+                                         <p className="text-sm font-medium text-slate-900 leading-none">
+                                            {selectedOrder.offer_snap_is_validity_unlimited ? 'Illimitée' : 
+                                             (selectedOrder.offer_snap_validity_days ? 
+                                              `${selectedOrder.offer_snap_validity_days} ${selectedOrder.offer_snap_validity_unit === 'months' ? 'mois' : 'jours'}` : 
+                                              (selectedOrder.is_validity_unlimited ? 'Illimitée' : 
+                                               (selectedOrder.end_date ? new Date(selectedOrder.end_date).toLocaleDateString("fr-FR") : "N/A")))}
+                                         </p>
+                                     </div>
+                                 </div>
+
+                                 {(selectedOrder.offer_snap_description || selectedOrder.offer_description) && (
+                                     <div className="pt-2 border-t border-slate-100 flex items-start gap-3">
+                                         <span className="text-xs mt-0.5">📝</span>
+                                         <p className="text-slate-500 text-[10px] leading-relaxed italic">
+                                             {selectedOrder.offer_snap_description || selectedOrder.offer_description}
+                                         </p>
+                                     </div>
+                                 )}
                              </div>
                          </div>
-
-                         {(selectedOrder.offer_snap_description || selectedOrder.offer_description) && (
-                             <div className="mt-4 p-4 bg-slate-50/30 rounded-2xl border border-slate-100/30">
-                                 <p className="text-slate-500 text-[11px] leading-relaxed italic">
-                                     {selectedOrder.offer_snap_description || selectedOrder.offer_description}
-                                 </p>
-                             </div>
-                         )}
+                         
+                         <button 
+                            onClick={() => setShowInfoModal(false)}
+                            className="px-8 py-3 bg-slate-900 text-white text-[11px] font-medium rounded-xl transition-all shadow-lg active:scale-95 mx-auto"
+                         >
+                            Fermer
+                         </button>
                       </div>
-                      
-                      <button 
-                       onClick={() => setShowInfoModal(false)}
-                       className="w-full py-4 bg-slate-900 text-white font-medium rounded-2xl hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 text-xs"
-                      >
-                         Fermer
-                      </button>
                    </div>
                 </div>
             )}

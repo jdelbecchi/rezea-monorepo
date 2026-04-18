@@ -70,8 +70,11 @@ export default function CreditsPage() {
             {/* PWA Mobile Header - Reduced Height and Tight Spacing */}
             {!isAdminMode && (
                 <header className="fixed top-0 left-0 right-0 h-14 bg-white/80 backdrop-blur-lg border-b border-slate-100 flex items-center px-4 z-40 md:hidden safe-top shadow-sm">
-                    <Link href={`/${slug}/home`} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-50 active:scale-95 transition-all text-slate-400">
-                        <span className="text-lg">←</span>
+                    <Link href={`/${slug}/home`} className="flex items-center gap-2 group text-slate-400 active:scale-95 transition-all">
+                        <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 ml-0.5" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        <span className="text-[13px] font-medium leading-none">Retour</span>
                     </Link>
                 </header>
             )}
@@ -83,8 +86,10 @@ export default function CreditsPage() {
                     {!isAdminMode && (
                         <div className="hidden md:flex items-center gap-2 mb-10">
                             <Link href={`/${slug}/home`} className="flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-slate-800 transition-colors group">
-                                <span className="text-lg group-hover:-translate-x-1 transition-transform">←</span>
-                                Retour
+                                <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 transition-transform group-hover:-translate-x-1" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                                <span className="leading-none">Retour</span>
                             </Link>
                         </div>
                     )}

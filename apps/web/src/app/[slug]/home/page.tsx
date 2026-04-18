@@ -220,6 +220,19 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                         {tenantSettings?.name || "rezea"}
                     </span>
                 </div>
+
+                {/* Desktop Profile Access */}
+                <Link href={`${basePath}/profile`} className="hidden md:flex items-center gap-3 group">
+                    <div className="flex flex-col items-end">
+                        <span className="text-[10px] font-medium text-slate-400 group-hover:text-slate-600 transition-colors">Mon profil</span>
+                    </div>
+                    <div className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center shadow-sm border border-slate-200 group-hover:bg-white group-hover:shadow-md transition-all">
+                        <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M20 21C20 19.6044 20 18.9067 19.8278 18.3389C19.4405 17.0612 18.4388 16.0595 17.1611 15.6722C16.5933 15.5 15.8956 15.5 14.5 15.5H9.5C8.10442 15.5 7.40665 15.5 6.83886 15.6722C5.56116 16.0595 4.55953 17.0612 4.17224 18.3389C4 18.9067 4 19.6044 4 21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                            <path d="M16 7C16 9.20914 14.2091 11 12 11C9.79086 11 8 9.20914 8 7C8 4.79086 9.79086 3 12 3C14.2091 3 16 4.79086 16 7Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                        </svg>
+                    </div>
+                </Link>
             </header>
 
             {/* Admin Button - Black card style */}
