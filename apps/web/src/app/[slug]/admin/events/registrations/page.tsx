@@ -1,10 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { api, User, AdminEventRegistrationItem } from "@/lib/api";
+import { api, User, AdminEventRegistrationItem, Tenant } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import MultiSelect from "@/components/MultiSelect";
+import { 
+    format, 
+    startOfMonth, 
+    endOfMonth, 
+    eachDayOfInterval, 
+    isSameDay, 
+    addMonths, 
+    subMonths,
+    startOfToday,
+    parseISO
+} from "date-fns";
+import { fr } from "date-fns/locale";
 
 const STATUS_LABELS: Record<string, string> = {
     confirmed: "Inscrit",
@@ -26,6 +38,7 @@ interface EventOption {
     id: string; title: string; event_date: string; event_time: string;
     max_places: number; registrations_count: number;
     price_member_cents: number; price_external_cents: number;
+    location?: string;
 }
 
 export default function AdminEventRegistrationsPage() {
@@ -40,8 +53,13 @@ export default function AdminEventRegistrationsPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
     const [filterPayments, setFilterPayments] = useState<string[]>([]);
-    const [dateFrom, setDateFrom] = useState("");
-    const [dateTo, setDateTo] = useState("");
+    
+    // Calendar & Location state
+    const [selectedDate, setSelectedDate] = useState<Date>(startOfToday());
+    const [currentMonth, setCurrentMonth] = useState(startOfToday());
+    const [tenant, setTenant] = useState<Tenant | null>(null);
+    const [locationFilter, setLocationFilter] = useState("all");
+    const [isLocationMenuOpen, setIsLocationMenuOpen] = useState(false);
 
     // Create modal
     const [showCreate, setShowCreate] = useState(false);
@@ -74,18 +92,40 @@ export default function AdminEventRegistrationsPage() {
     useEffect(() => { fetchData(); }, [router]);
     useEffect(() => { if (user) loadRegistrations(); }, [filterStatuses, filterPayments]);
 
+    const handleSetDate = (date: Date) => {
+        setSelectedDate(date);
+    };
+
+    const daysInMonth = useMemo(() => {
+        return eachDayOfInterval({
+            start: startOfMonth(currentMonth),
+            end: endOfMonth(currentMonth)
+        });
+    }, [currentMonth]);
+
+    const handlePrevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
+    const handleNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
+
     const fetchData = async () => {
         try {
             // 1. Get user and check permissions BEFORE other data
-            const userData = await api.getCurrentUser();
+            const [userData, tenantData] = await Promise.all([
+                api.getCurrentUser(),
+                api.getTenantSettings(),
+            ]);
+            
             if (userData.role !== "owner" && userData.role !== "manager") {
                 router.push("/home");
                 return;
             }
             setUser(userData);
+            setTenant(tenantData);
 
             // 2. Fetch other data
-            await loadRegistrations();
+            await Promise.all([
+                loadRegistrations(),
+                loadFormOptions(), // This loads users and events for filters/creation
+            ]);
         } catch (err: any) {
             console.error(err);
             if (err.response?.status === 401) {
@@ -243,8 +283,17 @@ th{background:#f1f5f9}
         }
         if (filterStatuses.length > 0 && !filterStatuses.includes(r.status)) return false;
         if (filterPayments.length > 0 && !filterPayments.includes(r.payment_status)) return false;
-        if (dateFrom && r.event_date < dateFrom) return false;
-        if (dateTo && r.event_date > dateTo) return false;
+        
+        // Filter by selected date
+        if (selectedDate && !isSameDay(parseISO(r.event_date), selectedDate)) return false;
+
+        // Filter by location
+        if (locationFilter !== "all" && r.event_id) {
+             // We need to find the event to check its location
+             const evt = events.find(e => e.id === r.event_id);
+             if (evt && evt.location !== locationFilter) return false;
+        }
+
         return true;
     });
 
@@ -269,7 +318,8 @@ th{background:#f1f5f9}
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `inscriptions_evenements_${dateFrom || "debut"}_${dateTo || "fin"}.csv`;
+        const dateStr = format(selectedDate, "yyyy-MM-dd");
+        a.download = `inscriptions_evenements_${dateStr}.csv`;
         a.click();
         URL.revokeObjectURL(url);
     };
@@ -278,32 +328,32 @@ th{background:#f1f5f9}
         switch (r.status) {
             case "confirmed":
             case "pending_payment":
-                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-green-100 text-green-800">✅ Inscrit</span>;
+                return <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm">inscrit</span>;
             case "waiting_list":
-                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-800">⏳ Sur liste</span>;
+                return <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-blue-50 text-blue-600 border border-blue-100 shadow-sm">sur liste</span>;
             case "cancelled":
-                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-red-100 text-red-800">🚫 Annulé</span>;
+                return <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-rose-50 text-rose-600 border border-rose-100 shadow-sm">annulé</span>;
             case "absent":
-                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-purple-100 text-purple-800">❌ Absent</span>;
+                return <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-slate-50 text-slate-500 border border-slate-200 shadow-sm">absent</span>;
             case "event_deleted":
-                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-orange-100 text-orange-800">🗑️ Supprimée</span>;
+                return <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-amber-50 text-amber-600 border border-amber-100 shadow-sm whitespace-nowrap">évènement supprimé</span>;
             default:
-                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-gray-100 text-gray-600">{r.status}</span>;
+                return <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-gray-50 text-gray-500 border border-gray-200 shadow-sm">{r.status}</span>;
         }
     };
 
     const getPaymentBadge = (r: AdminEventRegistrationItem) => {
         switch (r.payment_status) {
             case "a_valider":
-                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-800">⏳ À valider</span>;
+                return <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-amber-50 text-amber-600 border border-amber-100 shadow-sm">à valider</span>;
             case "en_attente":
-                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-slate-100 text-slate-800">📁 En attente</span>;
+                return <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-slate-100 text-slate-500 border border-slate-200 shadow-sm uppercase tracking-wider">en attente</span>;
             case "paye":
-                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-green-100 text-green-800">💰 Payé</span>;
+                return <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm">payé</span>;
             case "rembourse":
-                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-800">↩️ Remboursé</span>;
+                return <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-sm">remboursé</span>;
             default:
-                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-gray-100 text-gray-600">{r.payment_status}</span>;
+                return <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-gray-50 text-gray-500 border border-gray-200 shadow-sm">{r.payment_status}</span>;
         }
     };
 
@@ -321,160 +371,253 @@ th{background:#f1f5f9}
 
     if (loading) return <div className="p-8 text-center bg-gray-50 min-h-screen">Chargement...</div>;
 
+    const clubColor = tenant?.primary_color;
+
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
+        <div className="min-h-screen bg-white flex flex-col md:flex-row overflow-x-hidden">
             <Sidebar user={user} />
-            <main className="flex-1 p-8 overflow-auto">
-                <div className="max-w-7xl mx-auto space-y-6">
-                    {/* Header */}
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">🎉 Inscriptions aux événements</h1>
-                            <p className="text-slate-500 mt-1">Gestion des inscriptions aux événements</p>
-                        </div>
-                        <button onClick={() => { setShowCreate(true); loadFormOptions(); }}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                            ➕ Nouvelle inscription
-                        </button>
-                    </div>
+            <main className="flex-1 px-5 pb-5 md:p-12 pt-8 md:pt-14">
+                <div className="max-w-7xl mx-auto">
+                    <div className="md:grid md:grid-cols-[320px_1fr] md:gap-10 items-start">
+                        {/* Sidebar avec Calendrier et Filtres */}
+                        <aside className="md:sticky md:top-14 space-y-6 mb-8 md:mb-0">
+                            <header className="px-1 space-y-1">
+                                <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                                    <span className="text-2xl">🎉</span> Inscriptions
+                                </h1>
+                                <p className="text-slate-500 font-medium text-[11px] md:text-xs uppercase tracking-wider">Gestion des inscrits aux évènements</p>
+                            </header>
 
-                    {/* Message */}
-                    {message && (
-                        <div className={`p-4 rounded-lg border ${message.type === "success" ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-800"}`}>
-                            {message.text}
-                        </div>
-                    )}
+                            {/* Calendar Card */}
+                            <div className="bg-white -mx-5 md:mx-0 rounded-none md:rounded-3xl shadow-xl shadow-slate-200/60 border-b md:border border-slate-100 p-4 md:p-2">
+                                <div className="flex items-center justify-between mb-1 px-2">
+                                    <h2 className="font-semibold text-slate-800 capitalize text-[13px] md:text-sm">
+                                        {format(currentMonth, 'MMMM yyyy', { locale: fr })}
+                                    </h2>
+                                    <div className="flex gap-1">
+                                        <button onClick={handlePrevMonth} className="p-1.5 hover:bg-slate-50 rounded-full text-slate-400 transition-colors">←</button>
+                                        <button onClick={handleNextMonth} className="p-1.5 hover:bg-slate-50 rounded-full text-slate-400 transition-colors">→</button>
+                                    </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-7 gap-0.5 md:gap-1">
+                                    {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((day, i) => (
+                                        <div key={i} className="text-center text-[9px] md:text-[10px] font-bold text-slate-400 py-1 uppercase tracking-tight">{day}</div>
+                                    ))}
+                                    {(() => {
+                                        const firstDay = startOfMonth(currentMonth).getDay();
+                                        const offset = firstDay === 0 ? 6 : firstDay - 1;
+                                        return Array.from({ length: offset }, (_, i) => (
+                                            <div key={`empty-${i}`} className="p-1 md:p-2 md:aspect-square" />
+                                        ));
+                                    })()}
+                                    {daysInMonth.map((day, i) => {
+                                        const isSelected = isSameDay(day, selectedDate);
+                                        const isToday = isSameDay(day, startOfToday());
+                                        return (
+                                            <button
+                                                key={i}
+                                                onClick={() => handleSetDate(day)}
+                                                className={`
+                                                    relative py-2 md:py-0 rounded-xl text-xs md:text-sm transition-all flex flex-col items-center justify-center md:aspect-square
+                                                    ${isSelected ? 'shadow-lg text-white font-bold' : 'hover:bg-slate-50 text-slate-700 font-medium'}
+                                                `}
+                                                style={{ 
+                                                    backgroundColor: isSelected ? clubColor : undefined,
+                                                    color: isSelected ? 'white' : (isToday ? clubColor : undefined)
+                                                }}
+                                            >
+                                                <span>{day.getDate()}</span>
+                                                {isToday && (
+                                                    <div 
+                                                        className={`absolute bottom-1 w-3 md:w-5 h-[2px] rounded-full ${isSelected ? 'bg-white' : ''}`}
+                                                        style={{ backgroundColor: !isSelected ? clubColor : undefined }}
+                                                    ></div>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
 
-                    {/* Filters */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-                        <div className="flex flex-col md:flex-row gap-3 items-end">
-                            <div className="flex-1">
-                                <label className="block text-xs font-medium text-slate-500 mb-1">🔍 Rechercher</label>
-                                <input type="text" placeholder="Nom, intitulé d'événement..."
-                                    value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm" />
-                            </div>
-                            <div className="flex-1 min-w-[200px]">
-                                <MultiSelect
-                                    label="Statut(s)"
-                                    options={[
-                                        { id: "confirmed", label: "Inscrit" },
-                                        { id: "waiting_list", label: "Sur liste" },
-                                        { id: "cancelled", label: "Annulé" },
-                                        { id: "absent", label: "Absent" },
-                                    ]}
-                                    selected={filterStatuses}
-                                    onChange={setFilterStatuses}
-                                    placeholder="Toutes"
-                                />
-                            </div>
-                            <div className="flex-1 min-w-[200px]">
-                                <MultiSelect
-                                    label="Paiement(s)"
-                                    options={[
-                                        { id: "a_valider", label: "À valider" },
-                                        { id: "en_attente", label: "En attente" },
-                                        { id: "paye", label: "Payé" },
-                                        { id: "rembourse", label: "Remboursé" },
-                                    ]}
-                                    selected={filterPayments}
-                                    onChange={setFilterPayments}
-                                    placeholder="Tous"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-slate-500 mb-1">Du</label>
-                                <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-                                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-slate-500 mb-1">Au</label>
-                                <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-                                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
-                            </div>
-                            <button onClick={handleExport}
-                                className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors text-sm whitespace-nowrap">
-                                📥 Export Excel
-                            </button>
-                        </div>
-                        {(searchTerm || filterStatuses.length > 0 || filterPayments.length > 0 || dateFrom || dateTo) && (
-                            <div className="mt-2 text-xs text-slate-500">
-                                {filteredRegistrations.length} inscription{filteredRegistrations.length > 1 ? "s" : ""} affichée{filteredRegistrations.length > 1 ? "s" : ""}
-                            </div>
-                        )}
-                    </div>
+                            {/* Additional Filters Card */}
+                            <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 space-y-4 shadow-sm">
+                                <div className="space-y-4">
+                                    <div className="flex-1">
+                                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">🔍 Recherche</label>
+                                        <input type="text" placeholder="Nom, évènement..."
+                                            value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                                            className="w-full px-4 py-3 bg-white border border-slate-100 rounded-2xl focus:ring-2 focus:ring-slate-200 focus:border-transparent text-sm shadow-sm transition-all" />
+                                    </div>
 
-                    {/* Table */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Heure</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Intitulé</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nom</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tarif</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paiement</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {filteredRegistrations.map((reg) => (
-                                        <tr key={reg.id} className="hover:bg-gray-50">
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
-                                                {reg.event_date ? new Date(reg.event_date).toLocaleDateString("fr-FR") : "—"}
-                                            </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
-                                                {reg.event_time || "—"}
-                                            </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm">
-                                                <div className="flex items-center gap-1">
-                                                    <span className="font-medium text-slate-900">{reg.event_title || "—"}</span>
-                                                    {reg.notes && <span title={reg.notes} className="text-blue-400 cursor-help">📝</span>}
+                                    <div className="flex-1">
+                                        <MultiSelect
+                                            label="Statuts"
+                                            options={[
+                                                { id: "confirmed", label: "Inscrit" },
+                                                { id: "waiting_list", label: "Sur liste" },
+                                                { id: "cancelled", label: "Annulé" },
+                                                { id: "absent", label: "Absent" },
+                                            ]}
+                                            selected={filterStatuses}
+                                            onChange={setFilterStatuses}
+                                            placeholder="Tous"
+                                        />
+                                    </div>
+
+                                    <div className="flex-1">
+                                        <MultiSelect
+                                            label="Paiements"
+                                            options={[
+                                                { id: "a_valider", label: "À valider" },
+                                                { id: "en_attente", label: "En attente" },
+                                                { id: "paye", label: "Payé" },
+                                                { id: "rembourse", label: "Remboursé" },
+                                            ]}
+                                            selected={filterPayments}
+                                            onChange={setFilterPayments}
+                                            placeholder="Tous"
+                                        />
+                                    </div>
+
+                                    <div className="pt-2">
+                                        <button onClick={() => { setShowCreate(true); loadFormOptions(); }}
+                                            className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-all font-bold text-sm shadow-xl shadow-slate-200 active:scale-95">
+                                            ➕ Inscrire quelqu'un
+                                        </button>
+                                    </div>
+
+                                    <div className="pt-2">
+                                        <button onClick={handleExport}
+                                            className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-white border border-slate-100 text-slate-700 rounded-2xl hover:bg-slate-50 transition-all font-bold text-sm shadow-sm active:scale-95">
+                                            📥 Export CSV
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </aside>
+
+                        {/* Main Content Area */}
+                        <div className="space-y-6 pt-2 md:pt-1">
+                            {/* Message */}
+                            {message && (
+                                <div className={`p-4 rounded-2xl border animate-in fade-in slide-in-from-top-2 shadow-sm ${message.type === "success" ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-800"}`}>
+                                    <div className="flex items-center gap-3">
+                                        <span>{message.type === "success" ? "✅" : "⚠️"}</span>
+                                        <span className="text-sm font-medium">{message.text}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Header avec Date et Location */}
+                            <div className="flex items-center justify-between gap-4 px-1 mb-4">
+                                <h3 className="font-medium text-slate-400 text-sm lowercase whitespace-nowrap">
+                                    {format(selectedDate, 'eeee d MMMM', { locale: fr })}
+                                </h3>
+                                
+                                {tenant && (tenant.locations || []).length > 0 && (
+                                    <div className="relative inline-block w-auto shrink-0">
+                                        <button 
+                                            onClick={() => setIsLocationMenuOpen(!isLocationMenuOpen)}
+                                            className="flex items-center justify-between bg-white border border-slate-100 text-slate-600 text-[11px] md:text-[12px] font-medium rounded-2xl px-3 md:px-4 py-2 md:py-2.5 outline-none transition-all cursor-pointer shadow-sm hover:shadow-md hover:border-slate-200 gap-2"
+                                        >
+                                            <span className="truncate max-w-[100px] md:max-w-[150px]">
+                                                {locationFilter === "all" ? "Tous les lieux" : locationFilter}
+                                            </span>
+                                            <svg className={`w-3 h-3 md:w-4 md:h-4 text-slate-400 transition-transform duration-200 ${isLocationMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </button>
+
+                                        {isLocationMenuOpen && (
+                                            <>
+                                                <div className="fixed inset-0 z-40" onClick={() => setIsLocationMenuOpen(false)} />
+                                                <div className="absolute top-full right-0 mt-2 z-50 w-48 md:w-64 bg-white border border-slate-100 rounded-2xl shadow-xl shadow-slate-200/50 p-2 animate-in fade-in slide-in-from-top-2">
+                                                    <button
+                                                        onClick={() => { setLocationFilter("all"); setIsLocationMenuOpen(false); }}
+                                                        className={`w-full text-left px-4 py-2.5 rounded-xl text-[12px] font-medium transition-colors ${locationFilter === "all" ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"}`}
+                                                    >
+                                                        Tous les lieux
+                                                    </button>
+                                                    {(tenant.locations || []).map((loc) => (
+                                                        <button
+                                                            key={loc}
+                                                            onClick={() => { setLocationFilter(loc); setIsLocationMenuOpen(false); }}
+                                                            className={`w-full text-left px-4 py-2.5 rounded-xl text-[12px] font-medium transition-colors mt-1 ${locationFilter === loc ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"}`}
+                                                        >
+                                                            {loc}
+                                                        </button>
+                                                    ))}
                                                 </div>
-                                            </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm">
-                                                <div className="flex items-center gap-1">
-                                                    <span className="font-medium text-slate-900">{reg.user_name}</span>
-                                                    {reg.created_by_admin && <span title="Créé par le manager" className="text-amber-500">🛡️</span>}
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Cards List */}
+                            <div className="space-y-4">
+                                {filteredRegistrations.map((reg) => (
+                                    <div 
+                                        key={reg.id} 
+                                        className="group bg-white rounded-3xl border transition-all duration-500 hover:shadow-xl flex flex-col overflow-hidden"
+                                        style={{ 
+                                            boxShadow: `3px 4px 14px -2px ${clubColor}30`,
+                                            borderColor: `${clubColor}15`
+                                        }}
+                                    >
+                                        <div className="px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                            <div className="flex-1 min-w-0 space-y-1">
+                                                <div className="flex items-center gap-3 mb-1">
+                                                    <span className="text-sm font-bold text-slate-900">{reg.event_time}</span>
+                                                    <h4 className="text-base font-bold text-slate-800 truncate">{reg.event_title}</h4>
                                                 </div>
-                                            </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-700">
-                                                {formatPrice(reg.price_paid_cents)}
-                                            </td>
-                                            <td className="px-4 py-3 whitespace-nowrap">
-                                                {getPaymentBadge(reg)}
-                                            </td>
-                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-sm font-medium text-slate-600">{reg.user_name}</span>
+                                                    {reg.created_by_admin && <span title="Ajouté par un manager" className="text-amber-500 text-xs">🛡️</span>}
+                                                    {reg.user_phone && <span className="text-xs text-slate-400">📞 {reg.user_phone}</span>}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 flex-wrap">
                                                 {getStatusBadge(reg)}
-                                            </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm space-x-2">
+                                                {getPaymentBadge(reg)}
+                                                <div className="ml-2 font-bold text-slate-900 text-sm">
+                                                    {formatPrice(reg.price_paid_cents)}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="px-6 py-3 bg-slate-50/50 flex items-center justify-between border-t border-slate-100/50">
+                                            <div className="flex items-center gap-4">
+                                                {reg.notes && (
+                                                    <div className="flex items-center gap-1.5 text-xs text-blue-500 font-medium bg-blue-50 px-2 py-1 rounded-lg">
+                                                        <span>📝</span>
+                                                        <span className="truncate max-w-[150px]">{reg.notes}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-3">
                                                 {reg.status !== "event_deleted" && (
                                                     <>
-                                                        <button onClick={() => openEdit(reg)} className="text-blue-600 hover:text-blue-800 font-medium" title="Modifier">✏️</button>
-                                                        <button onClick={() => openInvoice(reg)} className="text-gray-600 hover:text-gray-800 font-medium" title="Facture">📄</button>
-                                                        <button onClick={() => setDeleteConfirmId(reg.id)} className="text-red-600 hover:text-red-800 font-medium" title="Supprimer">🗑️</button>
+                                                        <button onClick={() => openEdit(reg)} className="w-9 h-9 flex items-center justify-center bg-white border border-slate-100 rounded-xl text-blue-500 hover:bg-blue-50 transition-all shadow-sm" title="Modifier">✏️</button>
+                                                        <button onClick={() => openInvoice(reg)} className="w-9 h-9 flex items-center justify-center bg-white border border-slate-100 rounded-xl text-slate-500 hover:bg-slate-50 transition-all shadow-sm" title="Facture">📄</button>
+                                                        <button onClick={() => setDeleteConfirmId(reg.id)} className="w-9 h-9 flex items-center justify-center bg-white border border-slate-100 rounded-xl text-rose-500 hover:bg-rose-50 transition-all shadow-sm" title="Supprimer">🗑️</button>
                                                     </>
                                                 )}
-                                                {reg.status === "event_deleted" && (
-                                                    <span className="text-slate-400 text-xs italic">—</span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {filteredRegistrations.length === 0 && (
-                                        <tr>
-                                            <td colSpan={8} className="px-6 py-8 text-center text-slate-500">
-                                                {searchTerm || dateFrom || dateTo || filterStatuses.length > 0 || filterPayments.length > 0
-                                                    ? "Aucune inscription ne correspond aux filtres"
-                                                    : "Aucune inscription pour le moment"}
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+
+                                {filteredRegistrations.length === 0 && (
+                                    <div className="text-center py-20 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
+                                        <div className="text-3xl mb-3">📭</div>
+                                        <p className="text-slate-400 text-sm italic font-medium">
+                                            Aucune inscription pour cette date et ces critères.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

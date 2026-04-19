@@ -45,6 +45,7 @@ export default function GestionInscriptionsPage() {
     const [confirmingReactivateId, setConfirmingReactivateId] = useState<string | null>(null);
     const [restorationErrorUsers, setRestorationErrorUsers] = useState<string[] | null>(null);
     const [viewingContact, setViewingContact] = useState<AdminBookingItem | AdminEventRegistrationItem | null>(null);
+    const [isLocationMenuOpen, setIsLocationMenuOpen] = useState(false);
 
     // Form for editing session
     const [editFormData, setEditFormData] = useState({
@@ -321,7 +322,7 @@ export default function GestionInscriptionsPage() {
 
                     <div className="md:grid md:grid-cols-[320px_1fr] md:gap-10 items-start">
                         {/* Colonne Gauche: Calendrier */}
-                        <aside className="md:sticky md:top-14 space-y-6">
+                        <aside className="md:sticky md:top-14 space-y-6 mb-8 md:mb-0">
                             <header className="px-1 space-y-1">
                                 <h1 className="text-xl md:text-2xl font-medium text-slate-900 tracking-tight flex items-center gap-2">
                                     <span className="text-2xl md:text-3xl">📝</span> Gestion des inscriptions
@@ -329,7 +330,7 @@ export default function GestionInscriptionsPage() {
                                 <p className="text-slate-500 font-medium text-[11px] md:text-xs">Gérez vos séances et participants</p>
                             </header>
 
-                            <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-1.5 md:p-2">
+                            <div className="bg-white -mx-5 md:mx-0 rounded-none md:rounded-3xl shadow-xl shadow-blue-900/10 border-b md:border border-slate-200 p-4 md:p-2">
                                 <div className="flex items-center justify-between mb-1 px-2">
                                     <h2 className="font-semibold text-slate-800 capitalize text-[13px] md:text-sm">
                                         {format(currentMonth, 'MMMM yyyy', { locale: fr })}
@@ -345,11 +346,11 @@ export default function GestionInscriptionsPage() {
                                         <div key={i} className="text-center text-[9px] md:text-[10px] font-bold text-slate-400 py-1 uppercase tracking-tight">{day}</div>
                                     ))}
                                     {calendarDays.map((day, i) => {
-                                        const { sessions: sCount, events: eCount } = itemsForDay(day);
-                                        const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
-                                        const isToday = isSameDay(day, new Date());
                                         const isSelected = isSameDay(day, selectedDate);
+                                        const isToday = isSameDay(day, new Date());
+                                        const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
                                         const clubColor = tenant?.primary_color;
+                                        
                                         if (!clubColor && isToday && !isSelected) {
                                             return (
                                                 <button
@@ -372,15 +373,16 @@ export default function GestionInscriptionsPage() {
                                                     ${isSelected ? 'shadow-lg text-white font-bold' : 'hover:bg-slate-50 text-slate-700 font-medium'}
                                                 `}
                                                 style={{ 
-                                                    backgroundColor: isSelected ? (clubColor || '#cbd5e1') : undefined,
-                                                    color: isSelected ? 'white' : (isToday && !isSelected ? (clubColor || '#94a3b8') : undefined)
+                                                    backgroundColor: isSelected ? clubColor : undefined,
+                                                    color: isSelected ? 'white' : (isToday ? clubColor : undefined)
                                                 }}
                                             >
                                                 <span>{day.getDate()}</span>
                                                 {isToday && (
-                                                    <div className={`absolute bottom-1 w-3 md:w-5 h-[2px] rounded-full ${isSelected ? 'bg-white' : ''}`} 
-                                                         style={{ backgroundColor: !isSelected ? (clubColor || '#cbd5e1') : undefined }}
-                                                    />
+                                                    <div 
+                                                        className={`absolute bottom-1 w-3 md:w-5 h-[2px] rounded-full ${isSelected ? 'bg-white' : ''}`}
+                                                        style={{ backgroundColor: !isSelected ? clubColor : undefined }}
+                                                    ></div>
                                                 )}
                                             </button>
                                         );
@@ -390,39 +392,66 @@ export default function GestionInscriptionsPage() {
                         </aside>
 
                         {/* Colonne Droite: Activités du jour */}
-                        <div className="space-y-3 pt-4 md:pt-2">
-                            <h3 className="text-sm font-medium text-slate-400 px-1">
-                                {format(selectedDate, "eeee d MMMM", { locale: fr })}
-                            </h3>
+                        <div className="space-y-4 pt-2 md:pt-1">
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between gap-4 px-1 mb-4">
+                                    <h3 className="text-sm font-medium text-slate-400 lowercase whitespace-nowrap">
+                                        {format(selectedDate, "eeee d MMMM", { locale: fr })}
+                                    </h3>
 
-                            {/* Filtres par lieu (chips) */}
-                            {tenant?.locations && tenant.locations.length > 1 && (
-                                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
-                                    <button
-                                        onClick={() => setLocationFilter('all')}
-                                        className={`px-4 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all border ${
-                                            locationFilter === 'all' 
-                                            ? 'bg-slate-900 text-white border-slate-900 shadow-sm' 
-                                            : 'bg-white text-slate-500 border-slate-100 hover:border-slate-200'
-                                        }`}
-                                    >
-                                        Toutes les salles
-                                    </button>
-                                    {tenant.locations.map((loc) => (
-                                        <button
-                                            key={loc}
-                                            onClick={() => setLocationFilter(loc)}
-                                            className={`px-4 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all border ${
-                                                locationFilter === loc 
-                                                ? 'bg-violet-600 text-white border-violet-600 shadow-sm' 
-                                                : 'bg-white text-slate-500 border-slate-100 hover:border-slate-200'
-                                            }`}
-                                        >
-                                            {loc}
-                                        </button>
-                                    ))}
+                                    {tenant?.locations && tenant.locations.length > 1 && (
+                                        <div className="relative inline-block w-auto shrink-0">
+                                            <button 
+                                                onClick={() => setIsLocationMenuOpen(!isLocationMenuOpen)}
+                                                className="flex items-center justify-between bg-white border border-slate-100 text-slate-600 text-[11px] md:text-[12px] font-medium rounded-2xl px-3 md:px-4 py-2 md:py-2.5 outline-none transition-all cursor-pointer shadow-sm hover:shadow-md hover:border-slate-200 gap-2"
+                                            >
+                                                <span className="truncate max-w-[100px] md:max-w-[150px]">
+                                                    {locationFilter === "all" ? "Toutes les salles" : locationFilter}
+                                                </span>
+                                                <svg className={`w-3 h-3 md:w-4 md:h-4 text-slate-400 transition-transform duration-200 ${isLocationMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </button>
+
+                                            {isLocationMenuOpen && (
+                                                <>
+                                                    <div 
+                                                        className="fixed inset-0 z-40" 
+                                                        onClick={() => setIsLocationMenuOpen(false)}
+                                                    />
+                                                    <div className="absolute top-full right-0 mt-2 z-50 w-48 md:w-64 bg-white border border-slate-100 rounded-2xl shadow-xl shadow-slate-200/50 p-2 animate-in fade-in slide-in-from-top-2">
+                                                        <button
+                                                            onClick={() => {
+                                                                setLocationFilter("all");
+                                                                setIsLocationMenuOpen(false);
+                                                            }}
+                                                            className={`w-full text-left px-4 py-2.5 rounded-xl text-[12px] font-medium transition-colors ${
+                                                                locationFilter === "all" ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"
+                                                            }`}
+                                                        >
+                                                            Toutes les salles
+                                                        </button>
+                                                        {tenant.locations.map((loc) => (
+                                                            <button
+                                                                key={loc}
+                                                                onClick={() => {
+                                                                    setLocationFilter(loc);
+                                                                    setIsLocationMenuOpen(false);
+                                                                }}
+                                                                className={`w-full text-left px-4 py-2.5 rounded-xl text-[12px] font-medium transition-colors mt-1 ${
+                                                                    locationFilter === loc ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"
+                                                                }`}
+                                                            >
+                                                                {loc}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
-                            )}
+                            </div>
                             
                             {!hasItems ? (
                                 <div className="bg-white rounded-3xl p-16 text-center border border-dashed border-slate-200">
@@ -442,66 +471,75 @@ export default function GestionInscriptionsPage() {
                                         return (
                                             <div 
                                                 key={session.id} 
-                                                className={`bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden group transition-all hover:border-violet-100 ${!session.is_active ? 'opacity-50' : ''}`}
+                                                className={`bg-white rounded-2xl border transition-all duration-500 hover:shadow-xl overflow-hidden group ${!session.is_active ? 'opacity-50' : ''}`}
+                                                style={{ 
+                                                    boxShadow: `3px 4px 14px -2px ${(tenant?.primary_color || '#2563eb')}40`,
+                                                    borderColor: `${(tenant?.primary_color || '#2563eb')}20`
+                                                }}
                                             >
                                                 {/* Entête Séance */}
-                                                <div className="p-4 md:p-5">
+                                                <div className="p-3 md:p-4">
                                                     <div className="flex flex-col gap-1 min-w-0 flex-1">
-                                                        {/* Ligne 1: Heure + Titre + Actions (OU Confirmation Zen) */}
-                                                        <div className="flex items-center justify-between gap-3 min-w-0 pr-2">
-                                                            <div className="flex items-center gap-3 min-w-0">
-                                                                 <span className="text-slate-900 font-semibold text-sm md:text-base shrink-0">
-                                                                    {format(new Date(session.start_time), "HH:mm")}
-                                                                </span>
-                                                                <div className="flex items-center gap-1.5 min-w-0">
-                                                                    <h4 className="font-medium text-sm md:text-base text-slate-800 first-letter:uppercase leading-tight">
-                                                                        {session.title}
-                                                                    </h4>
-                                                                    {!session.is_active && (
-                                                                      <span className="text-[10px] bg-rose-50 text-rose-500 px-2 py-0.5 rounded-lg font-medium shrink-0 border border-rose-100">Annulée</span>
-                                                                    )}
-                                                                </div>
+                                                        {/* Ligne 1: Heure + Titre */}
+                                                        <div className="flex items-center gap-3 min-w-0">
+                                                            <span className="text-slate-900 font-semibold text-sm md:text-base shrink-0">
+                                                                {format(new Date(session.start_time), "HH:mm")}
+                                                            </span>
+                                                            <div className="flex items-center gap-1.5 min-w-0">
+                                                                <h4 className="font-medium text-sm md:text-base text-slate-800 first-letter:uppercase leading-tight">
+                                                                    {session.title}
+                                                                </h4>
+                                                                {!session.is_active && (
+                                                                  <span className="text-[10px] bg-rose-50 text-rose-500 px-2 py-0.5 rounded-lg font-medium shrink-0 border border-rose-100">Annulée</span>
+                                                                )}
                                                             </div>
-                                                            
+                                                        </div>
+
+                                                        {/* Ligne 2: Attribution + Salle + Actions */}
+                                                        <div className="flex items-center justify-between gap-4 w-full">
+                                                            <div className="flex items-center gap-2 text-slate-600 text-xs md:text-sm font-medium min-w-0">
+                                                                <div className="flex items-center gap-1.5 truncate">
+                                                                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                                    </svg>
+                                                                    <span className="truncate">{session.instructor_name || "Coach"}</span>
+                                                                </div>
+                                                                {session.location && (
+                                                                    <>
+                                                                        <span className="text-slate-300">•</span>
+                                                                        <span className="truncate flex items-center gap-1">
+                                                                            <span className="text-xs">📍</span> {session.location}
+                                                                        </span>
+                                                                    </>
+                                                                )}
+                                                            </div>
+
                                                             <div className="flex items-center">
                                                                 {confirmingSessionId === session.id ? (
                                                                     <div className="flex items-center gap-3 shrink-0 animate-in fade-in slide-in-from-right-2 duration-300">
-                                                                        <span className="text-[10px] font-medium text-rose-500 tracking-tight">
-                                                                            <span className="sm:hidden">Annuler ?</span>
-                                                                            <span className="hidden sm:inline text-[11px]">Annuler cette séance ?</span>
-                                                                        </span>
+                                                                        <span className="text-[10px] font-medium text-rose-500 tracking-tight">Annuler ?</span>
                                                                         <div className="flex items-center gap-2">
-                                                                            <button 
-                                                                                onClick={() => setConfirmingSessionId(null)}
-                                                                                className="px-2 py-1 text-[10px] font-medium text-slate-400 hover:text-slate-600 tracking-widest transition-colors"
-                                                                            >
-                                                                                Non
-                                                                            </button>
-                                                                            <button 
-                                                                                onClick={() => handleCancelSession(session)}
-                                                                                className="px-3 py-1 bg-rose-500 text-white rounded-full text-[9px] font-medium tracking-widest hover:bg-rose-600 transition-all shadow-sm shadow-rose-100 active:scale-95"
-                                                                            >
-                                                                                Oui
-                                                                            </button>
+                                                                            <button onClick={() => setConfirmingSessionId(null)} className="px-2 py-1 text-[10px] font-medium text-slate-400">Non</button>
+                                                                            <button onClick={() => handleCancelSession(session)} className="px-3 py-1 bg-rose-500 text-white rounded-full text-[9px] font-medium transition-all shadow-sm active:scale-95">Oui</button>
                                                                         </div>
                                                                     </div>
                                                                 ) : session.is_active ? (
-                                                                    <>
+                                                                    <div className="flex items-center gap-0 shrink-0">
                                                                         <button 
                                                                             onClick={() => handleOpenEditSession(session)}
-                                                                            className="p-1 hover:bg-slate-50 rounded-lg text-slate-300 hover:text-slate-600 transition-colors"
+                                                                            className="p-0.5 hover:bg-slate-50 rounded-lg text-slate-300 hover:text-slate-600 transition-colors"
                                                                             title="Modifier"
                                                                         >
-                                                                            <span className="text-xs">✏️</span>
+                                                                            <span className="text-sm">✏️</span>
                                                                         </button>
                                                                         <button 
                                                                             onClick={() => handleCancelSession(session)}
-                                                                            className="p-1 hover:bg-rose-50 rounded-lg text-slate-300 hover:text-rose-500 transition-colors"
+                                                                            className="p-0.5 hover:bg-rose-50 rounded-lg text-slate-300 hover:text-rose-500 transition-colors"
                                                                             title="Annuler"
                                                                         >
-                                                                            <span className="text-xs">🚫</span>
+                                                                            <span className="text-sm">🚫</span>
                                                                         </button>
-                                                                    </>
+                                                                    </div>
                                                                 ) : (
                                                                     <div className="flex items-center">
                                                                         {confirmingReactivateId === session.id ? (
@@ -509,21 +547,16 @@ export default function GestionInscriptionsPage() {
                                                                                 <span className="text-[10px] font-medium text-violet-600 tracking-tight">Rétablir ?</span>
                                                                                 <div className="flex items-center gap-2">
                                                                                     <button onClick={() => setConfirmingReactivateId(null)} className="text-[10px] font-medium text-slate-400">Non</button>
-                                                                                    <button 
-                                                                                        onClick={() => handleReactivateSession(session)}
-                                                                                        className="px-3 py-1 bg-violet-600 text-white rounded-full text-[9px] font-medium tracking-widest"
-                                                                                    >
-                                                                                        Oui
-                                                                                    </button>
+                                                                                    <button onClick={() => handleReactivateSession(session)} className="px-3 py-1 bg-violet-600 text-white rounded-full text-[9px] font-medium active:scale-95">Oui</button>
                                                                                 </div>
                                                                             </div>
                                                                         ) : (
                                                                             <button 
                                                                                 onClick={() => handleReactivateSession(session)}
-                                                                                className="p-1 hover:bg-violet-50 rounded-lg text-slate-300 hover:text-violet-600 transition-colors"
+                                                                                className="p-0.5 hover:bg-violet-50 rounded-lg text-slate-300 hover:text-violet-600 transition-colors"
                                                                                 title="Rétablir la séance"
                                                                             >
-                                                                                <span className="text-xs">🔄</span>
+                                                                                <span className="text-sm">🔄</span>
                                                                             </button>
                                                                         )}
                                                                     </div>
@@ -531,34 +564,27 @@ export default function GestionInscriptionsPage() {
                                                             </div>
                                                         </div>
 
-                                                        {/* Ligne 2: Attribution + Remplissage + Voir */}
-                                                        <div className="flex items-center justify-between gap-4 text-[11px] md:text-sm font-medium pr-2 w-full">
-                                                            <div className="flex items-center gap-4 min-w-0">
-                                                                <span className="truncate text-slate-400 flex items-center gap-1.5 min-w-0">
-                                                                    <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                                                    </svg>
-                                                                    <span className="truncate">{session.instructor_name || "Coach"}</span>
-                                                                    {session.location && (
-                                                                        <>
-                                                                            <span className="text-slate-200">•</span>
-                                                                            <span className="truncate flex items-center gap-1">
-                                                                                <span className="text-[10px]">📍</span> {session.location}
-                                                                            </span>
-                                                                        </>
-                                                                    )}
+                                                        {/* Ligne 3: Inscriptions + Voir les participants */}
+                                                        <div className="flex items-center justify-between gap-4 w-full">
+                                                            <div className="flex items-center gap-3">
+                                                                <span className={`font-bold text-sm md:text-base shrink-0 ${isHighAttendance ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                                                    {session.current_participants}/{session.max_participants}
                                                                 </span>
-                                                                
-                                                                <span className={`font-medium shrink-0 ${isHighAttendance ? 'text-emerald-500' : 'text-amber-500'}`}>
-                                                                  {session.current_participants}/{session.max_participants}
-                                                                </span>
+                                                                {isExpanded && participants.filter(p => p.status === 'pending' || (p as any).status === 'waiting_list').length > 0 && (
+                                                                    <span className="text-xs text-slate-400 flex items-center gap-1 animate-in fade-in duration-500 bg-slate-100/50 px-1.5 py-0.5 rounded-md">
+                                                                        ⏳ {participants.filter(p => p.status === 'pending' || (p as any).status === 'waiting_list').length}
+                                                                    </span>
+                                                                )}
                                                             </div>
-
+ 
                                                             <button 
                                                                 onClick={() => handleToggleParticipants(session, 'session')}
-                                                                className="text-slate-700 italic font-medium hover:text-slate-900 transition-colors focus:outline-none shrink-0"
+                                                                className={`px-3 py-1.5 rounded-xl text-[10px] md:text-[11px] font-medium transition-all active:scale-95 flex items-center gap-2 ${
+                                                                    isExpanded ? 'bg-slate-300 text-slate-700' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                                                                }`}
                                                             >
-                                                                → {isExpanded ? 'Fermer la liste' : 'Voir les participants'}
+                                                                <span>{isExpanded ? 'Masquer' : 'Voir les participants'}</span>
+                                                                <span className="text-xs">{isExpanded ? '↑' : '↓'}</span>
                                                             </button>
                                                         </div>
                                                     </div>
@@ -567,8 +593,8 @@ export default function GestionInscriptionsPage() {
                                                 {/* Inscriptions Inline fusionnées */}
                                                 {isExpanded && (
                                                     <div className="animate-in slide-in-from-top-2 duration-300">
-                                                        <div className="border-t border-slate-50" />
-                                                        <div className="bg-slate-50/40 p-4 md:p-5 space-y-2">
+                                                        <div className="border-t border-slate-200/60" />
+                                                        <div className="bg-slate-50/40 px-3 py-2 md:px-4 md:py-2.5 space-y-2">
                                                             {loadingParticipants ? (
                                                                 <div className="py-8 text-center text-slate-300 font-medium text-[11px] animate-pulse tracking-widest">Récupération des inscrits...</div>
                                                             ) : (
@@ -577,41 +603,45 @@ export default function GestionInscriptionsPage() {
                                                                         <div className="py-8 text-center text-slate-300 text-[10px] font-medium italic">Aucun inscrit pour le moment.</div>
                                                                     ) : (
                                                                         <div className="space-y-1.5">
-                                                                            {participants.sort((a,b) => (a.user_name || '').localeCompare(b.user_name || '')).map((p) => {
-                                                                                const isWaitlist = p.status === 'pending' || (p as any).status === 'waiting_list';
-                                                                                const hasWarning = p.has_pending_order;
-                                                                                
-                                                                                return (
-                                                                                    <div key={p.id} className="bg-white/80 rounded-2xl border border-slate-100/50 p-2 pl-4 flex items-center justify-between group/p">
-                                                                                        <div className="flex items-center gap-3 min-w-0">
-                                                                                            <div className={`w-2 h-2 rounded-full shrink-0 ${hasWarning ? 'bg-orange-500' : (p.status === 'absent' ? 'bg-slate-300' : (isWaitlist ? 'bg-slate-300' : 'bg-emerald-500'))}`} />
-                                                                                            <span className={`truncate text-xs tracking-tight ${isWaitlist ? 'text-slate-400 font-medium' : 'text-slate-700 font-bold'}`}>
-                                                                                                {p.user_name}
-                                                                                            </span>
-                                                                                            {p.status === 'session_cancelled' && (
-                                                                                                <span className="text-[9px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded-md font-medium">Session annulée</span>
-                                                                                            )}
+                                                                            {participants
+                                                                                .filter(p => p.status !== 'cancelled' && p.status !== 'session_cancelled' && p.status !== 'pending' && (p as any).status !== 'waiting_list')
+                                                                                .sort((a,b) => (a.user_name || '').localeCompare(b.user_name || ''))
+                                                                                .map((p) => {
+                                                                                    const hasWarning = p.has_pending_order;
+                                                                                    const isAbsent = p.status === 'absent';
+                                                                                    
+                                                                                    return (
+                                                                                        <div key={p.id} className="bg-white rounded-2xl border border-slate-100/50 p-2 pl-3 flex items-center justify-between group/p">
+                                                                                            <div className="flex items-center gap-3 min-w-0">
+                                                                                                {/* Appel (Présence) */}
+                                                                                                <button 
+                                                                                                    onClick={() => handleMarkAbsent(p, 'session')}
+                                                                                                    className={`w-7 h-7 flex items-center justify-center rounded-full transition-all active:scale-95 ${isAbsent ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-500'}`}
+                                                                                                    title={isAbsent ? "Marquer présent" : "Signaler absent"}
+                                                                                                >
+                                                                                                    <span className="text-xs">{isAbsent ? '❌' : '✅'}</span>
+                                                                                                </button>
+
+                                                                                                <span className="truncate text-xs tracking-tight text-slate-600 font-medium">
+                                                                                                    {p.user_name}
+                                                                                                </span>
+                                                                                            </div>
+                                                                                            
+                                                                                            <div className="flex items-center gap-1.5">
+                                                                                                {hasWarning && (
+                                                                                                    <span className="text-sm cursor-help" title="Commande à régulariser">⚠️</span>
+                                                                                                )}
+                                                                                                <button 
+                                                                                                    onClick={() => handleViewContact(p)}
+                                                                                                    className="w-7 h-7 flex items-center justify-center bg-slate-50 rounded-full text-slate-400 hover:text-slate-600 transition-all hover:bg-slate-100 active:scale-95"
+                                                                                                    title="Consulter le contact"
+                                                                                                >
+                                                                                                    <span className="text-[10px]">📞</span>
+                                                                                                </button>
+                                                                                            </div>
                                                                                         </div>
-                                                                                        
-                                                                                        <div className="flex items-center gap-1">
-                                                                                            <button 
-                                                                                                onClick={() => handleMarkAbsent(p, 'session')}
-                                                                                                className={`w-7 h-7 flex items-center justify-center border rounded-full transition-all active:scale-95 ${p.status === 'absent' ? 'bg-rose-500 border-rose-500 text-white' : 'bg-slate-50 border-slate-100 text-slate-300 hover:text-rose-500 hover:bg-rose-50'}`}
-                                                                                                title={p.status === 'absent' ? "Présent" : "Signaler absent"}
-                                                                                            >
-                                                                                                <span className="text-[10px]">{p.status === 'absent' ? '✖' : '👤'}</span>
-                                                                                            </button>
-                                                                                            <button 
-                                                                                                onClick={() => handleViewContact(p)}
-                                                                                                className="w-7 h-7 flex items-center justify-center bg-slate-50 border border-slate-100 rounded-full text-slate-300 hover:text-slate-600 transition-all hover:bg-slate-100 active:scale-95"
-                                                                                                title="Consulter le contact"
-                                                                                            >
-                                                                                                <span className="text-[10px]">📞</span>
-                                                                                            </button>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                );
-                                                                            })}
+                                                                                    );
+                                                                                })}
                                                                         </div>
                                                                     )}
                                                                 </>
@@ -632,54 +662,69 @@ export default function GestionInscriptionsPage() {
                                         return (
                                             <div 
                                                 key={event.id} 
-                                                className={`bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden group transition-all hover:border-amber-100 ${event.cancelled_at ? 'opacity-50' : ''}`}
+                                                className={`bg-white rounded-2xl border transition-all duration-500 hover:shadow-xl overflow-hidden group ${event.cancelled_at ? 'opacity-50' : ''}`}
+                                                style={{ 
+                                                    boxShadow: `3px 4px 14px -2px ${(tenant?.primary_color || '#2563eb')}40`,
+                                                    borderColor: `${(tenant?.primary_color || '#2563eb')}20`
+                                                }}
                                             >
                                                 {/* Entête Événement */}
-                                                <div className="p-4 md:p-5">
+                                                <div className="p-3 md:p-4">
                                                     <div className="flex flex-col gap-1 min-w-0 flex-1">
                                                         {/* Ligne 1: Heure + Titre */}
-                                                        <div className="flex items-center justify-between gap-3 min-w-0 pr-2">
-                                                            <div className="flex items-center gap-3 min-w-0">
-                                                                 <span className="text-slate-900 font-semibold text-sm md:text-base shrink-0">
-                                                                    {event.event_time}
-                                                                </span>
-                                                                <div className="flex items-center gap-1.5 min-w-0">
-                                                                    <h4 className="font-medium text-sm md:text-base text-slate-800 first-letter:uppercase leading-tight">
-                                                                        {event.title}
-                                                                    </h4>
-                                                                    <span className="text-sm shrink-0">✨</span>
-                                                                </div>
+                                                        <div className="flex items-center gap-3 min-w-0">
+                                                            <span className="text-slate-900 font-semibold text-sm md:text-base shrink-0">
+                                                                {event.event_time}
+                                                            </span>
+                                                            <div className="flex items-center gap-1.5 min-w-0">
+                                                                <h4 className="font-medium text-sm md:text-base text-slate-800 first-letter:uppercase leading-tight">
+                                                                    {event.title}
+                                                                </h4>
+                                                                <span className="text-sm shrink-0">✨</span>
                                                             </div>
                                                         </div>
 
-                                                        {/* Ligne 2: Attribution + Remplissage + Voir */}
-                                                        <div className="flex items-center justify-between gap-4 text-[11px] md:text-sm font-medium pr-2 w-full">
-                                                            <div className="flex items-center gap-4 min-w-0">
-                                                                <span className="truncate text-slate-400 flex items-center gap-1.5 min-w-0">
-                                                                    <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                        {/* Ligne 2: Attribution + Salle */}
+                                                        <div className="flex items-center justify-between gap-4 w-full">
+                                                            <div className="flex items-center gap-2 text-slate-600 text-xs md:text-sm font-medium min-w-0">
+                                                                <div className="flex items-center gap-1.5 truncate">
+                                                                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                                                     </svg>
                                                                     <span className="truncate">{event.instructor_name || "Staff"}</span>
-                                                                    {event.location && (
-                                                                        <>
-                                                                            <span className="text-slate-200">•</span>
-                                                                            <span className="truncate flex items-center gap-1">
-                                                                                <span className="text-[10px]">📍</span> {event.location}
-                                                                            </span>
-                                                                        </>
-                                                                    )}
-                                                                </span>
-                                                                
-                                                                <span className={`font-medium shrink-0 ${isHighAttendance ? 'text-emerald-500' : 'text-amber-500'}`}>
-                                                                  {event.registrations_count}/{event.max_places}
-                                                                </span>
+                                                                </div>
+                                                                {event.location && (
+                                                                    <>
+                                                                        <span className="text-slate-300">•</span>
+                                                                        <span className="truncate flex items-center gap-1">
+                                                                            <span className="text-xs">📍</span> {event.location}
+                                                                        </span>
+                                                                    </>
+                                                                )}
                                                             </div>
+                                                            {/* Pas de boutons d'action d'administration pour les évènements pour le moment */}
+                                                        </div>
 
+                                                        <div className="flex items-center justify-between gap-4 w-full">
+                                                            <div className="flex items-center gap-3">
+                                                                <span className={`font-bold text-sm md:text-base shrink-0 ${isHighAttendance ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                                                    {event.registrations_count}/{event.max_places}
+                                                                </span>
+                                                                {isExpanded && participants.filter(p => p.status === 'pending' || (p as any).status === 'waiting_list').length > 0 && (
+                                                                    <span className="text-xs text-slate-400 flex items-center gap-1 animate-in fade-in duration-500 bg-slate-100/50 px-1.5 py-0.5 rounded-md">
+                                                                        ⏳ {participants.filter(p => p.status === 'pending' || (p as any).status === 'waiting_list').length}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+ 
                                                             <button 
                                                                 onClick={() => handleToggleParticipants(event, 'event')}
-                                                                className="text-slate-700 italic font-medium hover:text-slate-900 transition-colors focus:outline-none shrink-0"
+                                                                className={`px-3 py-1.5 rounded-xl text-[10px] md:text-[11px] font-medium transition-all active:scale-95 flex items-center gap-2 ${
+                                                                    isExpanded ? 'bg-slate-300 text-slate-700' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                                                                }`}
                                                             >
-                                                                → {isExpanded ? 'Fermer la liste' : 'Voir les participants'}
+                                                                <span>{isExpanded ? 'Masquer' : 'Voir les participants'}</span>
+                                                                <span className="text-xs">{isExpanded ? '↑' : '↓'}</span>
                                                             </button>
                                                         </div>
                                                     </div>
@@ -688,8 +733,8 @@ export default function GestionInscriptionsPage() {
                                                 {/* Inscriptions Inline fusionnées (Events) */}
                                                 {isExpanded && (
                                                     <div className="animate-in slide-in-from-top-2 duration-300">
-                                                        <div className="border-t border-slate-50" />
-                                                        <div className="bg-slate-50/40 p-4 md:p-5 space-y-2">
+                                                        <div className="border-t border-slate-200/60" />
+                                                        <div className="bg-slate-50/40 px-3 py-2 md:px-4 md:py-2.5 space-y-2">
                                                             {loadingParticipants ? (
                                                                 <div className="py-8 text-center text-slate-300 font-medium text-[11px] animate-pulse tracking-widest">Récupération des inscrits...</div>
                                                             ) : (
@@ -698,33 +743,45 @@ export default function GestionInscriptionsPage() {
                                                                         <div className="py-8 text-center text-slate-300 text-[10px] font-medium italic">Aucun inscrit pour le moment.</div>
                                                                     ) : (
                                                                         <div className="space-y-1.5">
-                                                                            {participants.sort((a,b) => (a.user_name || '').localeCompare(b.user_name || '')).map((p) => (
-                                                                                <div key={p.id} className="bg-white/80 rounded-2xl border border-slate-100/50 p-2 pl-4 flex items-center justify-between group/p">
-                                                                                    <div className="flex items-center gap-3 min-w-0">
-                                                                                        <div className={`w-2 h-2 rounded-full shrink-0 ${p.status === 'absent' ? 'bg-slate-300' : 'bg-emerald-500'}`} />
-                                                                                        <span className="text-slate-700 font-semibold text-xs tracking-tight truncate">
-                                                                                            {p.user_name}
-                                                                                        </span>
-                                                                                    </div>
+                                                                            {participants
+                                                                                .filter(p => p.status !== 'cancelled' && p.status !== 'session_cancelled' && p.status !== 'pending' && (p as any).status !== 'waiting_list')
+                                                                                .sort((a,b) => (a.user_name || '').localeCompare(b.user_name || ''))
+                                                                                .map((p) => {
+                                                                                    const hasWarning = p.has_pending_order;
+                                                                                    const isAbsent = p.status === 'absent';
                                                                                     
-                                                                                    <div className="flex items-center gap-1">
-                                                                                        <button 
-                                                                                            onClick={() => handleMarkAbsent(p, 'event')}
-                                                                                            className={`w-7 h-7 flex items-center justify-center border rounded-full transition-all active:scale-95 ${p.status === 'absent' ? 'bg-rose-500 border-rose-500 text-white' : 'bg-slate-50 border-slate-100 text-slate-300 hover:text-rose-500 hover:bg-rose-50'}`}
-                                                                                            title={p.status === 'absent' ? "Présent" : "Signaler absent"}
-                                                                                        >
-                                                                                            <span className="text-[10px]">{p.status === 'absent' ? '✖' : '👤'}</span>
-                                                                                        </button>
-                                                                                        <button 
-                                                                                            onClick={() => handleViewContact(p)}
-                                                                                            className="w-7 h-7 flex items-center justify-center bg-slate-50 border border-slate-100 rounded-full text-slate-300 hover:text-slate-600 transition-all hover:bg-slate-100 active:scale-95"
-                                                                                            title="Consulter le contact"
-                                                                                        >
-                                                                                            <span className="text-[10px]">📞</span>
-                                                                                        </button>
-                                                                                    </div>
-                                                                                </div>
-                                                                            ))}
+                                                                                    return (
+                                                                                        <div key={p.id} className="bg-white rounded-2xl border border-slate-100/50 p-2 pl-3 flex items-center justify-between group/p">
+                                                                                            <div className="flex items-center gap-3 min-w-0">
+                                                                                                {/* Appel (Présence) */}
+                                                                                                <button 
+                                                                                                    onClick={() => handleMarkAbsent(p, 'event')}
+                                                                                                    className={`w-7 h-7 flex items-center justify-center rounded-full transition-all active:scale-95 ${isAbsent ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-500'}`}
+                                                                                                    title={isAbsent ? "Marquer présent" : "Signaler absent"}
+                                                                                                >
+                                                                                                    <span className="text-xs">{isAbsent ? '❌' : '✅'}</span>
+                                                                                                </button>
+
+                                                                                                <span className="truncate text-xs tracking-tight text-slate-600 font-medium">
+                                                                                                    {p.user_name}
+                                                                                                </span>
+                                                                                            </div>
+                                                                                            
+                                                                                            <div className="flex items-center gap-1.5">
+                                                                                                {hasWarning && (
+                                                                                                    <span className="text-sm cursor-help" title="Commande à régulariser">⚠️</span>
+                                                                                                )}
+                                                                                                <button 
+                                                                                                    onClick={() => handleViewContact(p)}
+                                                                                                    className="w-7 h-7 flex items-center justify-center bg-slate-50 rounded-full text-slate-400 hover:text-slate-600 transition-all hover:bg-slate-100 active:scale-95"
+                                                                                                    title="Consulter le contact"
+                                                                                                >
+                                                                                                    <span className="text-[10px]">📞</span>
+                                                                                                </button>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    );
+                                                                                })}
                                                                         </div>
                                                                     )}
                                                                 </>
@@ -916,7 +973,10 @@ export default function GestionInscriptionsPage() {
                                         className="w-8 h-8 rounded-full bg-white border border-slate-100 text-slate-400 flex items-center justify-center hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all active:scale-90"
                                         title="Copier le numéro"
                                     >
-                                        <span className="text-xs">📋</span>
+                                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                        </svg>
                                     </button>
                                 )}
                             </div>
@@ -966,7 +1026,7 @@ export default function GestionInscriptionsPage() {
 
                         <button 
                             onClick={() => setViewingContact(null)}
-                            className="w-full py-4 mt-8 bg-slate-900 text-white rounded-2xl font-medium hover:bg-slate-800 transition-all active:scale-95 text-xs tracking-widest uppercase"
+                            className="px-12 py-3.5 mx-auto block mt-8 bg-slate-900 text-white rounded-2xl font-medium hover:bg-slate-800 transition-all active:scale-95 text-xs tracking-wide"
                         >
                             Fermer
                         </button>
@@ -999,7 +1059,7 @@ export default function GestionInscriptionsPage() {
 
                         <button 
                             onClick={() => setRestorationErrorUsers(null)}
-                            className="w-full py-4 bg-rose-600 text-white rounded-2xl font-medium hover:bg-rose-700 transition-all active:scale-95 text-xs tracking-widest uppercase shadow-lg shadow-rose-100"
+                            className="px-12 py-3.5 mx-auto block bg-rose-600 text-white rounded-2xl font-medium hover:bg-rose-700 transition-all active:scale-95 text-xs tracking-wide shadow-lg shadow-rose-100"
                         >
                             Compris
                         </button>
