@@ -58,7 +58,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
           }
         };
 
-        loadSecondaryData();
+        await loadSecondaryData();
       } catch (err) {
         console.error("Échec de l'authentification:", err);
         // On ne redirige QUE si le chargement du profil utilisateur a échoué
@@ -187,25 +187,9 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
 
   if (loading) {
     return (
-      <div className="min-h-[100dvh] bg-white flex flex-col items-center overflow-x-hidden safe-top md:pb-0">
-        <div className="w-full max-w-6xl mx-auto flex flex-col md:min-h-0 md:pt-16 bg-white lg:grid lg:grid-cols-2 lg:gap-24 lg:items-start px-0 md:px-12">
-            <header className="px-5 py-3 flex items-center justify-between shrink-0 mb-3 md:mb-10">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-[10px] font-medium text-white">
-                        {tenantSettings?.name?.[0]?.toUpperCase() || slug?.[0]?.toUpperCase() || 'R'}
-                    </div>
-                    <span className="text-sm font-medium tracking-tight text-slate-800 truncate max-w-[200px]">
-                        {tenantSettings?.name || "rezea"}
-                    </span>
-                </div>
-            </header>
-            
-            <div className="flex-1 flex flex-col items-center justify-center py-32 opacity-0 animate-[fadeIn_0.3s_ease-out_0.2s_forwards]">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-300 mb-4"></div>
-                <p className="text-slate-400 text-xs font-medium">Chargement...</p>
-            </div>
-        </div>
-        <BottomNav userRole={user?.role} />
+      <div className="fixed inset-0 bg-white flex flex-col items-center justify-center z-[100]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-300 mb-4"></div>
+        <p className="text-slate-400 text-xs font-medium animate-pulse">Chargement...</p>
       </div>
     );
   }
