@@ -533,7 +533,7 @@ export default function GestionInscriptionsPage() {
                                                         </div>
 
                                                         {/* Ligne 2: Attribution + Salle + Actions */}
-                                                        <div className="flex items-center justify-between gap-4 w-full">
+                                                        <div className="flex items-center justify-between gap-4 w-full mt-0.5">
                                                             <div className="flex items-center gap-2 text-slate-600 text-sm font-normal min-w-0">
                                                                 <div className="flex items-center gap-1.5 truncate">
                                                                     <svg className="w-5 h-5 flex-shrink-0 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -602,7 +602,7 @@ export default function GestionInscriptionsPage() {
                                                         </div>
 
                                                         {/* Ligne 3: Inscriptions + Voir les participants */}
-                                                        <div className="flex items-center justify-between gap-4 w-full">
+                                                        <div className="flex items-center justify-between gap-4 w-full mt-0.5">
                                                             <div className="flex items-center gap-3">
                                                                 <span className={`font-bold text-sm md:text-base shrink-0 ${isHighAttendance ? 'text-emerald-500' : 'text-amber-500'}`}>
                                                                     {session.current_participants}/{session.max_participants}
@@ -723,7 +723,7 @@ export default function GestionInscriptionsPage() {
                                                         </div>
 
                                                         {/* Ligne 2: Attribution + Salle */}
-                                                        <div className="flex items-center justify-between gap-4 w-full">
+                                                        <div className="flex items-center justify-between gap-4 w-full mt-0.5">
                                                             <div className="flex items-center gap-2 text-slate-600 text-sm font-normal min-w-0">
                                                                 <div className="flex items-center gap-1.5 truncate">
                                                                     <svg className="w-5 h-5 flex-shrink-0 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
