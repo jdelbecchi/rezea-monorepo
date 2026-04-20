@@ -701,10 +701,9 @@ export default function GestionInscriptionsPage() {
                                         return (
                                             <div 
                                                 key={event.id} 
-                                                className={`bg-white rounded-2xl border transition-all duration-500 hover:shadow-xl overflow-hidden group ${event.cancelled_at ? 'opacity-50' : ''}`}
+                                                className={`bg-gradient-to-br from-amber-50/60 to-orange-50/40 rounded-2xl border border-amber-200/50 transition-all duration-500 hover:shadow-xl overflow-hidden group ${event.cancelled_at ? 'opacity-50' : ''}`}
                                                 style={{ 
-                                                    boxShadow: `3px 4px 14px -2px ${(tenant?.primary_color || '#2563eb')}40`,
-                                                    borderColor: `${(tenant?.primary_color || '#2563eb')}20`
+                                                    boxShadow: `3px 4px 14px -2px #f59e0b30`,
                                                 }}
                                             >
                                                 {/* Entête Événement */}
@@ -716,10 +715,10 @@ export default function GestionInscriptionsPage() {
                                                                 {event.event_time}
                                                             </span>
                                                             <div className="flex items-center gap-1.5 min-w-0">
+                                                                <span className="text-sm shrink-0">✨</span>
                                                                 <h4 className="font-medium text-sm md:text-base text-slate-800 first-letter:uppercase leading-tight">
                                                                     {event.title}
                                                                 </h4>
-                                                                <span className="text-sm shrink-0">✨</span>
                                                             </div>
                                                         </div>
 

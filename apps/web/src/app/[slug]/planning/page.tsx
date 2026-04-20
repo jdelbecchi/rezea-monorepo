@@ -502,10 +502,9 @@ export default function PlanningPage() {
                       return (
                         <div 
                           key={item.id} 
-                          className="group bg-white rounded-2xl border transition-all duration-500 hover:shadow-xl flex flex-col overflow-hidden"
+                          className={`group ${isEvent ? 'bg-gradient-to-br from-amber-50/60 to-orange-50/40 border-amber-200/50' : 'bg-white border-slate-200/60'} rounded-2xl border transition-all duration-500 hover:shadow-xl flex flex-col overflow-hidden`}
                           style={{ 
-                            boxShadow: `3px 4px 14px -2px ${(tenant?.primary_color || '#2563eb')}40`,
-                            borderColor: `${(tenant?.primary_color || '#2563eb')}20`
+                            boxShadow: isEvent ? `3px 4px 14px -2px #f59e0b30` : `3px 4px 14px -2px ${(tenant?.primary_color || '#2563eb')}40`,
                           }}
                         >
                           {/* 1. HEADER : Heure + Titre */}
@@ -513,8 +512,8 @@ export default function PlanningPage() {
                             <div className="flex items-center gap-4">
                               <span className="text-sm font-bold text-slate-900 tracking-tight">{time}</span>
                               <div className="flex items-center gap-2 min-w-0">
-                                 <h4 className="text-sm md:text-base font-medium text-slate-800 first-letter:uppercase leading-tight">{item.title}</h4>
                                  {isEvent && <span className="text-base md:text-lg">✨</span>}
+                                 <h4 className="text-sm md:text-base font-medium text-slate-800 first-letter:uppercase leading-tight">{item.title}</h4>
                               </div>
                             </div>
                           </div>
