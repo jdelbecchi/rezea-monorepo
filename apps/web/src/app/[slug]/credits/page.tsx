@@ -139,7 +139,7 @@ export default function CreditsPage() {
                                         {categoryOffers.map((offer) => (
                                             <div
                                                 key={offer.id}
-                                                className="group relative bg-slate-50 rounded-2xl p-6 border transition-all duration-300 hover:bg-slate-100/50 hover:border-slate-300 flex flex-col items-center justify-between overflow-hidden text-center"
+                                                className="group relative bg-slate-50 rounded-2xl p-6 border transition-all duration-300 hover:bg-slate-100 hover:border-slate-400 flex flex-col items-center justify-between overflow-hidden text-center"
                                                 style={{ 
                                                     boxShadow: `3px 4px 14px -2px ${(tenantSettings?.primary_color || '#2563eb')}40`,
                                                     borderColor: `${(tenantSettings?.primary_color || '#2563eb')}20`

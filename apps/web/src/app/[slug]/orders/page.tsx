@@ -271,7 +271,7 @@ th{background:#f1f5f9}
                                 orders.map((order) => (
                                     <div 
                                         key={order.id} 
-                                        className="bg-slate-50 p-5 md:p-6 rounded-3xl border transition-all duration-300 hover:bg-slate-100/50 hover:border-slate-300 relative overflow-hidden group"
+                                        className="bg-slate-50 p-5 md:p-6 rounded-3xl border transition-all duration-300 hover:bg-slate-100 hover:border-slate-400 relative overflow-hidden group"
                                         style={{ 
                                             boxShadow: `4px 6px 18px -2px ${(tenant?.primary_color || '#2563eb')}45`,
                                             borderColor: `${(tenant?.primary_color || '#2563eb')}20`
@@ -350,7 +350,7 @@ th{background:#f1f5f9}
                                 registrations.map((reg) => (
                                     <div 
                                         key={reg.id} 
-                                        className="bg-slate-50 p-5 md:p-6 rounded-3xl border transition-all duration-300 hover:bg-slate-100/50 hover:border-slate-300 relative overflow-hidden group"
+                                        className="bg-slate-50 p-5 md:p-6 rounded-3xl border transition-all duration-300 hover:bg-slate-100 hover:border-slate-400 relative overflow-hidden group"
                                         style={{ 
                                             boxShadow: `4px 6px 18px -2px ${(tenant?.primary_color || '#2563eb')}45`,
                                             borderColor: `${(tenant?.primary_color || '#2563eb')}20`
