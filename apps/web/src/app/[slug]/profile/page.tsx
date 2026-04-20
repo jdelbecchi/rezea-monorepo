@@ -101,16 +101,29 @@ export default function ProfilePage() {
         }
     };
 
+    const primaryColor = tenantSettings?.primary_color || '#2563eb';
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
     if (loading) {
         return (
-            <div className="flex min-h-[100dvh] bg-slate-50 items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-300"></div>
+            <div className="min-h-[100dvh] bg-white flex flex-col items-center overflow-x-hidden safe-top pb-24 md:pb-12">
+                <header className="fixed top-0 left-0 right-0 z-40 w-full bg-white/80 backdrop-blur-lg border-b border-slate-100 flex items-center px-4 h-14 safe-top shadow-sm md:hidden">
+                    <Link href={`/${slug}/home`} className="flex items-center gap-2 group text-slate-400 active:scale-95 transition-all">
+                        <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 ml-0.5" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        <span className="text-[13px] font-medium leading-none">Retour</span>
+                    </Link>
+                </header>
+                
+                <div className="flex-1 flex flex-col items-center justify-center">
+                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-slate-300 mb-4"></div>
+                </div>
+                <BottomNav />
             </div>
         );
     }
 
-    const primaryColor = tenantSettings?.primary_color || '#2563eb';
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
     return (
         <div className="min-h-[100dvh] bg-white flex flex-col items-center overflow-x-hidden safe-top pb-24 md:pb-12">

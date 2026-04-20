@@ -181,20 +181,34 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
     setShowNewAlertsPopup(false);
   };
 
-  if (loading) {
-    return (
-      <div className="h-[100dvh] flex items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-slate-200 border-t-slate-400 rounded-full animate-spin" />
-          <p className="text-slate-400 font-medium animate-pulse">Chargement de votre espace...</p>
-        </div>
-      </div>
-    );
-  }
-
   const isAdminOrStaff = user?.role === "owner" || user?.role === "manager" || user?.role === "staff";
   const primaryColor = tenantSettings?.primary_color || "#2563eb";
   const bannerUrl = tenantSettings?.banner_url ? `${API_URL}${tenantSettings.banner_url}` : null;
+
+  if (loading) {
+    return (
+      <div className="min-h-[100dvh] bg-white flex flex-col items-center overflow-x-hidden safe-top md:pb-0">
+        <div className="w-full max-w-6xl mx-auto flex flex-col md:min-h-0 md:pt-16 bg-white lg:grid lg:grid-cols-2 lg:gap-24 lg:items-start px-0 md:px-12">
+            <header className="px-5 py-3 flex items-center justify-between shrink-0 mb-3 md:mb-10">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-[10px] font-medium text-white">
+                        {tenantSettings?.name?.[0]?.toUpperCase() || slug?.[0]?.toUpperCase() || 'R'}
+                    </div>
+                    <span className="text-sm font-medium tracking-tight text-slate-800 truncate max-w-[200px]">
+                        {tenantSettings?.name || "rezea"}
+                    </span>
+                </div>
+            </header>
+            
+            <div className="flex-1 flex flex-col items-center justify-center py-20">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-slate-300 mb-4"></div>
+                <p className="text-slate-400 text-sm font-medium animate-pulse">Chargement...</p>
+            </div>
+        </div>
+        <BottomNav userRole={user?.role} />
+      </div>
+    );
+  }
 
 
   // --- VIEW: PWA HOME (Default for everyone) ---
