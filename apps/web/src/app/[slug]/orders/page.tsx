@@ -314,7 +314,7 @@ th{background:#f1f5f9}
                                             <div className="flex items-center gap-2">
                                                 <div className="w-8 h-8 flex items-center justify-center text-sm">⌛</div>
                                                 <div className="flex items-center gap-2">
-                                                    <p className="text-xs text-slate-600 font-medium tracking-tight">Fin de validité :</p>
+                                                    <p className="text-xs text-slate-600 font-medium tracking-tight whitespace-nowrap">Fin de validité :</p>
                                                     <p className={`text-sm font-semibold tracking-tight ${order.is_validity_unlimited ? 'text-emerald-600' : 'text-slate-900'}`}>
                                                         {order.is_validity_unlimited ? 'Illimitée' : (order.end_date ? new Date(order.end_date).toLocaleDateString("fr-FR") : "N/A")}
                                                     </p>
