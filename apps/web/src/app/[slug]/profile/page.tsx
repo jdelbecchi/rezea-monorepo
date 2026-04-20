@@ -23,32 +23,37 @@ export default function ProfilePage() {
     };
 
     useEffect(() => {
-        api.getCurrentUser()
-            .then((data) => {
-                setUser(data);
+        const loadAllData = async () => {
+            try {
+                const [userData, tenantData] = await Promise.all([
+                    api.getCurrentUser(),
+                    api.getTenantSettings()
+                ]);
+                
+                setUser(userData);
                 setFormData({
-                    first_name: data.first_name,
-                    last_name: data.last_name,
-                    email: data.email,
-                    phone: data.phone || "",
-                    street: data.street || "",
-                    zip_code: data.zip_code || "",
-                    city: data.city || "",
-                    birth_date: data.birth_date || "",
-                    instagram_handle: data.instagram_handle || "",
-                    facebook_handle: data.facebook_handle || "",
-                    remind_before_session: data.remind_before_session ?? true,
-                    receive_marketing_emails: data.receive_marketing_emails ?? true,
+                    first_name: userData.first_name,
+                    last_name: userData.last_name,
+                    email: userData.email,
+                    phone: userData.phone || "",
+                    street: userData.street || "",
+                    zip_code: userData.zip_code || "",
+                    city: userData.city || "",
+                    birth_date: userData.birth_date || "",
+                    instagram_handle: userData.instagram_handle || "",
+                    facebook_handle: userData.facebook_handle || "",
+                    remind_before_session: userData.remind_before_session ?? true,
+                    receive_marketing_emails: userData.receive_marketing_emails ?? true,
                 });
-            })
-            .catch(() => {
-                setMessage({ type: "error", text: "Erreur lors de la récupération du profil." });
-            })
-            .finally(() => setLoading(false));
-        
-        api.getTenantSettings()
-            .then(setTenantSettings)
-            .catch(() => { });
+                setTenantSettings(tenantData);
+            } catch (err) {
+                console.error("Load error:", err);
+                setMessage({ type: "error", text: "Erreur lors du chargement du profil." });
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadAllData();
     }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -105,20 +110,9 @@ export default function ProfilePage() {
 
     if (loading) {
         return (
-            <div className="min-h-[100dvh] bg-white flex flex-col items-center overflow-x-hidden safe-top pb-24 md:pb-12">
-                <header className="fixed top-0 left-0 right-0 z-40 w-full bg-white/80 backdrop-blur-lg border-b border-slate-100 flex items-center px-4 h-14 safe-top shadow-sm md:hidden">
-                    <Link href={`/${slug}/home`} className="flex items-center gap-2 group text-slate-400 active:scale-95 transition-all">
-                        <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 ml-0.5" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        <span className="text-[13px] font-medium leading-none">Retour</span>
-                    </Link>
-                </header>
-                
-                <div className="flex-1 flex flex-col items-center justify-center">
-                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-slate-300 mb-4"></div>
-                </div>
-                <BottomNav />
+            <div className="fixed inset-0 bg-white flex flex-col items-center justify-center z-[100]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-300 mb-4"></div>
+                <p className="text-slate-400 text-xs font-medium animate-pulse">Chargement...</p>
             </div>
         );
     }

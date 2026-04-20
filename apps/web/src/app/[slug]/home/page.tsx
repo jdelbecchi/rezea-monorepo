@@ -244,7 +244,6 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                       className="flex items-center gap-2 px-3 py-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all duration-300 active:scale-[0.95]"
                       title="Déconnexion"
                   >
-                      <span className="hidden md:block text-[10px] font-bold uppercase tracking-wider">Déconnexion</span>
                       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                           <polyline points="16 17 21 12 16 7"></polyline>
