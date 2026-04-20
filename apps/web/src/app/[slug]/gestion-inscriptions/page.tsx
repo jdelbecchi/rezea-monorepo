@@ -701,7 +701,7 @@ export default function GestionInscriptionsPage() {
                                         return (
                                             <div 
                                                 key={event.id} 
-                                                className={`bg-gradient-to-br from-amber-50/60 to-orange-50/40 rounded-2xl border border-amber-200/50 transition-all duration-500 hover:shadow-xl overflow-hidden group ${event.cancelled_at ? 'opacity-50' : ''}`}
+                                                className={`bg-gradient-to-b from-amber-50/80 via-amber-50/40 to-white rounded-2xl border border-amber-200/50 transition-all duration-500 hover:shadow-xl overflow-hidden group ${event.cancelled_at ? 'opacity-50' : ''}`}
                                                 style={{ 
                                                     boxShadow: `3px 4px 14px -2px #f59e0b30`,
                                                 }}

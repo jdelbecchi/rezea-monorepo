@@ -502,7 +502,7 @@ export default function PlanningPage() {
                       return (
                         <div 
                           key={item.id} 
-                          className={`group ${isEvent ? 'bg-gradient-to-br from-amber-50/60 to-orange-50/40 border-amber-200/50' : 'bg-white border-slate-200/60'} rounded-2xl border transition-all duration-500 hover:shadow-xl flex flex-col overflow-hidden`}
+                          className={`group ${isEvent ? 'bg-gradient-to-b from-amber-50/80 via-amber-50/40 to-white border-amber-200/50' : 'bg-white border-slate-200/60'} rounded-2xl border transition-all duration-500 hover:shadow-xl flex flex-col overflow-hidden`}
                           style={{ 
                             boxShadow: isEvent ? `3px 4px 14px -2px #f59e0b30` : `3px 4px 14px -2px ${(tenant?.primary_color || '#2563eb')}40`,
                           }}
