@@ -623,8 +623,8 @@ export default function GestionInscriptionsPage() {
  
                                                             <button 
                                                                 onClick={() => handleToggleParticipants(session, 'session')}
-                                                                className="px-3 py-1.5 rounded-xl text-[10px] md:text-[11px] font-medium transition-all active:scale-95 flex items-center gap-2 text-slate-600 hover:opacity-80"
-                                                                style={{ backgroundColor: '#f1f5f9' }}
+                                                                className="px-3 py-1.5 rounded-xl text-[10px] md:text-[11px] font-semibold transition-all active:scale-95 flex items-center gap-2 text-slate-600 hover:opacity-80"
+                                                                style={{ backgroundColor: '#e2e8f0' }}
                                                             >
                                                                 <span>{isExpanded ? 'Masquer' : 'Voir les participants'}</span>
                                                                 <span className="text-xs">{isExpanded ? '↑' : '↓'}</span>
@@ -763,8 +763,8 @@ export default function GestionInscriptionsPage() {
  
                                                             <button 
                                                                 onClick={() => handleToggleParticipants(event, 'event')}
-                                                                className="px-3 py-1.5 rounded-xl text-[10px] md:text-[11px] font-medium transition-all active:scale-95 flex items-center gap-2 text-slate-600 hover:opacity-80"
-                                                                style={{ backgroundColor: '#f1f5f9' }}
+                                                                className="px-3 py-1.5 rounded-xl text-[10px] md:text-[11px] font-semibold transition-all active:scale-95 flex items-center gap-2 text-slate-600 hover:opacity-80"
+                                                                style={{ backgroundColor: '#e2e8f0' }}
                                                             >
                                                                 <span>{isExpanded ? 'Masquer' : 'Voir les participants'}</span>
                                                                 <span className="text-xs">{isExpanded ? '↑' : '↓'}</span>
