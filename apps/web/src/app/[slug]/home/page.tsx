@@ -283,7 +283,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
             {/* Banner */}
             <div className="relative shrink-0 mb-0 md:mb-8 lg:mb-0">
                 <div 
-                    className="aspect-video w-full shadow-2xl shadow-blue-900/10 relative group bg-slate-50 border border-slate-100 overflow-hidden"
+                    className="h-[140px] md:h-auto md:aspect-video w-full shadow-2xl shadow-blue-900/10 relative group bg-slate-50 border border-slate-100 overflow-hidden"
                     style={{ 
                         background: bannerUrl 
                             ? `url(${bannerUrl}) center/cover no-repeat` 
@@ -397,17 +397,17 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                 {isAdminOrStaff && (
                     <Link 
                         href={`${basePath}/gestion-inscriptions`}
-                        className="col-span-2 relative flex items-center justify-between px-6 py-5 text-white rounded-2xl active:scale-[0.98] transition-all duration-300 group overflow-hidden"
+                        className="col-span-2 relative flex items-center justify-between px-6 py-4 text-white rounded-2xl active:scale-[0.98] transition-all duration-300 group overflow-hidden"
                         style={{
                             background: `linear-gradient(135deg, ${primaryColor}cc, ${primaryColor}88, ${primaryColor}aa)`,
                             boxShadow: `3px 4px 14px -2px ${primaryColor}30`
                         }}
                     >
                         <div className="flex items-center gap-4 relative z-10">
-                            <div className="text-3xl">📋</div>
+                            <div className="text-2xl">📋</div>
                             <div className="flex flex-col gap-0.5">
-                                <span className="text-base font-medium leading-none">Gestion des inscriptions</span>
-                                <span className="text-xs font-normal text-white/90">Profil Staff uniquement</span>
+                                <span className="text-sm font-medium leading-none">Gestion des inscriptions</span>
+                                <span className="text-[10px] font-normal text-white/90">Profil Staff uniquement</span>
                             </div>
                         </div>
                     </Link>
@@ -416,27 +416,27 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                 {/* Planning Hero Card */}
                 <Link 
                     href={`${basePath}/planning`}
-                    className="col-span-2 relative flex items-center justify-between px-6 py-6 bg-white border rounded-2xl hover:shadow-xl transition-all duration-500 active:scale-[0.98] group overflow-hidden"
+                    className="col-span-2 relative flex items-center justify-between px-6 py-5 bg-white border rounded-2xl hover:shadow-xl transition-all duration-500 active:scale-[0.98] group overflow-hidden"
                     style={{ 
                         boxShadow: `3px 4px 16px -2px ${primaryColor}40`,
                         borderColor: `${primaryColor}30`
                     }}
                 >
                     <div className="flex items-center gap-4 relative z-10">
-                        <div className="text-3xl group-hover:scale-110 transition-transform duration-500">🗓️</div>
+                        <div className="text-2xl group-hover:scale-110 transition-transform duration-500">🗓️</div>
                         <div className="flex flex-col gap-1">
-                            <span className="text-base font-medium text-slate-800 tracking-tight leading-none group-hover:text-slate-900 transition-colors">
+                            <span className="text-sm font-medium text-slate-800 tracking-tight leading-none group-hover:text-slate-900 transition-colors">
                                 Planning & réservations
                             </span>
                             {nextRDV ? (
                                 <div className="flex items-center gap-2">
                                     <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                    <span className="text-xs font-medium text-emerald-600 bg-emerald-50/80 px-2 py-0.5 rounded-full">
-                                        Prochain RDV : {nextRDV.date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} à {nextRDV.date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} · {nextRDV.title}
+                                    <span className="text-[10px] font-medium text-emerald-600 bg-emerald-50/80 px-2 py-0.5 rounded-full">
+                                        RDV : {nextRDV.date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} à {nextRDV.date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                                     </span>
                                 </div>
                             ) : (
-                                <span className="text-xs font-normal text-slate-600">Réservez votre prochaine séance</span>
+                                <span className="text-[10px] font-normal text-slate-600">Prochaine séance</span>
                             )}
                         </div>
                     </div>
@@ -446,40 +446,29 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                 {/* Boutique Card */}
                 <Link 
                     href={`${basePath}/credits`}
-                    className="col-span-2 relative flex items-center justify-between px-6 py-5 bg-white border rounded-2xl hover:shadow-xl transition-all duration-500 active:scale-[0.98] group overflow-hidden"
+                    className="col-span-1 relative flex flex-col items-center justify-center gap-2 px-4 py-4 bg-white border rounded-2xl hover:shadow-xl transition-all duration-500 active:scale-[0.98] group overflow-hidden text-center"
                     style={{ 
                         boxShadow: `3px 4px 14px -2px ${primaryColor}35`,
                         borderColor: `${primaryColor}25`
                     }}
                 >
-                    <div className="flex items-center gap-4 relative z-10">
-                        <div className="text-3xl shrink-0 group-hover:scale-110 transition-transform duration-500">🛍️</div>
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-base font-medium text-slate-800 group-hover:text-slate-900 transition-colors tracking-tight">Boutique</span>
-                            <span className="text-xs font-normal text-slate-600">Créditez votre compte</span>
-                        </div>
-                    </div>
-                    <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full blur-3xl opacity-0 group-hover:opacity-[0.04] transition-opacity duration-700" style={{ backgroundColor: primaryColor }} />
+                    <div className="text-2xl group-hover:scale-110 transition-transform duration-500">🛍️</div>
+                    <span className="text-sm font-medium text-slate-800 group-hover:text-slate-900 transition-colors tracking-tight">Boutique</span>
                 </Link>
 
                 {/* Commandes Card */}
                 <Link 
                     href={`${basePath}/orders`}
-                    className="col-span-2 relative flex items-center justify-between px-6 py-5 bg-white border rounded-2xl hover:shadow-xl transition-all duration-500 active:scale-[0.98] group overflow-hidden"
+                    className="col-span-1 relative flex flex-col items-center justify-center gap-2 px-4 py-4 bg-white border rounded-2xl hover:shadow-xl transition-all duration-500 active:scale-[0.98] group overflow-hidden text-center"
                     style={{ 
                         boxShadow: `3px 4px 14px -2px ${primaryColor}35`,
                         borderColor: `${primaryColor}25`
                     }}
                 >
-                    <div className="flex items-center gap-4 relative z-10">
-                        <div className="text-3xl shrink-0 group-hover:scale-110 transition-transform duration-500">📦</div>
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-base font-medium text-slate-800 group-hover:text-slate-900 transition-colors tracking-tight">Commandes</span>
-                            <span className="text-xs font-normal text-slate-600">Consultez vos offres et évènements</span>
-                        </div>
-                    </div>
-                    <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full blur-3xl opacity-0 group-hover:opacity-[0.04] transition-opacity duration-700" style={{ backgroundColor: primaryColor }} />
+                    <div className="text-2xl group-hover:scale-110 transition-transform duration-500">📦</div>
+                    <span className="text-sm font-medium text-slate-800 group-hover:text-slate-900 transition-colors tracking-tight">Commandes</span>
                 </Link>
+
             </div>
 
             {/* 6. Footer Area */}
