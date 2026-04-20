@@ -18,9 +18,8 @@ export default function ProfilePage() {
     const [tenantSettings, setTenantSettings] = useState<any>(null);
     const [showPassword, setShowPassword] = useState(false);
 
-    const handleLogout = () => {
-        localStorage.clear();
-        router.push(`/${slug}`);
+    const handleClose = () => {
+        router.push(`/${slug}/home`);
     };
 
     useEffect(() => {
@@ -471,7 +470,7 @@ export default function ProfilePage() {
                                 <button
                                     type="submit"
                                     disabled={saving}
-                                    className="w-full max-w-sm mx-auto px-8 py-3.5 bg-slate-900 text-white font-medium rounded-2xl shadow-xl shadow-slate-900/10 hover:bg-slate-800 active:scale-[0.99] transition-all disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
+                                    className="w-full max-w-md mx-auto px-8 py-3.5 bg-slate-900 text-white font-medium rounded-2xl shadow-xl shadow-slate-900/10 hover:bg-slate-800 active:scale-[0.99] transition-all disabled:opacity-50 flex items-center justify-center gap-2 text-sm font-semibold"
                                 >
                                     {saving ? (
                                         <>
@@ -485,10 +484,10 @@ export default function ProfilePage() {
 
                                 <button
                                     type="button"
-                                    onClick={handleLogout}
-                                    className="w-full max-w-sm mx-auto px-8 py-3.5 bg-white border border-slate-200 text-slate-400 font-medium rounded-2xl hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 transition-all active:scale-[0.99] flex items-center justify-center gap-2 text-sm shadow-sm"
+                                    onClick={handleClose}
+                                    className="w-full max-w-md mx-auto px-8 py-3.5 bg-white border border-slate-200 text-slate-400 font-medium rounded-2xl hover:bg-slate-50 hover:text-slate-600 hover:border-slate-300 transition-all active:scale-[0.99] flex items-center justify-center gap-2 text-sm shadow-sm"
                                 >
-                                    Déconnexion
+                                    Fermer
                                 </button>
                             </div>
                         </form>
