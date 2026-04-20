@@ -515,7 +515,7 @@ export default function GestionInscriptionsPage() {
                                         return (
                                             <div 
                                                 key={session.id} 
-                                                className={`bg-white rounded-2xl border transition-all duration-500 hover:shadow-xl overflow-hidden group ${session.is_active === false ? 'opacity-50' : ''}`}
+                                                className="bg-white rounded-2xl border transition-all duration-500 hover:shadow-xl overflow-hidden group"
                                                 style={{ 
                                                     boxShadow: `3px 4px 14px -2px ${(tenant?.primary_color || '#2563eb')}40`,
                                                     borderColor: `${(tenant?.primary_color || '#2563eb')}20`
@@ -623,8 +623,13 @@ export default function GestionInscriptionsPage() {
  
                                                             <button 
                                                                 onClick={() => handleToggleParticipants(session, 'session')}
-                                                                className="px-3 py-1.5 rounded-xl text-[10px] md:text-[11px] font-semibold transition-all active:scale-95 flex items-center gap-2 text-slate-600 hover:opacity-80"
-                                                                style={{ backgroundColor: '#e2e8f0', fontWeight: '600' }}
+                                                                className="px-3 py-1.5 rounded-xl text-[10px] md:text-[11px] font-semibold transition-all active:scale-95 flex items-center gap-2 hover:opacity-80"
+                                                                style={{ 
+                                                                    backgroundColor: '#e2e8f0', 
+                                                                    fontWeight: '600',
+                                                                    color: '#475569',
+                                                                    opacity: 1 
+                                                                }}
                                                             >
                                                                 <span>{isExpanded ? 'Masquer' : 'Voir les participants'}</span>
                                                                 <span className="text-xs">{isExpanded ? '↑' : '↓'}</span>
@@ -763,8 +768,13 @@ export default function GestionInscriptionsPage() {
  
                                                             <button 
                                                                 onClick={() => handleToggleParticipants(event, 'event')}
-                                                                className="px-3 py-1.5 rounded-xl text-[10px] md:text-[11px] font-semibold transition-all active:scale-95 flex items-center gap-2 text-slate-600 hover:opacity-80"
-                                                                style={{ backgroundColor: '#e2e8f0', fontWeight: '600' }}
+                                                                className="px-3 py-1.5 rounded-xl text-[10px] md:text-[11px] font-semibold transition-all active:scale-95 flex items-center gap-2 hover:opacity-80"
+                                                                style={{ 
+                                                                    backgroundColor: '#e2e8f0', 
+                                                                    fontWeight: '600',
+                                                                    color: '#475569',
+                                                                    opacity: 1 
+                                                                }}
                                                             >
                                                                 <span>{isExpanded ? 'Masquer' : 'Voir les participants'}</span>
                                                                 <span className="text-xs">{isExpanded ? '↑' : '↓'}</span>
