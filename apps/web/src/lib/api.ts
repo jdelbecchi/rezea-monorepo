@@ -183,6 +183,7 @@ export interface EventRegistration {
   event_title: string;
   event_date: string;
   event_time: string;
+  instructor_name?: string;
 }
 
 export interface EmailTemplate {

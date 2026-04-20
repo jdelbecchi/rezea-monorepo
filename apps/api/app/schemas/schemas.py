@@ -646,6 +646,7 @@ class EventRegistrationResponse(BaseModel):
     notes: Optional[str] = None
     created_at: datetime
     cancelled_at: Optional[datetime] = None
+    instructor_name: Optional[str] = None
     # Champs joints
     event_date: str = ""
     event_time: str = ""

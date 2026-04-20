@@ -360,10 +360,17 @@ th{background:#f1f5f9}
                                         
                                         <div className="flex flex-col sm:flex-row justify-between items-start gap-4 relative z-10">
                                             <div className="flex flex-col min-w-0 flex-1 w-full sm:w-auto">
-                                                <div className="flex items-center gap-2 mb-1">
+                                                <div className="flex items-center gap-2 mb-0.5">
                                                     <h3 className="text-lg md:text-xl font-semibold text-slate-900 truncate pr-2 capitalize tracking-tight">{reg.event_title}</h3>
                                                 </div>
-                                                <div className="flex items-center justify-between w-full gap-4 mt-auto">
+                                                
+                                                {reg.instructor_name && (
+                                                    <p className="text-[13px] font-medium mb-1" style={{ color: tenant?.primary_color }}>
+                                                        par {reg.instructor_name}
+                                                    </p>
+                                                )}
+
+                                                <div className="flex items-center justify-between w-full gap-4 mt-1">
                                                     <p className="text-slate-400 text-xs font-medium tracking-tight">
                                                         Inscrit le {new Date(reg.created_at).toLocaleDateString("fr-FR")}
                                                     </p>

@@ -117,6 +117,7 @@ async def list_my_registrations(
                 "event_title": reg.event.title if reg.event else "Événement inconnu",
                 "event_date": reg.event.event_date.isoformat() if (reg.event and reg.event.event_date) else "",
                 "event_time": reg.event.event_time.strftime("%H:%M") if (reg.event and reg.event.event_time) else "",
+                "instructor_name": reg.event.instructor_name if reg.event else None,
                 "user_name": "", 
                 "user_phone": None,
                 "instagram_handle": None,
