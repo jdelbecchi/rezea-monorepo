@@ -534,9 +534,9 @@ export default function GestionInscriptionsPage() {
 
                                                         {/* Ligne 2: Attribution + Salle + Actions */}
                                                         <div className="flex items-center justify-between gap-4 w-full">
-                                                            <div className="flex items-center gap-2 text-slate-600 text-sm font-medium min-w-0">
+                                                            <div className="flex items-center gap-2 text-slate-600 text-sm font-normal min-w-0">
                                                                 <div className="flex items-center gap-1.5 truncate">
-                                                                    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <svg className="w-5 h-5 flex-shrink-0 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                                                     </svg>
                                                                     <span className="truncate">{session.instructor_name || "Coach"}</span>
@@ -545,7 +545,7 @@ export default function GestionInscriptionsPage() {
                                                                     <>
                                                                         <span className="text-slate-300">•</span>
                                                                         <span className="truncate flex items-center gap-1">
-                                                                            <span className="text-base">📍</span> {session.location}
+                                                                            <span className="text-base opacity-60">📍</span> {session.location}
                                                                         </span>
                                                                     </>
                                                                 )}
@@ -724,9 +724,9 @@ export default function GestionInscriptionsPage() {
 
                                                         {/* Ligne 2: Attribution + Salle */}
                                                         <div className="flex items-center justify-between gap-4 w-full">
-                                                            <div className="flex items-center gap-2 text-slate-600 text-sm font-medium min-w-0">
+                                                            <div className="flex items-center gap-2 text-slate-600 text-sm font-normal min-w-0">
                                                                 <div className="flex items-center gap-1.5 truncate">
-                                                                    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <svg className="w-5 h-5 flex-shrink-0 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                                                     </svg>
                                                                     <span className="truncate">{event.instructor_name || "Staff"}</span>
@@ -735,7 +735,7 @@ export default function GestionInscriptionsPage() {
                                                                     <>
                                                                         <span className="text-slate-300">•</span>
                                                                         <span className="truncate flex items-center gap-1">
-                                                                            <span className="text-base">📍</span> {event.location}
+                                                                            <span className="text-base opacity-60">📍</span> {event.location}
                                                                         </span>
                                                                     </>
                                                                 )}

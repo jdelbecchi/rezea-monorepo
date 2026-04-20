@@ -545,14 +545,14 @@ export default function PlanningPage() {
                           <div className={`px-5 overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[500px] mb-1 opacity-100' : 'max-h-0 opacity-0'}`}>
                             <div className="pt-0.5 space-y-1.5 pb-2">
                               <div className="flex flex-wrap items-center gap-y-1 gap-x-6">
-                                <div className="flex items-center gap-2 text-slate-600 text-sm font-medium">
+                                <div className="flex items-center gap-2 text-slate-600 text-sm font-normal">
                                   <svg className="w-5 h-5 shrink-0 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                   </svg>
                                   <span>{item.instructor_name}</span>
                                 </div>
                                 {item.location && (
-                                  <div className="flex items-center gap-2 text-slate-600 text-sm font-medium">
+                                  <div className="flex items-center gap-2 text-slate-600 text-sm font-normal">
                                     <span className="text-base opacity-60">📍</span>
                                     <span>{item.location}</span>
                                   </div>
