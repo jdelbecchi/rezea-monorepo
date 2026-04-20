@@ -189,40 +189,20 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
     return (
       <div className="min-h-[100dvh] bg-white flex flex-col items-center overflow-x-hidden safe-top md:pb-0">
         <div className="w-full max-w-6xl mx-auto flex flex-col md:min-h-0 md:pt-16 bg-white lg:grid lg:grid-cols-2 lg:gap-24 lg:items-start px-0 md:px-12">
-            {/* Header Skeleton */}
             <header className="px-5 py-3 flex items-center justify-between shrink-0 mb-3 md:mb-10">
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-slate-100 animate-pulse"></div>
-                    <div className="h-4 w-24 bg-slate-100 rounded animate-pulse"></div>
-                </div>
-                <div className="hidden md:flex items-center gap-3">
-                    <div className="w-9 h-9 bg-slate-100 rounded-full animate-pulse"></div>
+                    <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-[10px] font-medium text-white">
+                        {tenantSettings?.name?.[0]?.toUpperCase() || slug?.[0]?.toUpperCase() || 'R'}
+                    </div>
+                    <span className="text-sm font-medium tracking-tight text-slate-800 truncate max-w-[200px]">
+                        {tenantSettings?.name || "rezea"}
+                    </span>
                 </div>
             </header>
             
-            {/* Main Content Skeleton */}
-            <div className="flex flex-col h-full animate-pulse">
-                {/* Banner Skeleton */}
-                <div className="mx-5 md:mx-0 aspect-video rounded-3xl bg-slate-100 overflow-hidden mb-8 shadow-sm"></div>
-                
-                {/* Profile/Welcome Text Skeleton mobile */}
-                <div className="md:hidden px-5 space-y-2 mb-8">
-                    <div className="h-8 w-48 bg-slate-100 rounded"></div>
-                    <div className="h-4 w-32 bg-slate-100 rounded"></div>
-                </div>
-            </div>
-
-            {/* Right Column Skeleton (Desktop) / Bottom Section (Mobile) */}
-            <div className="flex-1 px-5 md:px-0 mt-8 mb-20 md:mt-0 space-y-8 animate-pulse">
-                {/* Alerts Skeleton */}
-                <div className="h-24 w-full bg-slate-50 rounded-3xl border border-slate-100"></div>
-                
-                {/* Buttons Grid Skeleton */}
-                <div className="grid grid-cols-2 gap-4">
-                    {[1, 2, 3, 4].map(i => (
-                        <div key={i} className="h-28 bg-slate-50 rounded-3xl border border-slate-100"></div>
-                    ))}
-                </div>
+            <div className="flex-1 flex flex-col items-center justify-center py-32 opacity-0 animate-[fadeIn_0.3s_ease-out_0.2s_forwards]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-300 mb-4"></div>
+                <p className="text-slate-400 text-xs font-medium">Chargement...</p>
             </div>
         </div>
         <BottomNav userRole={user?.role} />
