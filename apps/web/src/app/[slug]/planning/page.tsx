@@ -35,19 +35,10 @@ export default function PlanningPage() {
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
   const [currentMonth, setCurrentMonth] = useState(startOfToday());
 
-  // Persistance de la date
-  useEffect(() => {
-    const savedDate = localStorage.getItem('rezea_selected_date');
-    if (savedDate) {
-      const parsedDate = parseISO(savedDate);
-      setSelectedDate(parsedDate);
-      setCurrentMonth(startOfMonth(parsedDate));
-    }
-  }, []);
+  // La date par défaut est aujourd'hui à chaque accès
 
   const handleSetDate = (date: Date) => {
     setSelectedDate(date);
-    localStorage.setItem('rezea_selected_date', date.toISOString());
   };
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -518,7 +509,7 @@ export default function PlanningPage() {
                           }}
                         >
                           {/* 1. HEADER : Heure + Titre */}
-                          <div className="px-5 py-2.5">
+                          <div className="px-5 pt-3 pb-1">
                             <div className="flex items-center gap-4">
                               <span className="text-sm font-bold text-slate-900 tracking-tight">{time}</span>
                               <div className="flex items-center gap-2 min-w-0">
@@ -529,10 +520,10 @@ export default function PlanningPage() {
                           </div>
 
                           {/* 2. RÉSUMÉ : Durée, Crédits | Bouton + d'infos */}
-                          <div className="px-5 py-2 flex items-center justify-between gap-4">
+                          <div className="px-5 py-1 flex items-center justify-between gap-4">
                             <div className="flex items-center gap-6">
-                              <div className="flex items-center gap-2 text-slate-400 font-medium text-[11px] md:text-xs">
-                                <span className="text-sm">🕒</span>
+                              <div className="flex items-center gap-2 text-slate-600 font-medium text-[11px] md:text-xs">
+                                <span className="text-sm opacity-60">🕒</span>
                                 <span>{formatDuration(durationValue)}</span>
                               </div>
                               {!isEvent && item.credits_required > 0 && (
@@ -545,32 +536,32 @@ export default function PlanningPage() {
 
                             <button 
                               onClick={handleToggleExpand}
-                              className={`px-4 py-2 rounded-xl text-[11px] font-medium lowercase transition-all active:scale-95 flex items-center gap-2 ${
-                                isExpanded ? 'bg-slate-200 text-slate-600' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
-                              }`}
+                              className="px-2.5 py-1.5 rounded-full text-[11px] font-medium transition-all active:scale-95 flex items-center gap-1.5 bg-slate-200 text-slate-600"
                             >
-                              <span>{isExpanded ? '-' : '+'} d'infos</span>
+                              <span>{isExpanded ? '-' : '+'} info</span>
                             </button>
                           </div>
 
                           {/* 3. ACCORDÉON (Détails) */}
                           <div className={`px-5 overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[500px] mb-1 opacity-100' : 'max-h-0 opacity-0'}`}>
-                            <div className="pt-1 space-y-2">
-                              <div className="flex flex-wrap items-center gap-y-2 gap-x-6">
-                                <div className="flex items-center gap-2 text-slate-400 text-xs font-medium">
-                                  <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <div className="pt-0.5 space-y-1.5 pb-2">
+                              <div className="flex flex-wrap items-center gap-y-1 gap-x-6">
+                                <div className="flex items-center gap-2 text-slate-600 text-sm font-medium">
+                                  <svg className="w-5 h-5 shrink-0 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                   </svg>
                                   <span>{item.instructor_name}</span>
                                 </div>
-                                <div className="flex items-center gap-2 text-slate-400 text-xs font-medium">
-                                  <span className="text-sm">📍</span>
-                                  <span>{item.location || "Salle principale"}</span>
-                                </div>
+                                {item.location && (
+                                  <div className="flex items-center gap-2 text-slate-600 text-sm font-medium">
+                                    <span className="text-base opacity-60">📍</span>
+                                    <span>{item.location}</span>
+                                  </div>
+                                )}
                               </div>
 
                               {item.description && (
-                                <div className="px-4 py-2.5 bg-slate-100/80 rounded-xl border border-slate-200/50">
+                                <div className="px-4 py-2 bg-slate-100/80 rounded-xl border border-slate-200/50">
                                   <p className="text-slate-600 text-[11px] md:text-xs leading-relaxed italic text-center">
                                     {item.description}
                                   </p>
@@ -580,53 +571,56 @@ export default function PlanningPage() {
                           </div>
 
                           {/* 4. ACTION FOOTER (Séparateur + Places + Bouton) */}
-                          <div className="px-5 py-2 bg-slate-50/10 flex items-center justify-between gap-4 mt-auto">
+                          <div className="px-5 py-2.5 bg-slate-50/10 flex items-center justify-between gap-4 mt-auto">
                             <span 
-                              className={`text-[11px] md:text-xs font-medium lowercase tracking-tight ${
-                                isFull ? 'text-slate-300' : (spotsLeft <= 3 ? 'text-amber-500' : 'text-emerald-500')
+                              className={`text-xs md:text-sm font-medium tracking-tight ${
+                                isFull ? 'text-slate-500 font-medium' : (spotsLeft <= 3 ? 'text-amber-500' : 'text-emerald-500')
                               }`}
                             >
-                              {isFull ? (isEvent ? 'événement complet' : 'séance complète') : `${spotsLeft} places dispos`}
+                              {isFull ? (isEvent ? 'Événement complet' : 'Séance complète') : `${spotsLeft} place${spotsLeft > 1 ? 's' : ''} dispo${spotsLeft > 1 ? 's' : ''}`}
                             </span>
 
                             <div className="shrink-0">
                                 {booked ? (
                                    isWaitlisted ? (
-                                     <div className="px-5 py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-amber-50 text-amber-600 border border-amber-100 shadow-sm min-w-[80px]">sur liste</div>
-                                   ) : isEvent ? (
-                                     <div className="px-5 py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm min-w-[80px]">inscrit</div>
+                                     <div className="py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-amber-50 text-amber-600 border border-amber-100 shadow-sm w-[90px]">Sur liste</div>
                                    ) : (
-                                     <div className="px-5 py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm min-w-[80px]">inscrit</div>
+                                     <div className="py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm w-[90px]">
+                                        {isEvent ? 'Inscrit' : 'Inscrit'}
+                                     </div>
                                    )
                                 ) : isClosed ? (
-                                  <div className="px-5 py-2 rounded-xl text-[11px] font-medium lowercase flex items-center justify-center bg-slate-100 text-slate-400 border border-slate-200 cursor-default opacity-50 min-w-[80px]">
-                                    fermé
+                                  <div className="py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-slate-100 text-slate-400 border border-slate-200 cursor-default opacity-50 w-[90px]">
+                                    Fermé
                                   </div>
                                 ) : canWaitlist ? (
-                                   <button 
-                                       disabled={bookingLoading === item.id}
-                                       onClick={() => handleBooking(item.id)}
-                                       className="px-5 py-2 bg-amber-500 text-white font-medium rounded-xl text-[11px] shadow-sm hover:bg-amber-600 transition-all active:scale-95 lowercase"
-                                   >
-                                       {bookingLoading === item.id ? "..." : "s’inscrire"}
-                                   </button>
+                                   <div className="flex items-center gap-3">
+                                       <span className="text-[10px] md:text-xs text-slate-500 italic font-medium">S'inscrire en liste d'attente ?</span>
+                                       <button 
+                                           disabled={bookingLoading === item.id}
+                                           onClick={() => handleBooking(item.id)}
+                                           className="px-4 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium rounded-full text-[11px] transition-all active:scale-95 border border-amber-200/50"
+                                       >
+                                           {bookingLoading === item.id ? "..." : "oui"}
+                                       </button>
+                                   </div>
                                 ) : isFull ? (
-                                   <span className="text-[10px] text-slate-300 lowercase italic">complet</span>
+                                   <span className="text-[10px] text-slate-300 italic">Complet</span>
                                 ) : (
                                    isEvent ? (
                                     <Link 
                                         href={`/${slug}/events/checkout/${item.id}`}
-                                        className="block px-5 py-2 bg-slate-900 text-white font-medium rounded-xl text-[11px] shadow-md hover:bg-slate-800 transition-all active:scale-95 lowercase"
+                                        className="block py-2 bg-slate-900 text-white font-medium rounded-xl text-[11px] shadow-md hover:bg-slate-800 transition-all active:scale-95 w-[90px] text-center"
                                     >
-                                        réserver
+                                        S'inscrire
                                     </Link>
                                   ) : (
                                     <button 
                                         disabled={bookingLoading === item.id}
                                         onClick={() => handleBooking(item.id)}
-                                        className="px-5 py-2 bg-slate-900 text-white font-medium rounded-xl text-[11px] shadow-md hover:bg-slate-800 transition-all active:scale-95 lowercase"
+                                        className="py-2 bg-slate-900 text-white font-medium rounded-xl text-[11px] shadow-md hover:bg-slate-800 transition-all active:scale-95 w-[90px] text-center"
                                     >
-                                        {bookingLoading === item.id ? "..." : "réserver"}
+                                        {bookingLoading === item.id ? "..." : "Réserver"}
                                     </button>
                                  )
                                 )}
@@ -659,9 +653,7 @@ export default function PlanningPage() {
                                 {item.uType === "event" ? (
                                   <span className="text-sm">✨</span>
                                 ) : isWaitlistedStatus(item) ? (
-                                  <svg className="w-3.5 h-3.5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                  </svg>
+                                   <span className="text-sm">⌛</span>
                                 ) : (
                                   <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
@@ -669,18 +661,15 @@ export default function PlanningPage() {
                                 )}
                              </div>
                              <div className="flex items-center gap-2 min-w-0">
-                                <p className="text-[11px] md:text-sm font-medium text-slate-400 whitespace-nowrap">
+                                <p className="text-[11px] md:text-sm font-medium text-slate-600 whitespace-nowrap">
                                    {item.start_time ? format(parseISO(item.start_time), "dd/MM") : (item.event_date ? format(parseISO(item.event_date), "dd/MM") : "")}
                                    <span className="mx-1 opacity-50">-</span>
                                    {item.start_time ? format(parseISO(item.start_time), "HH:mm") : (item.event_time ? item.event_time : "")}
                                 </p>
                                 <span className="mx-1 text-slate-200 opacity-50">-</span>
                                 <p className="font-medium text-slate-800 text-sm md:text-base truncate">{item.title}</p>
-                                {isWaitlistedStatus(item) && (
-                                  <span className="ml-2 text-[10px] text-amber-600 font-medium opacity-80">(sur liste)</span>
-                                )}
-                             </div>
-                          </div>
+                              </div>
+                           </div>
                           {item.uType === "session" && (() => {
                             const now = new Date();
                             const limit = tenant?.cancellation_limit_mins || 0;

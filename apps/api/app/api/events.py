@@ -181,7 +181,10 @@ async def get_event(
         "max_places": e.max_places,
         "registrations_count": e.registrations_count or 0,
         "is_registered": is_registered,
+        "location": e.location,
         "description": e.description,
+        "allow_waitlist": e.allow_waitlist,
+        "is_active": e.is_active,
         "created_at": e.created_at,
         "updated_at": e.updated_at,
     }

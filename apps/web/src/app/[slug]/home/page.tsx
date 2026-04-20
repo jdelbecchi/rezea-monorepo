@@ -282,7 +282,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                         🔔
                     </span>
                     <div className="flex items-center justify-center gap-4 flex-1 px-1 text-center">
-                        <p className={`text-[11px] font-medium tracking-tight leading-tight
+                        <p className={`text-xs font-medium tracking-tight leading-tight
                             ${allAlerts[0].priority === 1 ? 'text-orange-800' : 
                             allAlerts[0].priority === 2 ? 'text-yellow-700' : 'text-sky-800'}`}
                         >
@@ -334,7 +334,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                                     </svg>
                                 )}
                             </div>
-                            <p className="text-[11px] font-medium text-slate-700 leading-snug">
+                            <p className="text-xs font-medium text-slate-700 leading-snug">
                                 {alert.message}
                             </p>
                         </div>
@@ -372,8 +372,8 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                         <div className="flex items-center gap-4 relative z-10">
                             <div className="text-3xl">📋</div>
                             <div className="flex flex-col gap-0.5">
-                                <span className="text-sm font-medium leading-none">Gestion des inscriptions</span>
-                                <span className="text-[10px] font-light text-white/70">Profil Staff uniquement</span>
+                                <span className="text-base font-medium leading-none">Gestion des inscriptions</span>
+                                <span className="text-xs font-normal text-white/90">Profil Staff uniquement</span>
                             </div>
                         </div>
                     </Link>
@@ -391,18 +391,18 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                     <div className="flex items-center gap-4 relative z-10">
                         <div className="text-3xl group-hover:scale-110 transition-transform duration-500">🗓️</div>
                         <div className="flex flex-col gap-1">
-                            <span className="text-sm font-medium text-slate-800 tracking-tight leading-none group-hover:text-slate-900 transition-colors">
+                            <span className="text-base font-medium text-slate-800 tracking-tight leading-none group-hover:text-slate-900 transition-colors">
                                 Planning & réservations
                             </span>
                             {nextRDV ? (
                                 <div className="flex items-center gap-2">
                                     <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                    <span className="text-[10px] font-medium text-emerald-600 bg-emerald-50/80 px-2 py-0.5 rounded-full">
+                                    <span className="text-xs font-medium text-emerald-600 bg-emerald-50/80 px-2 py-0.5 rounded-full">
                                         Prochain RDV : {nextRDV.date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} à {nextRDV.date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} · {nextRDV.title}
                                     </span>
                                 </div>
                             ) : (
-                                <span className="text-[11px] font-normal text-slate-400">Réservez votre prochaine séance</span>
+                                <span className="text-xs font-normal text-slate-600">Réservez votre prochaine séance</span>
                             )}
                         </div>
                     </div>
@@ -421,8 +421,8 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                     <div className="flex items-center gap-4 relative z-10">
                         <div className="text-3xl shrink-0 group-hover:scale-110 transition-transform duration-500">🛍️</div>
                         <div className="flex flex-col gap-0.5">
-                            <span className="text-sm font-medium text-slate-800 group-hover:text-slate-900 transition-colors tracking-tight">Boutique</span>
-                            <span className="text-[10px] font-normal text-slate-400">Créditez votre compte</span>
+                            <span className="text-base font-medium text-slate-800 group-hover:text-slate-900 transition-colors tracking-tight">Boutique</span>
+                            <span className="text-xs font-normal text-slate-600">Créditez votre compte</span>
                         </div>
                     </div>
                     <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full blur-3xl opacity-0 group-hover:opacity-[0.04] transition-opacity duration-700" style={{ backgroundColor: primaryColor }} />
@@ -440,8 +440,8 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                     <div className="flex items-center gap-4 relative z-10">
                         <div className="text-3xl shrink-0 group-hover:scale-110 transition-transform duration-500">📦</div>
                         <div className="flex flex-col gap-0.5">
-                            <span className="text-sm font-medium text-slate-800 group-hover:text-slate-900 transition-colors tracking-tight">Commandes</span>
-                            <span className="text-[10px] font-normal text-slate-400">Consultez vos commandes d'offres et évènements</span>
+                            <span className="text-base font-medium text-slate-800 group-hover:text-slate-900 transition-colors tracking-tight">Commandes</span>
+                            <span className="text-xs font-normal text-slate-600">Consultez vos offres et évènements</span>
                         </div>
                     </div>
                     <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full blur-3xl opacity-0 group-hover:opacity-[0.04] transition-opacity duration-700" style={{ backgroundColor: primaryColor }} />

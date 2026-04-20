@@ -407,7 +407,7 @@ export default function AdminEventsProgrammingPage() {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
                                         <label className={`block text-sm font-medium mb-1 ${!formData.instructor_name ? 'text-red-500' : 'text-slate-700'}`}>Attribution (animateur) *</label>
                                         <input
@@ -417,6 +417,16 @@ export default function AdminEventsProgrammingPage() {
                                             onChange={(e) => setFormData({ ...formData, instructor_name: e.target.value })}
                                             className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${!formData.instructor_name ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
                                             placeholder="Ex: Jean Dupont"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Lieu (Salle)</label>
+                                        <input
+                                            type="text"
+                                            value={formData.location}
+                                            onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            placeholder="Ex: Salle 1, Dojo..."
                                         />
                                     </div>
                                     <div>
@@ -431,6 +441,17 @@ export default function AdminEventsProgrammingPage() {
                                             placeholder="20"
                                         />
                                     </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                                    <textarea
+                                        rows={3}
+                                        value={formData.description}
+                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                        placeholder="Détails de l'évènement (affichés sur le récapitulatif d'inscription)..."
+                                    />
                                 </div>
 
                                 <div>

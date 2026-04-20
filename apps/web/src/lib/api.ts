@@ -768,6 +768,7 @@ export const api = {
     price_external_cents: number;
     instructor_name: string;
     max_places: number;
+    location?: string | null;
     description?: string | null;
     allow_waitlist?: boolean;
   }) => {

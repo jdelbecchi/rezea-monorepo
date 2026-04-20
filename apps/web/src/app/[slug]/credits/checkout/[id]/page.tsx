@@ -115,7 +115,7 @@ export default function CheckoutPage() {
                             {/* Offer Details Summary */}
                             <div className="flex flex-col items-center gap-4 pb-8 border-b border-slate-200">
                                 <div className="space-y-4 text-center">
-                                    <h2 className="text-xl md:text-2xl font-bold text-slate-900 capitalize tracking-tight">{offer.name}</h2>
+                                    <h2 className="text-xl md:text-2xl font-semibold text-slate-900 capitalize tracking-tight">{offer.name}</h2>
                                     
                                     <div className="flex flex-col items-center gap-3">
                                         <div className="flex items-center gap-2 text-slate-500">
@@ -139,7 +139,7 @@ export default function CheckoutPage() {
                                 <div className="w-full text-center space-y-4 mt-1">
                                     {offer.description && (
                                         <div className="pt-0">
-                                            <p className="text-slate-400 italic leading-relaxed text-[11px] md:text-[13px] max-w-xl mx-auto text-center">{offer.description}</p>
+                                            <p className="text-slate-600 font-medium leading-relaxed text-xs md:text-sm max-w-xl mx-auto text-center">{offer.description}</p>
                                         </div>
                                     )}
 
@@ -158,7 +158,7 @@ export default function CheckoutPage() {
                                                 className={`p-4 md:p-6 rounded-2xl border transition-all flex flex-col items-center gap-1.5 active:scale-95 ${selectedPricingType === 'lump_sum' ? '' : 'opacity-60 hover:opacity-100'}`}
                                             >
                                                 <span className={`text-lg md:text-xl font-semibold leading-none ${selectedPricingType === 'lump_sum' ? 'text-black' : 'text-slate-800'}`}>{formatPrice(offer.price_lump_sum_cents)}</span>
-                                                <span className={`text-[10px] font-medium lowercase tracking-normal ${selectedPricingType === 'lump_sum' ? 'text-black' : 'text-slate-400'}`}>en une fois</span>
+                                                <span className={`text-[11px] font-medium lowercase tracking-normal ${selectedPricingType === 'lump_sum' ? 'text-black' : 'text-slate-500'}`}>en une fois</span>
                                             </button>
                                             <button 
                                                 onClick={() => setSelectedPricingType('recurring')}
@@ -172,12 +172,12 @@ export default function CheckoutPage() {
                                                 className={`p-4 md:p-6 rounded-2xl border transition-all flex flex-col items-center gap-1.5 active:scale-95 ${selectedPricingType === 'recurring' ? '' : 'opacity-60 hover:opacity-100'}`}
                                             >
                                                 <span className={`text-lg md:text-xl font-semibold leading-none ${selectedPricingType === 'recurring' ? 'text-black' : 'text-slate-800'}`}>{formatPrice(offer.price_recurring_cents)}</span>
-                                                <span className={`text-[10px] font-medium lowercase tracking-normal ${selectedPricingType === 'recurring' ? 'text-black' : 'text-slate-400'}`}>x {offer.recurring_count} échéances</span>
+                                                <span className={`text-[11px] font-medium lowercase tracking-normal ${selectedPricingType === 'recurring' ? 'text-black' : 'text-slate-500'}`}>x {offer.recurring_count} échéances</span>
                                             </button>
                                         </div>
                                     ) : (
                                         <div className="space-y-1 pt-2">
-                                            <p className="text-2xl md:text-3xl font-bold text-slate-900 leading-none">
+                                            <p className="text-2xl md:text-3xl font-semibold text-slate-900 leading-none">
                                                 {selectedPricingType === "recurring" && offer.price_recurring_cents 
                                                     ? formatPrice(offer.price_recurring_cents)
                                                     : formatPrice(offer.price_lump_sum_cents || offer.price_recurring_cents)
@@ -243,20 +243,20 @@ export default function CheckoutPage() {
                                 )}
                             </div>
 
-                            <div className="mt-8">
+                            <div className="mt-8 flex flex-col items-center">
                                 <button
                                     onClick={() => handleCheckout(payLater)}
                                     disabled={processing}
-                                    className="w-full py-3.5 rounded-[1.5rem] bg-slate-900 text-white text-sm font-medium hover:bg-blue-600 shadow-xl shadow-slate-100 transition-all duration-300 disabled:opacity-50"
+                                    className="w-full md:max-w-sm py-3.5 rounded-2xl bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 shadow-xl shadow-slate-100 transition-all duration-300 disabled:opacity-50"
                                 >
                                     {processing ? "Traitement..." : "Confirmer la commande"}
                                 </button>
                             </div>
                         </div>
                         
-                        <div className="bg-slate-50 p-6 border-t border-slate-100 flex items-center gap-4">
-                            <div className="text-2xl">🛡️</div>
-                            <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                        <div className="bg-slate-50 p-6 border-t border-slate-100 flex flex-col items-center justify-center gap-2 text-center">
+                            <div className="text-xl opacity-50">🛡️</div>
+                            <p className="text-xs text-slate-500 leading-relaxed font-medium max-w-sm">
                                 En confirmant votre commande, vous acceptez nos conditions générales de vente.
                             </p>
                         </div>
@@ -282,7 +282,7 @@ export default function CheckoutPage() {
 
                         <button
                             onClick={handleFinalRedirect}
-                            className="w-full py-4 rounded-2xl bg-slate-900 text-white font-medium text-sm hover:bg-blue-600 transition-all duration-300 shadow-xl"
+                            className="w-full py-4 rounded-2xl bg-slate-900 text-white font-medium text-sm hover:bg-slate-800 transition-all duration-300 shadow-xl"
                         >
                             {(successData?.redirect_url && tenant?.payment_redirect_link) ? "Procéder au paiement" : "Retour à l'accueil"}
                         </button>

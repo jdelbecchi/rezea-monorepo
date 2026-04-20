@@ -65,6 +65,9 @@ async def list_events(
             "instructor_name": e.instructor_name,
             "max_places": e.max_places,
             "registrations_count": e.registrations_count or 0,
+            "location": e.location,
+            "allow_waitlist": e.allow_waitlist,
+            "is_active": e.is_active,
             "description": e.description,
             "created_at": e.created_at,
             "updated_at": e.updated_at,
@@ -98,7 +101,9 @@ async def create_event(
         price_external_cents=event_data.price_external_cents,
         instructor_name=event_data.instructor_name,
         max_places=event_data.max_places,
+        location=event_data.location,
         description=event_data.description,
+        allow_waitlist=event_data.allow_waitlist,
         registrations_count=0,
     )
 

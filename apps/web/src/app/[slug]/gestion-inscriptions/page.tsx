@@ -12,6 +12,7 @@ import {
   endOfMonth, 
   eachDayOfInterval, 
   isSameDay, 
+  isSameMonth,
   addMonths, 
   subMonths,
   getDay,
@@ -34,12 +35,14 @@ export default function GestionInscriptionsPage() {
     const [events, setEvents] = useState<any[]>([]);
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [selectedItem, setSelectedItem] = useState<{ type: 'session' | 'event', data: any } | null>(null);
-    const [participants, setParticipants] = useState<(AdminBookingItem | AdminEventRegistrationItem)[]>([]);
-    const [loadingParticipants, setLoadingParticipants] = useState(false);
+    const [participantsMap, setParticipantsMap] = useState<Record<string, (AdminBookingItem | AdminEventRegistrationItem)[]>>({});
+    const [loadingMap, setLoadingMap] = useState<Record<string, boolean>>({});
+    const [modalParticipants, setModalParticipants] = useState<(AdminBookingItem | AdminEventRegistrationItem)[]>([]);
     const [locationFilter, setLocationFilter] = useState<string>('all');
+    const [rawDayItems, setRawDayItems] = useState<{ sessions: Session[], events: any[] }>({ sessions: [], events: [] });
 
     // Modals & UX
-    const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [expandedIds, setExpandedIds] = useState<string[]>([]);
     const [showEditSessionModal, setShowEditSessionModal] = useState(false);
     const [confirmingSessionId, setConfirmingSessionId] = useState<string | null>(null);
     const [confirmingReactivateId, setConfirmingReactivateId] = useState<string | null>(null);
@@ -53,10 +56,14 @@ export default function GestionInscriptionsPage() {
         description: "",
         instructor_name: "",
         location: "",
+        date: "",
         time: "",
-        duration_minutes: 60,
+        duration_h: 1,
+        duration_m: 0,
         max_participants: 10,
     });
+    const [includeWaitlist, setIncludeWaitlist] = useState(false);
+    const [isLocationOpen, setIsLocationOpen] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -99,6 +106,13 @@ export default function GestionInscriptionsPage() {
                 const d = parseISO(e.event_date);
                 return d >= startOfMonth(date) && d <= endOfMonth(date);
             }));
+
+            // Si le jour sélectionné est dans ce mois, on rafraîchit aussi ses données
+            if (isSameMonth(selectedDate, date)) {
+                const daySessions = sessionsData.filter((s: Session) => isSameDay(parseISO(s.start_time), selectedDate));
+                const dayEvents = eventsData.filter((e: any) => isSameDay(parseISO(e.event_date), selectedDate));
+                setRawDayItems({ sessions: daySessions, events: dayEvents });
+            }
         } catch (err) {
             console.error("Failed to load month data", err);
         }
@@ -125,40 +139,47 @@ export default function GestionInscriptionsPage() {
 
     const handleSelectDay = (day: Date) => {
         setSelectedDate(day);
+        // On capture les données du jour au moment du clic depuis le pool de données actuel du calendrier
+        let daySessions = sessions.filter(s => isSameDay(parseISO(s.start_time), day));
+        let dayEvents = events.filter(e => isSameDay(parseISO(e.event_date), day));
+        setRawDayItems({ sessions: daySessions, events: dayEvents });
     };
 
     const loadParticipants = async (item: any, type: 'session' | 'event') => {
-        setLoadingParticipants(true);
+        setLoadingMap(prev => ({ ...prev, [item.id]: true }));
         try {
             if (type === 'session') {
                 const regs = await api.getAdminBookings({ session_id: item.id });
-                // En mode session annulée, on veut voir les "session_cancelled"
-                // En mode session active, on les ignore pour ne pas polluer avec d'anciennes annulations
+                let filtered: AdminBookingItem[] = [];
                 if (item.is_active === false) {
-                    setParticipants(regs.filter(r => r.status === 'session_cancelled' || r.status === 'absent' || r.status === 'confirmed'));
+                    filtered = regs.filter(r => r.status === 'session_cancelled' || r.status === 'absent' || r.status === 'confirmed');
                 } else {
-                    setParticipants(regs.filter(r => r.status !== 'cancelled' && r.status !== 'session_cancelled'));
+                    filtered = regs.filter(r => r.status !== 'cancelled' && r.status !== 'session_cancelled');
                 }
+                setParticipantsMap(prev => ({ ...prev, [item.id]: filtered }));
             } else {
                 const regs = await api.getAdminEventRegistrations({ event_id: item.id });
-                setParticipants(regs.filter(r => r.status !== 'cancelled' && r.status !== 'event_deleted'));
+                const filtered = regs.filter(r => r.status !== 'cancelled' && r.status !== 'event_deleted');
+                setParticipantsMap(prev => ({ ...prev, [item.id]: filtered }));
             }
         } catch (err) {
             console.error("Failed to load participants", err);
         } finally {
-            setLoadingParticipants(false);
+            setLoadingMap(prev => ({ ...prev, [item.id]: false }));
         }
     };
 
     const handleToggleParticipants = async (item: any, type: 'session' | 'event') => {
-        if (expandedId === item.id) {
-            setExpandedId(null);
-            return;
-        }
+        const isCurrentlyExpanded = expandedIds.includes(item.id);
         
-        setExpandedId(item.id);
-        setSelectedItem({ type, data: item });
-        await loadParticipants(item, type);
+        if (isCurrentlyExpanded) {
+            setExpandedIds(prev => prev.filter(id => id !== item.id));
+        } else {
+            setExpandedIds(prev => [...prev, item.id]);
+            setSelectedItem({ type, data: item });
+            // Ne charger que si on n'a pas déjà les données ou si on veut rafraîchir
+            await loadParticipants(item, type);
+        }
     };
 
     const handleOpenEditSession = async (item: any) => {
@@ -173,21 +194,23 @@ export default function GestionInscriptionsPage() {
             description: s.description || "",
             instructor_name: s.instructor_name || "",
             location: s.location || "",
+            date: format(start, "yyyy-MM-dd"),
             time: format(start, "HH:mm"),
-            duration_minutes: duration,
+            duration_h: Math.floor(duration / 60),
+            duration_m: duration % 60,
             max_participants: s.max_participants,
         });
 
-        // Charger les participants pour le bouton mail groupé si besoin
+        // Charger les participants pour le bouton mail groupé si besoin (isolé dans modalParticipants)
         if (s.current_participants > 0) {
             try {
                 const regs = await api.getAdminBookings({ session_id: s.id });
-                setParticipants(regs.filter(r => r.status !== 'cancelled' && r.status !== 'session_cancelled'));
+                setModalParticipants(regs.filter(r => r.status !== 'cancelled' && r.status !== 'session_cancelled'));
             } catch (err) {
                 console.error("Failed to load participants for modal", err);
             }
         } else {
-            setParticipants([]);
+            setModalParticipants([]);
         }
 
         setShowEditSessionModal(true);
@@ -197,9 +220,9 @@ export default function GestionInscriptionsPage() {
         e.preventDefault();
         if (!selectedItem || selectedItem.type !== 'session') return;
         try {
-            const dateStr = format(new Date(selectedItem.data.start_time), "yyyy-MM-dd");
-            const startDt = new Date(`${dateStr}T${editFormData.time}:00`);
-            const endDt = new Date(startDt.getTime() + editFormData.duration_minutes * 60 * 1000);
+            const startDt = new Date(`${editFormData.date}T${editFormData.time}:00`);
+            const totalMinutes = (editFormData.duration_h * 60) + editFormData.duration_m;
+            const endDt = new Date(startDt.getTime() + totalMinutes * 60 * 1000);
 
             await api.updateSession(selectedItem.data.id, {
                 title: editFormData.title,
@@ -256,7 +279,7 @@ export default function GestionInscriptionsPage() {
             }
 
             // Rafraîchir les participants affichés si besoin
-            if (expandedId === item.id) {
+            if (expandedIds.includes(item.id)) {
                 await loadParticipants(item, 'session');
             }
         } catch (err) {
@@ -273,8 +296,14 @@ export default function GestionInscriptionsPage() {
             const nextStatus = participant.status === 'absent' ? 'confirmed' : 'absent';
             if (type === 'session') {
                 await api.updateAdminBooking(participant.id, { status: nextStatus });
+                // Rafraîchir spécifiquement cette séance
+                const s = sessions.find(s => s.id === participant.session_id);
+                if (s) await loadParticipants(s, 'session');
             } else {
                 await api.updateAdminEventRegistration(participant.id, { status: nextStatus });
+                // Rafraîchir spécifiquement cet évènement
+                const e = events.find(ev => ev.id === participant.event_id);
+                if (e) await loadParticipants(e, 'event');
             }
             // Refresh participants without toggling the whole UI
             if (selectedItem) {
@@ -289,10 +318,19 @@ export default function GestionInscriptionsPage() {
         setViewingContact(p);
     };
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center bg-white text-slate-400">Chargement...</div>;
+    // Filtrage des éléments du jour affiché par lieu
+    const dayItems = useMemo(() => {
+        let { sessions: s, events: e } = rawDayItems;
+        if (locationFilter !== 'all') {
+            s = s.filter(session => session.location === locationFilter);
+            e = e.filter(event => event.location === locationFilter);
+        }
+        return { sessions: s, events: e };
+    }, [rawDayItems, locationFilter]);
 
-    const selectedDayItems = itemsForDay(selectedDate);
-    const hasItems = selectedDayItems.sessions.length > 0 || selectedDayItems.events.length > 0;
+    const hasItems = dayItems.sessions.length > 0 || dayItems.events.length > 0;
+
+    if (loading) return <div className="min-h-screen flex items-center justify-center bg-white text-slate-400">Chargement...</div>;
 
     return (
         <div className="bg-white flex flex-col min-h-screen pb-20 md:pb-0 overflow-x-hidden">
@@ -406,7 +444,7 @@ export default function GestionInscriptionsPage() {
                                                 className="flex items-center justify-between bg-white border border-slate-100 text-slate-600 text-[11px] md:text-[12px] font-medium rounded-2xl px-3 md:px-4 py-2 md:py-2.5 outline-none transition-all cursor-pointer shadow-sm hover:shadow-md hover:border-slate-200 gap-2"
                                             >
                                                 <span className="truncate max-w-[100px] md:max-w-[150px]">
-                                                    {locationFilter === "all" ? "Toutes les salles" : locationFilter}
+                                                    {locationFilter === "all" ? "Tous les lieux" : locationFilter}
                                                 </span>
                                                 <svg className={`w-3 h-3 md:w-4 md:h-4 text-slate-400 transition-transform duration-200 ${isLocationMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
@@ -429,7 +467,7 @@ export default function GestionInscriptionsPage() {
                                                                 locationFilter === "all" ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"
                                                             }`}
                                                         >
-                                                            Toutes les salles
+                                                            Tous les lieux
                                                         </button>
                                                         {tenant.locations.map((loc) => (
                                                             <button
@@ -454,19 +492,18 @@ export default function GestionInscriptionsPage() {
                             </div>
                             
                             {!hasItems ? (
-                                <div className="bg-white rounded-3xl p-16 text-center border border-dashed border-slate-200">
-                                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                                      <span className="text-3xl">🎈</span>
-                                    </div>
-                                    <p className="text-slate-400 font-medium text-xs tracking-wide">Aucune activité au programme.</p>
+                                <div className="bg-white rounded-3xl p-12 text-center border border-dashed border-slate-200">
+                                    <p className="text-slate-400 font-medium text-xs tracking-wide italic">Aucune activité au programme.</p>
                                 </div>
                             ) : (
                                 <div className="space-y-3">
                                     {/* Séances */}
-                                    {selectedDayItems.sessions.map((session) => {
+                                    {dayItems.sessions.map((session) => {
                                         const ratio = session.current_participants / session.max_participants;
                                         const isHighAttendance = ratio >= 0.6;
-                                        const isExpanded = expandedId === session.id;
+                                        const isExpanded = expandedIds.includes(session.id);
+                                        const participants = participantsMap[session.id] || [];
+                                        const loadingParticipants = loadingMap[session.id] || false;
                                         
                                         return (
                                             <div 
@@ -497,9 +534,9 @@ export default function GestionInscriptionsPage() {
 
                                                         {/* Ligne 2: Attribution + Salle + Actions */}
                                                         <div className="flex items-center justify-between gap-4 w-full">
-                                                            <div className="flex items-center gap-2 text-slate-600 text-xs md:text-sm font-medium min-w-0">
+                                                            <div className="flex items-center gap-2 text-slate-600 text-sm font-medium min-w-0">
                                                                 <div className="flex items-center gap-1.5 truncate">
-                                                                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                                                     </svg>
                                                                     <span className="truncate">{session.instructor_name || "Coach"}</span>
@@ -508,7 +545,7 @@ export default function GestionInscriptionsPage() {
                                                                     <>
                                                                         <span className="text-slate-300">•</span>
                                                                         <span className="truncate flex items-center gap-1">
-                                                                            <span className="text-xs">📍</span> {session.location}
+                                                                            <span className="text-base">📍</span> {session.location}
                                                                         </span>
                                                                     </>
                                                                 )}
@@ -580,7 +617,7 @@ export default function GestionInscriptionsPage() {
                                                             <button 
                                                                 onClick={() => handleToggleParticipants(session, 'session')}
                                                                 className={`px-3 py-1.5 rounded-xl text-[10px] md:text-[11px] font-medium transition-all active:scale-95 flex items-center gap-2 ${
-                                                                    isExpanded ? 'bg-slate-300 text-slate-700' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                                                                    'bg-slate-200 text-slate-600 hover:bg-slate-300'
                                                                 }`}
                                                             >
                                                                 <span>{isExpanded ? 'Masquer' : 'Voir les participants'}</span>
@@ -654,10 +691,12 @@ export default function GestionInscriptionsPage() {
                                     })}
                                     
                                     {/* Événements */}
-                                    {selectedDayItems.events.map((event) => {
+                                    {dayItems.events.map((event) => {
                                         const ratio = event.registrations_count / event.max_places;
                                         const isHighAttendance = ratio >= 0.6;
-                                        const isExpanded = expandedId === event.id;
+                                        const isExpanded = expandedIds.includes(event.id);
+                                        const participants = participantsMap[event.id] || [];
+                                        const loadingParticipants = loadingMap[event.id] || false;
 
                                         return (
                                             <div 
@@ -686,9 +725,9 @@ export default function GestionInscriptionsPage() {
 
                                                         {/* Ligne 2: Attribution + Salle */}
                                                         <div className="flex items-center justify-between gap-4 w-full">
-                                                            <div className="flex items-center gap-2 text-slate-600 text-xs md:text-sm font-medium min-w-0">
+                                                            <div className="flex items-center gap-2 text-slate-600 text-sm font-medium min-w-0">
                                                                 <div className="flex items-center gap-1.5 truncate">
-                                                                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                                                     </svg>
                                                                     <span className="truncate">{event.instructor_name || "Staff"}</span>
@@ -697,7 +736,7 @@ export default function GestionInscriptionsPage() {
                                                                     <>
                                                                         <span className="text-slate-300">•</span>
                                                                         <span className="truncate flex items-center gap-1">
-                                                                            <span className="text-xs">📍</span> {event.location}
+                                                                            <span className="text-base">📍</span> {event.location}
                                                                         </span>
                                                                     </>
                                                                 )}
@@ -720,7 +759,7 @@ export default function GestionInscriptionsPage() {
                                                             <button 
                                                                 onClick={() => handleToggleParticipants(event, 'event')}
                                                                 className={`px-3 py-1.5 rounded-xl text-[10px] md:text-[11px] font-medium transition-all active:scale-95 flex items-center gap-2 ${
-                                                                    isExpanded ? 'bg-slate-300 text-slate-700' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                                                                    'bg-slate-200 text-slate-600 hover:bg-slate-300'
                                                                 }`}
                                                             >
                                                                 <span>{isExpanded ? 'Masquer' : 'Voir les participants'}</span>
@@ -799,10 +838,10 @@ export default function GestionInscriptionsPage() {
                 </div>
             </main>
 
-            {/* Modal Edit Session */}
             {showEditSessionModal && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
-                    <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 p-1 animate-in zoom-in duration-300">
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/80"
+                     style={{ '--primary': tenant?.primary_color || '#6366f1' } as any}>
+                    <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 p-1">
                         <form onSubmit={handleUpdateSession} className="p-6 md:p-10">
                             <div className="flex justify-between items-start mb-6">
                                 <div>
@@ -819,107 +858,183 @@ export default function GestionInscriptionsPage() {
                             <div className="space-y-4 mb-8">
 
                                 <div>
-                                    <label className="block text-[11px] font-medium text-slate-400 mb-1.5 px-1">Titre</label>
+                                    <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1.5 px-1">Titre</label>
                                     <input 
                                         type="text" 
                                         required
                                         value={editFormData.title}
                                         onChange={(e) => setEditFormData({...editFormData, title: e.target.value})}
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-violet-500 outline-none transition-all placeholder:text-slate-300 text-sm"
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all placeholder:text-slate-300 text-sm"
                                     />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-[11px] font-medium text-slate-400 mb-1.5 px-1">Heure</label>
+                                        <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1.5 px-1">Date</label>
+                                        <input 
+                                            type="date" 
+                                            required
+                                            value={editFormData.date}
+                                            onChange={(e) => setEditFormData({...editFormData, date: e.target.value})}
+                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-sm"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1.5 px-1">Heure de début</label>
                                         <input 
                                             type="time" 
                                             required
                                             value={editFormData.time}
                                             onChange={(e) => setEditFormData({...editFormData, time: e.target.value})}
-                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-violet-500 outline-none transition-all text-sm"
+                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-sm"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="block text-[11px] font-medium text-slate-400 mb-1.5 px-1">Durée (min)</label>
-                                        <input 
-                                            type="number" 
-                                            required
-                                            value={editFormData.duration_minutes}
-                                            onChange={(e) => setEditFormData({...editFormData, duration_minutes: parseInt(e.target.value)})}
-                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-violet-500 outline-none transition-all text-sm"
-                                        />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1.5 px-1">Durée</label>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="relative">
+                                            <input 
+                                                type="number" 
+                                                min="0"
+                                                required
+                                                value={editFormData.duration_h}
+                                                onChange={(e) => setEditFormData({...editFormData, duration_h: parseInt(e.target.value) || 0})}
+                                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-sm pr-8"
+                                            />
+                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">hh</span>
+                                        </div>
+                                        <div className="relative">
+                                            <input 
+                                                type="number" 
+                                                min="0"
+                                                max="59"
+                                                required
+                                                value={editFormData.duration_m}
+                                                onChange={(e) => setEditFormData({...editFormData, duration_m: parseInt(e.target.value) || 0})}
+                                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-sm pr-8"
+                                            />
+                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">mm</span>
+                                        </div>
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-[11px] font-medium text-slate-400 mb-1.5 px-1">Attribution</label>
+                                        <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1.5 px-1">Attribution</label>
                                         <input 
                                             type="text"
                                             placeholder="Coach" 
                                             value={editFormData.instructor_name}
                                             onChange={(e) => setEditFormData({...editFormData, instructor_name: e.target.value})}
-                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-violet-500 outline-none transition-all text-sm"
+                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-sm"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-[11px] font-medium text-slate-400 mb-1.5 px-1">Lieu</label>
-                                        {tenant?.locations && tenant.locations.length > 0 ? (
-                                            <select 
-                                                value={editFormData.location}
-                                                onChange={(e) => setEditFormData({...editFormData, location: e.target.value})}
-                                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-violet-500 outline-none transition-all text-sm appearance-none"
-                                            >
-                                                <option value="">Aucun lieu</option>
-                                                {tenant.locations.map(loc => (
-                                                    <option key={loc} value={loc}>{loc}</option>
-                                                ))}
-                                            </select>
-                                        ) : (
-                                            <input 
-                                                type="text" 
-                                                placeholder="Salle"
-                                                value={editFormData.location}
-                                                onChange={(e) => setEditFormData({...editFormData, location: e.target.value})}
-                                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-violet-500 outline-none transition-all text-sm"
-                                            />
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-[11px] font-medium text-slate-400 mb-1.5 px-1">Capacité</label>
+                                        <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1.5 px-1">Capacité</label>
                                         <input 
                                             type="number" 
                                             required
                                             value={editFormData.max_participants}
                                             onChange={(e) => setEditFormData({...editFormData, max_participants: parseInt(e.target.value)})}
-                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-violet-500 outline-none transition-all text-sm"
+                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-sm"
                                         />
                                     </div>
-                                    <div />
+                                </div>
+
+                                <div className="relative">
+                                    <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-2 px-1">Lieu</label>
+                                    <div className="relative">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsLocationOpen(!isLocationOpen)}
+                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-sm flex items-center justify-between"
+                                        >
+                                            <span className={!editFormData.location ? 'text-slate-400' : ''}>
+                                                {editFormData.location || "Sélectionner un lieu..."}
+                                            </span>
+                                            <span className="text-slate-400 text-[10px] transform transition-transform duration-200" style={{ transform: isLocationOpen ? 'rotate(180deg)' : 'none' }}>
+                                                ▼
+                                            </span>
+                                        </button>
+                                        
+                                        {isLocationOpen && (
+                                            <>
+                                                <div className="fixed inset-0 z-[120]" onClick={() => setIsLocationOpen(false)}></div>
+                                                <div className="absolute left-0 right-0 top-full mt-2 bg-white border border-slate-100 rounded-2xl shadow-2xl z-[130] max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
+                                                    <div 
+                                                        className="p-4 hover:bg-slate-50 cursor-pointer text-sm text-slate-400 hover:text-slate-600 transition-colors border-b border-slate-50"
+                                                        onClick={() => { setEditFormData({...editFormData, location: ""}); setIsLocationOpen(false); }}
+                                                    >
+                                                        Aucun lieu
+                                                    </div>
+                                                    {tenant?.locations?.map((loc) => (
+                                                        <div 
+                                                            key={loc}
+                                                            className="p-4 hover:bg-slate-50 cursor-pointer text-sm font-medium flex items-center justify-between group transition-colors border-b border-slate-50 last:border-0"
+                                                            style={editFormData.location === loc ? { color: tenant?.primary_color } : {}}
+                                                            onClick={() => { setEditFormData({...editFormData, location: loc}); setIsLocationOpen(false); }}
+                                                        >
+                                                            <span>{loc}</span>
+                                                            {editFormData.location === loc && (
+                                                                <span className="text-[10px]">✓</span>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                    {(!tenant?.locations || tenant.locations.length === 0) && (
+                                                        <div className="p-4">
+                                                            <input 
+                                                                type="text" 
+                                                                placeholder="Saisir un lieu..."
+                                                                value={editFormData.location}
+                                                                autoFocus
+                                                                onChange={(e) => setEditFormData({...editFormData, location: e.target.value})}
+                                                                className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-xs"
+                                                                onKeyDown={(e) => e.key === 'Enter' && setIsLocationOpen(false)}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div>
-                                    <label className="block text-[11px] font-medium text-slate-400 mb-1.5 px-1">Description</label>
+                                    <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1.5 px-1">Description</label>
                                     <textarea 
                                         rows={2}
                                         value={editFormData.description}
                                         onChange={(e) => setEditFormData({...editFormData, description: e.target.value})}
-                                        className="w-full bg-slate-100/50 border border-slate-100 rounded-2xl p-4 text-slate-600 font-medium italic focus:ring-2 focus:ring-violet-500 outline-none transition-all text-xs"
+                                        className="w-full bg-slate-100/50 border border-slate-100 rounded-2xl p-4 text-slate-600 font-medium italic focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-xs"
                                     />
                                 </div>
                             </div>
 
-                            {participants.length > 0 && (
+                            {modalParticipants.length > 0 && (
                                 <div className="flex items-center justify-between px-2 mb-8 mt-4 border-t border-slate-50 pt-6">
-                                    <span className="text-[11px] text-slate-400 italic">Envoyer un e-mail aux participants</span>
+                                    <div className="flex flex-col">
+                                        <span className="text-xs text-slate-400 italic">Envoyer un e-mail groupé</span>
+                                        <label className="flex items-center gap-2 mt-1 cursor-pointer group">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={includeWaitlist} 
+                                                onChange={(e) => setIncludeWaitlist(e.target.checked)} 
+                                                className="w-3.5 h-3.5 rounded border-slate-300 text-slate-900 focus:ring-slate-900" 
+                                            />
+                                            <span className="text-[10px] text-slate-400 font-medium group-hover:text-slate-600 transition-colors">Inclure la liste d'attente</span>
+                                        </label>
+                                    </div>
                                     <button 
                                         type="button"
-                                        onClick={() => handleContactEmail(participants.map(p => p.user_id))}
-                                        className="w-10 h-10 flex items-center justify-center bg-violet-50 text-violet-600 rounded-full hover:bg-violet-100 transition-all active:scale-95 shadow-sm shadow-violet-100/50"
+                                        onClick={() => {
+                                            const targets = includeWaitlist 
+                                                ? modalParticipants 
+                                                : modalParticipants.filter(p => p.status === 'confirmed' || p.status === 'absent');
+                                            handleContactEmail(targets.map(p => p.user_id));
+                                        }}
+                                        className="w-11 h-11 flex items-center justify-center rounded-full transition-all active:scale-95 shadow-md bg-white border border-slate-100 hover:bg-slate-50 text-[11px]"
                                     >
                                         <span className="text-xl">📧</span>
                                     </button>
@@ -936,7 +1051,7 @@ export default function GestionInscriptionsPage() {
                                 </button>
                                 <button 
                                     type="submit"
-                                    className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-medium hover:bg-violet-600 shadow-xl shadow-slate-200 transition-all text-xs"
+                                    className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-medium hover:bg-slate-800 shadow-xl shadow-slate-200 transition-all text-xs"
                                 >
                                     Enregistrer
                                 </button>

@@ -90,47 +90,89 @@ export default function EventCheckoutPage() {
                         <h1 className="text-xl md:text-2xl font-medium text-slate-900 tracking-tight">Récapitulatif de votre inscription</h1>
                     </header>
 
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden relative">
                         <div className="p-6 md:p-8">
-                            {/* Event Summary Section */}
-                            <div className="flex flex-col md:flex-row justify-between items-start gap-8 pb-6 border-b border-slate-100">
-                                <div className="space-y-4">
-                                    <div>
-                                        <span className="text-[10px] font-semibold text-blue-600 capitalize bg-blue-50 px-3 py-1 rounded-full">Événement</span>
-                                        <h2 className="text-lg md:text-xl font-semibold text-slate-900 mt-2 uppercase tracking-tight">{event?.title}</h2>
-                                    </div>
-                                    <div className="space-y-3 mt-6">
-                                        <div className="flex flex-wrap gap-x-6 gap-y-1.5">
-                                            <div className="flex items-center gap-3 text-slate-700">
-                                                <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-sm">🕒</div>
-                                                <span className="text-sm font-medium">{event?.event_time}</span>
-                                            </div>
-                                            <div className="flex items-center gap-3 text-slate-700">
-                                                <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-sm">👤</div>
-                                                <span className="text-sm font-medium">{event?.instructor_name}</span>
+                            {/* Événement Badge (Top Right) */}
+                            <div 
+                                className="absolute top-2 right-2 px-3 py-1 rounded-full text-[10px] font-bold shadow-sm"
+                                style={{ 
+                                    backgroundColor: `${(tenant?.primary_color || '#2563eb')}15`,
+                                    color: tenant?.primary_color || '#2563eb'
+                                }}
+                            >
+                                Événement
+                            </div>
+
+                            <div className="flex flex-col items-center text-center gap-6 pb-6 border-b border-slate-100">
+                                <div className="mt-4 flex flex-col items-center">
+                                    <h2 className="text-[22px] md:text-[26px] font-semibold text-slate-900 tracking-tight leading-tight">
+                                        {event?.title}
+                                    </h2>
+                                    <p className="text-sm md:text-base font-normal text-slate-600 mt-1.5">
+                                        par <span className="font-semibold" style={{ color: tenant?.primary_color || '#2563eb' }}>{event?.instructor_name || tenant?.name}</span>
+                                    </p>
+                                    
+                                    <div className="w-24 h-px bg-slate-300 mx-auto mt-6"></div>
+
+                                    {event?.description && (
+                                        <p className="text-slate-600 text-xs md:text-sm font-normal leading-relaxed max-w-sm mx-auto mt-7">
+                                            {event.description}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="w-full max-w-sm mx-auto mt-3 text-left relative pl-10 py-1">
+                                    {/* Sidebar accent color - thinner and more subtle */}
+                                    <div 
+                                        className="absolute left-2 top-0 bottom-0 w-[3px] rounded-full"
+                                        style={{ 
+                                            background: `linear-gradient(to bottom, ${tenant?.primary_color || '#2563eb'}, ${(tenant?.primary_color || '#2563eb')}10)`,
+                                            boxShadow: `0 0 10px ${(tenant?.primary_color || '#2563eb')}10`
+                                        }}
+                                    ></div>
+
+                                    <div className="space-y-4">
+                                        {/* Date Row */}
+                                        <div className="flex items-center gap-5 group">
+                                            <div className="w-10 h-10 rounded-xl bg-slate-50/50 flex items-center justify-center text-lg shadow-sm border border-slate-100/50 group-hover:scale-105 transition-transform duration-300">📅</div>
+                                            <div className="space-y-0.5">
+                                                <p className="text-[10px] font-medium text-slate-400 uppercase tracking-[0.15em]">Date</p>
+                                                <p className="text-[15px] font-medium text-slate-700 leading-tight">
+                                                    {event?.event_date ? new Date(event.event_date).toLocaleDateString("fr-FR", { weekday: 'long', day: 'numeric', month: 'long' }) : ""}
+                                                </p>
                                             </div>
                                         </div>
 
-                                        {event?.description && (
-                                            <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100/50 max-w-xl">
-                                                <p className="text-slate-500 text-[11px] md:text-xs leading-relaxed italic">
-                                                    {event.description}
-                                                </p>
+                                        {/* Time Row */}
+                                        <div className="flex items-center gap-5 group">
+                                            <div className="w-10 h-10 rounded-xl bg-slate-50/50 flex items-center justify-center text-lg shadow-sm border border-slate-100/50 group-hover:scale-105 transition-transform duration-300">🕒</div>
+                                            <div className="space-y-0.5">
+                                                <p className="text-[10px] font-medium text-slate-400 uppercase tracking-[0.15em]">Horaire</p>
+                                                <p className="text-[15px] font-medium text-slate-700 leading-tight">{event?.event_time}</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Location Row */}
+                                        {event?.location && (
+                                            <div className="flex items-center gap-5 group">
+                                                <div className="w-10 h-10 rounded-xl bg-slate-50/50 flex items-center justify-center text-lg shadow-sm border border-slate-100/50 group-hover:scale-105 transition-transform duration-300">📍</div>
+                                                <div className="space-y-0.5">
+                                                    <p className="text-[10px] font-medium text-slate-400 uppercase tracking-[0.15em]">Lieu</p>
+                                                    <p className="text-[15px] font-medium text-slate-700 leading-tight">{event.location}</p>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
                                 </div>
 
-                                <div className="w-full md:w-auto text-center md:text-right space-y-2">
-                                    {event?.price_member_cents === event?.price_external_cents ? (
-                                        <>
-                                            <p className="text-xl md:text-2xl font-semibold text-slate-900 leading-none">
-                                                {formatPrice(event?.price_member_cents)}
-                                            </p>
-                                            <p className="text-[10px] text-slate-500 italic mt-1.5">Tarif unique</p>
-                                        </>
-                                    ) : null}
-                                </div>
+                                {event?.price_member_cents === event?.price_external_cents && (
+                                    <div className="pt-2">
+                                        <p className="text-2xl font-bold text-slate-900 leading-none">
+                                            {formatPrice(event?.price_member_cents)}
+                                        </p>
+                                        <p className="text-[10px] text-slate-500 font-medium mt-1.5 opacity-60">Tarif unique</p>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Error Message if any */}
@@ -147,11 +189,12 @@ export default function EventCheckoutPage() {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <button
                                             onClick={() => setTariff('member')}
-                                            className={`p-4 rounded-2xl border transition-all flex items-center justify-center gap-4 h-16 shadow-sm ${
-                                                tariff === 'member' 
-                                                ? 'border-blue-600 bg-blue-50/30' 
-                                                : 'border-slate-100 bg-white hover:border-slate-200'
-                                            }`}
+                                            className="p-4 rounded-2xl border transition-all flex items-center justify-center gap-4 h-16 shadow-sm"
+                                            style={{ 
+                                                borderColor: tariff === 'member' ? (tenant?.primary_color || '#2563eb') : '#f1f5f9',
+                                                backgroundColor: tariff === 'member' ? `${(tenant?.primary_color || '#2563eb')}10` : '#ffffff',
+                                                borderWidth: tariff === 'member' ? '1.5px' : '1px'
+                                            }}
                                         >
                                             <p className={`text-[10px] font-semibold uppercase tracking-widest ${tariff === 'member' ? 'text-black' : 'text-slate-400'}`}>Tarif Membre</p>
                                             <div className="w-px h-4 bg-slate-200"></div>
@@ -160,11 +203,12 @@ export default function EventCheckoutPage() {
 
                                         <button
                                             onClick={() => setTariff('external')}
-                                            className={`p-4 rounded-2xl border transition-all flex items-center justify-center gap-4 h-16 shadow-sm ${
-                                                tariff === 'external' 
-                                                ? 'border-blue-600 bg-blue-50/30' 
-                                                : 'border-slate-100 bg-white hover:border-slate-200'
-                                            }`}
+                                            className="p-4 rounded-2xl border transition-all flex items-center justify-center gap-4 h-16 shadow-sm"
+                                            style={{ 
+                                                borderColor: tariff === 'external' ? (tenant?.primary_color || '#2563eb') : '#f1f5f9',
+                                                backgroundColor: tariff === 'external' ? `${(tenant?.primary_color || '#2563eb')}10` : '#ffffff',
+                                                borderWidth: tariff === 'external' ? '1.5px' : '1px'
+                                            }}
                                         >
                                             <p className={`text-[10px] font-semibold uppercase tracking-widest ${tariff === 'external' ? 'text-black' : 'text-slate-400'}`}>Tarif Extérieur</p>
                                             <div className="w-px h-4 bg-slate-200"></div>
@@ -202,7 +246,7 @@ export default function EventCheckoutPage() {
                                             {payLater && (
                                                 <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300">
                                                     <p className="text-xs text-amber-800 leading-relaxed text-center md:text-left">
-                                                        <strong>Attention !</strong> Si vous choisissez le paiement différé, vous n&apos;êtes pas redirigé vers le lien de paiement. Votre inscription est enregistrée, mais le règlement est à effectuer selon les conditions de l&apos;établissement.
+                                                        <span className="font-bold">Attention !</span> Si vous choisissez le paiement différé, vous n&apos;êtes pas redirigé vers le lien de paiement. Votre inscription est enregistrée et le règlement sera à effectuer selon les conditions de l&apos;établissement.
                                                     </p>
                                                 </div>
                                             )}
@@ -216,20 +260,22 @@ export default function EventCheckoutPage() {
                                     )}
                                 </div>
 
-                                <button
-                                    onClick={handleConfirm}
-                                    disabled={submitting}
-                                    className="w-full py-4 rounded-2xl bg-slate-900 text-white text-sm font-medium hover:bg-blue-600 shadow-xl shadow-slate-100 transition-all active:scale-[0.98] disabled:opacity-50"
-                                >
-                                    {submitting ? "Traitement..." : "Confirmez votre inscription"}
-                                </button>
+                                <div className="mt-8 flex flex-col items-center">
+                                    <button
+                                        onClick={handleConfirm}
+                                        disabled={submitting}
+                                        className="w-full md:max-w-sm py-4 rounded-2xl bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 shadow-xl shadow-slate-100 transition-all active:scale-[0.98] disabled:opacity-50"
+                                    >
+                                        {submitting ? "Traitement..." : "Confirmez votre inscription"}
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="bg-slate-50 p-6 border-t border-slate-100 flex items-center gap-4">
-                            <div className="text-2xl">🛡️</div>
-                            <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                                En confirmant, vous acceptez les Conditions Générales de Vente (CGV) et le règlement intérieur de l&apos;établissement.
+                        <div className="bg-slate-50 p-6 border-t border-slate-100 flex flex-col items-center justify-center gap-2 text-center">
+                            <div className="text-xl opacity-50">🛡️</div>
+                            <p className="text-xs text-slate-500 leading-relaxed font-medium max-w-sm">
+                                En confirmant votre commande, vous acceptez nos conditions générales de vente.
                             </p>
                         </div>
                     </div>
@@ -249,7 +295,7 @@ export default function EventCheckoutPage() {
                         <div className="space-y-2">
                             <h2 className="text-xl font-semibold text-slate-900 tracking-tight">C'est validé !</h2>
                             <p className="text-slate-500 text-sm leading-relaxed">
-                                Votre inscription à l'événement <span className="text-blue-600 font-bold">{event?.title}</span> est bien enregistrée.
+                                Votre inscription à l'événement <span className="font-semibold" style={{ color: tenant?.primary_color || "#2563eb" }}>{event?.title}</span> est bien enregistrée.
                             </p>
                             {!tenant?.payment_redirect_link && (
                                 <p className="text-xs text-slate-400 mt-2 italic leading-relaxed">
@@ -260,7 +306,7 @@ export default function EventCheckoutPage() {
 
                         <button
                             onClick={() => router.push(`/${params.slug}/planning`)}
-                            className="w-full py-4 rounded-2xl bg-slate-900 text-white font-medium text-sm hover:bg-blue-600 transition-all duration-300 shadow-xl"
+                            className="w-full py-4 rounded-2xl bg-slate-900 text-white font-medium text-sm hover:bg-slate-800 transition-all duration-300 shadow-xl"
                         >
                             {tenant?.payment_redirect_link ? "Retour au planning" : "Retour au planning"}
                         </button>

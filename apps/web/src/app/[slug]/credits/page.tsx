@@ -111,7 +111,7 @@ export default function CreditsPage() {
                         >
                             <span className="text-xs md:text-sm font-semibold text-slate-500 capitalize tracking-tight whitespace-nowrap">Mon solde :</span>
                             <div className="flex items-baseline gap-2">
-                                <span className="text-3xl md:text-4xl font-bold text-slate-900 leading-none">{formatCredits(balance)}</span>
+                                <span className="text-3xl md:text-4xl font-semibold text-slate-900 leading-none">{formatCredits(balance)}</span>
                                 <span className="text-sm md:text-base font-medium text-slate-500 lowercase">crédit{balance > 1 ? 's' : ''}</span>
                             </div>
                         </div>
@@ -139,7 +139,7 @@ export default function CreditsPage() {
                                         {categoryOffers.map((offer) => (
                                             <div
                                                 key={offer.id}
-                                                className="group relative bg-slate-50 rounded-2xl p-6 border transition-all duration-500 hover:shadow-xl hover:scale-[1.01] flex flex-col items-center justify-between overflow-hidden text-center"
+                                                className="group relative bg-slate-50 rounded-2xl p-6 border transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 transform-gpu flex flex-col items-center justify-between overflow-hidden text-center"
                                                 style={{ 
                                                     boxShadow: `3px 4px 14px -2px ${(tenantSettings?.primary_color || '#2563eb')}40`,
                                                     borderColor: `${(tenantSettings?.primary_color || '#2563eb')}20`
@@ -147,7 +147,7 @@ export default function CreditsPage() {
                                             >
                                                 <div className="relative z-10 space-y-4 w-full flex flex-col items-center">
                                                     <div className="space-y-2 w-full">
-                                                        <h3 className="text-base font-semibold text-slate-800 group-hover:text-slate-900 transition-colors capitalize tracking-tight">{offer.name}</h3>
+                                                        <h3 className="text-[17px] md:text-lg font-semibold text-slate-800 group-hover:text-slate-900 transition-colors capitalize tracking-tight">{offer.name}</h3>
                                                     </div>
 
                                                     <div className="flex flex-col items-center gap-1">
@@ -220,11 +220,7 @@ export default function CreditsPage() {
                                                 <div className="mt-6 relative z-10 w-full">
                                                     <Link
                                                         href={`/${slug}/credits/checkout/${offer.id}`}
-                                                        className="block w-fit mx-auto px-10 py-3 rounded-xl font-bold text-white transition-all duration-300 text-[11px] shadow-lg"
-                                                        style={{ 
-                                                            backgroundColor: tenantSettings?.primary_color || '#2563eb',
-                                                            boxShadow: `0 4px 12px ${(tenantSettings?.primary_color || '#2563eb')}30`
-                                                        }}
+                                                        className="block w-fit mx-auto px-10 py-3 rounded-xl font-medium text-white bg-slate-900 hover:bg-slate-800 transition-all duration-300 text-xs shadow-lg shadow-slate-100"
                                                     >
                                                         Choisir cette offre
                                                     </Link>

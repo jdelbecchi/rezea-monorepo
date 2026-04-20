@@ -217,7 +217,7 @@ th{background:#f1f5f9}
                         <div className="flex gap-2 p-1.5 bg-slate-200/50 rounded-2xl w-fit">
                             <button 
                                 onClick={() => setActiveTab('offers')}
-                                className={`px-6 py-2.5 rounded-xl text-[11px] font-medium transition-all duration-300 ${
+                                className={`px-6 py-2.5 rounded-xl text-xs font-medium transition-all duration-300 ${
                                     activeTab === 'offers' 
                                         ? 'text-white shadow-lg' 
                                         : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
@@ -231,7 +231,7 @@ th{background:#f1f5f9}
                             </button>
                             <button 
                                 onClick={() => setActiveTab('events')}
-                                className={`px-6 py-2.5 rounded-xl text-[11px] font-medium transition-all duration-300 ${
+                                className={`px-6 py-2.5 rounded-xl text-xs font-medium transition-all duration-300 ${
                                     activeTab === 'events' 
                                         ? 'text-white shadow-lg' 
                                         : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
@@ -271,7 +271,7 @@ th{background:#f1f5f9}
                                 orders.map((order) => (
                                     <div 
                                         key={order.id} 
-                                        className="bg-slate-50 p-5 md:p-6 rounded-3xl border transition-all duration-500 hover:shadow-xl hover:scale-[1.01] relative overflow-hidden group"
+                                        className="bg-slate-50 p-5 md:p-6 rounded-3xl border transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 transform-gpu relative overflow-hidden group"
                                         style={{ 
                                             boxShadow: `4px 6px 18px -2px ${(tenant?.primary_color || '#2563eb')}45`,
                                             borderColor: `${(tenant?.primary_color || '#2563eb')}20`
@@ -285,7 +285,7 @@ th{background:#f1f5f9}
                                                     <h3 className="text-lg md:text-xl font-semibold text-slate-900 truncate pr-2 capitalize tracking-tight">{order.offer_name}</h3>
                                                 </div>
                                                 <div className="flex items-center justify-between w-full gap-4 mt-auto">
-                                                    <p className="text-slate-400 text-xs font-medium tracking-tight">
+                                                    <p className="text-slate-600 text-xs font-medium tracking-tight">
                                                         Commandée le {new Date(order.created_at).toLocaleDateString("fr-FR")}
                                                     </p>
                                                     <button 
@@ -314,7 +314,7 @@ th{background:#f1f5f9}
                                             <div className="flex items-center gap-2">
                                                 <div className="w-8 h-8 flex items-center justify-center text-sm">⌛</div>
                                                 <div className="flex items-center gap-2">
-                                                    <p className="text-xs text-slate-400 font-medium tracking-tight">Fin de validité :</p>
+                                                    <p className="text-xs text-slate-600 font-medium tracking-tight">Fin de validité :</p>
                                                     <p className={`text-sm font-semibold tracking-tight ${order.is_validity_unlimited ? 'text-emerald-600' : 'text-slate-900'}`}>
                                                         {order.is_validity_unlimited ? 'Illimitée' : (order.end_date ? new Date(order.end_date).toLocaleDateString("fr-FR") : "N/A")}
                                                     </p>
@@ -350,7 +350,7 @@ th{background:#f1f5f9}
                                 registrations.map((reg) => (
                                     <div 
                                         key={reg.id} 
-                                        className="bg-slate-50 p-5 md:p-6 rounded-3xl border transition-all duration-500 hover:shadow-xl hover:scale-[1.01] relative overflow-hidden group"
+                                        className="bg-slate-50 p-5 md:p-6 rounded-3xl border transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 transform-gpu relative overflow-hidden group"
                                         style={{ 
                                             boxShadow: `4px 6px 18px -2px ${(tenant?.primary_color || '#2563eb')}45`,
                                             borderColor: `${(tenant?.primary_color || '#2563eb')}20`
@@ -444,7 +444,7 @@ th{background:#f1f5f9}
                          <h2 className="text-xl md:text-2xl font-bold text-slate-900 mb-2 tracking-tight capitalize">
                              {selectedOrder.offer_snap_name || selectedOrder.offer_name}
                          </h2>
-                         <p className="text-[11px] text-slate-400 font-medium leading-relaxed mb-8 max-w-[280px] mx-auto italic">
+                         <p className="text-xs text-slate-600 font-medium leading-relaxed mb-8 max-w-[280px] mx-auto">
                              Données contractuelles de votre commande à la date de l'achat, avant toute modification ultérieure.
                          </p>
                          
@@ -456,7 +456,7 @@ th{background:#f1f5f9}
                                  <div className="flex items-center gap-3">
                                      <span className="text-lg w-6 text-center">🏷️</span>
                                      <div className="flex flex-col">
-                                         <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium leading-none mb-1">Tarif d'achat</span>
+                                         <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium leading-none mb-1">Tarif d'achat</span>
                                          <p className="text-sm font-medium text-slate-900 leading-none">
                                             {formatPrice(selectedOrder)}
                                             {selectedOrder.payment_status === 'echelonne' && !formatPrice(selectedOrder).includes('x') && selectedOrder.installments?.length > 0 && ` (x${selectedOrder.installments.length})`}
@@ -467,7 +467,7 @@ th{background:#f1f5f9}
                                  <div className="flex items-center gap-3">
                                      <span className="text-lg w-6 text-center">💎</span>
                                      <div className="flex flex-col">
-                                         <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium leading-none mb-1">Crédits inclus</span>
+                                         <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium leading-none mb-1">Crédits inclus</span>
                                          <p className="text-sm font-medium text-slate-900 leading-none">
                                             {selectedOrder.is_unlimited ? 'Illimité' : `${selectedOrder.credits_total} crédits`}
                                          </p>
@@ -477,7 +477,7 @@ th{background:#f1f5f9}
                                  <div className="flex items-center gap-3">
                                      <span className="text-lg w-6 text-center">🕒</span>
                                      <div className="flex flex-col">
-                                         <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium leading-none mb-1">Validité initiale</span>
+                                         <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium leading-none mb-1">Validité initiale</span>
                                          <p className="text-sm font-medium text-slate-900 leading-none">
                                             {selectedOrder.offer_snap_is_validity_unlimited ? 'Illimitée' : 
                                              (selectedOrder.offer_snap_validity_days ? 
@@ -491,7 +491,7 @@ th{background:#f1f5f9}
                                  {(selectedOrder.offer_snap_description || selectedOrder.offer_description) && (
                                      <div className="pt-2 border-t border-slate-100 flex items-start gap-3">
                                          <span className="text-xs mt-0.5">📝</span>
-                                         <p className="text-slate-500 text-[10px] leading-relaxed italic">
+                                         <p className="text-slate-600 text-[11px] font-medium leading-relaxed">
                                              {selectedOrder.offer_snap_description || selectedOrder.offer_description}
                                          </p>
                                      </div>
@@ -501,7 +501,7 @@ th{background:#f1f5f9}
                          
                          <button 
                             onClick={() => setShowInfoModal(false)}
-                            className="px-8 py-3 bg-slate-900 text-white text-[11px] font-medium rounded-xl transition-all shadow-lg active:scale-95 mx-auto"
+                            className="px-8 py-3 bg-slate-900 text-white text-xs font-medium rounded-xl transition-all shadow-lg active:scale-95 mx-auto"
                          >
                             Fermer
                          </button>
