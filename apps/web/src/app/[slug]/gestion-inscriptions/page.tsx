@@ -523,7 +523,7 @@ export default function GestionInscriptionsPage() {
                                             >
                                                 {/* Entête Séance */}
                                                 <div className="p-3 md:p-4">
-                                                    <div className="flex flex-col gap-1 min-w-0 flex-1">
+                                                    <div className={`flex flex-col gap-1 min-w-0 flex-1 ${session.is_active === false ? 'opacity-50' : ''}`}>
                                                         {/* Ligne 1: Heure + Titre */}
                                                         <div className="flex items-center gap-3 min-w-0">
                                                             <span className="text-slate-900 font-semibold text-sm md:text-base shrink-0">
@@ -606,11 +606,11 @@ export default function GestionInscriptionsPage() {
                                                                     </div>
                                                                 )}
                                                             </div>
-                                                        </div>
-
-                                                        {/* Ligne 3: Inscriptions + Voir les participants */}
+                                                         </div>
+ 
+                                                        {/* Ligne 3: Inscriptions + Voir les participants (Hors du bloc d'opacité) */}
                                                         <div className="flex items-center justify-between gap-4 w-full mt-0.5">
-                                                            <div className="flex items-center gap-3">
+                                                            <div className={`flex items-center gap-3 ${session.is_active === false ? 'opacity-50' : ''}`}>
                                                                 <span className={`font-bold text-sm md:text-base shrink-0 ${isHighAttendance ? 'text-emerald-500' : 'text-amber-500'}`}>
                                                                     {session.current_participants}/{session.max_participants}
                                                                 </span>
