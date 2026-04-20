@@ -635,7 +635,7 @@ export default function GestionInscriptionsPage() {
  
                                                             <button 
                                                                 onClick={() => handleToggleParticipants(session, 'session')}
-                                                                className="px-3 py-1.5 rounded-xl text-[10px] md:text-[11px] font-medium transition-all active:scale-95 flex items-center gap-2 bg-slate-200 border border-slate-200/60 text-slate-600 hover:bg-slate-300 hover:border-slate-400"
+                                                                className="px-3 py-1.5 rounded-xl text-[10px] md:text-[11px] font-medium transition-all active:scale-95 flex items-center gap-2 bg-slate-200 text-slate-600 hover:bg-slate-300"
                                                             >
                                                                 <span>{isExpanded ? 'Masquer' : 'Voir les participants'}</span>
                                                                 <span className="text-xs">{isExpanded ? '↑' : '↓'}</span>
@@ -774,7 +774,7 @@ export default function GestionInscriptionsPage() {
  
                                                             <button 
                                                                 onClick={() => handleToggleParticipants(event, 'event')}
-                                                                className="px-3 py-1.5 rounded-xl text-[10px] md:text-[11px] font-medium transition-all active:scale-95 flex items-center gap-2 bg-slate-200 border border-slate-200/60 text-slate-600 hover:bg-slate-300 hover:border-slate-400"
+                                                                className="px-3 py-1.5 rounded-xl text-[10px] md:text-[11px] font-medium transition-all active:scale-95 flex items-center gap-2 bg-slate-200 text-slate-600 hover:bg-slate-300"
                                                             >
                                                                 <span>{isExpanded ? 'Masquer' : 'Voir les participants'}</span>
                                                                 <span className="text-xs">{isExpanded ? '↑' : '↓'}</span>
