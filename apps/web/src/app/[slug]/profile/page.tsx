@@ -103,8 +103,8 @@ export default function ProfilePage() {
 
     if (loading) {
         return (
-            <div className="flex min-h-screen bg-slate-50 items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <div className="flex min-h-[100dvh] bg-slate-50 items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-300"></div>
             </div>
         );
     }
@@ -156,8 +156,8 @@ export default function ProfilePage() {
                         {/* Header - Standardized Style restored with original icon and subtitle */}
                         <header className="space-y-1">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-50/5 rounded-xl md:rounded-2xl flex items-center justify-center p-2 md:p-3 border border-blue-100/50 shadow-sm shrink-0">
-                                    <svg viewBox="0 0 24 24" fill="none" className="w-full h-full text-blue-500/80" xmlns="http://www.w3.org/2000/svg">
+                                <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-50 rounded-xl md:rounded-2xl flex items-center justify-center p-2 md:p-3 border border-slate-100 shadow-sm shrink-0">
+                                    <svg viewBox="0 0 24 24" fill="none" className="w-full h-full text-slate-400" xmlns="http://www.w3.org/2000/svg">
                                         <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
                                         <path d="M5 20C5 17.2386 7.23858 15 10 15H14C16.7614 15 19 17.2386 19 20" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
                                         <path d="M15 5H21M15 8H21M15 11H18" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>

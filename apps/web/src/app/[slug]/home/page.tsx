@@ -185,7 +185,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
     return (
       <div className="h-[100dvh] flex items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <div className="w-12 h-12 border-4 border-slate-200 border-t-slate-400 rounded-full animate-spin" />
           <p className="text-slate-400 font-medium animate-pulse">Chargement de votre espace...</p>
         </div>
       </div>
@@ -456,7 +456,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                             <a 
                                 href={`${API_URL}${tenantSettings.cgv_url}`} 
                                 target="_blank" 
-                                className="text-xs font-medium transition-all text-slate-400 hover:text-blue-600"
+                                className="text-xs font-medium transition-all text-slate-400 hover:text-slate-600 focus:text-slate-600 outline-none"
                             >
                                 CGV
                             </a>
@@ -465,7 +465,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                             <a 
                                 href={`${API_URL}${tenantSettings.rules_url}`} 
                                 target="_blank" 
-                                className="text-xs font-medium transition-all text-slate-400 hover:text-blue-600"
+                                className="text-xs font-medium transition-all text-slate-400 hover:text-slate-600 focus:text-slate-600 outline-none"
                             >
                                 Règlement intérieur
                             </a>

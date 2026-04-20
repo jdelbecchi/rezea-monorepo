@@ -56,7 +56,7 @@ function CreditsCallbackContent() {
             <div className="max-w-md w-full">
                 {status === 'loading' && (
                     <div className="bg-white rounded-2xl p-12 text-center shadow-lg">
-                        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-6"></div>
+                        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-slate-300 mx-auto mb-6"></div>
                         <h2 className="text-2xl font-bold text-slate-900 mb-2">Vérification du paiement...</h2>
                         <p className="text-slate-500">Veuillez patienter</p>
                     </div>
@@ -69,10 +69,10 @@ function CreditsCallbackContent() {
                         <p className="text-slate-600 mb-6">{message}</p>
 
                         {newBalance !== null && (
-                            <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-6 text-white mb-6">
-                                <p className="text-blue-100 text-sm">Nouveau solde</p>
-                                <p className="text-4xl font-bold mt-2">{formatCredits(newBalance)}</p>
-                                <p className="text-blue-100 text-sm mt-1">crédits</p>
+                            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 text-white mb-6 shadow-xl shadow-slate-900/10">
+                                <p className="text-slate-400 text-sm font-medium">Nouveau solde</p>
+                                <p className="text-4xl font-bold mt-2 tracking-tight">{formatCredits(newBalance)}</p>
+                                <p className="text-slate-400 text-sm mt-1 font-medium">crédits</p>
                             </div>
                         )}
 
@@ -80,7 +80,7 @@ function CreditsCallbackContent() {
 
                         <Link
                             href={`/${slug}/home`}
-                            className="inline-block mt-4 text-blue-600 hover:text-blue-700 font-medium"
+                            className="inline-block mt-6 text-slate-900 hover:text-slate-600 font-bold transition-colors"
                         >
                             Retour au tableau de bord →
                         </Link>
@@ -96,13 +96,13 @@ function CreditsCallbackContent() {
                         <div className="space-y-3">
                             <Link
                                 href={`/${slug}/credits`}
-                                className="block w-full py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors"
+                                className="block w-full py-4 bg-slate-900 text-white rounded-2xl font-bold transition-all hover:bg-slate-800 active:scale-[0.98] shadow-lg shadow-slate-900/20"
                             >
                                 Réessayer
                             </Link>
                             <Link
                                 href={`/${slug}/home`}
-                                className="block w-full py-3 bg-slate-100 text-slate-900 rounded-lg font-bold hover:bg-slate-200 transition-colors"
+                                className="block w-full py-4 bg-slate-100 text-slate-900 rounded-2xl font-bold hover:bg-slate-200 transition-all active:scale-[0.98]"
                             >
                                 Retour au tableau de bord
                             </Link>
