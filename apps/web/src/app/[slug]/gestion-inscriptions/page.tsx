@@ -332,21 +332,9 @@ export default function GestionInscriptionsPage() {
 
     if (loading) {
         return (
-            <div className="flex flex-col md:flex-row min-h-screen bg-white overflow-x-hidden pb-20 md:pb-0">
-                <header className="fixed top-0 left-0 right-0 h-14 bg-white/80 backdrop-blur-lg border-b border-slate-100 flex items-center px-4 z-40 md:hidden safe-top shadow-sm">
-                    <Link href={`/${params.slug}/home`} className="flex items-center gap-2 group text-slate-400 active:scale-95 transition-all">
-                        <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 ml-0.5" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        <span className="text-[13px] font-medium leading-none">Retour</span>
-                    </Link>
-                    <div className="w-10" />
-                </header>
-                
-                <div className="flex-1 flex flex-col items-center justify-center">
-                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-slate-300 mb-4"></div>
-                </div>
-                <BottomNav userRole={user?.role} />
+            <div className="fixed inset-0 bg-white flex flex-col items-center justify-center z-[100]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-300 mb-4"></div>
+                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest animate-pulse">Chargement</p>
             </div>
         );
     }
@@ -635,7 +623,8 @@ export default function GestionInscriptionsPage() {
  
                                                             <button 
                                                                 onClick={() => handleToggleParticipants(session, 'session')}
-                                                                className="px-3 py-1.5 rounded-xl text-[10px] md:text-[11px] font-medium transition-all active:scale-95 flex items-center gap-2 bg-slate-200 text-slate-600 hover:bg-slate-300"
+                                                                className="px-3 py-1.5 rounded-xl text-[10px] md:text-[11px] font-medium transition-all active:scale-95 flex items-center gap-2 text-slate-600 hover:opacity-80"
+                                                                style={{ backgroundColor: '#f1f5f9' }}
                                                             >
                                                                 <span>{isExpanded ? 'Masquer' : 'Voir les participants'}</span>
                                                                 <span className="text-xs">{isExpanded ? '↑' : '↓'}</span>
@@ -774,7 +763,8 @@ export default function GestionInscriptionsPage() {
  
                                                             <button 
                                                                 onClick={() => handleToggleParticipants(event, 'event')}
-                                                                className="px-3 py-1.5 rounded-xl text-[10px] md:text-[11px] font-medium transition-all active:scale-95 flex items-center gap-2 bg-slate-200 text-slate-600 hover:bg-slate-300"
+                                                                className="px-3 py-1.5 rounded-xl text-[10px] md:text-[11px] font-medium transition-all active:scale-95 flex items-center gap-2 text-slate-600 hover:opacity-80"
+                                                                style={{ backgroundColor: '#f1f5f9' }}
                                                             >
                                                                 <span>{isExpanded ? 'Masquer' : 'Voir les participants'}</span>
                                                                 <span className="text-xs">{isExpanded ? '↑' : '↓'}</span>
