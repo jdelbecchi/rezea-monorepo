@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { useParams } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
@@ -29,6 +29,7 @@ const DiamondToken = ({ className = "w-5 h-5" }: { className?: string }) => (
 );
 
 export default function PlanningPage() {
+  const router = useRouter();
   const params = useParams();
   const slug = params.slug;
   const [selectedDate, setSelectedDate] = useState<Date>(startOfToday());
@@ -59,53 +60,81 @@ export default function PlanningPage() {
 
   useEffect(() => {
     const initData = async () => {
-      try {
-        const [userData, creditData, tenantData, bookingsData, upcomingEventsData] = await Promise.all([
-          api.getCurrentUser(),
-          api.getCreditAccount(),
-          api.getTenantSettings(),
-          api.getMyBookings(),
-          api.getUpcomingEvents()
-        ]);
-        setUser(userData);
-        setCredits(creditData);
-        setTenant(tenantData);
-        setMyBookings(bookingsData);
-        setAllUpcomingEvents(upcomingEventsData);
-      } catch (err) {
-        console.error("Error loading profile info", err);
-      }
-    };
-    initData();
-  }, []);
-
-  useEffect(() => {
-    const fetchPlanning = async () => {
       setLoading(true);
       setError(null);
       try {
         const start = format(selectedDate, "yyyy-MM-dd") + "T00:00:00";
         const end = format(selectedDate, "yyyy-MM-dd") + "T23:59:59";
-        
-        const [sessionsData, eventsData] = await Promise.all([
+
+        const [userData, creditData, tenantData, bookingsData, sessionsData, upcomingEventsData] = await Promise.all([
+          api.getCurrentUser(),
+          api.getCreditAccount(),
+          api.getTenantSettings(),
+          api.getMyBookings(),
           api.getSessions({ start_date: start, end_date: end }),
-          allUpcomingEvents.length > 0 ? Promise.resolve(allUpcomingEvents) : api.getUpcomingEvents()
+          api.getUpcomingEvents()
         ]);
-        
-        if (allUpcomingEvents.length === 0) setAllUpcomingEvents(eventsData);
-        
+
+        setUser(userData);
+        setCredits(creditData);
+        setTenant(tenantData);
+        setMyBookings(bookingsData);
         setSessions(sessionsData);
-        const dayEvents = eventsData.filter(e => isSameDay(parseISO(e.event_date), selectedDate));
+        setAllUpcomingEvents(upcomingEventsData);
+        
+        const dayEvents = upcomingEventsData.filter(e => isSameDay(parseISO(e.event_date), selectedDate));
         setEvents(dayEvents);
       } catch (err) {
+        console.error("Error loading planning data", err);
         setError("Impossible de charger le planning.");
-        console.error(err);
       } finally {
         setLoading(false);
       }
     };
-    fetchPlanning();
-  }, [selectedDate, allUpcomingEvents.length === 0]);
+    initData();
+  }, []);
+
+  const refreshData = async () => {
+    try {
+        const start = format(selectedDate, "yyyy-MM-dd") + "T00:00:00";
+        const end = format(selectedDate, "yyyy-MM-dd") + "T23:59:59";
+
+        const [sessionsData, upcomingEventsData, bookingsData, creditsData] = await Promise.all([
+            api.getSessions({ start_date: start, end_date: end }),
+            api.getUpcomingEvents(),
+            api.getMyBookings(),
+            api.getCreditAccount()
+        ]);
+        setSessions(sessionsData);
+        setAllUpcomingEvents(upcomingEventsData);
+        setMyBookings(bookingsData);
+        setCredits(creditsData);
+        const dayEvents = upcomingEventsData.filter(e => isSameDay(parseISO(e.event_date), selectedDate));
+        setEvents(dayEvents);
+    } catch (err) {
+        console.error("Refresh error", err);
+    }
+  };
+
+  useEffect(() => {
+    if (loading) return; // Skip if initial load is still happening
+    
+    const fetchCurrentDay = async () => {
+      try {
+        const start = format(selectedDate, "yyyy-MM-dd") + "T00:00:00";
+        const end = format(selectedDate, "yyyy-MM-dd") + "T23:59:59";
+        
+        const sessionsData = await api.getSessions({ start_date: start, end_date: end });
+        setSessions(sessionsData);
+        
+        const dayEvents = allUpcomingEvents.filter(e => isSameDay(parseISO(e.event_date), selectedDate));
+        setEvents(dayEvents);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchCurrentDay();
+  }, [selectedDate]);
 
   const daysInMonth = useMemo(() => {
     return eachDayOfInterval({
@@ -117,22 +146,7 @@ export default function PlanningPage() {
   const handlePrevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
   const handleNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
 
-  const refreshData = async () => {
-      const [newCredits, newBookings, upcomingEventsData] = await Promise.all([
-        api.getCreditAccount(),
-        api.getMyBookings(),
-        api.getUpcomingEvents()
-      ]);
-      setCredits(newCredits);
-      setMyBookings(newBookings);
-      setAllUpcomingEvents(upcomingEventsData);
-      
-      // Assurer le même format de date que fetchPlanning pour éviter les décalages de cache/timezone
-      const start = format(selectedDate, "yyyy-MM-dd") + "T00:00:00";
-      const end = format(selectedDate, "yyyy-MM-dd") + "T23:59:59";
-      const sessionsData = await api.getSessions({ start_date: start, end_date: end });
-      setSessions(sessionsData);
-  };
+
 
   const handleBooking = async (sessionId: string) => {
     setBookingLoading(sessionId);
@@ -235,6 +249,15 @@ export default function PlanningPage() {
         return dateA - dateB;
       });
   }, [myBookings, allUpcomingEvents]);
+
+  if (loading) {
+    return (
+        <div className="fixed inset-0 bg-white z-[100] flex flex-col items-center justify-center p-6">
+            <div className="w-10 h-10 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin mb-4"></div>
+            <p className="text-slate-500 font-medium text-xs tracking-widest animate-pulse uppercase">Chargement du planning...</p>
+        </div>
+    );
+  }
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-white overflow-x-hidden pb-20 md:pb-0">
@@ -387,7 +410,7 @@ export default function PlanningPage() {
                     {format(selectedDate, 'eeee d MMMM', { locale: fr })}
                   </h3>
                   
-                  {!loading && tenant && (tenant.locations || []).length > 1 && (
+                  {tenant && (tenant.locations || []).length > 1 && (
                     <div className="relative inline-block w-auto shrink-0">
                       <button 
                         onClick={() => setIsLocationMenuOpen(!isLocationMenuOpen)}
@@ -413,7 +436,7 @@ export default function PlanningPage() {
                                 setLocationFilter("all");
                                 setIsLocationMenuOpen(false);
                               }}
-                              className={`w-full text-left px-4 py-2.5 rounded-xl text-[12px] font-medium transition-colors ${
+                              className={`w-full text-left px-4 py-1.5 rounded-xl text-[12px] font-medium transition-colors ${
                                 locationFilter === "all" ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"
                               }`}
                             >
@@ -426,7 +449,7 @@ export default function PlanningPage() {
                                   setLocationFilter(loc);
                                   setIsLocationMenuOpen(false);
                                 }}
-                                className={`w-full text-left px-4 py-2.5 rounded-xl text-[12px] font-medium transition-colors mt-1 ${
+                                className={`w-full text-left px-4 py-1.5 rounded-xl text-[12px] font-medium transition-colors mt-0.5 ${
                                   locationFilter === loc ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"
                                 }`}
                               >
@@ -438,7 +461,6 @@ export default function PlanningPage() {
                       )}
                     </div>
                   )}
-                  {loading && <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin"></div>}
                 </div>
 
                 {error && (

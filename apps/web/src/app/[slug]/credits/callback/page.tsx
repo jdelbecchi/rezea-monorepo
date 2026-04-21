@@ -51,17 +51,18 @@ function CreditsCallbackContent() {
         checkPayment();
     }, [searchParams, router]);
 
+    if (status === 'loading') {
+        return (
+            <div className="fixed inset-0 bg-white z-[100] flex flex-col items-center justify-center p-6">
+                <div className="w-10 h-10 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin mb-4"></div>
+                <p className="text-slate-500 font-medium text-xs tracking-widest animate-pulse uppercase">Validation du paiement...</p>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8">
             <div className="max-w-md w-full">
-                {status === 'loading' && (
-                    <div className="bg-white rounded-2xl p-12 text-center shadow-lg">
-                        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-slate-300 mx-auto mb-6"></div>
-                        <h2 className="text-2xl font-bold text-slate-900 mb-2">Vérification du paiement...</h2>
-                        <p className="text-slate-500">Veuillez patienter</p>
-                    </div>
-                )}
-
                 {status === 'success' && (
                     <div className="bg-white rounded-2xl p-12 text-center shadow-lg">
                         <div className="text-6xl mb-6">✅</div>

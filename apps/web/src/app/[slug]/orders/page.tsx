@@ -176,6 +176,15 @@ th{background:#f1f5f9}
 
     const isAdminMode = false;
 
+    if (loading) {
+        return (
+            <div className="fixed inset-0 bg-white z-[100] flex flex-col items-center justify-center p-6">
+                <div className="w-10 h-10 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin mb-4"></div>
+                <p className="text-slate-500 font-medium text-xs tracking-widest animate-pulse uppercase">Chargement de vos commandes...</p>
+            </div>
+        );
+    }
+
     return (
         <div className="flex flex-col md:flex-row min-h-screen bg-white pb-20 md:pb-0 overflow-x-hidden">
             {isAdminMode && <Sidebar user={user} tenant={tenant} />}
@@ -246,11 +255,7 @@ th{background:#f1f5f9}
                         </div>
                     </div>
 
-                    {loading ? (
-                        <div className="p-12 text-center text-slate-400 font-semibold bg-white rounded-3xl border border-slate-100 shadow-sm animate-pulse">
-                            Chargement de vos commandes...
-                        </div>
-                    ) : (activeTab === 'offers' ? orders.length : registrations.length) === 0 ? (
+                    {(activeTab === 'offers' ? orders.length : registrations.length) === 0 ? (
                         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 md:p-16 text-center space-y-4">
                             <div className="text-6xl">{activeTab === 'offers' ? '🛍️' : '🎫'}</div>
                             <h2 className="text-2xl font-semibold text-slate-900">

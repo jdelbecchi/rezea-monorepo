@@ -47,23 +47,9 @@ export default function CreditsPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-white flex flex-col md:flex-row pb-20 md:pb-0 overflow-x-hidden">
-                {!isAdminMode && (
-                    <header className="fixed top-0 left-0 right-0 h-14 bg-white/80 backdrop-blur-lg border-b border-slate-100 flex items-center px-4 z-40 md:hidden safe-top shadow-sm">
-                        <Link href={`/${slug}/home`} className="flex items-center gap-2 group text-slate-400 active:scale-95 transition-all">
-                            <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 ml-0.5" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                            <span className="text-[13px] font-medium leading-none">Retour</span>
-                        </Link>
-                    </header>
-                )}
-                
-                <div className="flex-1 flex flex-col items-center justify-center">
-                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-slate-300 mb-4"></div>
-                    <p className="text-slate-400 text-sm font-medium animate-pulse">Chargement...</p>
-                </div>
-                <BottomNav userRole={user?.role} />
+            <div className="fixed inset-0 bg-white z-[100] flex flex-col items-center justify-center p-6">
+                <div className="w-10 h-10 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin mb-4"></div>
+                <p className="text-slate-500 font-medium text-xs tracking-widest animate-pulse uppercase">Chargement de la boutique...</p>
             </div>
         );
     }

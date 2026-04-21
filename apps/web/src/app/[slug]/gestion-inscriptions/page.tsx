@@ -470,7 +470,7 @@ export default function GestionInscriptionsPage() {
                                                                 setLocationFilter("all");
                                                                 setIsLocationMenuOpen(false);
                                                             }}
-                                                            className={`w-full text-left px-4 py-2.5 rounded-xl text-[12px] font-medium transition-colors ${
+                                                            className={`w-full text-left px-4 py-1.5 rounded-xl text-[12px] font-medium transition-colors ${
                                                                 locationFilter === "all" ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"
                                                             }`}
                                                         >
@@ -483,7 +483,7 @@ export default function GestionInscriptionsPage() {
                                                                     setLocationFilter(loc);
                                                                     setIsLocationMenuOpen(false);
                                                                 }}
-                                                                className={`w-full text-left px-4 py-2.5 rounded-xl text-[12px] font-medium transition-colors mt-1 ${
+                                                                className={`w-full text-left px-4 py-1.5 rounded-xl text-[12px] font-medium transition-colors mt-0.5 ${
                                                                     locationFilter === loc ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"
                                                                 }`}
                                                             >

@@ -81,7 +81,14 @@ export default function CheckoutPage() {
         }
     };
 
-    if (loading) return <div className="p-8 text-center bg-gray-50 min-h-screen">Chargement...</div>;
+    if (loading) {
+        return (
+            <div className="fixed inset-0 bg-white z-[100] flex flex-col items-center justify-center p-6">
+                <div className="w-10 h-10 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin mb-4"></div>
+                <p className="text-slate-500 font-medium text-xs tracking-widest animate-pulse uppercase">Chargement du récapitulatif...</p>
+            </div>
+        );
+    }
     if (!offer) return null;
 
     return (

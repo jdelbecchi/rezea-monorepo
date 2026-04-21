@@ -34,10 +34,14 @@ export default function BookingsPage() {
 
     useEffect(() => {
         const fetchData = async () => {
+            setLoading(true);
             try {
-                const userData = await api.getCurrentUser();
+                const [userData, bookingsData] = await Promise.all([
+                    api.getCurrentUser(),
+                    api.getMyBookings()
+                ]);
                 setUser(userData);
-                await fetchBookings();
+                setBookings(bookingsData);
             } catch (err) {
                 console.error(err);
                 router.push("/login");
@@ -67,10 +71,17 @@ export default function BookingsPage() {
         }
     };
 
-    if (loading) return <div className="p-8 text-center bg-gray-50 min-h-screen">Chargement de vos réservations...</div>;
+    if (loading) {
+        return (
+            <div className="fixed inset-0 bg-white z-[100] flex flex-col items-center justify-center p-6">
+                <div className="w-10 h-10 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin mb-4"></div>
+                <p className="text-slate-500 font-medium text-xs tracking-widest animate-pulse uppercase">Chargement de vos séances...</p>
+            </div>
+        );
+    }
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
+        <div className="min-h-screen bg-white flex flex-col md:flex-row pb-20 md:pb-0 overflow-x-hidden">
             <Sidebar user={user} />
 
             {/* Main Content */}
