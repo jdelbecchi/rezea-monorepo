@@ -247,14 +247,14 @@ export default function AdminSettingsPage() {
                     {/* Header */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                         <div>
-                            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Paramètres</h1>
-                            <p className="text-slate-500 mt-1">Gérez l&apos;identité, les règles et les options de votre club</p>
+                            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-slate-900">⚙️ Paramètres</h1>
+                            <p className="text-base font-normal text-slate-500 mt-1">Gérez l&apos;identité, les règles et les options de votre club</p>
                         </div>
                         <div className="flex items-center gap-3">
                             <button
                                 onClick={handleSave}
                                 disabled={saving}
-                                className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold transition-all shadow-lg shadow-slate-200 disabled:opacity-50 flex items-center gap-2"
+                                className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium transition-all shadow-lg shadow-slate-200 disabled:opacity-50 flex items-center gap-2"
                             >
                                 {saving ? "Enregistrement..." : "Enregistrer les modifications"}
                             </button>
@@ -273,14 +273,14 @@ export default function AdminSettingsPage() {
                     )}
 
                     {/* Tabs Navigation */}
-                    <div className="flex items-center gap-1 bg-white p-1.5 rounded-2xl border border-slate-200 mb-8 shadow-sm overflow-x-auto no-scrollbar">
+                    <div className="flex items-center bg-white p-1.5 rounded-2xl border border-slate-200 mb-8 shadow-sm overflow-x-auto no-scrollbar w-full">
                         {TABS.map(tab => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all whitespace-nowrap ${activeTab === tab.id
-                                    ? "bg-slate-900 text-white shadow-md shadow-slate-200 ring-1 ring-slate-900"
-                                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                                className={`flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all whitespace-nowrap ${activeTab === tab.id
+                                    ? "bg-slate-50 text-slate-900 shadow-sm border border-slate-200"
+                                    : "text-slate-500 hover:bg-slate-50/50 hover:text-slate-900"
                                     }`}
                             >
                                 <span className="text-lg">{tab.icon}</span>
@@ -296,29 +296,29 @@ export default function AdminSettingsPage() {
                                 <div className="space-y-8">
                                     {/* Bloc 1: Informations Générales */}
                                     <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
-                                        <h3 className="text-xl font-bold flex items-center gap-2">📝 Informations Générales</h3>
+                                        <h3 className="text-lg font-semibold flex items-center gap-2">📝 Informations Générales</h3>
                                         <div className="grid grid-cols-1 gap-6">
                                             <div>
-                                                <label className={`block text-sm font-bold mb-2 ${!formData.name ? 'text-red-500' : 'text-slate-700'}`}>Nom de l'établissement *</label>
+                                                <label className={`block text-sm font-medium mb-2 ${!formData.name ? 'text-red-500' : 'text-slate-700'}`}>Nom de l&apos;établissement *</label>
                                                 <input
                                                     type="text"
                                                     required
                                                     value={formData.name || ""}
                                                     onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                                    className={`w-full px-4 py-3 border rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-medium ${!formData.name ? 'border-red-300 bg-red-50' : 'bg-slate-50 border-slate-200'}`}
+                                                    className={`w-full px-4 py-3 border rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal ${!formData.name ? 'border-red-300 bg-red-50' : 'bg-slate-50 border-slate-200'}`}
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-bold text-slate-700 mb-2">Description / Slogan</label>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Description / Slogan</label>
                                                 <textarea
                                                     value={formData.description || ""}
                                                     onChange={e => setFormData({ ...formData, description: e.target.value })}
                                                     rows={3}
-                                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-medium resize-none"
+                                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal resize-none"
                                                 />
                                             </div>
                                             <div className="pt-2">
-                                                <label className="block text-sm font-bold text-slate-700 mb-4">Logo de l&apos;établissement</label>
+                                                <label className="block text-sm font-medium text-slate-700 mb-4">Logo de l&apos;établissement</label>
                                                 <div className="flex items-center gap-6">
                                                     <div className="w-24 h-24 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group">
                                                         {previewLogo ? (
@@ -336,26 +336,26 @@ export default function AdminSettingsPage() {
                                                         <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'logo')} />
                                                         <button 
                                                             onClick={() => logoInputRef.current?.click()}
-                                                            className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl font-bold text-xs transition-all shadow-sm"
+                                                            className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 rounded-xl font-medium text-xs transition-all shadow-sm"
                                                         >
                                                             Changer le logo
                                                         </button>
-                                                        <p className="text-[10px] text-slate-400 font-medium tracking-wide leading-tight">Recommandé : Fond transparent, max 1MB.</p>
-                                                    </div>
+                                                        <p className="text-[10px] text-slate-400 font-normal tracking-wide leading-tight">Recommandé : Fond transparent, max 1MB.</p>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
+                            </div>
 
-                                <div className="space-y-8">
+                            <div className="space-y-8">
                                     {/* Bloc 2: Personnalisation */}
                                     <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
-                                        <h3 className="text-xl font-bold flex items-center gap-2">🎨 Personnalisation</h3>
+                                        <h3 className="text-lg font-semibold flex items-center gap-2">🎨 Personnalisation</h3>
                                         
                                         <div className="space-y-6">
                                             <div>
-                                                <label className="block text-sm font-bold text-slate-700 mb-2">Bannière (Dashboard)</label>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Bannière (Dashboard)</label>
                                                 <div className="w-full h-32 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group mb-3">
                                                     {previewBanner ? (
                                                         <img src={previewBanner} className="w-full h-full object-cover" alt="Banner" />
@@ -371,14 +371,14 @@ export default function AdminSettingsPage() {
                                                 <input type="file" ref={bannerInputRef} className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'banner')} />
                                                 <button 
                                                     onClick={() => bannerInputRef.current?.click()}
-                                                    className="w-full py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl font-bold text-xs transition-all"
+                                                    className="w-full py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-xl font-medium text-xs transition-all"
                                                 >
                                                     Changer la bannière
                                                 </button>
                                             </div>
-
+                                            
                                             <div>
-                                                <label className="block text-sm font-bold text-slate-700 mb-2">Couleur d&apos;accentuation</label>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Couleur d&apos;accentuation</label>
                                                 <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
                                                     <input
                                                         type="color"
@@ -391,11 +391,11 @@ export default function AdminSettingsPage() {
                                                             type="text"
                                                             value={formData.primary_color || "#7c3aed"}
                                                             onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
-                                                            className="bg-transparent border-none p-0 font-mono font-bold text-base outline-none w-full"
+                                                            className="bg-transparent border-none p-0 font-mono font-semibold text-base outline-none w-full"
                                                         />
                                                     </div>
                                                     <div 
-                                                        className="px-4 py-1.5 rounded-lg text-white font-bold text-[10px] uppercase shadow-sm"
+                                                        className="px-4 py-1.5 rounded-lg text-white font-semibold text-[10px] uppercase shadow-sm"
                                                         style={{ backgroundColor: formData.primary_color }}
                                                     >
                                                         Aperçu
@@ -404,13 +404,13 @@ export default function AdminSettingsPage() {
                                             </div>
 
                                             <div>
-                                                <label className="block text-sm font-bold text-slate-700 mb-2">Message d&apos;accueil</label>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Message d&apos;accueil</label>
                                                 <textarea
                                                     value={formData.welcome_message || ""}
                                                     onChange={e => setFormData({ ...formData, welcome_message: e.target.value })}
                                                     placeholder="Bienvenue chez nous !"
                                                     rows={4}
-                                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-medium"
+                                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal"
                                                 />
                                             </div>
                                         </div>
@@ -425,10 +425,10 @@ export default function AdminSettingsPage() {
                                 <div className="space-y-8">
                                     <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
                                         <div className="flex items-center justify-between">
-                                            <h3 className="text-xl font-bold flex items-center gap-2">🎨 Apparence du portail</h3>
+                                            <h3 className="text-lg font-semibold flex items-center gap-2">🎨 Apparence du portail</h3>
                                             <button 
                                                 onClick={() => setShowPreview(true)}
-                                                className="px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl font-bold text-xs transition-all flex items-center gap-2"
+                                                className="px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl font-medium text-xs transition-all flex items-center gap-2"
                                             >
                                                 <span>👁️</span> Aperçu du portail
                                             </button>
@@ -436,8 +436,8 @@ export default function AdminSettingsPage() {
                                         
                                         <div className="space-y-6">
                                             <div>
-                                                <label className="block text-sm font-bold text-slate-700 mb-2">Couleur dédiée au portail</label>
-                                                <p className="text-xs text-slate-400 mb-4">Si non définie, la couleur d'accentuation du club sera utilisée.</p>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Couleur dédiée au portail</label>
+                                                <p className="text-xs text-slate-400 mb-4 font-normal">Si non définie, la couleur d&apos;accentuation du club sera utilisée.</p>
                                                 <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
                                                     <input
                                                         type="color"
@@ -451,21 +451,21 @@ export default function AdminSettingsPage() {
                                                             value={formData.login_primary_color || ""}
                                                             placeholder={formData.primary_color}
                                                             onChange={e => setFormData({ ...formData, login_primary_color: e.target.value })}
-                                                            className="bg-transparent border-none p-0 font-mono font-bold text-base outline-none w-full"
+                                                            className="bg-transparent border-none p-0 font-mono font-semibold text-base outline-none w-full"
                                                         />
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <div>
-                                                <label className="block text-sm font-bold text-slate-700 mb-2">Image de fond du portail</label>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Image de fond du portail</label>
                                                 <div className="w-full h-48 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group mb-3 shadow-inner">
                                                     {previewLoginBg ? (
                                                         <img src={previewLoginBg} className="w-full h-full object-cover" alt="Login Background" />
                                                     ) : (
                                                         <div className="text-center space-y-2">
                                                             <span className="text-4xl block">🖼️</span>
-                                                            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Aucune image</p>
+                                                            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Aucune image</p>
                                                         </div>
                                                     )}
                                                     {uploading === 'login-bg' && (
@@ -477,7 +477,7 @@ export default function AdminSettingsPage() {
                                                 <input type="file" ref={loginBgInputRef} className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'login-bg' as any)} />
                                                 <button 
                                                     onClick={() => loginBgInputRef.current?.click()}
-                                                    className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs transition-all shadow-lg shadow-slate-200"
+                                                    className="w-full py-3 bg-slate-900 text-white rounded-xl font-medium text-xs transition-all shadow-lg shadow-slate-200"
                                                 >
                                                     Changer l&apos;image de fond
                                                 </button>
@@ -488,7 +488,7 @@ export default function AdminSettingsPage() {
 
                                 <div className="space-y-8">
                                     <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6 min-h-[400px]">
-                                        <h3 className="text-xl font-bold flex items-center gap-2">✨ Textes personnalisés</h3>
+                                        <h3 className="text-lg font-semibold flex items-center gap-2">✨ Textes personnalisés</h3>
                                         <div>
                                             <p className="text-xs text-slate-400 mb-6 font-medium leading-relaxed italic bg-slate-50 p-3 rounded-xl border border-slate-100">
                                                 💡 <b>le conseil Rezea :</b> une introduction courte suivie de 3 à 5 atouts majeurs est le format idéal pour convertir vos visiteurs !
@@ -497,22 +497,22 @@ export default function AdminSettingsPage() {
                                             <div className="space-y-8">
                                                 {/* Introduction Field */}
                                                 <div className="space-y-2">
-                                                    <label className="block text-sm font-bold text-slate-700 mb-2">Description courte</label>
+                                                    <label className="block text-sm font-medium text-slate-700 mb-2">Description courte</label>
                                                     <textarea 
                                                         value={structuredDescription.intro}
                                                         onChange={e => setStructuredDescription(prev => ({ ...prev, intro: e.target.value }))}
                                                         placeholder="Ex: Bienvenue dans votre club de bien-être..."
-                                                        className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:bg-white transition-all outline-none font-medium text-slate-700 resize-none min-h-[100px]"
+                                                        className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:bg-white transition-all outline-none font-normal text-slate-700 resize-none min-h-[100px]"
                                                     />
                                                 </div>
 
                                                 {/* Key Assets List */}
                                                 <div className="space-y-4">
                                                     <div className="flex items-center justify-between mb-2">
-                                                        <label className="block text-sm font-bold text-slate-700">Points forts et atouts</label>
+                                                        <label className="block text-sm font-medium text-slate-700">Points forts et atouts</label>
                                                         <button 
                                                             onClick={handleAddAtout}
-                                                            className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full hover:bg-blue-100 transition-all"
+                                                            className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-3 py-1 rounded-full hover:bg-blue-100 transition-all"
                                                         >
                                                             + Ajouter un point
                                                         </button>
@@ -529,7 +529,7 @@ export default function AdminSettingsPage() {
                                                                     value={item}
                                                                     onChange={e => handleUpdateAtout(idx, e.target.value)}
                                                                     placeholder={`Atout n°${idx + 1}...`}
-                                                                    className="flex-1 px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-50 focus:border-blue-400 outline-none transition-all font-medium text-slate-700"
+                                                                    className="flex-1 px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-50 focus:border-blue-400 outline-none transition-all font-normal text-slate-700"
                                                                 />
                                                                 <button 
                                                                     onClick={() => handleRemoveAtout(idx)}
@@ -553,41 +553,41 @@ export default function AdminSettingsPage() {
                             <div className="space-y-8">
                                 <section className="bg-white rounded-3xl p-10 border border-slate-200 shadow-sm space-y-8">
                                     <div className="space-y-2">
-                                        <h3 className="text-2xl font-black tracking-tight flex items-center gap-3">
+                                        <h3 className="text-xl font-semibold flex items-center gap-3">
                                             ⏱️ Délais de gestion
                                         </h3>
-                                        <p className="text-slate-500 font-medium">Configurez les limites temporelles pour vos activités</p>
+                                        <p className="text-slate-500 font-normal">Configurez les limites temporelles pour vos activités</p>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                         <div className="space-y-3">
-                                            <label className="block text-sm font-bold text-slate-700">Délai limite d&apos;inscription</label>
+                                            <label className="block text-sm font-medium text-slate-700">Délai limite d&apos;inscription</label>
                                             <div className="relative group">
                                                 <input
                                                     type="number"
                                                     value={formData.registration_limit_mins ?? 0}
                                                     onChange={e => setFormData({ ...formData, registration_limit_mins: parseInt(e.target.value) || 0 })}
-                                                    className="w-full pl-12 pr-20 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                                                    className="w-full pl-12 pr-20 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-semibold focus:ring-4 focus:ring-blue-100 transition-all outline-none"
                                                 />
                                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">⏳</span>
-                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">minutes</span>
+                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-sm">minutes</span>
                                             </div>
-                                            <p className="text-xs text-slate-400 font-medium">0 = possible jusqu&apos;au début du cours</p>
+                                            <p className="text-xs text-slate-400 font-normal">0 = possible jusqu&apos;au début du cours</p>
                                         </div>
 
                                         <div className="space-y-3">
-                                            <label className="block text-sm font-bold text-slate-700">Délai limite d&apos;annulation</label>
+                                            <label className="block text-sm font-medium text-slate-700">Délai limite d&apos;annulation</label>
                                             <div className="relative group">
                                                 <input
                                                     type="number"
                                                     value={formData.cancellation_limit_mins ?? 45}
                                                     onChange={e => setFormData({ ...formData, cancellation_limit_mins: parseInt(e.target.value) || 0 })}
-                                                    className="w-full pl-12 pr-20 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                                                    className="w-full pl-12 pr-20 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-semibold focus:ring-4 focus:ring-blue-100 transition-all outline-none"
                                                 />
                                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">🚫</span>
-                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">minutes</span>
+                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-sm">minutes</span>
                                             </div>
-                                            <p className="text-xs text-slate-400 font-medium">Passé ce délai, le crédit ne sera pas restitué</p>
+                                            <p className="text-xs text-slate-400 font-normal">Passé ce délai, le crédit ne sera pas restitué</p>
                                         </div>
                                     </div>
                                 </section>
@@ -595,10 +595,10 @@ export default function AdminSettingsPage() {
                                 {/* LOCATIONS SECTION */}
                                 <section className="bg-white rounded-3xl p-10 border border-slate-200 shadow-sm space-y-8">
                                     <div className="space-y-2">
-                                        <h3 className="text-2xl font-black tracking-tight flex items-center gap-3">
+                                        <h3 className="text-xl font-semibold flex items-center gap-3">
                                             📍 Locaux & Espaces
                                         </h3>
-                                        <p className="text-slate-500 font-medium">Définissez les salles et lieux de votre établissement pour vos planning</p>
+                                        <p className="text-slate-500 font-normal">Définissez les salles et lieux de votre établissement pour vos planning</p>
                                     </div>
 
                                     <div className="space-y-6">
@@ -609,11 +609,11 @@ export default function AdminSettingsPage() {
                                                 value={newLocation}
                                                 onChange={e => setNewLocation(e.target.value)}
                                                 onKeyDown={e => e.key === "Enter" && (e.preventDefault(), handleAddLocation())}
-                                                className="flex-1 px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                                                className="flex-1 px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-normal focus:ring-4 focus:ring-blue-100 transition-all outline-none"
                                             />
                                             <button
                                                 onClick={handleAddLocation}
-                                                className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-800 transition-all"
+                                                className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold uppercase tracking-wider text-[10px] hover:bg-slate-800 transition-all"
                                             >
                                                 Ajouter
                                             </button>
@@ -622,7 +622,7 @@ export default function AdminSettingsPage() {
                                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                                             {(formData.locations || []).map((loc) => (
                                                 <div key={loc} className="group flex items-center justify-between px-5 py-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-slate-300 transition-all">
-                                                    <span className="font-bold text-slate-700">{loc}</span>
+                                                    <span className="font-semibold text-slate-700">{loc}</span>
                                                     <button 
                                                         onClick={() => handleRemoveLocation(loc)}
                                                         className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
@@ -633,7 +633,7 @@ export default function AdminSettingsPage() {
                                             ))}
                                             {(formData.locations || []).length === 0 && (
                                                 <div className="col-span-full py-8 text-center border-2 border-dashed border-slate-100 rounded-2xl">
-                                                    <p className="text-slate-400 font-medium text-sm">Aucun lieu configuré</p>
+                                                    <p className="text-slate-400 font-normal text-sm">Aucun lieu configuré</p>
                                                 </div>
                                             )}
                                         </div>
@@ -647,75 +647,59 @@ export default function AdminSettingsPage() {
                             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 <section className="bg-white rounded-3xl p-10 border border-slate-200 shadow-sm space-y-8">
                                     <div className="space-y-2">
-                                        <h3 className="text-2xl font-black tracking-tight flex items-center gap-3">💶 Paramètres de Paiement</h3>
-                                        <p className="text-slate-500 font-medium">Gérez comment vos membres règlent leurs commandes</p>
+                                        <h3 className="text-xl font-semibold flex items-center gap-3">💶 Paramètres de Paiement</h3>
+                                        <p className="text-slate-500 font-normal">Gérez comment vos membres règlent leurs commandes</p>
                                     </div>
 
                                     <div className="grid grid-cols-1 gap-8">
                                         {/* Redirection Link - FIRST and ALWAYS visible */}
                                         <div className="p-8 bg-blue-50/50 rounded-3xl border border-blue-100/50 space-y-4">
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <span className="text-2xl">🔗</span>
-                                                <label className="text-lg font-bold text-slate-800">Lien de redirection de paiement <span className="text-slate-400 font-medium text-sm">(optionnel)</span></label>
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-sm">🔗</div>
+                                                <div className="flex-1">
+                                                    <h4 className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">Configuration Stripe / CB</h4>
+                                                    <p className="text-xs text-slate-500 font-normal">Accédez à l&apos;interface Stripe pour configurer vos paiements par carte bancaire</p>
+                                                </div>
+                                                <a 
+                                                    href="https://dashboard.stripe.com/settings/apps/com.rezea.app" 
+                                                    target="_blank" 
+                                                    className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
+                                                >
+                                                    Configurer
+                                                </a>
                                             </div>
-                                            <input
-                                                type="url"
-                                                placeholder="https://www.helloasso.com/votre-boutique"
-                                                value={formData.payment_redirect_link || ""}
-                                                onChange={e => setFormData({ ...formData, payment_redirect_link: e.target.value })}
-                                                className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 outline-none transition-all font-medium text-blue-600"
-                                            />
-                                            <p className="text-xs text-slate-400 font-medium leading-relaxed">
-                                                Indiquez ici l&apos;URL de votre page de paiement (ex: HelloAsso). Les utilisateurs y seront redirigés pour finaliser leur achat.
-                                            </p>
                                         </div>
 
-                                        {/* Différé Toggle */}
                                         <div className="p-8 bg-white rounded-3xl border border-slate-200 space-y-6">
                                             <div className="flex items-center justify-between">
                                                 <div className="space-y-1">
-                                                    <h4 className="text-lg font-bold text-slate-800">Accepter les paiements différés</h4>
-                                                    <p className="text-sm text-slate-500 max-w-xl leading-relaxed">
-                                                        Si activé, l&apos;utilisateur peut valider sa commande sans être redirigé vers le site de paiement (ex: chèque, espèces sur place). Sa commande sera alors &quot;en attente&quot; de validation par un administrateur.
-                                                    </p>
+                                                    <h4 className="font-bold text-slate-900">Autoriser le paiement différé</h4>
+                                                    <p className="text-xs text-slate-500 font-normal">Permettre aux membres de réserver et payer plus tard (Chèque, Espèces, Virement)</p>
                                                 </div>
                                                 <button
                                                     onClick={() => setFormData({ ...formData, allow_pay_later: !formData.allow_pay_later })}
                                                     className={`relative inline-flex h-9 w-16 items-center rounded-full transition-colors focus:outline-none ${formData.allow_pay_later ? 'bg-emerald-500' : 'bg-slate-300'}`}
                                                 >
-                                                    <span className={`inline-block h-7 w-7 transform rounded-full bg-white transition-transform shadow-md ${formData.allow_pay_later ? 'translate-x-8' : 'translate-x-1'}`} />
+                                                    <span className={`inline-block h-7 w-7 transform rounded-full bg-white transition-transform ${formData.allow_pay_later ? 'translate-x-8' : 'translate-x-1'}`} />
                                                 </button>
                                             </div>
-                                        </div>
-                                    </div>
-                                </section>
 
-                                {/* Confirmation Email section */}
-                                <section className="bg-white rounded-3xl p-10 border border-slate-200 shadow-sm space-y-8">
-                                    <div className="space-y-2">
-                                        <h3 className="text-2xl font-black tracking-tight flex items-center gap-3">✉️ Email de Confirmation</h3>
-                                        <p className="text-slate-500 font-medium">Personnalisez le message envoyé automatiquement après une commande</p>
-                                    </div>
-
-                                    <div>
-                                        <div className="rounded-3xl overflow-hidden border border-slate-200 bg-white shadow-sm">
-                                            <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center gap-2">
-                                                <span className="text-sm font-bold text-slate-400">Objet:</span>
-                                                <span className="text-sm font-bold text-slate-700">Confirmation de votre commande - {tenant?.name || "Rezea"}</span>
-                                            </div>
-                                            <ReactQuill
-                                                theme="snow"
-                                                value={formData.confirmation_email_body || ""}
-                                                onChange={val => setFormData({ ...formData, confirmation_email_body: val })}
-                                                modules={quillModules}
-                                                className="h-[24rem]"
-                                            />
-                                        </div>
-                                        <div className="mt-4 flex items-center gap-3 p-4 bg-amber-50 border border-amber-100 rounded-2xl text-amber-800">
-                                            <span className="text-xl">✨</span>
-                                            <p className="text-xs font-bold leading-tight uppercase tracking-wider">
-                                                Conseil : Si vous acceptez les paiements différés, n&apos;oubliez pas d&apos;inclure vos instructions (RIB, ordre de chèque) dans cet email.
-                                            </p>
+                                            {formData.allow_pay_later && (
+                                                <div className="pt-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                    <label className="block text-sm font-medium text-slate-700">Instructions de paiement différé</label>
+                                                    <ReactQuill
+                                                        theme="snow"
+                                                        value={formData.confirmation_email_body || ""}
+                                                        onChange={(val) => setFormData({ ...formData, confirmation_email_body: val })}
+                                                        placeholder="Ex: Merci de bien vouloir nous remettre votre règlement lors de votre premier cours..."
+                                                        modules={quillModules}
+                                                        className="bg-white rounded-2xl overflow-hidden border border-slate-200"
+                                                    />
+                                                    <p className="text-[10px] text-slate-400 font-normal leading-relaxed italic">
+                                                        💡 Ce message sera affiché lors de la validation de commande et envoyé par email aux membres choisissant cette option.
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </section>
@@ -724,54 +708,65 @@ export default function AdminSettingsPage() {
 
                         {/* DOCUMENTS TAB */}
                         {activeTab === "docs" && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="bg-white rounded-3xl p-10 border border-slate-200 shadow-sm space-y-8 text-center relative overflow-hidden group">
-                                    {formData.cgv_url && (
-                                        <div className="absolute top-4 right-4 bg-emerald-100 text-emerald-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">Actif</div>
-                                    )}
-                                    <div className="w-20 h-20 bg-slate-50 rounded-3xl mx-auto flex items-center justify-center text-4xl shadow-sm group-hover:scale-110 transition-transform">📜</div>
+                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <section id="documents-legaux" className="bg-white rounded-3xl p-10 border border-slate-200 shadow-sm space-y-8">
                                     <div className="space-y-2">
-                                        <h4 className="text-xl font-black">CGV</h4>
-                                        <p className="text-sm font-medium text-slate-500 leading-relaxed px-4">Conditions Générales de Vente ou Règlement Intérieur</p>
+                                        <h3 className="text-xl font-semibold flex items-center gap-3">📄 Documents légaux</h3>
+                                        <p className="text-slate-500 font-normal">Publiez vos conditions générales et règlement intérieur</p>
                                     </div>
-                                    <div className="space-y-3">
-                                        <input type="file" ref={cgvInputRef} className="hidden" accept=".pdf,image/*" onChange={e => handleFileUpload(e, 'cgv')} />
-                                        <button 
-                                            onClick={() => cgvInputRef.current?.click()}
-                                            disabled={!!uploading}
-                                            className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black text-sm transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-2 disabled:opacity-50"
-                                        >
-                                            {uploading === 'cgv' ? "Upload..." : "Charger le document"}
-                                        </button>
-                                        {formData.cgv_url && (
-                                            <a href={`${API_URL}${formData.cgv_url}`} target="_blank" className="block text-blue-600 text-xs font-bold hover:underline">Voir le document actuel</a>
-                                        )}
-                                    </div>
-                                </div>
 
-                                <div className="bg-white rounded-3xl p-10 border border-slate-200 shadow-sm space-y-8 text-center relative overflow-hidden group">
-                                    {formData.rules_url && (
-                                        <div className="absolute top-4 right-4 bg-emerald-100 text-emerald-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">Actif</div>
-                                    )}
-                                    <div className="w-20 h-20 bg-slate-50 rounded-3xl mx-auto flex items-center justify-center text-4xl shadow-sm group-hover:scale-110 transition-transform">📋</div>
-                                    <div className="space-y-2">
-                                        <h4 className="text-xl font-black">Règlement Intérieur</h4>
-                                        <p className="text-sm font-medium text-slate-500 leading-relaxed px-4">Document complémentaire (optionnel)</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        {/* CGV Card */}
+                                        <div className="group bg-white rounded-3xl p-8 border border-slate-100 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 relative overflow-hidden flex flex-col items-center text-center space-y-6">
+                                            {formData.cgv_url && (
+                                                <div className="absolute top-4 right-4 bg-emerald-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-lg shadow-emerald-500/20">Actif</div>
+                                            )}
+                                            <div className="w-20 h-20 bg-slate-50 rounded-3xl mx-auto flex items-center justify-center text-4xl shadow-sm group-hover:scale-110 transition-transform">📜</div>
+                                            <div className="space-y-2">
+                                                <h4 className="text-xl font-semibold">Conditions Générales</h4>
+                                                <p className="text-sm text-slate-400 font-normal">Obligatoire pour les paiements en ligne</p>
+                                            </div>
+                                            <div className="pt-4 w-full">
+                                                <input type="file" ref={cgvInputRef} className="hidden" accept=".pdf,.doc,.docx" onChange={e => handleFileUpload(e, 'cgv')} />
+                                                <button 
+                                                    onClick={() => cgvInputRef.current?.click()}
+                                                    disabled={!!uploading}
+                                                    className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold text-sm transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-2 disabled:opacity-50"
+                                                >
+                                                     {uploading === 'cgv' ? "Upload..." : "Charger le document"}
+                                                </button>
+                                                {formData.cgv_url && (
+                                                    <a href={`${API_URL}${formData.cgv_url}`} target="_blank" className="block text-blue-600 text-xs font-semibold mt-4 hover:underline">Voir le document actuel</a>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* RI Card */}
+                                        <div className="group bg-white rounded-3xl p-8 border border-slate-100 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 relative overflow-hidden flex flex-col items-center text-center space-y-6">
+                                            {formData.rules_url && (
+                                                <div className="absolute top-4 right-4 bg-emerald-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-lg shadow-emerald-500/20">Actif</div>
+                                            )}
+                                            <div className="w-20 h-20 bg-slate-50 rounded-3xl mx-auto flex items-center justify-center text-4xl shadow-sm group-hover:scale-110 transition-transform">📋</div>
+                                            <div className="space-y-2">
+                                                <h4 className="text-xl font-semibold">Règlement Intérieur</h4>
+                                                <p className="text-sm text-slate-400 font-normal">Optionnel mais recommandé</p>
+                                            </div>
+                                            <div className="pt-4 w-full">
+                                                <input type="file" ref={rulesInputRef} className="hidden" accept=".pdf,.doc,.docx" onChange={e => handleFileUpload(e, 'rules')} />
+                                                <button 
+                                                    onClick={() => rulesInputRef.current?.click()}
+                                                    disabled={!!uploading}
+                                                    className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold text-sm transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-2 disabled:opacity-50"
+                                                >
+                                                     {uploading === 'rules' ? "Upload..." : "Charger le document"}
+                                                </button>
+                                                {formData.rules_url && (
+                                                    <a href={`${API_URL}${formData.rules_url}`} target="_blank" className="block text-blue-600 text-xs font-semibold mt-4 hover:underline">Voir le document actuel</a>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="space-y-3">
-                                        <input type="file" ref={rulesInputRef} className="hidden" accept=".pdf,image/*" onChange={e => handleFileUpload(e, 'rules')} />
-                                        <button 
-                                            onClick={() => rulesInputRef.current?.click()}
-                                            disabled={!!uploading}
-                                            className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black text-sm transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-2 disabled:opacity-50"
-                                        >
-                                             {uploading === 'rules' ? "Upload..." : "Charger le document"}
-                                        </button>
-                                        {formData.rules_url && (
-                                            <a href={`${API_URL}${formData.rules_url}`} target="_blank" className="block text-blue-600 text-xs font-bold hover:underline">Voir le document actuel</a>
-                                        )}
-                                    </div>
-                                </div>
+                                </section>
                             </div>
                         )}
                     </div>
@@ -810,21 +805,17 @@ export default function AdminSettingsPage() {
                         {/* Modal Content - The actual Mock Portal */}
                         <div className="flex-1 overflow-auto p-4 md:p-12 flex items-center justify-center">
                             <div className={`bg-white shadow-2xl overflow-hidden transition-all duration-500 ${previewMode === "mobile" ? "w-[375px] h-[667px] rounded-3xl border-[8px] border-slate-900" : "w-full max-w-5xl h-[600px] rounded-3xl"}`}>
-                                <div 
-                                    className={`h-full flex ${previewMode === "mobile" ? "flex-col" : "flex-row"} relative bg-white`}
-                                    style={{ "--primary-color": formData.login_primary_color || formData.primary_color || "#0f172a" } as any}
-                                >
-                                    {/* Left Panel (Branding) */}
+                                <div className={`h-full flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-slate-100`} style={{ "--primary-color": formData.login_primary_color || formData.primary_color || "#0f172a" } as any}>
+                                    
+                                    {/* Left Branding Panel */}
                                     <div className={`${previewMode === "mobile" ? "pt-8 pb-4 px-8 text-center" : "flex-1 p-12"} relative z-10 bg-white flex flex-col justify-center`}>
                                         <div className={`space-y-6 ${previewMode === "mobile" ? "flex flex-col items-center" : ""}`}>
                                             <div className="flex items-center gap-4">
-                                                {previewLogo ? (
-                                                    <img src={previewLogo} className="h-12 object-contain" alt="Logo" />
-                                                ) : (
-                                                    <div className="w-12 h-12 rounded-xl bg-slate-900 flex items-center justify-center text-white font-bold">RZ</div>
-                                                )}
-                                                <h1 className="text-2xl md:text-4xl font-black tracking-tighter text-slate-900 truncate">
-                                                    {formData.name || "Rezea Club"}
+                                                <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white text-xl font-black shadow-lg">
+                                                    {previewLogo ? <img src={previewLogo} className="w-full h-full object-contain p-2" alt="" /> : "RZ"}
+                                                </div>
+                                                <h1 className="text-2xl font-black tracking-tighter text-slate-900">
+                                                    {formData.name || "REZEA"}
                                                 </h1>
                                             </div>
                                             <div 
@@ -856,7 +847,7 @@ export default function AdminSettingsPage() {
                                                     <div className="h-9 bg-slate-100 rounded-lg animate-pulse" />
                                                 </div>
                                                 <div className="h-9 rounded-lg" style={{ backgroundColor: formData.login_primary_color || formData.primary_color || "#0f172a" }} />
-                                                <div className="text-[10px] text-center text-slate-400">Pas encore de compte ? S'inscrire</div>
+                                                <div className="text-[10px] text-center text-slate-400">Pas encore de compte ? S&apos;inscrire</div>
                                             </div>
                                         </div>
                                     </div>

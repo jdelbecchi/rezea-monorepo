@@ -507,7 +507,6 @@ export default function GestionInscriptionsPage() {
                                     {/* Séances */}
                                     {dayItems.sessions.map((session) => {
                                         const ratio = session.current_participants / session.max_participants;
-                                        const isHighAttendance = ratio >= 0.6;
                                         const isExpanded = expandedIds.includes(session.id);
                                         const participants = participantsMap[session.id] || [];
                                         const loadingParticipants = loadingMap[session.id] || false;
@@ -610,11 +609,29 @@ export default function GestionInscriptionsPage() {
  
                                                         {/* Ligne 3: Inscriptions + Voir les participants (Hors du bloc d'opacité) */}
                                                         <div className="flex items-center justify-between gap-4 w-full mt-0.5">
-                                                            <div className={`flex items-center gap-3 ${session.is_active === false ? 'opacity-50' : ''}`}>
-                                                                <span className={`font-bold text-sm md:text-base shrink-0 ${isHighAttendance ? 'text-emerald-500' : 'text-amber-500'}`}>
-                                                                    {session.current_participants}/{session.max_participants}
-                                                                </span>
-                                                                {isExpanded && participants.filter(p => p.status === 'pending' || (p as any).status === 'waiting_list').length > 0 && (
+                                                                <div className="flex items-center gap-3">
+                                                                    {(() => {
+                                                                        const current = session.current_participants ?? 0;
+                                                                        const max = session.max_participants ?? 0;
+                                                                        const percent = max > 0 ? (current / max) * 100 : 0;
+                                                                        
+                                                                        let textColor = "text-slate-400";
+                                                                        let fontWeight = "font-bold";
+                                                                        
+                                                                        if (max > 0) {
+                                                                            if (percent >= 100) { textColor = "text-emerald-900"; fontWeight = "font-black"; }
+                                                                            else if (percent > 70) textColor = "text-emerald-600";
+                                                                            else if (percent >= 40) textColor = "text-blue-600";
+                                                                            else textColor = "text-amber-600";
+                                                                        }
+
+                                                                        return (
+                                                                            <span className={`${textColor} ${fontWeight} text-sm md:text-base shrink-0 transition-colors`}>
+                                                                                {current}/{max}
+                                                                            </span>
+                                                                        );
+                                                                    })()}
+                                                                    {isExpanded && participants.filter(p => p.status === 'pending' || (p as any).status === 'waiting_list').length > 0 && (
                                                                     <span className="text-xs text-slate-400 flex items-center gap-1 animate-in fade-in duration-500 bg-slate-100/50 px-1.5 py-0.5 rounded-md">
                                                                         ⏳ {participants.filter(p => p.status === 'pending' || (p as any).status === 'waiting_list').length}
                                                                     </span>
@@ -704,7 +721,6 @@ export default function GestionInscriptionsPage() {
                                     {/* Événements */}
                                     {dayItems.events.map((event) => {
                                         const ratio = event.registrations_count / event.max_places;
-                                        const isHighAttendance = ratio >= 0.6;
                                         const isExpanded = expandedIds.includes(event.id);
                                         const participants = participantsMap[event.id] || [];
                                         const loadingParticipants = loadingMap[event.id] || false;
@@ -755,11 +771,29 @@ export default function GestionInscriptionsPage() {
                                                         </div>
 
                                                         <div className="flex items-center justify-between gap-4 w-full">
-                                                            <div className="flex items-center gap-3">
-                                                                <span className={`font-bold text-sm md:text-base shrink-0 ${isHighAttendance ? 'text-emerald-500' : 'text-amber-500'}`}>
-                                                                    {event.registrations_count}/{event.max_places}
-                                                                </span>
-                                                                {isExpanded && participants.filter(p => p.status === 'pending' || (p as any).status === 'waiting_list').length > 0 && (
+                                                                <div className="flex items-center gap-3">
+                                                                    {(() => {
+                                                                        const current = event.registrations_count ?? 0;
+                                                                        const max = event.max_places ?? 0;
+                                                                        const percent = max > 0 ? (current / max) * 100 : 0;
+                                                                        
+                                                                        let textColor = "text-slate-400"; // Gris par défaut
+                                                                        let fontWeight = "font-bold";
+                                                                        
+                                                                        if (max > 0) {
+                                                                            if (percent >= 100) { textColor = "text-emerald-900"; fontWeight = "font-black"; }
+                                                                            else if (percent > 70) textColor = "text-emerald-600";
+                                                                            else if (percent >= 40) textColor = "text-blue-600";
+                                                                            else textColor = "text-amber-600";
+                                                                        }
+
+                                                                        return (
+                                                                            <span className={`${textColor} ${fontWeight} text-sm md:text-base shrink-0 transition-colors`}>
+                                                                                {current}/{max}
+                                                                            </span>
+                                                                        );
+                                                                    })()}
+                                                                    {isExpanded && participants.filter(p => p.status === 'pending' || (p as any).status === 'waiting_list').length > 0 && (
                                                                     <span className="text-xs text-slate-400 flex items-center gap-1 animate-in fade-in duration-500 bg-slate-100/50 px-1.5 py-0.5 rounded-md">
                                                                         ⏳ {participants.filter(p => p.status === 'pending' || (p as any).status === 'waiting_list').length}
                                                                     </span>

@@ -231,10 +231,12 @@ function AdminEmailsContent() {
             <Sidebar user={user} />
             <main className="flex-1 p-8">
                 <div className="max-w-4xl mx-auto">
-                    <header className="mb-8">
-                        <h1 className="text-3xl font-bold text-slate-900 mb-2 font-display">📧 Diffusion d'Emails</h1>
-                        <p className="text-slate-500">Envoyez des informations ou une newsletter à vos membres.</p>
-                    </header>
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight">📧 Diffusion d'Emails</h1>
+                            <p className="text-base font-normal text-slate-500 mt-1">Envoyez des informations ou une newsletter à vos membres.</p>
+                        </div>
+                    </div>
 
                     {message && (
                         <div className={`mb-6 p-4 rounded-xl border ${message.type === "success" ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"}`}>

@@ -339,8 +339,8 @@ export default function AdminAgendaPage() {
         <div className="flex min-h-screen bg-white font-sans text-slate-900 overflow-hidden">
             <Sidebar user={user} tenant={tenant} />
 
-            <main className="flex-1 p-8 md:p-12 overflow-auto bg-[#fafafa]">
-                <div className="max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500">
+            <main className="flex-1 p-4 md:p-6 overflow-auto bg-[#fafafa]">
+                <div className="max-w-full mx-auto space-y-6 animate-in fade-in duration-500 px-2">
                     
                     {/* Header Modernized */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -353,13 +353,13 @@ export default function AdminAgendaPage() {
                         <div className="flex items-center gap-3">
                             <button 
                                 onClick={() => setShowDuplicateModal(true)}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all font-medium shadow-sm text-sm"
+                                className="flex items-center gap-2 px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors font-medium shadow-sm"
                             >
                                 ↺ Dupliquer
                             </button>
                             <button 
                                 onClick={() => { setShowForm(true); setEditingSession(null); setFormData({ ...emptyForm }); }}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-medium shadow-lg text-sm"
+                                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors font-medium shadow-sm"
                             >
                                 ➕ Nouvelle séance
                             </button>
@@ -367,13 +367,13 @@ export default function AdminAgendaPage() {
                     </div>
 
                     {/* Filter Bar */}
-                    <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_10px_30px_rgba(0,0,0,0.02)] space-y-4">
+                    <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_10px_30px_rgba(0,0,0,0.02)] flex flex-row items-center gap-8">
                         <div className="flex items-center gap-4">
-                            <span className="text-[10px] font-bold text-slate-400 tracking-widest whitespace-nowrap">filtrer par lieu :</span>
+                            <span className="text-sm font-normal text-slate-600 whitespace-nowrap">Filtrer par lieu</span>
                             <select 
                                 value={locationFilter}
                                 onChange={(e) => setLocationFilter(e.target.value)}
-                                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-slate-900 transition-all min-w-[200px]"
+                                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-slate-900 transition-all min-w-[200px]"
                             >
                                 <option value="all">Tous les lieux</option>
                                 {(tenant?.locations || []).map((loc: string) => (
@@ -382,20 +382,20 @@ export default function AdminAgendaPage() {
                             </select>
                         </div>
                         
-                        <div className="relative group max-w-2xl">
+                        <div className="relative group flex-1 max-w-xl">
                             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors">🔍</div>
                             <input 
                                 type="text" 
-                                placeholder="Rechercher une séance, un instructeur..." 
+                                placeholder="Recherche" 
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-slate-900 outline-none transition-all"
+                                className="w-full pl-11 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-slate-900 outline-none transition-all"
                             />
                         </div>
                     </div>
 
                     {/* Navigation Bar Image 2 Style */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-100 pb-6">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
                         <div className="flex items-center gap-6">
                             <div className="text-base font-bold text-slate-800 tracking-tight">
                                 {view === 'week' ? (
@@ -409,7 +409,7 @@ export default function AdminAgendaPage() {
                                 )}
                             </div>
                             <div className="flex items-center gap-2">
-                                <div className="flex items-center bg-white p-1 rounded-2xl border border-slate-200 shadow-sm transition-all focus-within:shadow-md">
+                                <div className="flex items-center bg-white h-10 rounded-lg border border-slate-200 shadow-sm transition-all focus-within:shadow-md overflow-hidden">
                                     <button 
                                         onClick={() => {
                                             const newDate = new Date(currentDate);
@@ -417,11 +417,13 @@ export default function AdminAgendaPage() {
                                             else newDate.setMonth(newDate.getMonth() - 1);
                                             setCurrentDate(newDate);
                                         }} 
-                                        className="p-2 hover:bg-slate-50 rounded-xl transition-all"
+                                        className="px-3 h-full hover:bg-slate-50 transition-all text-slate-400 hover:text-slate-900"
                                     >
                                         ←
                                     </button>
-                                    <button onClick={() => setCurrentDate(new Date())} className="px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors">Aujourd'hui</button>
+                                    <div className="w-[1px] h-4 bg-slate-200"></div>
+                                    <button onClick={() => setCurrentDate(new Date())} className="px-4 h-full text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors">Aujourd'hui</button>
+                                    <div className="w-[1px] h-4 bg-slate-200"></div>
                                     <button 
                                         onClick={() => {
                                             const newDate = new Date(currentDate);
@@ -429,21 +431,21 @@ export default function AdminAgendaPage() {
                                             else newDate.setMonth(newDate.getMonth() + 1);
                                             setCurrentDate(newDate);
                                         }} 
-                                        className="p-2 hover:bg-slate-50 rounded-xl transition-all"
+                                        className="px-3 h-full hover:bg-slate-50 transition-all text-slate-400 hover:text-slate-900"
                                     >
                                         →
                                     </button>
                                 </div>
-                                <div className="flex items-center bg-slate-900 p-1 rounded-2xl shadow-xl">
+                                <div className="flex items-center bg-slate-100/50 p-1 h-10 rounded-lg border border-slate-200">
                                     <button 
                                         onClick={() => setView('week')}
-                                        className={`px-6 py-2 text-[10px] font-black uppercase tracking-widest transition-all rounded-xl ${view === 'week' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-white'}`}
+                                        className={`px-4 h-full text-xs font-medium transition-all rounded-md flex items-center ${view === 'week' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
                                     >
                                         Semaine
                                     </button>
                                     <button 
                                         onClick={() => setView('month')}
-                                        className={`px-6 py-2 text-[10px] font-black uppercase tracking-widest transition-all rounded-xl ${view === 'month' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-white'}`}
+                                        className={`px-4 h-full text-xs font-medium transition-all rounded-md flex items-center ${view === 'month' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
                                     >
                                         Mois
                                     </button>
@@ -466,9 +468,9 @@ export default function AdminAgendaPage() {
 
                     {/* Calendar Grid */}
                     <div className="bg-white rounded-3xl shadow-[0_20px_60px_rgba(15,23,42,0.02)] border border-slate-100 overflow-hidden">
-                        <div className="grid grid-cols-7 border-b border-slate-100/50 bg-white shadow-[0_1px_0_0_rgba(15,23,42,0.02)]">
+                        <div className="grid grid-cols-7 border-b border-slate-100/50 bg-slate-200 shadow-[0_1px_0_0_rgba(15,23,42,0.02)]">
                             {DAYS_FR.map((day, idx) => (
-                                <div key={idx} className="p-6 text-center text-[10px] font-black uppercase tracking-[0.3em] text-slate-300">
+                                <div key={idx} className="p-4 text-center text-[10px] font-medium uppercase tracking-[0.3em] text-slate-900">
                                     {day}
                                 </div>
                             ))}
@@ -494,19 +496,19 @@ export default function AdminAgendaPage() {
                                 return (
                                     <div 
                                         key={idx} 
-                                        className={`p-4 min-h-[180px] space-y-3 transition-colors ${
+                                        className={`p-1 md:p-1.5 bg-white/50 min-h-[160px] border-r border-slate-100/50 space-y-2.5 transition-colors ${
                                             view === 'month' && !isCurrentMonth ? 'opacity-30 grayscale-[50%]' : ''
                                         } ${isToday ? 'bg-white shadow-inner' : ''}`}
                                     >
-                                        <div className="flex items-center justify-between">
-                                            <div className={`text-sm font-black transition-all h-8 w-8 flex items-center justify-center rounded-full ${
-                                                isToday ? "bg-slate-900 text-white shadow-lg" : "text-slate-400 group-hover:text-slate-900"
+                                        <div className="flex items-start justify-between">
+                                            <div className={`text-sm font-medium transition-all h-8 w-8 flex items-center justify-center rounded-full ${
+                                                isToday ? "bg-slate-900 text-white shadow-lg" : "text-slate-600 group-hover:text-slate-900"
                                             }`}>
                                                 {date.getDate()}
                                             </div>
                                             {dayItems.length > 0 && view === 'month' && (
-                                                <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest">
-                                                    {dayItems.length} {dayItems.length > 1 ? 'activités' : 'activité'}
+                                                <div className="text-[9px] font-medium text-slate-500 lowercase tracking-tight italic">
+                                                    {dayItems.length} {dayItems.length > 1 ? 'items' : 'item'}
                                                 </div>
                                             )}
                                         </div>
@@ -514,68 +516,81 @@ export default function AdminAgendaPage() {
                                         <div className="space-y-3">
                                             {dayItems.map(item => {
                                                 const isSession = item.type === "session";
+                                                const fillPercent = (item.current_participants / item.max_participants) * 100;
+                                                const accentColor = isSession ? "border-blue-500" : "border-orange-500";
+                                                const hoverBorder = isSession ? "group-hover/card:border-blue-200" : "group-hover/card:border-orange-200";
+                                                const hoverBg = isSession ? "group-hover/card:bg-blue-50/30" : "group-hover/card:bg-orange-50/30";
+                                                const iconColor = isSession ? "text-blue-500/50" : "text-orange-500/50";
                                                 
                                                 return (
                                                     <div 
                                                         key={item.id}
                                                         onClick={() => { setSelectedItem(item); setShowDetails(true); }}
-                                                        className={`p-4 rounded-2xl border-2 cursor-pointer transition-all hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] group/item flex flex-col gap-3 relative overflow-hidden h-full ${
-                                                            item.is_active === false ? "opacity-30 grayscale saturate-0" : ""
-                                                        } ${
-                                                            isSession 
-                                                            ? "bg-white border-blue-200 text-slate-900 shadow-md border-l-[10px] border-l-blue-600" 
-                                                            : "bg-white border-orange-200 text-slate-900 shadow-md border-l-[10px] border-l-orange-500"
+                                                        className={`bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-xl hover:translate-y-[-2px] hover:bg-slate-50 transition-all duration-300 border-l-[4px] ${accentColor} cursor-pointer p-2.5 flex flex-col gap-2.5 group/card ${
+                                                            item.is_active === false ? "opacity-40 grayscale" : ""
                                                         }`}
                                                     >
-                                                        <div className="flex flex-col gap-3">
-                                                            <div className="flex items-center justify-between">
-                                                                <span className={`text-[11px] font-black tracking-tight px-3 py-1 rounded-lg border-2 ${
-                                                                    isSession ? 'bg-blue-50 text-blue-900 border-blue-200' : 'bg-orange-50 text-orange-950 border-orange-200'
-                                                                }`}>
-                                                                    {item.time} — {item.endTime}
-                                                                </span>
-                                                                <div className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest ${
-                                                                    isSession ? 'bg-blue-600 text-white' : 'bg-orange-600 text-white'
-                                                                }`}>
-                                                                    {isSession ? 'Séance' : 'Évènement'}
+                                                        {/* Top Row: Time (Restored visibility) */}
+                                                        <div className="flex flex-col items-center">
+                                                            <span className="text-slate-700 text-[11px] font-medium">
+                                                                {item.time} — {item.endTime}
+                                                            </span>
+                                                            <div className="w-full mt-2">
+                                                                <h4 className={`w-full bg-slate-50 text-slate-900 font-bold text-[13px] leading-snug px-3 py-2 rounded-xl border border-slate-100 shadow-sm transition-all ${hoverBorder} ${hoverBg} text-center`}>
+                                                                    {item.title}
+                                                                </h4>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Metadata and Capacity */}
+                                                        <div className="space-y-1.5 border-t border-slate-50 pt-2">
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <div className="flex items-center gap-2 text-[11px] text-slate-500/50 font-medium min-w-0">
+                                                                    <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                                    </svg>
+                                                                    <span className="truncate text-slate-500 font-medium">{item.instructor_name || "Non assigné"}</span>
+                                                                </div>
+                                                                
+                                                                <div className="flex items-center gap-2 shrink-0">
+                                                                    {(() => {
+                                                                        const current = item.current_participants ?? 0;
+                                                                        const max = item.max_participants ?? 0;
+                                                                        const percent = max > 0 ? (current / max) * 100 : 0;
+                                                                        
+                                                                        let badgeClass = "bg-slate-50 text-slate-400 border-slate-100"; // Gris par défaut (0/0 ou inactif)
+                                                                        
+                                                                        if (item.is_active !== false && max > 0) {
+                                                                            if (percent >= 100) badgeClass = "bg-emerald-100 text-emerald-900 border-emerald-200";
+                                                                            else if (percent > 70) badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-100";
+                                                                            else if (percent >= 40) badgeClass = "bg-blue-50 text-blue-700 border-blue-100";
+                                                                            else badgeClass = "bg-amber-50 text-amber-700 border-amber-100";
+                                                                        }
+
+                                                                        return (
+                                                                            <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${badgeClass}`}>
+                                                                                {current}/{max}
+                                                                            </div>
+                                                                        );
+                                                                    })()}
+
+                                                                    {item.allow_waitlist && (item.waitlist_count > 0 || (item.waitlist_users || []).length > 0) && (
+                                                                        <div className="flex items-center gap-1 text-[10px] font-bold animate-pulse">
+                                                                            <span className="text-orange-600">⏳</span>
+                                                                            <span className="text-slate-700">{item.waitlist_count || item.waitlist_users?.length}</span>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
 
-                                                            <div className="text-[13px] font-black text-slate-950 leading-tight group-hover/item:text-blue-700 transition-colors">
-                                                                {item.title}
-                                                            </div>
-                                                            
-                                                            <div className="space-y-2 mt-auto">
-                                                                <div className="flex items-center gap-2.5 text-[11px] font-bold text-slate-800">
-                                                                    <span className={`flex items-center justify-center w-6 h-6 rounded-lg ${isSession ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>👤</span>
-                                                                    <span className="truncate">{item.instructor_name || "Non assigné"}</span>
-                                                                </div>
-                                                                
-                                                                {item.location && (
-                                                                    <div className="flex items-center gap-2.5 text-[11px] font-bold text-slate-600">
-                                                                        <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-white/50 text-slate-500 shadow-inner">📍</span>
+                                                            {item.location && (
+                                                                <div className="flex items-center justify-between gap-2 text-[11px] text-slate-500 font-medium">
+                                                                    <div className="flex items-center gap-2 min-w-0">
+                                                                        <span className="w-4 h-4 flex items-center justify-center opacity-70">📍</span>
                                                                         <span className="truncate">{item.location}</span>
                                                                     </div>
-                                                                )}
-                                                            </div>
-
-                                                            <div className="pt-3 flex items-center justify-between border-t border-slate-200/50 mt-1">
-                                                                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-black transition-all shadow-sm ${
-                                                                    !item.is_active ? "bg-slate-200 text-slate-500" :
-                                                                    (item.current_participants / item.max_participants) >= 1 ? "bg-rose-600 text-white shadow-rose-200" :
-                                                                    (item.current_participants > 0) ? "bg-emerald-600 text-white shadow-emerald-200" : "bg-white text-slate-800 border-2 border-slate-100"
-                                                                }`}>
-                                                                    <span className="text-xs">👥</span>
-                                                                    {item.current_participants} / {item.max_participants}
                                                                 </div>
-                                                                
-                                                                {item.allow_waitlist && (item.waitlist_count > 0 || item.waitlist_users?.length > 0) && (
-                                                                    <div className="flex items-center gap-1.5 text-[10px] font-black text-white bg-orange-600 px-2 py-1 rounded-lg shadow-lg animate-pulse">
-                                                                        <span>⏳</span>
-                                                                        {item.waitlist_count || item.waitlist_users?.length}
-                                                                    </div>
-                                                                )}
-                                                            </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 );
