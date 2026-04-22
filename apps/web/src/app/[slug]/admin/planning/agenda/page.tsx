@@ -33,6 +33,7 @@ export default function AdminAgendaPage() {
     const [loading, setLoading] = useState(true);
     const [currentDate, setCurrentDate] = useState(new Date());
     const [locationFilter, setLocationFilter] = useState("all");
+    const [searchTerm, setSearchTerm] = useState("");
     const [view, setView] = useState<'week' | 'month'>('week');
     const [tenant, setTenant] = useState<any>(null);
 
@@ -92,8 +93,8 @@ export default function AdminAgendaPage() {
 
     const fetchData = useCallback(async () => {
         try {
-            const start = view === 'week' ? weekDays[0].toISOString().split('T')[0] : monthDays[0].toISOString().split('T')[0];
-            const end = view === 'week' ? weekDays[6].toISOString().split('T')[0] : monthDays[monthDays.length - 1].toISOString().split('T')[0];
+            const start = (view === 'week' ? weekDays[0] : monthDays[0])?.toISOString()?.split('T')[0] || new Date().toISOString().split('T')[0];
+            const end = (view === 'week' ? weekDays[6] : monthDays[monthDays.length - 1])?.toISOString()?.split('T')[0] || new Date().toISOString().split('T')[0];
             // 1. Get user and check permissions BEFORE other data
             const userData = await api.getCurrentUser();
             if (userData.role !== 'owner' && userData.role !== 'manager') {
@@ -110,22 +111,34 @@ export default function AdminAgendaPage() {
             setUser(userData);
             setTenant(tenantData);
             const flattenedItems = [
-                ...agendaData.sessions.map((s: any) => {
+                ...(agendaData?.sessions || []).map((s: any) => {
                     const dt = new Date(s.start_time);
+                    const dtEnd = new Date(s.end_time);
                     return {
                         ...s,
                         type: "session" as const,
-                        // date local au format YYYY-MM-DD
                         date: dt.getFullYear() + "-" + String(dt.getMonth() + 1).padStart(2, '0') + "-" + String(dt.getDate()).padStart(2, '0'),
-                        time: dt.getHours().toString().padStart(2, '0') + ":" + dt.getMinutes().toString().padStart(2, '0')
+                        time: dt.getHours().toString().padStart(2, '0') + ":" + dt.getMinutes().toString().padStart(2, '0'),
+                        endTime: dtEnd.getHours().toString().padStart(2, '0') + ":" + dtEnd.getMinutes().toString().padStart(2, '0')
                     };
                 }),
-                ...agendaData.events.map((e: any) => ({ 
-                    ...e, 
-                    type: "event" as const, 
-                    date: e.event_date, 
-                    time: e.event_time 
-                }))
+                ...(agendaData?.events || []).map((e: any) => {
+                    const timeStr = e?.event_time || e?.time || "00:00";
+                    const parts = timeStr.includes(':') ? timeStr.split(':') : timeStr.includes('h') ? timeStr.split('h') : [timeStr, "0"];
+                    const h = parseInt(parts[0]) || 0;
+                    const m = parseInt(parts[1]) || 0;
+                    const dt = new Date();
+                    dt.setHours(h, m, 0, 0);
+                    const dtEnd = new Date(dt.getTime() + (e.duration_minutes || 60) * 60000);
+                    return { 
+                        ...e, 
+                        type: "event" as const, 
+                        date: (e?.date || e?.event_date || "").split('T')[0], 
+                        time: timeStr,
+                        is_active: true,
+                        endTime: dtEnd.getHours().toString().padStart(2, '0') + ":" + dtEnd.getMinutes().toString().padStart(2, '0')
+                    };
+                })
             ];
             setItems(flattenedItems);
             
@@ -329,49 +342,55 @@ export default function AdminAgendaPage() {
             <main className="flex-1 p-8 md:p-12 overflow-auto bg-[#fafafa]">
                 <div className="max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500">
                     
-                    {/* Header Image 2 Style */}
+                    {/* Header Modernized */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div className="flex items-center gap-4">
-                            <span className="text-3xl">📋</span>
-                            <h1 className="text-4xl font-extrabold tracking-tight text-[#0f172a] font-sans">Agenda</h1>
+                        <div className="space-y-1">
+                            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight flex items-center gap-3">
+                                📅 Agenda
+                            </h1>
+                            <p className="text-base font-normal text-slate-500 mt-1">Gérez votre planning et vos inscriptions</p>
                         </div>
-                        <div className="flex items-center gap-4">
-                            <div className="relative group">
-                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">🔍</div>
-                                <input 
-                                    type="text" 
-                                    placeholder="Rechercher..." 
-                                    className="pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl w-64 text-sm font-medium focus:ring-2 focus:ring-slate-900 outline-none transition-all"
-                                />
-                            </div>
+                        <div className="flex items-center gap-3">
                             <button 
                                 onClick={() => setShowDuplicateModal(true)}
-                                className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm"
+                                className="flex items-center gap-2 px-4 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all font-medium shadow-sm text-sm"
                             >
                                 ↺ Dupliquer
                             </button>
                             <button 
                                 onClick={() => { setShowForm(true); setEditingSession(null); setFormData({ ...emptyForm }); }}
-                                className="px-5 py-2.5 bg-[#0f172a] text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg active:scale-95"
+                                className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-medium shadow-lg text-sm"
                             >
-                                + Nouvelle séance
+                                ➕ Nouvelle séance
                             </button>
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                        <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Filtrer par Lieu :</span>
+                    {/* Filter Bar */}
+                    <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_10px_30px_rgba(0,0,0,0.02)] space-y-4">
+                        <div className="flex items-center gap-4">
+                            <span className="text-[10px] font-bold text-slate-400 tracking-widest whitespace-nowrap">filtrer par lieu :</span>
                             <select 
                                 value={locationFilter}
                                 onChange={(e) => setLocationFilter(e.target.value)}
-                                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-slate-900 transition-all min-w-[150px]"
+                                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-slate-900 transition-all min-w-[200px]"
                             >
                                 <option value="all">Tous les lieux</option>
                                 {(tenant?.locations || []).map((loc: string) => (
                                     <option key={loc} value={loc}>{loc}</option>
                                 ))}
                             </select>
+                        </div>
+                        
+                        <div className="relative group max-w-2xl">
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors">🔍</div>
+                            <input 
+                                type="text" 
+                                placeholder="Rechercher une séance, un instructeur..." 
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-slate-900 outline-none transition-all"
+                            />
                         </div>
                     </div>
 
@@ -463,6 +482,13 @@ export default function AdminAgendaPage() {
                                 const dayItems = items
                                     .filter(i => i.date === dayStr)
                                     .filter(i => locationFilter === "all" || i.location === locationFilter)
+                                    .filter(i => {
+                                        if (!searchTerm) return true;
+                                        const q = searchTerm.toLowerCase();
+                                        return (i.title || "").toLowerCase().includes(q) || 
+                                               (i.instructor_name || "").toLowerCase().includes(q) || 
+                                               (i.location || "").toLowerCase().includes(q);
+                                    })
                                     .sort((a, b) => a.time.localeCompare(b.time));
 
                                 return (
@@ -493,35 +519,62 @@ export default function AdminAgendaPage() {
                                                     <div 
                                                         key={item.id}
                                                         onClick={() => { setSelectedItem(item); setShowDetails(true); }}
-                                                        className={`p-3 rounded-2xl border cursor-pointer transition-all hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] group/item ${
-                                                            !item.is_active ? "opacity-40 grayscale" : ""
+                                                        className={`p-4 rounded-2xl border-2 cursor-pointer transition-all hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] group/item flex flex-col gap-3 relative overflow-hidden h-full ${
+                                                            item.is_active === false ? "opacity-30 grayscale saturate-0" : ""
                                                         } ${
                                                             isSession 
-                                                            ? "bg-white border-blue-50 text-blue-900 shadow-[0_4px_12px_rgba(59,130,246,0.04)]" 
-                                                            : "bg-white border-amber-50 text-amber-900 shadow-[0_4px_12px_rgba(245,158,11,0.04)]"
+                                                            ? "bg-white border-blue-200 text-slate-900 shadow-md border-l-[10px] border-l-blue-600" 
+                                                            : "bg-white border-orange-200 text-slate-900 shadow-md border-l-[10px] border-l-orange-500"
                                                         }`}
                                                     >
-                                                        <div className="flex flex-col gap-2">
+                                                        <div className="flex flex-col gap-3">
                                                             <div className="flex items-center justify-between">
-                                                                <span className="text-[9px] font-black tracking-tight">{item.time}</span>
-                                                                <div className={`w-1.5 h-1.5 rounded-full ${isSession ? 'bg-blue-400' : 'bg-amber-400'}`}></div>
+                                                                <span className={`text-[11px] font-black tracking-tight px-3 py-1 rounded-lg border-2 ${
+                                                                    isSession ? 'bg-blue-50 text-blue-900 border-blue-200' : 'bg-orange-50 text-orange-950 border-orange-200'
+                                                                }`}>
+                                                                    {item.time} — {item.endTime}
+                                                                </span>
+                                                                <div className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest ${
+                                                                    isSession ? 'bg-blue-600 text-white' : 'bg-orange-600 text-white'
+                                                                }`}>
+                                                                    {isSession ? 'Séance' : 'Évènement'}
+                                                                </div>
                                                             </div>
-                                                            <div className="text-[10px] font-bold uppercase tracking-tight text-slate-900 truncate">
+
+                                                            <div className="text-[13px] font-black text-slate-950 leading-tight group-hover/item:text-blue-700 transition-colors">
                                                                 {item.title}
                                                             </div>
                                                             
-                                                            <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                                                                <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
-                                                                    <span>👤</span> {item.instructor_name || "N/A"}
+                                                            <div className="space-y-2 mt-auto">
+                                                                <div className="flex items-center gap-2.5 text-[11px] font-bold text-slate-800">
+                                                                    <span className={`flex items-center justify-center w-6 h-6 rounded-lg ${isSession ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>👤</span>
+                                                                    <span className="truncate">{item.instructor_name || "Non assigné"}</span>
                                                                 </div>
+                                                                
                                                                 {item.location && (
-                                                                    <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                                                                        <span>📍</span> {item.location}
+                                                                    <div className="flex items-center gap-2.5 text-[11px] font-bold text-slate-600">
+                                                                        <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-white/50 text-slate-500 shadow-inner">📍</span>
+                                                                        <span className="truncate">{item.location}</span>
                                                                     </div>
                                                                 )}
-                                                                <div className="ml-auto text-[8px] font-black text-slate-300">
-                                                                    {item.current_participants}/{item.max_participants} 👥
+                                                            </div>
+
+                                                            <div className="pt-3 flex items-center justify-between border-t border-slate-200/50 mt-1">
+                                                                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-black transition-all shadow-sm ${
+                                                                    !item.is_active ? "bg-slate-200 text-slate-500" :
+                                                                    (item.current_participants / item.max_participants) >= 1 ? "bg-rose-600 text-white shadow-rose-200" :
+                                                                    (item.current_participants > 0) ? "bg-emerald-600 text-white shadow-emerald-200" : "bg-white text-slate-800 border-2 border-slate-100"
+                                                                }`}>
+                                                                    <span className="text-xs">👥</span>
+                                                                    {item.current_participants} / {item.max_participants}
                                                                 </div>
+                                                                
+                                                                {item.allow_waitlist && (item.waitlist_count > 0 || item.waitlist_users?.length > 0) && (
+                                                                    <div className="flex items-center gap-1.5 text-[10px] font-black text-white bg-orange-600 px-2 py-1 rounded-lg shadow-lg animate-pulse">
+                                                                        <span>⏳</span>
+                                                                        {item.waitlist_count || item.waitlist_users?.length}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>
