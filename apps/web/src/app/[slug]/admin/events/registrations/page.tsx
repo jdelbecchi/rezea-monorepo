@@ -79,6 +79,7 @@ export default function AdminEventRegistrationsPage() {
 
     // Invoice
     const [invoiceReg, setInvoiceReg] = useState<AdminEventRegistrationItem | null>(null);
+    const [dateRange, setDateRange] = useState({ start: "", end: "" });
     const [invoiceData, setInvoiceData] = useState({
         invoice_number: "",
         invoice_date: "",
@@ -284,17 +285,35 @@ th{background:#f1f5f9}
         if (filterStatuses.length > 0 && !filterStatuses.includes(r.status)) return false;
         if (filterPayments.length > 0 && !filterPayments.includes(r.payment_status)) return false;
         
-        // Filter by selected date
-        if (selectedDate && !isSameDay(parseISO(r.event_date), selectedDate)) return false;
+        // Filter by date range
+        if (r.event_date) {
+            const rDate = parseISO(r.event_date);
+            if (dateRange.start && rDate < parseISO(dateRange.start)) return false;
+            if (dateRange.end) {
+                 const endLimit = new Date(dateRange.end);
+                 endLimit.setHours(23, 59, 59, 999);
+                 if (rDate > endLimit) return false;
+            }
+        }
 
         // Filter by location
         if (locationFilter !== "all" && r.event_id) {
-             // We need to find the event to check its location
              const evt = events.find(e => e.id === r.event_id);
              if (evt && evt.location !== locationFilter) return false;
         }
 
         return true;
+    }).sort((a, b) => {
+        // 1. Date (Décroissant)
+        const dateA = a.event_date || "";
+        const dateB = b.event_date || "";
+        if (dateA !== dateB) return dateB.localeCompare(dateA);
+        // 2. Heure (Décroissant)
+        const timeA = a.event_time || "";
+        const timeB = b.event_time || "";
+        if (timeA !== timeB) return timeB.localeCompare(timeA);
+        // 3. Intitulé
+        return (a.event_title || "").localeCompare(b.event_title || "");
     });
 
     const formatPrice = (cents: number) => (cents / 100).toFixed(2).replace(".", ",") + " €";
@@ -318,48 +337,37 @@ th{background:#f1f5f9}
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        const dateStr = format(selectedDate, "yyyy-MM-dd");
-        a.download = `inscriptions_evenements_${dateStr}.csv`;
+        const dateStr = format(new Date(), "yyyy-MM-dd");
+        a.download = `export_inscriptions_${dateStr}.csv`;
         a.click();
         URL.revokeObjectURL(url);
     };
 
-    const getStatusBadge = (r: AdminEventRegistrationItem) => {
-        switch (r.status) {
-            case "confirmed":
-            case "pending_payment":
-                return <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm">inscrit</span>;
-            case "waiting_list":
-                return <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-blue-50 text-blue-600 border border-blue-100 shadow-sm">sur liste</span>;
-            case "cancelled":
-                return <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-rose-50 text-rose-600 border border-rose-100 shadow-sm">annulé</span>;
-            case "absent":
-                return <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-slate-50 text-slate-500 border border-slate-200 shadow-sm">absent</span>;
-            case "event_deleted":
-                return <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-amber-50 text-amber-600 border border-amber-100 shadow-sm whitespace-nowrap">évènement supprimé</span>;
-            default:
-                return <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-gray-50 text-gray-500 border border-gray-200 shadow-sm">{r.status}</span>;
+    const getStatusBadge = (reg: AdminEventRegistrationItem) => {
+        const base = "px-2 py-1 text-xs font-normal rounded-full border whitespace-nowrap";
+        switch (reg.status) {
+            case "confirmed": return <span className={`${base} bg-emerald-50 text-emerald-600 border-emerald-100`}>Inscrit</span>;
+            case "waiting_list": return <span className={`${base} bg-amber-50 text-amber-600 border-amber-100`}>Sur liste</span>;
+            case "cancelled": return <span className={`${base} bg-rose-50 text-rose-600 border-rose-100`}>Annulé</span>;
+            case "absent": return <span className={`${base} bg-slate-50 text-slate-600 border-slate-200`}>Absent</span>;
+            default: return <span className={`${base} bg-gray-50 text-gray-500 border-gray-200`}>{reg.status}</span>;
         }
     };
 
-    const getPaymentBadge = (r: AdminEventRegistrationItem) => {
-        switch (r.payment_status) {
-            case "a_valider":
-                return <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-amber-50 text-amber-600 border border-amber-100 shadow-sm">à valider</span>;
-            case "en_attente":
-                return <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-slate-100 text-slate-500 border border-slate-200 shadow-sm uppercase tracking-wider">en attente</span>;
-            case "paye":
-                return <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm">payé</span>;
-            case "rembourse":
-                return <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-sm">remboursé</span>;
-            default:
-                return <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-gray-50 text-gray-500 border border-gray-200 shadow-sm">{r.payment_status}</span>;
+    const getPaymentBadge = (reg: AdminEventRegistrationItem) => {
+        const base = "px-2 py-1 text-xs font-normal rounded-full border whitespace-nowrap";
+        switch (reg.payment_status) {
+            case "a_valider": return <span className={`${base} bg-yellow-100 text-yellow-800 border-yellow-200`}>À valider</span>;
+            case "en_attente": return <span className={`${base} bg-orange-100 text-orange-800 border-orange-200`}>En attente</span>;
+            case "paye": return <span className={`${base} bg-green-100 text-green-800 border-green-200`}>Payé</span>;
+            case "rembourse": return <span className={`${base} bg-gray-100 text-gray-600 border-gray-200`}>Remboursé</span>;
+            default: return <span className={`${base} bg-gray-100 text-gray-600 border-gray-200`}>{reg.payment_status}</span>;
         }
     };
 
     const getEditStatusOptions = (currentStatus: string) => {
         if (currentStatus === "event_deleted") {
-            return [{ value: "event_deleted", label: "🗑️ Supprimée" }];
+            return [{ value: "event_deleted", label: "Supprimée" }];
         }
         return [
             { value: "confirmed", label: "✅ Inscrit" },
@@ -371,253 +379,167 @@ th{background:#f1f5f9}
 
     if (loading) return <div className="p-8 text-center bg-gray-50 min-h-screen">Chargement...</div>;
 
-    const clubColor = tenant?.primary_color;
-
     return (
-        <div className="min-h-screen bg-white flex flex-col md:flex-row overflow-x-hidden">
+        <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
             <Sidebar user={user} />
-            <main className="flex-1 px-5 pb-5 md:p-12 pt-8 md:pt-14">
-                <div className="max-w-7xl mx-auto">
-                    <div className="md:grid md:grid-cols-[320px_1fr] md:gap-10 items-start">
-                        {/* Sidebar avec Calendrier et Filtres */}
-                        <aside className="md:sticky md:top-14 space-y-6 mb-8 md:mb-0">
-                            <header className="px-1 space-y-1">
-                                <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                                    <span className="text-2xl">🎉</span> Inscriptions
-                                </h1>
-                                <p className="text-slate-500 font-medium text-[11px] md:text-xs uppercase tracking-wider">Gestion des inscrits aux évènements</p>
-                            </header>
+            <main className="flex-1 p-8 overflow-auto">
+                <div className="max-w-7xl mx-auto space-y-6">
+                    {/* Header */}
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight">🎉 Inscriptions aux évènements</h1>
+                            <p className="text-base font-normal text-slate-500 mt-1">Gestion des inscrits et des règlements</p>
+                        </div>
+                        <button
+                            onClick={() => { setShowCreate(true); loadFormOptions(); }}
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors font-medium shadow-sm"
+                        >
+                            ➕ Nouvelle inscription
+                        </button>
+                    </div>
 
-                            {/* Calendar Card */}
-                            <div className="bg-white -mx-5 md:mx-0 rounded-none md:rounded-3xl shadow-xl shadow-slate-200/60 border-b md:border border-slate-100 p-4 md:p-2">
-                                <div className="flex items-center justify-between mb-1 px-2">
-                                    <h2 className="font-semibold text-slate-800 capitalize text-[13px] md:text-sm">
-                                        {format(currentMonth, 'MMMM yyyy', { locale: fr })}
-                                    </h2>
-                                    <div className="flex gap-1">
-                                        <button onClick={handlePrevMonth} className="p-1.5 hover:bg-slate-50 rounded-full text-slate-400 transition-colors">←</button>
-                                        <button onClick={handleNextMonth} className="p-1.5 hover:bg-slate-50 rounded-full text-slate-400 transition-colors">→</button>
-                                    </div>
-                                </div>
-                                
-                                <div className="grid grid-cols-7 gap-0.5 md:gap-1">
-                                    {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((day, i) => (
-                                        <div key={i} className="text-center text-[9px] md:text-[10px] font-bold text-slate-400 py-1 uppercase tracking-tight">{day}</div>
-                                    ))}
-                                    {(() => {
-                                        const firstDay = startOfMonth(currentMonth).getDay();
-                                        const offset = firstDay === 0 ? 6 : firstDay - 1;
-                                        return Array.from({ length: offset }, (_, i) => (
-                                            <div key={`empty-${i}`} className="p-1 md:p-2 md:aspect-square" />
-                                        ));
-                                    })()}
-                                    {daysInMonth.map((day, i) => {
-                                        const isSelected = isSameDay(day, selectedDate);
-                                        const isToday = isSameDay(day, startOfToday());
-                                        return (
-                                            <button
-                                                key={i}
-                                                onClick={() => handleSetDate(day)}
-                                                className={`
-                                                    relative py-2 md:py-0 rounded-xl text-xs md:text-sm transition-all flex flex-col items-center justify-center md:aspect-square
-                                                    ${isSelected ? 'shadow-lg text-white font-bold' : 'hover:bg-slate-50 text-slate-700 font-medium'}
-                                                `}
-                                                style={{ 
-                                                    backgroundColor: isSelected ? clubColor : undefined,
-                                                    color: isSelected ? 'white' : (isToday ? clubColor : undefined)
-                                                }}
-                                            >
-                                                <span>{day.getDate()}</span>
-                                                {isToday && (
-                                                    <div 
-                                                        className={`absolute bottom-1 w-3 md:w-5 h-[2px] rounded-full ${isSelected ? 'bg-white' : ''}`}
-                                                        style={{ backgroundColor: !isSelected ? clubColor : undefined }}
-                                                    ></div>
-                                                )}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
+                    {/* Message */}
+                    {message && (
+                        <div className={`p-4 rounded-lg border animate-in fade-in slide-in-from-top-2 ${message.type === "success" ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-800"}`}>
+                            {message.text}
+                        </div>
+                    )}
+
+                    {/* Search + Filters */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+                        <div className="flex flex-col md:flex-row gap-3 items-end flex-wrap">
+                            <div className="flex-1 min-w-[180px]">
+                                <label className="block text-xs font-medium text-slate-500 mb-1">🔍 Rechercher</label>
+                                <input type="text" placeholder="Nom, titre de l'évènement..."
+                                    value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm placeholder:text-slate-400 trasition-all font-normal" />
                             </div>
-
-                            {/* Additional Filters Card */}
-                            <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 space-y-4 shadow-sm">
-                                <div className="space-y-4">
-                                    <div className="flex-1">
-                                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">🔍 Recherche</label>
-                                        <input type="text" placeholder="Nom, évènement..."
-                                            value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                                            className="w-full px-4 py-3 bg-white border border-slate-100 rounded-2xl focus:ring-2 focus:ring-slate-200 focus:border-transparent text-sm shadow-sm transition-all" />
-                                    </div>
-
-                                    <div className="flex-1">
-                                        <MultiSelect
-                                            label="Statuts"
-                                            options={[
-                                                { id: "confirmed", label: "Inscrit" },
-                                                { id: "waiting_list", label: "Sur liste" },
-                                                { id: "cancelled", label: "Annulé" },
-                                                { id: "absent", label: "Absent" },
-                                            ]}
-                                            selected={filterStatuses}
-                                            onChange={setFilterStatuses}
-                                            placeholder="Tous"
-                                        />
-                                    </div>
-
-                                    <div className="flex-1">
-                                        <MultiSelect
-                                            label="Paiements"
-                                            options={[
-                                                { id: "a_valider", label: "À valider" },
-                                                { id: "en_attente", label: "En attente" },
-                                                { id: "paye", label: "Payé" },
-                                                { id: "rembourse", label: "Remboursé" },
-                                            ]}
-                                            selected={filterPayments}
-                                            onChange={setFilterPayments}
-                                            placeholder="Tous"
-                                        />
-                                    </div>
-
-                                    <div className="pt-2">
-                                        <button onClick={() => { setShowCreate(true); loadFormOptions(); }}
-                                            className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-all font-bold text-sm shadow-xl shadow-slate-200 active:scale-95">
-                                            ➕ Inscrire quelqu'un
-                                        </button>
-                                    </div>
-
-                                    <div className="pt-2">
-                                        <button onClick={handleExport}
-                                            className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-white border border-slate-100 text-slate-700 rounded-2xl hover:bg-slate-50 transition-all font-bold text-sm shadow-sm active:scale-95">
-                                            📥 Export CSV
-                                        </button>
-                                    </div>
-                                </div>
+                            <div className="w-44">
+                                <MultiSelect
+                                    label="Statut(s)"
+                                    options={[
+                                        { id: "confirmed", label: "Inscrit" },
+                                        { id: "waiting_list", label: "Sur liste" },
+                                        { id: "cancelled", label: "Annulé" },
+                                        { id: "absent", label: "Absent" },
+                                    ]}
+                                    selected={filterStatuses}
+                                    onChange={setFilterStatuses}
+                                    placeholder="Tous"
+                                />
                             </div>
-                        </aside>
-
-                        {/* Main Content Area */}
-                        <div className="space-y-6 pt-2 md:pt-1">
-                            {/* Message */}
-                            {message && (
-                                <div className={`p-4 rounded-2xl border animate-in fade-in slide-in-from-top-2 shadow-sm ${message.type === "success" ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-800"}`}>
-                                    <div className="flex items-center gap-3">
-                                        <span>{message.type === "success" ? "✅" : "⚠️"}</span>
-                                        <span className="text-sm font-medium">{message.text}</span>
-                                    </div>
+                            <div className="w-44">
+                                <MultiSelect
+                                    label="Paiement(s)"
+                                    options={[
+                                        { id: "a_valider", label: "À valider" },
+                                        { id: "en_attente", label: "En attente" },
+                                        { id: "paye", label: "Payé" },
+                                        { id: "rembourse", label: "Remboursé" },
+                                    ]}
+                                    selected={filterPayments}
+                                    onChange={setFilterPayments}
+                                    placeholder="Tous"
+                                />
+                            </div>
+                            {tenant && (tenant.locations || []).length > 1 && (
+                                <div className="min-w-[140px]">
+                                    <label className="block text-xs font-medium text-slate-500 mb-1">Lieu</label>
+                                    <select 
+                                        value={locationFilter} 
+                                        onChange={(e) => setLocationFilter(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-normal transition-all cursor-pointer"
+                                    >
+                                        <option value="all">Tous les lieux</option>
+                                        {(tenant.locations || []).map(loc => (
+                                            <option key={loc} value={loc}>{loc}</option>
+                                        ))}
+                                    </select>
                                 </div>
                             )}
-
-                            {/* Header avec Date et Location */}
-                            <div className="flex items-center justify-between gap-4 px-1 mb-4">
-                                <h3 className="font-medium text-slate-400 text-sm lowercase whitespace-nowrap">
-                                    {format(selectedDate, 'eeee d MMMM', { locale: fr })}
-                                </h3>
-                                
-                                {tenant && (tenant.locations || []).length > 0 && (
-                                    <div className="relative inline-block w-auto shrink-0">
-                                        <button 
-                                            onClick={() => setIsLocationMenuOpen(!isLocationMenuOpen)}
-                                            className="flex items-center justify-between bg-white border border-slate-100 text-slate-600 text-[11px] md:text-[12px] font-medium rounded-2xl px-3 md:px-4 py-2 md:py-2.5 outline-none transition-all cursor-pointer shadow-sm hover:shadow-md hover:border-slate-200 gap-2"
-                                        >
-                                            <span className="truncate max-w-[100px] md:max-w-[150px]">
-                                                {locationFilter === "all" ? "Tous les lieux" : locationFilter}
-                                            </span>
-                                            <svg className={`w-3 h-3 md:w-4 md:h-4 text-slate-400 transition-transform duration-200 ${isLocationMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                            </svg>
-                                        </button>
-
-                                        {isLocationMenuOpen && (
-                                            <>
-                                                <div className="fixed inset-0 z-40" onClick={() => setIsLocationMenuOpen(false)} />
-                                                <div className="absolute top-full right-0 mt-2 z-50 w-48 md:w-64 bg-white border border-slate-100 rounded-2xl shadow-xl shadow-slate-200/50 p-2 animate-in fade-in slide-in-from-top-2">
-                                                    <button
-                                                        onClick={() => { setLocationFilter("all"); setIsLocationMenuOpen(false); }}
-                                                        className={`w-full text-left px-4 py-2.5 rounded-xl text-[12px] font-medium transition-colors ${locationFilter === "all" ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"}`}
-                                                    >
-                                                        Tous les lieux
-                                                    </button>
-                                                    {(tenant.locations || []).map((loc) => (
-                                                        <button
-                                                            key={loc}
-                                                            onClick={() => { setLocationFilter(loc); setIsLocationMenuOpen(false); }}
-                                                            className={`w-full text-left px-4 py-2.5 rounded-xl text-[12px] font-medium transition-colors mt-1 ${locationFilter === loc ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"}`}
-                                                        >
-                                                            {loc}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
-                                )}
+                            <div className="flex items-end gap-2">
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-500 mb-1 text-left">Du</label>
+                                    <input type="date" value={dateRange.start} onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-normal" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-500 mb-1 text-left">Au</label>
+                                    <input type="date" value={dateRange.end} onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-normal" />
+                                </div>
                             </div>
+                            <button onClick={handleExport}
+                                className="px-3 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg font-medium hover:bg-emerald-100 transition-colors text-sm whitespace-nowrap shadow-sm">
+                                📥 Export Excel
+                            </button>
+                        </div>
+                    </div>
 
-                            {/* Cards List */}
-                            <div className="space-y-4">
-                                {filteredRegistrations.map((reg) => (
-                                    <div 
-                                        key={reg.id} 
-                                        className="group bg-white rounded-3xl border transition-all duration-500 hover:shadow-xl flex flex-col overflow-hidden"
-                                        style={{ 
-                                            boxShadow: `3px 4px 14px -2px ${clubColor}30`,
-                                            borderColor: `${clubColor}15`
-                                        }}
-                                    >
-                                        <div className="px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                            <div className="flex-1 min-w-0 space-y-1">
-                                                <div className="flex items-center gap-3 mb-1">
-                                                    <span className="text-sm font-bold text-slate-900">{reg.event_time}</span>
-                                                    <h4 className="text-base font-bold text-slate-800 truncate">{reg.event_title}</h4>
+                    {/* Registrations Table */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">Date</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest w-[300px]">Évènement</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">NOM</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest text-center w-24">Tarif</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest text-center w-32">Paiement</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest text-center w-32">Statut</th>
+                                        <th className="px-3 py-4 text-center text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-100">
+                                    {filteredRegistrations.map((reg) => (
+                                        <tr key={reg.id} className="hover:bg-gray-50 transition-all group">
+                                            <td className="px-3 py-4 whitespace-nowrap text-sm text-slate-600 font-medium font-livvic">
+                                                {reg.event_date ? new Date(reg.event_date).toLocaleDateString("fr-FR") : "—"}
+                                            </td>
+                                            <td className="px-3 py-4 whitespace-nowrap">
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-medium text-slate-900 font-livvic tracking-tight truncate">{reg.event_title}</span>
+                                                    <span className="text-xs text-slate-500 font-livvic">{reg.event_time}</span>
                                                 </div>
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-sm font-medium text-slate-600">{reg.user_name}</span>
+                                            </td>
+                                            <td className="px-3 py-4 whitespace-nowrap text-sm font-livvic">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-medium text-slate-900">{reg.user_name}</span>
                                                     {reg.created_by_admin && <span title="Ajouté par un manager" className="text-amber-500 text-xs">🛡️</span>}
-                                                    {reg.user_phone && <span className="text-xs text-slate-400">📞 {reg.user_phone}</span>}
                                                 </div>
-                                            </div>
-                                            <div className="flex items-center gap-2 flex-wrap">
-                                                {getStatusBadge(reg)}
+                                            </td>
+                                            <td className="px-3 py-4 whitespace-nowrap text-center text-sm font-medium text-slate-900 font-livvic">
+                                                {formatPrice(reg.price_paid_cents)}
+                                            </td>
+                                            <td className="px-3 py-4 whitespace-nowrap text-center">
                                                 {getPaymentBadge(reg)}
-                                                <div className="ml-2 font-bold text-slate-900 text-sm">
-                                                    {formatPrice(reg.price_paid_cents)}
+                                            </td>
+                                            <td className="px-3 py-4 whitespace-nowrap text-center">
+                                                {getStatusBadge(reg)}
+                                            </td>
+                                            <td className="px-3 py-4 whitespace-nowrap text-center">
+                                                <div className="flex items-center justify-center gap-0.5">
+                                                    {reg.status !== "event_deleted" && (
+                                                        <>
+                                                            <button onClick={() => openEdit(reg)} className="p-1 hover:bg-blue-50 text-blue-500 rounded-lg transition-all hover:scale-110" title="Modifier">✏️</button>
+                                                            <button onClick={() => openInvoice(reg)} className="p-1 hover:bg-slate-50 text-slate-500 rounded-lg transition-all hover:scale-110" title="Facture">📄</button>
+                                                            <button onClick={() => setDeleteConfirmId(reg.id)} className="p-1 hover:bg-rose-50 text-rose-500 rounded-lg transition-all hover:scale-110" title="Supprimer">🗑️</button>
+                                                        </>
+                                                    )}
                                                 </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="px-6 py-3 bg-slate-50/50 flex items-center justify-between border-t border-slate-100/50">
-                                            <div className="flex items-center gap-4">
-                                                {reg.notes && (
-                                                    <div className="flex items-center gap-1.5 text-xs text-blue-500 font-medium bg-blue-50 px-2 py-1 rounded-lg">
-                                                        <span>📝</span>
-                                                        <span className="truncate max-w-[150px]">{reg.notes}</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                {reg.status !== "event_deleted" && (
-                                                    <>
-                                                        <button onClick={() => openEdit(reg)} className="w-9 h-9 flex items-center justify-center bg-white border border-slate-100 rounded-xl text-blue-500 hover:bg-blue-50 transition-all shadow-sm" title="Modifier">✏️</button>
-                                                        <button onClick={() => openInvoice(reg)} className="w-9 h-9 flex items-center justify-center bg-white border border-slate-100 rounded-xl text-slate-500 hover:bg-slate-50 transition-all shadow-sm" title="Facture">📄</button>
-                                                        <button onClick={() => setDeleteConfirmId(reg.id)} className="w-9 h-9 flex items-center justify-center bg-white border border-slate-100 rounded-xl text-rose-500 hover:bg-rose-50 transition-all shadow-sm" title="Supprimer">🗑️</button>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-
-                                {filteredRegistrations.length === 0 && (
-                                    <div className="text-center py-20 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
-                                        <div className="text-3xl mb-3">📭</div>
-                                        <p className="text-slate-400 text-sm italic font-medium">
-                                            Aucune inscription pour cette date et ces critères.
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {filteredRegistrations.length === 0 && (
+                                        <tr>
+                                            <td colSpan={6} className="px-6 py-12 text-center text-slate-400 bg-slate-50/20 italic text-sm">
+                                                Aucune inscription trouvée pour ces critères.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -625,66 +547,76 @@ th{background:#f1f5f9}
 
             {/* Create Modal */}
             {showCreate && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-6 max-w-lg w-full mx-4 shadow-2xl">
-                        <h3 className="text-lg font-bold text-slate-900 mb-4">➕ Nouvelle inscription</h3>
-                        <form onSubmit={handleCreate} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Utilisateur *</label>
-                                <select required value={createForm.user_id} onChange={(e) => setCreateForm({ ...createForm, user_id: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                    <option value="">Sélectionner...</option>
-                                    {users.map((u) => <option key={u.id} value={u.id}>{u.first_name} {u.last_name}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Événement *</label>
-                                <select required value={createForm.event_id} onChange={(e) => onEventChange(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                    <option value="">Sélectionner...</option>
-                                    {events.map((ev) => {
-                                        const dt = new Date(ev.event_date);
-                                        const dateStr = dt.toLocaleDateString("fr-FR");
-                                        const spotsLeft = ev.max_places - ev.registrations_count;
-                                        return (
-                                            <option key={ev.id} value={ev.id}>
-                                                {dateStr} {ev.event_time} — {ev.title} ({spotsLeft > 0 ? `${spotsLeft} place${spotsLeft > 1 ? "s" : ""}` : "complet"})
-                                            </option>
-                                        );
-                                    })}
-                                </select>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-3xl p-10 max-w-xl w-full shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="flex items-center justify-between mb-8">
+                            <h3 className="text-2xl font-semibold text-slate-900 tracking-tight">➕ Nouvelle inscription</h3>
+                            <button onClick={() => setShowCreate(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleCreate} className="space-y-6">
+                            <div className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Tarif (€)</label>
-                                    <input type="number" step="0.01" min="0"
-                                        value={(createForm.price_paid_cents / 100).toFixed(2)}
-                                        onChange={(e) => setCreateForm({ ...createForm, price_paid_cents: Math.round(parseFloat(e.target.value || "0") * 100) })}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Paiement</label>
-                                    <select value={createForm.payment_status}
-                                        onChange={(e) => setCreateForm({ ...createForm, payment_status: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                        <option value="a_valider">⏳ À valider</option>
-                                        <option value="en_attente">📁 En attente</option>
-                                        <option value="paye">💰 Payé</option>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Utilisateur *</label>
+                                    <select required value={createForm.user_id} onChange={(e) => setCreateForm({ ...createForm, user_id: e.target.value })}
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all">
+                                        <option value="">Sélectionner un utilisateur...</option>
+                                        {users.map((u) => <option key={u.id} value={u.id}>{u.first_name} {u.last_name}</option>)}
                                     </select>
                                 </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Événement *</label>
+                                    <select required value={createForm.event_id} onChange={(e) => onEventChange(e.target.value)}
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all">
+                                        <option value="">Sélectionner un événement...</option>
+                                        {events.map((ev) => {
+                                            const dt = new Date(ev.event_date);
+                                            const dateStr = dt.toLocaleDateString("fr-FR");
+                                            const spotsLeft = ev.max_places - ev.registrations_count;
+                                            return (
+                                                <option key={ev.id} value={ev.id}>
+                                                    {dateStr} {ev.event_time} — {ev.title} ({spotsLeft > 0 ? `${spotsLeft} place${spotsLeft > 1 ? "s" : ""}` : "complet"})
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Tarif (€)</label>
+                                        <input type="number" step="0.01" min="0" placeholder="0.00"
+                                            value={(createForm.price_paid_cents / 100).toFixed(2)}
+                                            onChange={(e) => setCreateForm({ ...createForm, price_paid_cents: Math.round(parseFloat(e.target.value || "0") * 100) })}
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Règlement</label>
+                                        <select value={createForm.payment_status}
+                                            onChange={(e) => setCreateForm({ ...createForm, payment_status: e.target.value })}
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all">
+                                            <option value="a_valider">⏳ À valider</option>
+                                            <option value="en_attente">📁 En attente</option>
+                                            <option value="paye">💰 Payé</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Notes internes</label>
+                                    <textarea value={createForm.notes} placeholder="Détails facultatifs..."
+                                        onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })}
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all" rows={3} />
+                                </div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
-                                <textarea value={createForm.notes}
-                                    onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" rows={2} />
-                            </div>
-                            <div className="flex gap-2 justify-end">
+                            <div className="flex gap-3 justify-end pt-4">
                                 <button type="button" onClick={() => setShowCreate(false)}
-                                    className="px-4 py-2 bg-gray-200 text-slate-900 rounded-lg font-medium hover:bg-gray-300">Annuler</button>
+                                    className="px-6 py-2 text-slate-500 font-medium hover:text-slate-700 transition-colors">Annuler</button>
                                 <button type="submit" disabled={saving}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50">
-                                    {saving ? "Création..." : "Inscrire"}
+                                    className="px-8 py-3 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition-all shadow-lg active:scale-95 disabled:opacity-50">
+                                    {saving ? "Envoi..." : "Inscrire le client"}
                                 </button>
                             </div>
                         </form>
@@ -694,39 +626,56 @@ th{background:#f1f5f9}
 
             {/* Edit Modal */}
             {editReg && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-6 max-w-lg w-full mx-4 shadow-2xl">
-                        <h3 className="text-lg font-bold text-slate-900 mb-4">Modifier l&apos;inscription</h3>
-                        <div className="mb-4 p-3 bg-slate-50 rounded-lg text-sm text-slate-600">
-                            <p><strong>Événement :</strong> {editReg.event_title}</p>
-                            <p><strong>Utilisateur :</strong> {editReg.user_name}</p>
-                            <p><strong>Date :</strong> {editReg.event_date ? new Date(editReg.event_date).toLocaleDateString("fr-FR") : "—"} à {editReg.event_time}</p>
-                            <p><strong>Tarif :</strong> {formatPrice(editReg.price_paid_cents)}</p>
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-3xl p-10 max-w-xl w-full shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="flex items-center justify-between mb-8">
+                            <h3 className="text-2xl font-semibold text-slate-900 tracking-tight">Modifier l&apos;inscription</h3>
+                            <button onClick={() => setEditReg(null)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
-                        <form onSubmit={handleEditSubmit} className="space-y-4">
-                            <div className="grid grid-cols-2 gap-3">
+
+                        <div className="mb-8 p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col gap-1">
+                            <div className="flex justify-between items-center text-sm font-medium">
+                                <span className="text-slate-500">Événement</span>
+                                <span className="text-slate-900">{editReg.event_title}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm font-medium">
+                                <span className="text-slate-500">Utilisateur</span>
+                                <span className="text-slate-900 font-bold">{editReg.user_name}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm font-medium">
+                                <span className="text-slate-500">Date & Heure</span>
+                                <span className="text-slate-900 capitalize">{editReg.event_date ? new Date(editReg.event_date).toLocaleDateString("fr-FR", { weekday: 'long', day: 'numeric', month: 'long' }) : "—"} à {editReg.event_time}</span>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleEditSubmit} className="space-y-6">
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Statut</label>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Statut</label>
                                     <select value={editForm.status}
                                         onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                        {getEditStatusOptions(editReg.status).map((opt) => (
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all">
+                                        {getEditStatusOptions(editReg.status).map((opt: any) => (
                                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                                         ))}
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Tarif (€)</label>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Tarif (€)</label>
                                     <input type="number" step="0.01" min="0"
                                         value={(editForm.price_paid_cents / 100).toFixed(2)}
                                         onChange={(e) => setEditForm({ ...editForm, price_paid_cents: Math.round(parseFloat(e.target.value || "0") * 100) })}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all" />
                                 </div>
                                 <div className="col-span-2">
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Paiement</label>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Paiement</label>
                                     <select value={editForm.payment_status}
                                         onChange={(e) => setEditForm({ ...editForm, payment_status: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all">
                                         <option value="a_valider">⏳ À valider</option>
                                         <option value="en_attente">📁 En attente</option>
                                         <option value="paye">💰 Payé</option>
@@ -735,16 +684,18 @@ th{background:#f1f5f9}
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Notes internes</label>
                                 <textarea value={editForm.notes}
                                     onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" rows={2} />
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all" rows={2} />
                             </div>
-                            <div className="flex gap-2 justify-end">
+                            <div className="flex gap-3 justify-end pt-4">
                                 <button type="button" onClick={() => setEditReg(null)}
-                                    className="px-4 py-2 bg-gray-200 text-slate-900 rounded-lg font-medium hover:bg-gray-300">Annuler</button>
+                                    className="px-6 py-2 text-slate-500 font-medium hover:text-slate-700 transition-colors">Annuler</button>
                                 <button type="submit"
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">Enregistrer</button>
+                                    className="px-8 py-3 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition-all shadow-lg active:scale-95">
+                                    Enregistrer
+                                </button>
                             </div>
                         </form>
                     </div>
@@ -753,15 +704,22 @@ th{background:#f1f5f9}
 
             {/* Delete Confirmation */}
             {deleteConfirmId && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-2xl">
-                        <h3 className="text-lg font-bold text-slate-900 mb-2">Confirmer la suppression</h3>
-                        <p className="text-slate-600 mb-4">Cette inscription sera définitivement supprimée et la place sera libérée.</p>
-                        <div className="flex gap-2 justify-end">
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-3xl p-10 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200 text-center">
+                        <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-6 text-rose-500 text-3xl">
+                            🗑️
+                        </div>
+                        <h3 className="text-2xl font-bold text-slate-900 mb-2">Supprimer l&apos;inscription ?</h3>
+                        <p className="text-slate-500 mb-8 leading-relaxed">
+                            Cette action est définitive. La place sera libérée pour d&apos;autres clients.
+                        </p>
+                        <div className="flex gap-3 justify-center">
                             <button onClick={() => setDeleteConfirmId(null)}
-                                className="px-4 py-2 bg-gray-200 text-slate-900 rounded-lg font-medium hover:bg-gray-300">Annuler</button>
+                                className="px-6 py-2 text-slate-500 font-medium hover:text-slate-700 transition-colors">Annuler</button>
                             <button onClick={() => handleDelete(deleteConfirmId)}
-                                className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700">Supprimer</button>
+                                className="px-8 py-3 bg-rose-600 text-white rounded-xl font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-900/10 active:scale-95">
+                                Oui, supprimer
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -769,42 +727,52 @@ th{background:#f1f5f9}
 
             {/* Invoice Modal */}
             {invoiceReg && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-6 max-w-lg w-full mx-4 shadow-2xl">
-                        <h3 className="text-lg font-bold text-slate-900 mb-4">Générer une facture</h3>
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-3">
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-3xl p-10 max-w-xl w-full shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="flex items-center justify-between mb-8">
+                            <h3 className="text-2xl font-semibold text-slate-900 tracking-tight">📄 Générer une facture</h3>
+                            <button onClick={() => setInvoiceReg(null)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">N° Facture</label>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">N° Facture</label>
                                     <input type="text" value={invoiceData.invoice_number} onChange={(e) => setInvoiceData({ ...invoiceData, invoice_number: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all" />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Date</label>
                                     <input type="date" value={invoiceData.invoice_date} onChange={(e) => setInvoiceData({ ...invoiceData, invoice_date: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all" />
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Émetteur</label>
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Émetteur</label>
                                 <input type="text" value={invoiceData.emitter} onChange={(e) => setInvoiceData({ ...invoiceData, emitter: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Destinataire</label>
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Destinataire</label>
                                 <input type="text" value={invoiceData.recipient} onChange={(e) => setInvoiceData({ ...invoiceData, recipient: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Notes (visibles sur la facture)</label>
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Notes (sur la facture)</label>
                                 <textarea value={invoiceData.notes} onChange={(e) => setInvoiceData({ ...invoiceData, notes: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" rows={2} />
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all" rows={2} />
                             </div>
-                            <div className="flex gap-2 justify-end mt-6">
+                            <div className="flex gap-3 justify-end pt-4">
                                 <button onClick={() => setInvoiceReg(null)}
-                                    className="px-4 py-2 bg-gray-200 text-slate-900 rounded-lg font-medium hover:bg-gray-300">Annuler</button>
+                                    className="px-6 py-2 text-slate-500 font-medium hover:text-slate-700 transition-colors">Annuler</button>
                                 <button onClick={downloadInvoice}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">Télécharger (HTML)</button>
+                                    className="px-8 py-3 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition-all shadow-lg active:scale-95">
+                                    Télécharger le PDF
+                                </button>
                             </div>
                         </div>
                     </div>

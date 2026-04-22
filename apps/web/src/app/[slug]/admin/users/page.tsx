@@ -274,72 +274,71 @@ export default function AdminUsersPage() {
             <main className="flex-1 p-8 overflow-auto">
                 <div className="max-w-7xl mx-auto">
                     {/* Header */}
-                    <div className="flex items-center justify-between mb-6">
-                        <div>
-                            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight">👥 utilisateurs</h1>
-                            <p className="text-[11px] font-medium text-slate-400 lowercase mt-1">
-                                {totalCount} utilisateur{totalCount > 1 ? "s" : ""} au total
-                            </p>
+                        <div className="flex items-center justify-between mb-8">
+                            <div>
+                                <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight">👥 Utilisateurs</h1>
+                                <p className="text-base font-normal text-slate-500 mt-1">
+                                    Consulter et gérer les données de vos contacts
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => { setShowCreateModal(true); setCreateMessage(""); }}
+                                    className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors font-semibold shadow-md shadow-slate-200"
+                                >
+                                    ➕ Nouveau
+                                </button>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={() => { setShowCreateModal(true); setCreateMessage(""); }}
-                                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors font-medium text-[11px] lowercase tracking-tight shadow-md shadow-slate-200"
-                            >
-                                ➕ nouveau
-                            </button>
-                            <button
-                                onClick={handleExport}
-                                disabled={users.length === 0}
-                                className="flex items-center gap-2 px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-[11px] lowercase tracking-tight"
-                            >
-                                📥 exporter excel
-                            </button>
-                        </div>
-                    </div>
 
-                    {/* Filters */}
-                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
-                        <div className="flex flex-wrap gap-4">
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 mb-6">
+                        <div className="flex flex-wrap gap-4 items-end">
                             <div className="flex-1 min-w-[200px]">
+                                <label className="block text-xs font-medium text-slate-500 mb-1">🔍 Rechercher</label>
                                 <input
                                     type="text"
-                                    placeholder="🔍 Rechercher par nom, prénom ou email..."
+                                    placeholder="Nom, prénom ou email..."
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                     autoComplete="off"
-                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-normal transition-all placeholder:text-slate-400"
                                 />
                             </div>
-                            <select
-                                value={roleFilter}
-                                onChange={(e) => setRoleFilter(e.target.value)}
-                                className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                            >
-                                <option value="">Tous les profils</option>
-                                <option value="manager">Manager</option>
-                                <option value="staff">Staff</option>
-                                <option value="user">Utilisateur</option>
-                            </select>
-                            <select
-                                value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value)}
-                                className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                            >
-                                <option value="">Tous les statuts</option>
-                                <option value="true">Actifs</option>
-                                <option value="false">Inactifs</option>
-                            </select>
-                            <select
-                                value={editingUser?.is_blacklisted?.toString() || ""}
-                                onChange={(e) => {
-                                    const val = e.target.value;
-                                    setUsers(users.filter(u => val === "" || u.is_blacklisted === (val === "true")));
-                                }}
-                                className="hidden" // Placeholder for actual filter logic if needed
-                            >
-                            </select>
-                            {/* We don't have a backend filter for blacklist yet, skipping for now or adding local filter if simple */}
+                            <div className="w-48">
+                                <label className="block text-xs font-medium text-slate-500 mb-1">Profil</label>
+                                <select
+                                    value={roleFilter}
+                                    onChange={(e) => setRoleFilter(e.target.value)}
+                                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-normal appearance-none cursor-pointer"
+                                >
+                                    <option value="">Tous les profils</option>
+                                    <option value="manager">Manager</option>
+                                    <option value="staff">Staff</option>
+                                    <option value="user">Utilisateur</option>
+                                </select>
+                            </div>
+                            <div className="w-48">
+                                <label className="block text-xs font-medium text-slate-500 mb-1">Statut</label>
+                                <select
+                                    value={statusFilter}
+                                    onChange={(e) => setStatusFilter(e.target.value)}
+                                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-normal appearance-none cursor-pointer"
+                                >
+                                    <option value="">Tous les statuts</option>
+                                    <option value="true">Actifs</option>
+                                    <option value="false">Inactifs</option>
+                                </select>
+                            </div>
+                            <div className="flex-none">
+                                <label className="block text-xs font-medium text-transparent mb-1">Export</label>
+                                <button
+                                    onClick={handleExport}
+                                    disabled={users.length === 0}
+                                    className="flex items-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-sm text-sm"
+                                >
+                                    📥 Export Excel
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -358,15 +357,15 @@ export default function AdminUsersPage() {
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead>
-                                        <tr className="bg-slate-50 border-b border-slate-200">
-                                            <th className="text-left py-3 px-4 font-medium text-slate-400 lowercase tracking-widest text-[10px]">nom</th>
-                                            <th className="text-left py-3 px-4 font-medium text-slate-400 lowercase tracking-widest text-[10px]">email</th>
-                                            <th className="text-left py-3 px-4 font-medium text-slate-400 lowercase tracking-widest text-[10px]">téléphone</th>
-                                            <th className="text-left py-3 px-4 font-medium text-slate-400 lowercase tracking-widest text-[10px]">ville</th>
-                                            <th className="text-left py-3 px-4 font-medium text-slate-400 lowercase tracking-widest text-[10px]">profil</th>
-                                            <th className="text-left py-3 px-4 font-medium text-slate-400 lowercase tracking-widest text-[10px]">statut</th>
-                                            <th className="text-left py-3 px-4 font-medium text-slate-400 lowercase tracking-widest text-[10px]">créé le</th>
-                                            <th className="text-right py-3 px-4 font-medium text-slate-400 lowercase tracking-widest text-[10px]">actions</th>
+                                        <tr className="bg-gray-50 border-b border-gray-100">
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">nom</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">email</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">téléphone</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">ville</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">profil</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">statut</th>
+                                            <th className="py-3 px-4 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">créé le</th>
+                                            <th className="py-3 px-4 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
@@ -385,16 +384,18 @@ export default function AdminUsersPage() {
                                                 </td>
                                                 <td className="py-3 px-4 text-slate-600">{user.email}</td>
                                                 <td className="py-3 px-4 text-slate-600">{user.phone || "—"}</td>
-                                                <td className="py-3 px-4 text-slate-600">{user.city || "—"}</td>
+                                                <td className="py-3 px-4 text-slate-600 truncate max-w-[150px]">
+                                                    {user.zip_code && `${user.zip_code} `}{user.city || "—"}
+                                                </td>
                                                 <td className="py-3 px-4">
-                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${ROLE_COLORS[user.role] || "bg-gray-100 text-gray-800"}`}>
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-normal border ${ROLE_COLORS[user.role] || "bg-gray-50 text-gray-600 border-gray-100"}`}>
                                                         {ROLE_LABELS[user.role] || user.role}
                                                     </span>
                                                 </td>
                                                 <td className="py-3 px-4">
-                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.is_active
-                                                        ? "bg-green-100 text-green-800"
-                                                        : "bg-red-100 text-red-800"
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-normal border ${user.is_active
+                                                        ? "bg-green-50 text-green-700 border-green-100"
+                                                        : "bg-rose-50 text-rose-700 border-rose-100"
                                                         }`}>
                                                         {user.is_active ? "Actif" : "Inactif"}
                                                         {user.is_active_override && <span className="ml-1" title="Statut forcé par admin">🛡️</span>}
@@ -405,18 +406,19 @@ export default function AdminUsersPage() {
                                                         ? new Date(user.created_at).toLocaleDateString("fr-FR")
                                                         : "—"}
                                                 </td>
-                                                <td className="py-3 px-4 text-right">
-                                                    <div className="flex items-center justify-end gap-2">
+                                                <td className="py-3 px-4 text-center">
+                                                    <div className="flex items-center justify-center gap-0.5">
                                                         <button
                                                             onClick={() => openEditModal(user)}
-                                                            className="text-blue-600 hover:text-blue-800 font-medium"
+                                                            className="p-1 hover:bg-blue-50 text-blue-500 rounded-lg transition-all hover:scale-105"
                                                             title="Modifier"
                                                         >
                                                             ✏️
                                                         </button>
                                                         <button
                                                             onClick={() => setDeletingUser(user)}
-                                                            className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+                                                            className="p-1 hover:bg-rose-50 text-rose-500 rounded-lg transition-all hover:scale-105"
+                                                            title="Supprimer"
                                                         >
                                                             🗑️
                                                         </button>
@@ -509,8 +511,8 @@ export default function AdminUsersPage() {
 
                             {/* Address */}
                             <div>
-                                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">
-                                    Adresse
+                                <h3 className="text-[10px] font-medium text-slate-400 lowercase tracking-widest mb-3">
+                                    adresse
                                 </h3>
                                 <div className="space-y-3">
                                     <div>
@@ -547,8 +549,8 @@ export default function AdminUsersPage() {
 
                             {/* Details */}
                             <div>
-                                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">
-                                    Détails
+                                <h3 className="text-[10px] font-medium text-slate-400 lowercase tracking-widest mb-3">
+                                    détails
                                 </h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
@@ -577,8 +579,8 @@ export default function AdminUsersPage() {
 
                             {/* Mot de passe */}
                             <div>
-                                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">
-                                    Mot de passe
+                                <h3 className="text-[10px] font-medium text-slate-400 lowercase tracking-widest mb-3">
+                                    sécurité
                                 </h3>
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-1">Nouveau mot de passe</label>
@@ -605,8 +607,8 @@ export default function AdminUsersPage() {
 
                             {/* Social */}
                             <div>
-                                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">
-                                    Réseaux sociaux
+                                <h3 className="text-[10px] font-medium text-slate-400 lowercase tracking-widest mb-3">
+                                    réseaux sociaux
                                 </h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
@@ -633,9 +635,9 @@ export default function AdminUsersPage() {
                             </div>
                             
                             {/* Status Override */}
-                            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-                                <h3 className="text-sm font-semibold text-blue-800 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                    🛡️ Contrôle du Statut
+                            <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4">
+                                <h3 className="text-[10px] font-medium text-blue-600 lowercase tracking-widest mb-3 flex items-center gap-2">
+                                    🛡️ contrôle statut
                                 </h3>
                                 <div className="flex items-center gap-3">
                                     <input
@@ -652,9 +654,9 @@ export default function AdminUsersPage() {
                             </div>
                             
                             {/* Black List */}
-                            <div className="bg-red-50 border border-red-100 rounded-xl p-4">
-                                <h3 className="text-sm font-semibold text-red-800 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                    🚩 Black List
+                            <div className="bg-rose-50/50 border border-rose-100 rounded-xl p-4">
+                                <h3 className="text-[10px] font-medium text-rose-600 lowercase tracking-widest mb-3 flex items-center gap-2">
+                                    🚩 restriction (black list)
                                 </h3>
                                 <div className="space-y-4">
                                     <div className="flex items-center gap-3">
@@ -765,7 +767,7 @@ export default function AdminUsersPage() {
                         <div className="p-6 space-y-6">
                             {/* Identity */}
                             <div>
-                                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Identité</h3>
+                                <h3 className="text-[10px] font-medium text-slate-400 lowercase tracking-widest mb-3">identité</h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 mb-1">Prénom *</label>
@@ -784,7 +786,7 @@ export default function AdminUsersPage() {
 
                             {/* Contact & Auth */}
                             <div>
-                                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Contact & Accès</h3>
+                                <h3 className="text-[10px] font-medium text-slate-400 lowercase tracking-widest mb-3">accès & sécurité</h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 mb-1">Email *</label>

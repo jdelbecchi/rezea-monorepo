@@ -28,6 +28,8 @@ export default function AdminBookingsPage() {
     // Filters
     const [searchTerm, setSearchTerm] = useState("");
     const [filterStatuses, setFilterStatuses] = useState<string[]>(["confirmed"]);
+    const [locationFilter, setLocationFilter] = useState("all");
+    const [tenant, setTenant] = useState<any>(null);
     const [dateFrom, setDateFrom] = useState("");
     const [dateTo, setDateTo] = useState("");
 
@@ -71,7 +73,12 @@ export default function AdminBookingsPage() {
             setUser(userData);
 
             // 2. Fetch other data
-            await loadBookings();
+            const [bookingsData, tenantData] = await Promise.all([
+                api.getAdminBookings(undefined),
+                api.getTenantSettings(),
+            ]);
+            setBookings(bookingsData);
+            setTenant(tenantData);
         } catch (err: any) {
             console.error(err);
             if (err.response?.status === 401) {
@@ -184,6 +191,13 @@ export default function AdminBookingsPage() {
         if (dateFrom && b.session_date < dateFrom) return false;
         if (dateTo && b.session_date > dateTo) return false;
         return true;
+    }).sort((a, b) => {
+        // 1. Date (Décroissant)
+        if (a.session_date !== b.session_date) return b.session_date.localeCompare(a.session_date);
+        // 2. Heure (Décroissant)
+        if (a.session_time !== b.session_time) return (b.session_time || "").localeCompare(a.session_time || "");
+        // 3. Intitulé
+        return a.session_title.localeCompare(b.session_title);
     });
 
     const handleExport = () => {
@@ -209,20 +223,15 @@ export default function AdminBookingsPage() {
         URL.revokeObjectURL(url);
     };
 
-    const getStatusBadge = (b: AdminBookingItem) => {
-        switch (b.status) {
-            case "confirmed":
-                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-green-100 text-green-800">✅ Inscrit</span>;
-            case "pending":
-                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-yellow-100 text-yellow-800">⏳ Sur liste</span>;
-            case "cancelled":
-                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-red-100 text-red-800">🚫 Annulé</span>;
-            case "session_cancelled":
-                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-orange-100 text-orange-800">🚫 Séance annulée</span>;
-            case "absent":
-                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-purple-100 text-purple-800">❌ Absent</span>;
-            default:
-                return <span className="px-2 py-1 text-xs font-bold rounded-full bg-gray-100 text-gray-600">{b.status}</span>;
+    const getStatusBadge = (booking: AdminBookingItem) => {
+        const base = "px-2 py-1 text-xs font-normal rounded-full border whitespace-nowrap";
+        switch (booking.status) {
+            case "confirmed": return <span className={`${base} bg-emerald-50 text-emerald-600 border-emerald-100`}>Validé</span>;
+            case "pending": return <span className={`${base} bg-amber-50 text-amber-600 border-amber-100`}>Sur liste</span>;
+            case "cancelled": return <span className={`${base} bg-rose-50 text-rose-600 border-rose-100`}>Annulé</span>;
+            case "session_cancelled": return <span className={`${base} bg-rose-50 text-rose-600 border-rose-100`}>Séance annulée</span>;
+            case "absent": return <span className={`${base} bg-slate-50 text-slate-600 border-slate-200`}>Absent</span>;
+            default: return <span className={`${base} bg-gray-50 text-gray-500 border-gray-200`}>{booking.status}</span>;
         }
     };
 
@@ -253,12 +262,12 @@ export default function AdminBookingsPage() {
                     {/* Header */}
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">📋 Inscriptions aux séances</h1>
-                            <p className="text-slate-500 mt-1">Gestion des inscriptions aux séances de cours</p>
+                            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight">📋 Inscriptions aux séances</h1>
+                            <p className="text-base font-normal text-slate-500 mt-1">Gestion des inscriptions aux séances de cours</p>
                         </div>
                         <button
                             onClick={() => { setShowCreate(true); loadFormOptions(); }}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors font-medium shadow-sm"
                         >
                             ➕ Nouvelle inscription
                         </button>
@@ -273,14 +282,14 @@ export default function AdminBookingsPage() {
 
                     {/* Search + Filters */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-                        <div className="flex flex-col md:flex-row gap-3 items-end">
-                            <div className="flex-1">
-                                <label className="block text-xs font-medium text-slate-500 mb-1">🔍 Rechercher</label>
-                                <input type="text" placeholder="Nom, intitulé de séance..."
-                                    value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm" />
-                            </div>
+                        <div className="flex flex-col md:flex-row gap-3 items-end flex-wrap">
                             <div className="flex-1 min-w-[200px]">
+                                <label className="block text-xs font-medium text-slate-500 mb-1">🔍 Rechercher</label>
+                                <input type="text" placeholder="Nom, séance, notes..."
+                                    value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm font-normal" />
+                            </div>
+                            <div className="w-52">
                                 <MultiSelect
                                     label="Statut(s)"
                                     options={[
@@ -295,27 +304,45 @@ export default function AdminBookingsPage() {
                                     placeholder="Toutes"
                                 />
                             </div>
-                            <div>
-                                <label className="block text-xs font-medium text-slate-500 mb-1">Du</label>
-                                <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-                                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-slate-500 mb-1">Au</label>
-                                <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-                                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
+                            {tenant && (tenant.locations || []).length > 1 && (
+                                <div className="w-48">
+                                    <label className="block text-xs font-medium text-slate-500 mb-1">Lieu</label>
+                                    <select 
+                                        value={locationFilter} 
+                                        onChange={(e) => setLocationFilter(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-normal transition-all cursor-pointer"
+                                    >
+                                        <option value="all">Tous les lieux</option>
+                                        {(tenant.locations || []).map((loc: string) => (
+                                            <option key={loc} value={loc}>{loc}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+                            <div className="flex items-end gap-2">
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-500 mb-1 text-left">Du</label>
+                                    <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+                                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-normal focus:ring-2 focus:ring-blue-500 outline-none" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-500 mb-1 text-left">Au</label>
+                                    <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+                                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-normal focus:ring-2 focus:ring-blue-500 outline-none" />
+                                </div>
                             </div>
                             <button onClick={handleExport}
-                                className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors text-sm whitespace-nowrap">
+                                className="px-3 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg font-medium hover:bg-emerald-100 transition-colors text-sm whitespace-nowrap shadow-sm">
                                 📥 Export Excel
                             </button>
                         </div>
-                        {(searchTerm || dateFrom || dateTo) && (
-                            <div className="mt-2 text-xs text-slate-500">
-                                {filteredBookings.length} inscription{filteredBookings.length > 1 ? "s" : ""} affichée{filteredBookings.length > 1 ? "s" : ""}
-                            </div>
-                        )}
                     </div>
+
+                    {(searchTerm || dateFrom || dateTo) && (
+                        <div className="mt-2 text-xs text-slate-500">
+                            {filteredBookings.length} inscription{filteredBookings.length > 1 ? "s" : ""} affichée{filteredBookings.length > 1 ? "s" : ""}
+                        </div>
+                    )}
 
                     {/* Bookings Table */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -323,45 +350,45 @@ export default function AdminBookingsPage() {
                             <table className="w-full">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Heure</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Intitulé</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nom</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">Date</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">Heure</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">Intitulé</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">Nom</th>
+                                        <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">Statut</th>
+                                        <th className="px-3 py-4 text-center text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {filteredBookings.map((booking) => (
-                                        <tr key={booking.id} className="hover:bg-gray-50">
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
+                                        <tr key={booking.id} className="hover:bg-gray-50 group transition-all">
+                                            <td className="px-3 py-4 whitespace-nowrap text-sm text-slate-700">
                                                 {booking.session_date ? booking.session_date.split('-').reverse().join('/') : "—"}
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
+                                            <td className="px-3 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
                                                 {booking.session_time || "—"}
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm">
+                                            <td className="px-3 py-4 whitespace-nowrap text-sm">
                                                 <div className="flex items-center gap-1">
                                                     <span className="font-medium text-slate-900">{booking.session_title || "—"}</span>
                                                     {booking.notes && (
-                                                        <span title={booking.notes} className="text-blue-400 cursor-help">📝</span>
+                                                        <span title={booking.notes} className="text-slate-400 cursor-help text-xs">📝</span>
                                                     )}
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm">
-                                                <div className="flex items-center gap-1">
+                                            <td className="px-3 py-4 whitespace-nowrap text-sm">
+                                                <div className="flex items-center gap-2">
                                                     <span className="font-medium text-slate-900">{booking.user_name}</span>
                                                     {booking.created_by_admin && (
-                                                        <span title="Créé par le manager" className="text-amber-500">🛡️</span>
+                                                        <span title="Créé par le manager" className="text-amber-500 text-xs">🛡️</span>
                                                     )}
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap">
+                                            <td className="px-3 py-4 whitespace-nowrap">
                                                 {getStatusBadge(booking)}
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm space-x-2">
-                                                <button onClick={() => openEdit(booking)} className="text-blue-600 hover:text-blue-800 font-medium" title="Modifier">✏️</button>
-                                                <button onClick={() => setDeleteConfirmId(booking.id)} className="text-red-600 hover:text-red-800 font-medium" title="Supprimer">🗑️</button>
+                                            <td className="px-3 py-4 whitespace-nowrap text-center flex items-center justify-center gap-0.5">
+                                                <button onClick={() => openEdit(booking)} className="p-1 hover:bg-blue-50 text-blue-500 rounded-lg transition-all hover:scale-105" title="Modifier">✏️</button>
+                                                <button onClick={() => setDeleteConfirmId(booking.id)} className="p-1 hover:bg-rose-50 text-rose-500 rounded-lg transition-all hover:scale-105" title="Supprimer">🗑️</button>
                                             </td>
                                         </tr>
                                     ))}
@@ -381,11 +408,10 @@ export default function AdminBookingsPage() {
                 </div>
             </main>
 
-            {/* Create Modal */}
             {showCreate && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-6 max-w-lg w-full mx-4 shadow-2xl">
-                        <h3 className="text-lg font-bold text-slate-900 mb-4">➕ Nouvelle inscription</h3>
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl p-10 max-w-xl w-full mx-4 shadow-2xl animate-in zoom-in-95 duration-200">
+                        <h3 className="text-xl font-semibold text-slate-900 mb-6 tracking-tight">➕ Nouvelle inscription</h3>
                         <form onSubmit={handleCreate} className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Utilisateur *</label>
@@ -419,11 +445,11 @@ export default function AdminBookingsPage() {
                                     onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" rows={2} />
                             </div>
-                            <div className="flex gap-2 justify-end">
+                            <div className="flex gap-3 justify-end pt-4">
                                 <button type="button" onClick={() => setShowCreate(false)}
-                                    className="px-4 py-2 bg-gray-200 text-slate-900 rounded-lg font-medium hover:bg-gray-300">Annuler</button>
+                                    className="px-6 py-2.5 bg-gray-100 text-slate-600 rounded-xl font-medium hover:bg-gray-200 transition-colors">Annuler</button>
                                 <button type="submit" disabled={saving}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50">
+                                    className="px-8 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors shadow-sm disabled:opacity-50">
                                     {saving ? "Création..." : "Inscrire"}
                                 </button>
                             </div>
@@ -432,11 +458,10 @@ export default function AdminBookingsPage() {
                 </div>
             )}
 
-            {/* Edit Modal */}
             {editBooking && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-6 max-w-lg w-full mx-4 shadow-2xl">
-                        <h3 className="text-lg font-bold text-slate-900 mb-4">Modifier l&apos;inscription</h3>
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl p-10 max-w-xl w-full mx-4 shadow-2xl animate-in zoom-in-95 duration-200">
+                        <h3 className="text-xl font-semibold text-slate-900 mb-6 tracking-tight">Modifier l&apos;inscription</h3>
                         <div className="mb-4 p-3 bg-slate-50 rounded-lg text-sm text-slate-600">
                             <p><strong>Séance :</strong> {editBooking.session_title}</p>
                             <p><strong>Utilisateur :</strong> {editBooking.user_name}</p>
@@ -459,28 +484,27 @@ export default function AdminBookingsPage() {
                                     onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" rows={2} />
                             </div>
-                            <div className="flex gap-2 justify-end">
+                            <div className="flex gap-3 justify-end pt-4">
                                 <button type="button" onClick={() => setEditBooking(null)}
-                                    className="px-4 py-2 bg-gray-200 text-slate-900 rounded-lg font-medium hover:bg-gray-300">Annuler</button>
+                                    className="px-6 py-2.5 bg-gray-100 text-slate-600 rounded-xl font-medium hover:bg-gray-200 transition-colors">Annuler</button>
                                 <button type="submit"
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">Enregistrer</button>
+                                    className="px-8 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors shadow-sm">Enregistrer</button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
 
-            {/* Delete Confirmation */}
             {deleteConfirmId && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-2xl">
-                        <h3 className="text-lg font-bold text-slate-900 mb-2">Confirmer la suppression</h3>
-                        <p className="text-slate-600 mb-4">Cette inscription sera définitivement supprimée et les crédits seront remboursés.</p>
-                        <div className="flex gap-2 justify-end">
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl p-10 max-w-md mx-4 shadow-2xl animate-in zoom-in-95 duration-200">
+                        <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">Confirmer la suppression</h3>
+                        <p className="text-slate-500 mb-8 font-normal text-base leading-relaxed">Cette inscription sera définitivement supprimée et les crédits seront remboursés au membre.</p>
+                        <div className="flex gap-3 justify-end">
                             <button onClick={() => setDeleteConfirmId(null)}
-                                className="px-4 py-2 bg-gray-200 text-slate-900 rounded-lg font-medium hover:bg-gray-300">Annuler</button>
+                                className="flex-1 px-4 py-3 bg-gray-100 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all">Annuler</button>
                             <button onClick={() => handleDelete(deleteConfirmId)}
-                                className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700">Supprimer</button>
+                                className="flex-1 px-4 py-3 bg-rose-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-700 transition-all shadow-lg shadow-rose-900/20">Supprimer</button>
                         </div>
                     </div>
                 </div>

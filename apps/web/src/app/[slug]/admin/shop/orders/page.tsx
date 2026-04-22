@@ -433,12 +433,12 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                     {/* Header */}
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight">🛍️ commandes</h1>
-                            <p className="text-[11px] font-medium text-slate-400 lowercase mt-1">suivi des commandes et paiements</p>
+                            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight">🛍️ Gestion des commandes</h1>
+                            <p className="text-base font-normal text-slate-500 mt-1">Suivi des commandes et paiements</p>
                         </div>
                         <button
                             onClick={() => { setShowCreate(true); loadFormOptions(); }}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors font-medium"
                         >
                             ➕ Nouvelle commande
                         </button>
@@ -507,7 +507,7 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                     className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
                             </div>
                             <button onClick={handleExport}
-                                className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors text-sm whitespace-nowrap">
+                                className="px-3 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg font-medium hover:bg-emerald-100 transition-colors text-sm whitespace-nowrap shadow-sm">
                                 📥 Export Excel
                             </button>
                         </div>
@@ -524,17 +524,17 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                             <table className="w-full">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-3 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest hidden md:table-cell">date</th>
-                                        <th className="px-3 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest">nom</th>
-                                        <th className="px-3 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest">offre</th>
-                                        <th className="px-3 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest hidden lg:table-cell">début</th>
-                                        <th className="px-3 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest hidden lg:table-cell">fin</th>
-                                        <th className="px-3 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest hidden sm:table-cell">tarif</th>
-                                        <th className="px-3 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest hidden xl:table-cell">crédits</th>
-                                        <th className="px-3 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest hidden sm:table-cell">solde</th>
-                                        <th className="px-3 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest">paiement</th>
-                                        <th className="px-3 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest hidden md:table-cell">statut</th>
-                                        <th className="px-3 py-3 text-left text-[10px] font-medium text-slate-400 lowercase tracking-widest">actions</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest hidden md:table-cell">date</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">nom</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">offre</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest hidden lg:table-cell">début</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest hidden lg:table-cell">fin</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest hidden sm:table-cell">tarif</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest hidden xl:table-cell">crédits</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest hidden sm:table-cell">solde</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">paiement</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest hidden md:table-cell">statut</th>
+                                        <th className="px-3 py-4 text-center text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
@@ -611,7 +611,7 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                                     {order.is_unlimited ? (
                                                         <span className="px-2 py-1 text-xs font-bold rounded-full bg-purple-100 text-purple-800">∞</span>
                                                     ) : (
-                                                        <span className={`px-2 py-1 text-xs font-bold rounded-full ${
+                                                        <span className={`px-2 py-1 text-xs font-normal rounded-full ${
                                                             (order.balance ?? 0) <= 0 ? "bg-red-100 text-red-800" :
                                                             (order.balance ?? 0) <= 2 ? "bg-orange-100 text-orange-800" :
                                                             "bg-green-100 text-green-800"
@@ -621,32 +621,32 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                                     )}
                                                 </td>
                                                 <td className="px-3 py-3 whitespace-nowrap">
-                                                    <span className={`px-2 py-1 text-xs font-bold rounded-full ${paymentColors[order.payment_status] || "bg-gray-100 text-gray-600"}`}>
+                                                    <span className={`px-2 py-1 text-xs font-normal rounded-full ${paymentColors[order.payment_status] || "bg-gray-100 text-gray-600"}`}>
                                                         {PAYMENT_LABELS[order.payment_status] || order.payment_status}
                                                     </span>
                                                 </td>
                                                 <td className="px-3 py-3 whitespace-nowrap hidden md:table-cell">
-                                                    <span className={`px-2 py-1 text-[10px] font-medium rounded-full lowercase tracking-tight ${statusColors[order.status] || "bg-indigo-50 text-indigo-600 border border-indigo-100"}`}>
-                                                        {STATUS_LABELS[order.status] || order.status}
+                                                    <span className={`px-2 py-1 text-xs font-normal rounded-full ${statusColors[order.status] || "bg-indigo-50 text-indigo-600 border border-indigo-100"}`}>
+                                                        {STATUS_LABELS[order.status] || (order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : order.status)}
                                                     </span>
                                                 </td>
-                                                <td className="px-3 py-3 whitespace-nowrap text-sm space-x-1">
-                                                    <button onClick={() => window.open(`mailto:${order.user_email}`, "_blank")} className="text-blue-500 hover:text-blue-700" title={`Email: ${order.user_email}`}>📧</button>
+                                                <td className="px-1 py-3 whitespace-nowrap flex items-center justify-center gap-0">
+                                                    <button onClick={() => window.open(`mailto:${order.user_email}`, "_blank")} className="p-0.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all hover:scale-105" title={`Email: ${order.user_email}`}>📧</button>
                                                     {(order.payment_status === "echelonne" || order.payment_status === "a_regulariser") && (
-                                                        <button onClick={() => openInstallments(order)} className="text-indigo-500 hover:text-indigo-700" title="Échéancier">📅</button>
+                                                        <button onClick={() => openInstallments(order)} className="p-0.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all hover:scale-105" title="Échéancier">📅</button>
                                                     )}
-                                                    <button onClick={() => openEdit(order)} className="text-blue-600 hover:text-blue-800 font-medium" title="Modifier">✏️</button>
-                                                    <button onClick={() => openInvoice(order)} className="text-green-600 hover:text-green-800 font-medium" title="Facture">🧾</button>
+                                                    <button onClick={() => openEdit(order)} className="p-0.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-all hover:scale-105" title="Modifier">✏️</button>
+                                                    <button onClick={() => openInvoice(order)} className="p-0.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all hover:scale-105" title="Facture">🧾</button>
                                                     {order.user_is_suspended ? (
-                                                        <button onClick={() => handleSuspend(order.user_id)} className="text-slate-300 hover:text-slate-500" title="Réactiver les crédits">
-                                                            <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 inline-block align-middle"><path d="M8 5v14l11-7z" /></svg>
+                                                        <button onClick={() => handleSuspend(order.user_id)} className="p-1 text-slate-300 hover:text-slate-500 hover:bg-slate-50 rounded-lg transition-all hover:scale-105" title="Réactiver les crédits">
+                                                            <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 inline-block"><path d="M8 5v14l11-7z" /></svg>
                                                         </button>
                                                     ) : (
-                                                        <button onClick={() => handleSuspend(order.user_id)} className="text-orange-500 hover:text-orange-700" title="Suspendre les crédits">
-                                                            <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 inline-block align-middle"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+                                                        <button onClick={() => handleSuspend(order.user_id)} className="p-1 text-orange-500 hover:text-orange-700 hover:bg-orange-50 rounded-lg transition-all hover:scale-105" title="Suspendre les crédits">
+                                                            <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 inline-block"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
                                                         </button>
                                                     )}
-                                                    <button onClick={() => setDeleteConfirmId(order.id)} className="text-red-600 hover:text-red-800 font-medium" title="Supprimer">🗑️</button>
+                                                    <button onClick={() => setDeleteConfirmId(order.id)} className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-all hover:scale-105" title="Supprimer">🗑️</button>
                                                 </td>
                                             </tr>
                                         );

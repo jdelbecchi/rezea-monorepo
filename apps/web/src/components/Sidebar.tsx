@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useParams } from "next/navigation";
+import { api } from "@/lib/api";
 
 interface User {
     id: string;
@@ -41,6 +42,15 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
     const params = useParams();
     const slug = params?.slug as string;
     const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+    const [localTenant, setLocalTenant] = useState<any>(null);
+
+    useEffect(() => {
+        if (!tenant && slug) {
+            api.getTenantBySlug(slug).then(setLocalTenant).catch(console.error);
+        }
+    }, [tenant, slug]);
+
+    const activeTenant = tenant || localTenant;
 
     const handleLogout = () => {
         // Remove only session-related items, keep preferences
@@ -130,13 +140,18 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
         <>
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                    {tenant?.logo_url ? (
-                        <img src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${tenant.logo_url}`} className="h-8 w-8 object-contain" alt="Logo" />
+                    {activeTenant?.logo_url ? (
+                        <img src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${activeTenant.logo_url}`} className="h-8 w-8 object-contain" alt="Logo" />
                     ) : (
                         <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-xs font-bold">RZ</div>
                     )}
-                    <div className="text-xl font-medium tracking-tight text-white truncate max-w-[150px]">
-                        {tenant?.name || "rezea"}
+                    <div className="flex flex-col min-w-0">
+                        <div className="text-xl font-medium tracking-tight text-white truncate max-w-[150px]">
+                            {activeTenant?.name || (slug === 'rezea' ? "rezea" : "chargement...")}
+                        </div>
+                        <div className="text-[10px] text-slate-500 font-medium tracking-wide">
+                            Propulsé par Rezea
+                        </div>
                     </div>
                 </div>
                 <button 
@@ -155,7 +170,7 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
                     onClick={() => setIsMobileMenuOpen(false)}
                 >
                     <span className="text-base">📱</span>
-                    vue client
+                    VUE CLIENT
                 </Link>
             </div>
 
@@ -163,11 +178,7 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
                 {/* Navigation admin */}
                 {isAdmin && (
                     <>
-                        <div>
-                            <p className="px-4 text-[11px] font-medium text-slate-400 lowercase mb-3">
-                                administration
-                            </p>
-                        </div>
+
                         <nav className="space-y-1">
                             {adminNavItems.map((item) => {
                                 if (item.children) {
@@ -274,9 +285,9 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
             <div className="border-t border-slate-800 pt-6">
                 <button
                     onClick={handleLogout}
-                    className="w-full py-4 px-4 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 hover:text-rose-300 rounded-2xl font-medium text-xs transition-all border border-rose-600/20 shadow-lg shadow-rose-900/10 active:scale-[0.98]"
+                    className="w-full py-4 px-4 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 hover:text-rose-300 rounded-2xl font-medium text-sm transition-all border border-rose-600/20 shadow-lg shadow-rose-900/10 active:scale-[0.98]"
                 >
-                    déconnexion
+                    Déconnexion
                 </button>
             </div>
         </>
@@ -287,14 +298,19 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
             {/* Header Mobile */}
             <header className="md:hidden fixed top-0 left-0 right-0 h-16 bg-slate-900 border-b border-slate-800 px-6 flex items-center justify-between z-50">
                 <div className="flex items-center gap-3">
-                    {tenant?.logo_url ? (
-                        <img src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${tenant.logo_url}`} className="h-6 w-6 object-contain" alt="Logo" />
+                    {activeTenant?.logo_url ? (
+                        <img src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${activeTenant.logo_url}`} className="h-6 w-6 object-contain" alt="Logo" />
                     ) : (
                         <div className="w-6 h-6 rounded bg-blue-600 flex items-center justify-center text-[10px] font-bold">RZ</div>
                     )}
-                    <span className="text-white font-medium text-sm truncate max-w-[120px] lowercase">
-                        {tenant?.name || "rezea"}
-                    </span>
+                    <div className="flex flex-col min-w-0">
+                        <span className="text-white font-medium text-sm truncate max-w-[120px]">
+                            {activeTenant?.name || (slug === 'rezea' ? "rezea" : "...")}
+                        </span>
+                        <span className="text-[8px] text-slate-500 font-medium tracking-tight">
+                            Propulsé par Rezea
+                        </span>
+                    </div>
                 </div>
                 <button 
                     onClick={() => setIsMobileMenuOpen(true)}

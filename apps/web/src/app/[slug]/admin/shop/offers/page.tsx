@@ -190,15 +190,14 @@ function AdminOffersContent() {
 
             <main className="flex-1 p-8 overflow-auto">
                 <div className="max-w-7xl mx-auto space-y-6">
-                    {/* Header */}
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight">🛍️ catalogue d'offres</h1>
-                            <p className="text-[11px] font-medium text-slate-400 lowercase mt-1">gestion des prestations commerciales</p>
+                            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight">🏷️ Catalogue d'offres</h1>
+                            <p className="text-base font-normal text-slate-500 mt-1">Gestion des prestations commerciales</p>
                         </div>
                         <button 
                             onClick={() => { resetForm(); setShowForm(true); }}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors font-medium shadow-sm"
                         >
                             ➕ Nouvelle offre
                         </button>
@@ -211,7 +210,6 @@ function AdminOffersContent() {
                         </div>
                     )}
 
-                    {/* Filters */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
                         <div className="flex flex-col md:flex-row gap-3 items-end flex-wrap">
                             <div className="flex-1 min-w-[200px]">
@@ -221,7 +219,7 @@ function AdminOffersContent() {
                                     placeholder="Nom, code offre..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm placeholder:text-slate-400"
                                 />
                             </div>
                             
@@ -230,7 +228,7 @@ function AdminOffersContent() {
                                 <select 
                                     value={statusFilter}
                                     onChange={(e) => setStatusFilter(e.target.value)}
-                                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 bg-white"
+                                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 bg-white min-w-[140px] outline-none"
                                 >
                                     <option value="active">Actives</option>
                                     <option value="inactive">Inactives</option>
@@ -249,18 +247,18 @@ function AdminOffersContent() {
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full">
-                                <thead className="bg-slate-50">
+                                <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-3 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">N° Rub</th>
-                                        <th className="px-3 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Rubrique</th>
-                                        <th className="px-3 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">N° Offre</th>
-                                        <th className="px-3 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Intitulé de l&apos;offre</th>
-                                        <th className="px-3 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Tarif</th>
-                                        <th className="px-3 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Crédits</th>
-                                        <th className="px-3 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Validité</th>
-                                        <th className="px-3 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Code</th>
-                                        <th className="px-3 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Statut</th>
-                                        <th className="px-3 py-4 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Actions</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">N° Rub</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Rubrique</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">N° Offre</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Intitulé</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Tarif</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Crédits</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Validité</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Code</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Statut</th>
+                                        <th className="px-3 py-4 text-center text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
@@ -270,68 +268,64 @@ function AdminOffersContent() {
                                         </tr>
                                     ) : (
                                         filteredOffers.map((o) => (
-                                            <tr key={o.id} className={`hover:bg-slate-50 transition-colors ${!o.is_active ? 'opacity-50 grayscale select-none' : ''}`}>
-                                                <td className="px-3 py-4 whitespace-nowrap text-xs font-bold text-slate-400 text-center">{o.category_display_order || "-"}</td>
+                                            <tr key={o.id} className={`hover:bg-gray-50 transition-colors group ${!o.is_active ? 'opacity-50 select-none' : ''}`}>
+                                                <td className="px-3 py-4 whitespace-nowrap text-xs font-normal text-slate-400 text-center">{o.category_display_order || "-"}</td>
                                                 <td className="px-3 py-4 whitespace-nowrap">
-                                                    <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold tracking-tight uppercase">{o.category || "Général"}</span>
+                                                    <span className="px-2 py-1 bg-slate-50 text-slate-600 rounded-lg text-xs font-normal border border-slate-100">{o.category || "Général"}</span>
                                                 </td>
-                                                <td className="px-3 py-4 whitespace-nowrap text-xs font-bold text-slate-800 text-center">{o.display_order || "-"}</td>
+                                                <td className="px-3 py-4 whitespace-nowrap text-xs font-normal text-slate-800 text-center">{o.display_order || "-"}</td>
                                                 <td className="px-3 py-4 whitespace-nowrap">
                                                     <div className="flex items-center gap-2">
-                                                        <span className="text-sm font-bold text-slate-900">{o.name}</span>
+                                                        <span className="text-sm font-medium text-slate-900">{o.name}</span>
                                                         {o.is_unique && (
-                                                            <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 rounded text-[9px] font-black uppercase tracking-tighter">Achat unique</span>
+                                                            <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 rounded text-[10px] font-medium uppercase tracking-tight">Achat unique</span>
                                                         )}
                                                     </div>
                                                 </td>
                                                 <td className="px-3 py-4 whitespace-nowrap">
                                                     <div className="flex flex-col">
-                                                        <span className="text-sm font-black text-slate-900 tracking-tight">
+                                                        <span className="text-sm font-medium text-slate-900">
                                                             {o.featured_pricing === 'recurring' && o.price_recurring_cents 
                                                                 ? `${(o.price_recurring_cents/100).toFixed(2).replace('.', ',')}€` 
                                                                 : `${(o.price_lump_sum_cents ? o.price_lump_sum_cents/100 : 0).toFixed(2).replace('.', ',')}€`}
                                                         </span>
                                                         {o.featured_pricing === 'recurring' && o.price_recurring_cents && (
-                                                            <span className="text-[10px] text-amber-600 font-bold uppercase tracking-tight">/ {o.period} x{o.recurring_count}</span>
+                                                            <span className="text-[11px] text-amber-600 font-normal">/ {o.period} x{o.recurring_count}</span>
                                                         )}
                                                     </div>
                                                 </td>
                                                 <td className="px-3 py-4 whitespace-nowrap">
                                                     {o.is_unlimited ? (
-                                                        <span className="text-purple-600 font-black text-lg">∞</span>
+                                                        <span className="text-purple-600 font-medium text-lg">∞</span>
                                                     ) : (
-                                                        <span className="text-sm font-bold text-slate-700">
-                                                            {o.classes_included || 0} <span className="text-[10px] text-slate-400 uppercase font-medium">crédits</span>
+                                                        <span className="text-sm font-normal text-slate-700">
+                                                            {o.classes_included || 0} <span className="text-[11px] text-slate-400 font-normal">crédits</span>
                                                         </span>
                                                     )}
                                                 </td>
                                                 <td className="px-3 py-4 whitespace-nowrap text-sm text-slate-700">
                                                     {o.is_validity_unlimited ? (
-                                                        <span className="text-[10px] font-bold text-purple-600 uppercase tracking-widest">Illimitée</span>
+                                                        <span className="text-xs font-medium text-purple-600 uppercase tracking-widest">Illimitée</span>
                                                     ) : o.deadline_date ? (
                                                         <span className="text-xs font-medium">{new Date(o.deadline_date).toLocaleDateString("fr-FR")}</span>
                                                     ) : (
-                                                        <span className="text-xs font-bold text-slate-600 lowercase group-hover:text-blue-600 transition-colors">
+                                                        <span className="text-xs font-normal text-slate-600">
                                                             {o.validity_unit === 'months' ? Math.round((o.validity_days || 0) / 30) : (o.validity_days || 0)} 
                                                             {' '}{o.validity_unit === 'months' ? 'Mois' : 'Jours'}
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className="px-3 py-4 whitespace-nowrap text-xs font-mono font-bold text-slate-400 uppercase tracking-tighter">{o.offer_code}</td>
+                                                <td className="px-3 py-4 whitespace-nowrap text-xs font-mono font-normal text-slate-400 uppercase tracking-tighter">{o.offer_code}</td>
                                                 <td className="px-3 py-4 whitespace-nowrap">
-                                                    <span className={`px-2.5 py-1 text-[10px] font-black rounded-full uppercase tracking-wider shadow-sm border ${o.is_active 
+                                                    <span className={`px-2.5 py-1 text-xs font-normal rounded-full border shadow-sm ${o.is_active 
                                                         ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
                                                         : 'bg-slate-100 text-slate-400 border-slate-200'}`}>
                                                         {o.is_active ? 'Active' : 'Inactive'}
                                                     </span>
                                                 </td>
-                                                <td className="px-3 py-4 whitespace-nowrap text-right space-x-1">
-                                                    <button onClick={() => handleEditOpen(o)} className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg transition-colors group" title="Modifier">
-                                                        <span className="group-hover:scale-110 inline-block transition-transform">✏️</span>
-                                                    </button>
-                                                    <button onClick={() => setDeleteConfirmId(o.id)} className="p-2 hover:bg-rose-50 text-rose-600 rounded-lg transition-colors group" title="Supprimer">
-                                                        <span className="group-hover:scale-110 inline-block transition-transform">🗑️</span>
-                                                    </button>
+                                                <td className="px-3 py-4 whitespace-nowrap text-center flex items-center justify-center gap-0">
+                                                    <button onClick={() => handleEditOpen(o)} className="p-0.5 hover:bg-blue-50 text-blue-500 rounded-lg transition-all hover:scale-105" title="Modifier">✏️</button>
+                                                    <button onClick={() => setDeleteConfirmId(o.id)} className="p-0.5 hover:bg-rose-50 text-rose-500 rounded-lg transition-all hover:scale-105" title="Supprimer">🗑️</button>
                                                 </td>
                                             </tr>
                                         ))
@@ -343,12 +337,11 @@ function AdminOffersContent() {
                 </div>
             </main>
 
-            {/* Modal */}
             {showForm && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-                        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-                            <h3 className="text-lg font-bold text-slate-900">
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-10 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                            <h3 className="text-lg font-semibold text-slate-900">
                                 {editingId ? "✏️ Modifier l'offre" : "➕ Nouvelle offre"}
                             </h3>
                             <button onClick={resetForm} className="text-gray-400 hover:text-gray-600">
@@ -517,11 +510,11 @@ function AdminOffersContent() {
                             </form>
                         </div>
                         
-                        <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 rounded-b-xl">
-                            <button type="button" onClick={resetForm} className="px-4 py-2 bg-gray-200 text-slate-900 rounded-lg font-medium hover:bg-gray-300 transition-colors">
+                        <div className="p-8 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 rounded-b-3xl">
+                            <button type="button" onClick={resetForm} className="px-6 py-2.5 bg-white border border-gray-200 text-slate-600 rounded-xl font-medium hover:bg-gray-50 transition-colors shadow-sm">
                                 Annuler
                             </button>
-                            <button onClick={handleSubmit} disabled={saving} className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50">
+                            <button onClick={handleSubmit} disabled={saving} className="px-8 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors shadow-sm disabled:opacity-50">
                                 {saving ? "Enregistrement..." : "Enregistrer"}
                             </button>
                         </div>
@@ -529,17 +522,16 @@ function AdminOffersContent() {
                 </div>
             )}
 
-            {/* Delete Confirmation */}
             {deleteConfirmId && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
-                        <h3 className="text-lg font-bold text-slate-900 mb-2">Confirmer la suppression</h3>
-                        <p className="text-slate-600 mb-6 font-medium text-sm">Cette offre sera définitivement retirée. Continuer ?</p>
-                        <div className="flex gap-2 justify-end">
-                            <button onClick={() => setDeleteConfirmId(null)} className="px-4 py-2 bg-gray-200 text-slate-900 rounded-lg font-medium hover:bg-gray-300">
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-in fade-in duration-300">
+                    <div className="bg-white rounded-3xl p-10 max-w-md w-full mx-4 shadow-2xl animate-in zoom-in-95 duration-300">
+                        <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">Confirmer la suppression</h3>
+                        <p className="text-slate-500 mb-8 font-normal text-base leading-relaxed">Cette offre sera définitivement retirée de votre catalogue. Cette action est irréversible.</p>
+                        <div className="flex gap-3 justify-end">
+                            <button onClick={() => setDeleteConfirmId(null)} className="flex-1 px-4 py-3 bg-gray-100 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all">
                                 Annuler
                             </button>
-                            <button onClick={() => handleDelete(deleteConfirmId)} className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 shadow-sm">
+                            <button onClick={() => handleDelete(deleteConfirmId)} className="flex-1 px-4 py-3 bg-rose-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-700 transition-all shadow-lg shadow-rose-900/20">
                                 Supprimer
                             </button>
                         </div>

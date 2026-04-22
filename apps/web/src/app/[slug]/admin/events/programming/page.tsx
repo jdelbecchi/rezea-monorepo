@@ -51,6 +51,7 @@ export default function AdminEventsProgrammingPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [exportFrom, setExportFrom] = useState("");
     const [exportTo, setExportTo] = useState("");
+    const [locationFilter, setLocationFilter] = useState("all");
     const [tenant, setTenant] = useState<any>(null);
 
     // Confirmation Modal
@@ -203,13 +204,14 @@ export default function AdminEventsProgrammingPage() {
     const filteredEvents = events
         .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime())
         .filter((e) => {
-            if (!searchTerm) return true;
-            const q = searchTerm.toLowerCase();
-            return (
-                e.title.toLowerCase().includes(q) ||
-                (e.description || "").toLowerCase().includes(q) ||
-                (e.instructor_name || "").toLowerCase().includes(q)
-            );
+            if (searchTerm) {
+                const q = searchTerm.toLowerCase();
+                if (!e.title.toLowerCase().includes(q) && 
+                    !(e.description || "").toLowerCase().includes(q) && 
+                    !(e.instructor_name || "").toLowerCase().includes(q)) return false;
+            }
+            if (locationFilter !== "all" && e.location !== locationFilter) return false;
+            return true;
         });
 
     const handleExport = () => {
@@ -260,47 +262,62 @@ export default function AdminEventsProgrammingPage() {
                 <div className="max-w-7xl mx-auto space-y-6">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-3xl font-bold text-slate-900">🎉 Programmation des évènements</h1>
-                            <p className="text-slate-500 mt-1">Planifiez et organisez vos évènements</p>
+                            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight">🗓️ Programmation des évènements</h1>
+                            <p className="text-base font-normal text-slate-500 mt-1">Planifiez et organisez vos évènements</p>
                         </div>
                         <button
                             onClick={() => { setShowForm(true); setEditingId(null); setFormData({ ...emptyForm }); }}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors font-medium shadow-sm"
                         >
-                            ➕ Nouveau
+                            ➕ Nouvel évènement
                         </button>
                     </div>
 
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-                        <div className="flex flex-col md:flex-row gap-3 items-end">
-                            <div className="flex-1">
+                        <div className="flex flex-col md:flex-row gap-3 items-end flex-wrap">
+                            <div className="flex-1 min-w-[200px]">
                                 <label className="block text-xs font-medium text-slate-500 mb-1">🔍 Rechercher</label>
                                 <input
                                     type="text"
                                     placeholder="Intitulé, attribution, description..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-normal transition-all placeholder:text-slate-400"
                                 />
                             </div>
-                            <div className="flex gap-2 items-end">
+                            {tenant && (tenant.locations || []).length > 1 && (
+                                <div className="w-48">
+                                    <label className="block text-xs font-medium text-slate-500 mb-1">Lieu</label>
+                                    <select 
+                                        value={locationFilter} 
+                                        onChange={(e) => setLocationFilter(e.target.value)}
+                                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-normal transition-all appearance-none cursor-pointer"
+                                    >
+                                        <option value="all">Tous les lieux</option>
+                                        {(tenant.locations || []).map((loc: string) => (
+                                            <option key={loc} value={loc}>{loc}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+                            <div className="flex items-end gap-2">
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-500 mb-1">Du</label>
+                                    <label className="block text-xs font-medium text-slate-500 mb-1 text-left">Du</label>
                                     <input type="date" value={exportFrom} onChange={(e) => setExportFrom(e.target.value)}
-                                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                                        className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-normal focus:ring-2 focus:ring-blue-500 outline-none" />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-500 mb-1">Au</label>
+                                    <label className="block text-xs font-medium text-slate-500 mb-1 text-left">Au</label>
                                     <input type="date" value={exportTo} onChange={(e) => setExportTo(e.target.value)}
-                                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                                        className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-normal focus:ring-2 focus:ring-blue-500 outline-none" />
                                 </div>
-                                <button
-                                    onClick={handleExport}
-                                    className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors text-sm whitespace-nowrap"
-                                >
-                                    📥 Exporter Excel
-                                </button>
                             </div>
+                            <button
+                                onClick={handleExport}
+                                className="px-3 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg font-medium hover:bg-emerald-100 transition-colors text-sm whitespace-nowrap shadow-sm"
+                            >
+                                📥 Export Excel
+                            </button>
                         </div>
                     </div>
 
@@ -479,38 +496,58 @@ export default function AdminEventsProgrammingPage() {
                             <table className="w-full">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Heure</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Intitulé</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tarifs</th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inscriptions</th>
-                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">date</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">heure</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest w-[300px]">intitulé</th>
+                                        <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">durée</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">lieu</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">attribution</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">tarifs</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">inscriptions</th>
+                                        <th className="px-3 py-4 text-center text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {filteredEvents.map((event) => (
-                                        <tr key={event.id} className={`hover:bg-gray-50 transition-all ${!event.is_active ? 'opacity-50' : ''}`}>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-900">
+                                        <tr key={event.id} className={`hover:bg-gray-50 transition-all group ${!event.is_active ? 'opacity-50' : ''}`}>
+                                            <td className="px-3 py-4 whitespace-nowrap text-sm text-slate-700">
                                                 {new Date(event.event_date).toLocaleDateString("fr-FR")}
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-900">{event.event_time}</td>
-                                            <td className="px-4 py-3 whitespace-nowrap">
-                                                <span className={`text-sm font-medium text-slate-900 ${!event.is_active ? 'line-through text-slate-400' : ''}`}>{event.title}</span>
+                                            <td className="px-3 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{event.event_time}</td>
+                                            <td className="px-3 py-4 whitespace-nowrap max-w-[300px] truncate">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-sm font-medium text-slate-900 ${!event.is_active ? 'line-through text-slate-400' : ''}`}>{event.title}</span>
+                                                    {event.description && event.description.length > 0 && <span title={event.description} className="text-slate-400 text-xs cursor-help">📝</span>}
+                                                    <button onClick={() => handleEdit(event)} className="text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity">✏️</button>
+                                                </div>
                                             </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-700">
-                                                M: {(event.price_member_cents / 100).toFixed(2)}€ / E: {(event.price_external_cents / 100).toFixed(2)}€
-                                            </td>
-                                            <td className="px-4 py-3 whitespace-nowrap">
-                                                <span className="text-sm font-bold">{event.registrations_count}/{event.max_places}</span>
-                                            </td>
-                                            <td className="px-4 py-3 whitespace-nowrap text-right space-x-2">
-                                                <button onClick={() => handleEdit(event)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">✏️</button>
-                                                {event.is_active ? (
-                                                    <button onClick={() => handleCancelEvent(event)} className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Annuler">🚫</button>
+                                            <td className="px-3 py-4 whitespace-nowrap text-sm text-slate-500 text-center">{formatDuration(event.duration_minutes)}</td>
+                                            <td className="px-3 py-4 whitespace-nowrap">
+                                                {event.location ? (
+                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 text-slate-600 rounded-lg text-xs font-normal border border-slate-100">
+                                                        📍 {event.location}
+                                                    </span>
                                                 ) : (
-                                                    <button onClick={() => handleReactivateEvent(event)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Réactiver">🔄</button>
+                                                    <span className="text-slate-300 text-xs italic">—</span>
                                                 )}
-                                                <button onClick={() => handleDeleteEvent(event)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Supprimer">🗑️</button>
+                                            </td>
+                                            <td className="px-3 py-4 text-sm font-normal text-slate-500 whitespace-nowrap">{event.instructor_name || "—"}</td>
+                                            <td className="px-3 py-4 whitespace-nowrap text-sm text-slate-700">
+                                                <span className="font-medium text-slate-900">{(event.price_member_cents / 100).toFixed(2)}€</span>
+                                                <span className="mx-1 text-slate-400">/</span>
+                                                <span className="text-slate-500">{(event.price_external_cents / 100).toFixed(2)}€</span>
+                                            </td>
+                                            <td className="px-3 py-4 whitespace-nowrap">
+                                                <span className="text-sm font-medium text-slate-900">{event.registrations_count}/{event.max_places}</span>
+                                            </td>
+                                            <td className="px-3 py-4 whitespace-nowrap text-center flex items-center justify-center gap-0.5">
+                                                <button onClick={() => handleEdit(event)} className="p-1 hover:bg-blue-50 text-blue-500 rounded-lg transition-all hover:scale-105" title="Modifier">✏️</button>
+                                                {event.is_active ? (
+                                                    <button onClick={() => handleCancelEvent(event)} className="p-0.5 hover:bg-amber-50 text-amber-500 rounded-lg transition-all hover:scale-105" title="Annuler">🚫</button>
+                                                ) : (
+                                                    <button onClick={() => handleReactivateEvent(event)} className="p-0.5 hover:bg-emerald-50 text-emerald-500 rounded-lg transition-all hover:scale-105" title="Réactiver">🔄</button>
+                                                )}
+                                                <button onClick={() => handleDeleteEvent(event)} className="p-0.5 hover:bg-rose-50 text-rose-500 rounded-lg transition-all hover:scale-105" title="Supprimer">🗑️</button>
                                             </td>
                                         </tr>
                                     ))}

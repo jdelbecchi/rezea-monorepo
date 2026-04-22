@@ -42,6 +42,8 @@ function AdminSessionsContent() {
     const [editingSession, setEditingSession] = useState<Session | null>(null);
     const [showDuplicateModal, setShowDuplicateModal] = useState(false);
     const [duplicateData, setDuplicateData] = useState({ source_start: "", source_end: "", target_start: "" });
+    const [filterFrom, setFilterFrom] = useState("");
+    const [filterTo, setFilterTo] = useState("");
 
     // Confirmation Modal
     const [confirmModal, setConfirmModal] = useState<{
@@ -270,94 +272,93 @@ function AdminSessionsContent() {
     if (loading) return <div className="p-8 text-center text-slate-500 font-medium">Chargement...</div>;
 
     return (
-        <div className="flex min-h-screen bg-white font-sans text-slate-900">
+        <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row text-slate-900">
             <Sidebar user={user} />
 
-            <main className="flex-1 p-8 md:p-12 overflow-auto bg-[#fafafa]">
-                <div className="max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500">
+            <main className="flex-1 p-8 overflow-auto">
+                <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500">
                     
                     {/* Header Image 2 Style */}
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="space-y-1">
-                            <h1 className="text-3xl font-bold tracking-tight text-[#1e293b]">
-                                Programmation des séances
+                            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight">
+                                📅 Programmation des séances
                             </h1>
-                            <p className="text-slate-500 text-sm font-medium">Planifiez et organisez vos activités</p>
+                            <p className="text-base font-normal text-slate-500 mt-1">Planifiez et organisez vos activités</p>
                         </div>
                         <div className="flex items-center gap-3">
                             <button 
                                 onClick={() => setShowDuplicateModal(true)}
-                                className="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm"
+                                className="flex items-center gap-2 px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors font-medium shadow-sm"
                             >
                                 ↺ Dupliquer
                             </button>
                             <button 
-                                onClick={() => { setShowForm(true); setEditingSession(null); setFormData({...emptyForm}); }}
-                                className="px-6 py-2.5 bg-[#0f172a] text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg"
+                                onClick={() => { setEditingSession(null); setFormData({ ...emptyForm }); setShowForm(true); }}
+                                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors font-medium shadow-sm"
                             >
-                                <span className="text-lg">+</span> Nouveau
+                                ➕ Nouvelle séance
                             </button>
                         </div>
                     </div>
 
-                    {/* Filter Bar Image 2 Style */}
-                    <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm flex flex-wrap items-end gap-4">
-                        <div className="flex-1 min-w-[300px]">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block ml-1">🔍 Rechercher</label>
-                            <input 
-                                type="text"
-                                placeholder="Intitulé, attribution, description..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-slate-900 outline-none transition-all placeholder:text-slate-400 text-sm font-medium"
-                            />
-                        </div>
-                        
-                        <div>
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block ml-1">Statut</label>
-                            <select 
-                                value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value)}
-                                className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-slate-900 transition-all min-w-[150px]"
-                            >
-                                <option value="active">Programmées</option>
-                                <option value="cancelled">Annulées</option>
-                                <option value="all">Toutes</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block ml-1">Lieu</label>
-                            <select 
-                                value={locationFilter}
-                                onChange={(e) => setLocationFilter(e.target.value)}
-                                className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-slate-900 transition-all min-w-[150px]"
-                            >
-                                <option value="all">Tous les lieux</option>
-                                {(tenant?.locations || []).map((loc: string) => (
-                                    <option key={loc} value={loc}>{loc}</option>
-                                ))}
-                            </select>
-                        </div>
-                        
-                        <div className="flex items-center gap-4">
-                            <div>
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block ml-1">Du</label>
-                                <div className="relative">
-                                    <input type="text" placeholder="jj/mm/aaaa" className="pl-4 pr-10 py-2.5 border border-slate-200 rounded-xl text-sm font-medium w-36 outline-none bg-white" />
-                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">📅</span>
-                                </div>
+                    {/* Filter Bar */}
+                    <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+                        <div className="flex flex-col md:flex-row gap-3 items-end flex-wrap">
+                            <div className="flex-1 min-w-[180px]">
+                                <label className="block text-xs font-medium text-slate-500 mb-1">🔍 Rechercher</label>
+                                <input 
+                                    type="text"
+                                    placeholder="Intitulé, attribution..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-slate-400 text-sm font-normal"
+                                />
                             </div>
+                            
                             <div>
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block ml-1">Au</label>
-                                <div className="relative">
-                                    <input type="text" placeholder="jj/mm/aaaa" className="pl-4 pr-10 py-2.5 border border-slate-200 rounded-xl text-sm font-medium w-36 outline-none bg-white" />
-                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">📅</span>
-                                </div>
+                                <label className="block text-xs font-medium text-slate-500 mb-1">Statut</label>
+                                <select 
+                                    value={statusFilter}
+                                    onChange={(e) => setStatusFilter(e.target.value)}
+                                    className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-normal focus:ring-2 focus:ring-blue-500 outline-none min-w-[140px] appearance-none cursor-pointer"
+                                >
+                                    <option value="active">Programmées</option>
+                                    <option value="cancelled">Annulées</option>
+                                    <option value="all">Toutes</option>
+                                </select>
                             </div>
 
-                            <button className="px-4 py-2.5 bg-emerald-50 text-emerald-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-100 transition-all flex items-center gap-2 border border-emerald-100/50">
-                                📥 Exporter Excel
+                            {(tenant?.locations || []).length > 1 && (
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-500 mb-1">Lieu</label>
+                                    <select 
+                                        value={locationFilter}
+                                        onChange={(e) => setLocationFilter(e.target.value)}
+                                        className="px-3 py-2 border border-gray-300 bg-white rounded-lg text-sm font-normal focus:ring-2 focus:ring-blue-500 outline-none min-w-[140px] appearance-none cursor-pointer"
+                                    >
+                                        <option value="all">Tous les lieux</option>
+                                        {(tenant?.locations || []).map((loc: string) => (
+                                            <option key={loc} value={loc}>{loc}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+                            
+                            <div>
+                                <label className="block text-xs font-medium text-slate-500 mb-1 text-left">Du</label>
+                                <input type="date" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)}
+                                    className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-normal focus:ring-2 focus:ring-blue-500 outline-none" />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-medium text-slate-500 mb-1 text-left">Au</label>
+                                <input type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)}
+                                    className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-normal focus:ring-2 focus:ring-blue-500 outline-none" />
+                            </div>
+
+                            <button className="px-3 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg font-medium hover:bg-emerald-100 transition-colors text-sm whitespace-nowrap shadow-sm flex items-center gap-2">
+                                📥 Export Excel
                             </button>
                         </div>
                     </div>
@@ -366,16 +367,16 @@ function AdminSessionsContent() {
                     <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_10px_40px_rgba(0,0,0,0.02)] overflow-hidden">
                         <table className="w-full text-left border-collapse">
                             <thead>
-                                <tr className="bg-slate-50/50 border-b border-slate-100 text-[10px] uppercase font-black tracking-[0.2em] text-slate-400">
-                                    <th className="px-8 py-6">Date</th>
-                                    <th className="px-6 py-6">Heure</th>
-                                    <th className="px-6 py-6">Intitulé</th>
-                                    <th className="px-6 py-6 text-center">Durée</th>
-                                    <th className="px-6 py-6">Lieu</th>
-                                    <th className="px-6 py-6">Attribution</th>
-                                    <th className="px-6 py-6 text-center">Inscriptions</th>
-                                    <th className="px-6 py-6 text-center">Crédits</th>
-                                    <th className="px-8 py-6 text-right">Actions</th>
+                                <tr className="bg-gray-50 border-b border-slate-100">
+                                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">date</th>
+                                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">heure</th>
+                                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest w-[200px]">intitulé</th>
+                                    <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">durée</th>
+                                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">lieu</th>
+                                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">attribution</th>
+                                    <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">inscriptions</th>
+                                    <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">crédits</th>
+                                    <th className="px-3 py-4 text-center text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50/50">
@@ -384,28 +385,28 @@ function AdminSessionsContent() {
                                     const fillPercent = (s.current_participants / s.max_participants) * 100;
                                     
                                     return (
-                                        <tr key={s.id} className={`hover:bg-slate-50/80 transition-all group ${!s.is_active ? 'opacity-50' : ''}`}>
-                                            <td className="px-8 py-5 text-sm font-medium text-slate-500">{format(date, "dd/MM/yyyy")}</td>
-                                            <td className="px-6 py-5 text-sm font-black text-slate-900">{format(date, "HH:mm")}</td>
-                                            <td className="px-6 py-5">
+                                        <tr key={s.id} className="hover:bg-gray-50 transition-all group">
+                                            <td className="px-3 py-4 whitespace-nowrap text-sm text-slate-700">{format(date, "dd/MM/yyyy")}</td>
+                                            <td className="px-3 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{format(date, "HH:mm")}</td>
+                                            <td className="px-3 py-4 whitespace-nowrap max-w-[200px] truncate">
                                                 <div className="flex items-center gap-2">
-                                                    <span className={`font-bold text-slate-900 ${!s.is_active ? 'line-through text-slate-400' : ''}`}>{s.title}</span>
-                                                    <span className="text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">✏️</span>
+                                                    <span className={`text-sm font-medium text-slate-900 ${!s.is_active ? 'line-through text-slate-400' : ''}`}>{s.title}</span>
+                                                    <button onClick={() => openEdit(s)} className="text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity">✏️</button>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-5 text-sm font-medium text-slate-500 text-center">{formatDuration(Math.round((new Date(s.end_time).getTime() - date.getTime())/60000))}</td>
-                                            <td className="px-6 py-5">
+                                            <td className="px-3 py-4 whitespace-nowrap text-sm font-normal text-slate-500 text-center">{formatDuration(Math.round((new Date(s.end_time).getTime() - date.getTime())/60000))}</td>
+                                            <td className="px-3 py-4 whitespace-nowrap">
                                                 {s.location ? (
-                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 text-slate-600 rounded-lg text-[10px] font-black uppercase tracking-wider border border-slate-100">
+                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 text-slate-600 rounded-lg text-xs font-normal border border-slate-100 whitespace-nowrap">
                                                         📍 {s.location}
                                                     </span>
                                                 ) : (
-                                                    <span className="text-slate-300 text-[10px] font-bold italic">—</span>
+                                                    <span className="text-slate-300 text-xs italic">—</span>
                                                 )}
                                             </td>
-                                            <td className="px-6 py-5 text-sm font-black text-slate-700">{(s as any).instructor_name || "—"}</td>
-                                            <td className="px-6 py-5 text-center">
-                                                <span className={`inline-flex items-center justify-center px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm border ${
+                                            <td className="px-3 py-4 text-sm font-normal text-slate-500 whitespace-nowrap">{(s as any).instructor_name || "—"}</td>
+                                            <td className="px-3 py-4 text-center whitespace-nowrap">
+                                                <span className={`inline-flex items-center justify-center px-4 py-1 rounded-full text-xs font-normal border ${
                                                     !s.is_active ? "bg-slate-100 text-slate-400 border-slate-200" :
                                                     fillPercent >= 100 
                                                         ? "bg-rose-50 text-rose-600 border-rose-100" 
@@ -417,43 +418,41 @@ function AdminSessionsContent() {
                                                     {s.allow_waitlist && (s.waitlist_count ?? 0) > 0 && (
                                                         <span className="flex items-center gap-0.5 ml-1 text-orange-600" title="Liste d'attente">
                                                             <span>⏳</span>
-                                                            <span className="text-[10px]">({s.waitlist_count})</span>
+                                                            <span className="text-xs">({s.waitlist_count})</span>
                                                         </span>
                                                     )}
                                                     {s.allow_waitlist && (s.waitlist_count ?? 0) === 0 && (
-                                                        <span className="ml-1 opacity-50" title="Liste d'attente autorisée">⏳</span>
+                                                        <span className="ml-1 opacity-50 text-xs" title="Liste d'attente autorisée">⏳</span>
                                                     )}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-5 text-center text-sm font-black text-slate-600">{s.credits_required}</td>
-                                            <td className="px-8 py-5 text-right">
-                                                <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all">
-                                                    <button onClick={() => openEdit(s)} className="p-2 hover:bg-blue-50 text-blue-500 rounded-lg transition-all" title="Modifier">✏️</button>
-                                                    {s.is_active ? (
-                                                        <button 
-                                                            onClick={() => handleCancelSession(s)}
-                                                            className="p-2 hover:bg-amber-50 text-amber-500 rounded-lg transition-all" 
-                                                            title="Annuler"
-                                                        >
-                                                            🚫
-                                                        </button>
-                                                    ) : (
-                                                        <button 
-                                                            onClick={() => handleReactivateSession(s)}
-                                                            className="p-2 hover:bg-emerald-50 text-emerald-500 rounded-lg transition-all" 
-                                                            title="Réactiver"
-                                                        >
-                                                            🔄
-                                                        </button>
-                                                    )}
+                                            <td className="px-3 py-4 text-center text-sm font-medium text-slate-600 whitespace-nowrap">{s.credits_required}</td>
+                                            <td className="px-3 py-4 text-center flex items-center justify-center gap-0.5 whitespace-nowrap">
+                                                <button onClick={() => openEdit(s)} className="p-1 hover:bg-blue-50 text-blue-500 rounded-lg transition-all hover:scale-105" title="Modifier">✏️</button>
+                                                {s.is_active ? (
                                                     <button 
-                                                        onClick={() => handleDeleteSession(s)}
-                                                        className="p-2 hover:bg-rose-100 text-rose-500 rounded-lg transition-all" 
-                                                        title="Supprimer"
+                                                        onClick={() => handleCancelSession(s)}
+                                                        className="p-0.5 hover:bg-amber-50 text-amber-500 rounded-lg transition-all hover:scale-105" 
+                                                        title="Annuler"
                                                     >
-                                                        🗑️
+                                                        🚫
                                                     </button>
-                                                </div>
+                                                ) : (
+                                                    <button 
+                                                        onClick={() => handleReactivateSession(s)}
+                                                        className="p-0.5 hover:bg-emerald-50 text-emerald-500 rounded-lg transition-all hover:scale-105" 
+                                                        title="Réactiver"
+                                                    >
+                                                        🔄
+                                                    </button>
+                                                )}
+                                                <button 
+                                                    onClick={() => handleDeleteSession(s)}
+                                                    className="p-0.5 hover:bg-rose-50 text-rose-500 rounded-lg transition-all hover:scale-105" 
+                                                    title="Supprimer"
+                                                >
+                                                    🗑️
+                                                </button>
                                             </td>
                                         </tr>
                                     );
@@ -472,22 +471,22 @@ function AdminSessionsContent() {
             {/* Modal Form Image 2 Style */}
             {showForm && (
                 <div className="fixed inset-0 bg-[#0f172a]/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-3xl p-10 max-w-2xl w-full shadow-2xl border border-slate-100 overflow-y-auto max-h-[90vh]">
-                        <h2 className="text-3xl font-black text-slate-900 mb-8 tracking-tight">
-                            {editingSession ? "Modifier la séance" : "Créer une séance"}
+                    <div className="bg-white rounded-2xl p-10 max-w-2xl w-full shadow-2xl border border-slate-100 overflow-y-auto max-h-[90vh]">
+                        <h2 className="text-2xl font-semibold text-slate-900 mb-8 tracking-tight">
+                            {editingSession ? "✏️ Modifier la séance" : "➕ Créer une séance"}
                         </h2>
                         <form onSubmit={editingSession ? handleEditSubmit : handleSubmit} className="space-y-6">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className={`text-[10px] font-black uppercase tracking-widest ml-1 ${!formData.title ? 'text-red-500' : 'text-slate-400'}`}>Intitulé *</label>
-                                    <input type="text" required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className={`w-full px-5 py-3.5 border rounded-2xl focus:ring-2 focus:ring-slate-900 outline-none font-bold text-slate-700 ${!formData.title ? 'border-red-300 bg-red-50' : 'bg-slate-50 border-slate-100'}`} />
+                                    <label className={`text-xs font-medium ml-1 ${!formData.title ? 'text-red-500' : 'text-slate-500'}`}>Intitulé *</label>
+                                    <input type="text" required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-slate-900 outline-none font-medium text-slate-700 ${!formData.title ? 'border-red-300 bg-red-50' : 'bg-white border-slate-200'}`} />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Lieu / Salle</label>
+                                    <label className="text-xs font-medium text-slate-500 ml-1">Lieu / Salle</label>
                                     <select 
                                         value={formData.location} 
                                         onChange={e => setFormData({...formData, location: e.target.value})} 
-                                        className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-slate-900 outline-none font-bold text-slate-700"
+                                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-900 outline-none font-medium text-slate-700"
                                     >
                                         <option value="">Aucun lieu spécifique</option>
                                         {(tenant?.locations || []).map((loc: string) => (
@@ -498,15 +497,15 @@ function AdminSessionsContent() {
                             </div>
                             <div className="grid grid-cols-3 gap-4">
                                 <div className="space-y-2">
-                                    <label className={`text-[10px] font-black uppercase tracking-widest ml-1 ${!formData.date ? 'text-red-500' : 'text-slate-400'}`}>Date *</label>
-                                    <input type="date" required value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className={`w-full px-5 py-3.5 border rounded-2xl focus:ring-2 focus:ring-slate-900 outline-none font-bold text-slate-700 ${!formData.date ? 'border-red-300 bg-red-50' : 'bg-slate-50 border-slate-100'}`} />
+                                    <label className={`text-xs font-medium ml-1 ${!formData.date ? 'text-red-500' : 'text-slate-500'}`}>Date *</label>
+                                    <input type="date" required value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-slate-900 outline-none font-medium text-slate-700 ${!formData.date ? 'border-red-300 bg-red-50' : 'bg-white border-slate-200'}`} />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className={`text-[10px] font-black uppercase tracking-widest ml-1 ${!formData.time ? 'text-red-500' : 'text-slate-400'}`}>Heure *</label>
-                                    <input type="time" required value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className={`w-full px-5 py-3.5 border rounded-2xl focus:ring-2 focus:ring-slate-900 outline-none font-bold text-slate-700 ${!formData.time ? 'border-red-300 bg-red-50' : 'bg-slate-50 border-slate-100'}`} />
+                                    <label className={`text-xs font-medium ml-1 ${!formData.time ? 'text-red-500' : 'text-slate-500'}`}>Heure *</label>
+                                    <input type="time" required value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-slate-900 outline-none font-medium text-slate-700 ${!formData.time ? 'border-red-300 bg-red-50' : 'bg-white border-slate-200'}`} />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Durée</label>
+                                    <label className="text-xs font-medium text-slate-500 ml-1">Durée</label>
                                     <div className="flex items-center gap-2">
                                         <div className="flex-1 relative">
                                             <input 
@@ -519,9 +518,9 @@ function AdminSessionsContent() {
                                                     const m = formData.duration_minutes % 60;
                                                     setFormData({...formData, duration_minutes: h * 60 + m});
                                                 }} 
-                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-slate-900 outline-none font-bold text-slate-700 text-center" 
+                                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-900 outline-none font-medium text-slate-700 text-center" 
                                             />
-                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-300 pointer-events-none">H</span>
+                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-slate-300 pointer-events-none">H</span>
                                         </div>
                                         <div className="flex-1 relative">
                                             <input 
@@ -535,9 +534,9 @@ function AdminSessionsContent() {
                                                     const h = Math.floor(formData.duration_minutes / 60);
                                                     setFormData({...formData, duration_minutes: h * 60 + m});
                                                 }} 
-                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-slate-900 outline-none font-bold text-slate-700 text-center" 
+                                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-900 outline-none font-medium text-slate-700 text-center" 
                                             />
-                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-300 pointer-events-none">MIN</span>
+                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-slate-300 pointer-events-none">MIN</span>
                                         </div>
                                     </div>
                                 </div>
@@ -545,17 +544,17 @@ function AdminSessionsContent() {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Attribution (Intervenant)</label>
-                                    <input type="text" value={formData.instructor_name} onChange={e => setFormData({...formData, instructor_name: e.target.value})} placeholder="Ex: Jean Expert" className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-slate-900 outline-none font-bold text-slate-700" />
+                                    <label className="text-xs font-medium text-slate-500 ml-1">Attribution (Intervenant)</label>
+                                    <input type="text" value={formData.instructor_name} onChange={e => setFormData({...formData, instructor_name: e.target.value})} placeholder="Ex: Jean Expert" className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-900 outline-none font-medium text-slate-700" />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <label className={`text-[10px] font-black uppercase tracking-widest ml-1 ${!formData.max_participants && formData.max_participants !== 0 ? 'text-red-500' : 'text-slate-400'}`}>Capacité *</label>
-                                        <input type="number" min="1" required value={formData.max_participants} onChange={e => setFormData({...formData, max_participants: parseInt(e.target.value)})} className={`w-full px-5 py-3.5 border rounded-2xl focus:ring-2 focus:ring-slate-900 outline-none font-bold text-slate-700 ${!formData.max_participants && formData.max_participants !== 0 ? 'border-red-300 bg-red-50' : 'bg-slate-50 border-slate-100'}`} />
+                                        <label className={`text-xs font-medium ml-1 ${!formData.max_participants && formData.max_participants !== 0 ? 'text-red-500' : 'text-slate-500'}`}>Capacité *</label>
+                                        <input type="number" min="1" required value={formData.max_participants} onChange={e => setFormData({...formData, max_participants: parseInt(e.target.value)})} className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-slate-900 outline-none font-medium text-slate-700 ${!formData.max_participants && formData.max_participants !== 0 ? 'border-red-300 bg-red-50' : 'bg-white border-slate-200'}`} />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className={`text-[10px] font-black uppercase tracking-widest ml-1 ${!formData.credits_required && formData.credits_required !== 0 ? 'text-red-500' : 'text-slate-400'}`}>Crédits *</label>
-                                        <input type="number" min="0" step="0.5" required value={formData.credits_required} onChange={e => setFormData({...formData, credits_required: parseFloat(e.target.value)})} className={`w-full px-5 py-3.5 border rounded-2xl focus:ring-2 focus:ring-slate-900 outline-none font-bold text-slate-700 ${!formData.credits_required && formData.credits_required !== 0 ? 'border-red-300 bg-red-50' : 'bg-slate-50 border-slate-100'}`} />
+                                        <label className={`text-xs font-medium ml-1 ${!formData.credits_required && formData.credits_required !== 0 ? 'text-red-500' : 'text-slate-500'}`}>Crédits *</label>
+                                        <input type="number" min="0" step="0.5" required value={formData.credits_required} onChange={e => setFormData({...formData, credits_required: parseFloat(e.target.value)})} className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-slate-900 outline-none font-medium text-slate-700 ${!formData.credits_required && formData.credits_required !== 0 ? 'border-red-300 bg-red-50' : 'bg-white border-slate-200'}`} />
                                     </div>
                                 </div>
                             </div>
@@ -589,9 +588,9 @@ function AdminSessionsContent() {
                                 </div>
                             )}
                             <div className="flex gap-4 pt-4">
-                                <button type="button" onClick={() => setShowForm(false)} className="flex-1 px-8 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] hover:bg-slate-200 transition-all">Annuler</button>
-                                <button type="submit" disabled={saving} className="flex-1 px-8 py-4 bg-[#0f172a] text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/20 disabled:opacity-50">
-                                    {saving ? "Chargement..." : editingSession ? "Enregistrer" : "Créer"}
+                                <button type="button" onClick={() => setShowForm(false)} className="flex-1 px-6 py-3 bg-slate-100 text-slate-600 rounded-lg font-medium hover:bg-slate-200 transition-all">Annuler</button>
+                                <button type="submit" disabled={saving} className="flex-1 px-6 py-3 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-all shadow-sm disabled:opacity-50">
+                                    {saving ? "Chargement..." : editingSession ? "Enregistrer" : "Créer la séance"}
                                 </button>
                             </div>
                         </form>
@@ -601,10 +600,10 @@ function AdminSessionsContent() {
 
             {/* Duplicate Modal */}
             {showDuplicateModal && (
-                <div className="fixed inset-0 bg-[#0f172a]/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-                    <div className="bg-white rounded-3xl p-10 max-w-lg w-full shadow-2xl">
-                        <h3 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Dupliquer des séances</h3>
-                        <p className="text-slate-400 text-sm mb-8 font-medium italic">Copiez un bloc de séances vers une autre période</p>
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+                    <div className="bg-white rounded-2xl p-10 max-w-lg w-full shadow-2xl">
+                        <h3 className="text-2xl font-semibold text-slate-900 mb-2 tracking-tight">Dupliquer des séances</h3>
+                        <p className="text-slate-500 text-sm mb-8 font-normal">Copiez un bloc de séances vers une autre période</p>
                         <div className="space-y-6">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
@@ -621,8 +620,8 @@ function AdminSessionsContent() {
                                 <input type="date" value={duplicateData.target_start} onChange={e => setDuplicateData({...duplicateData, target_start: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-700" />
                             </div>
                             <div className="flex gap-4 pt-4">
-                                <button type="button" onClick={() => setShowDuplicateModal(false)} className="flex-1 px-8 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px]">Annuler</button>
-                                <button onClick={handleDuplicate} className="flex-1 px-8 py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] hover:bg-emerald-700 shadow-xl shadow-emerald-900/20">Confirmer</button>
+                                <button type="button" onClick={() => setShowDuplicateModal(false)} className="flex-1 px-6 py-3 bg-slate-100 text-slate-600 rounded-lg font-medium">Annuler</button>
+                                <button onClick={handleDuplicate} className="flex-1 px-6 py-3 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 shadow-sm">Confirmer la duplication</button>
                             </div>
                         </div>
                     </div>
@@ -630,28 +629,28 @@ function AdminSessionsContent() {
             )}
             {/* Confirmation Modal */}
             {confirmModal.show && (
-                <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-xl flex items-center justify-center z-[200] p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-3xl p-10 max-w-md w-full shadow-2xl border border-slate-100">
-                        <div className={`w-16 h-16 rounded-3xl flex items-center justify-center text-3xl mb-6 ${
+                <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-in fade-in duration-300">
+                    <div className="bg-white rounded-2xl p-10 max-w-md w-full shadow-2xl border border-slate-100">
+                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-6 ${
                             confirmModal.type === 'danger' ? 'bg-rose-50 text-rose-500' : 
                             confirmModal.type === 'warning' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'
                         }`}>
                             {confirmModal.type === 'danger' ? '⚠️' : confirmModal.type === 'warning' ? '🚫' : '🔄'}
                         </div>
-                        <h3 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">{confirmModal.title}</h3>
-                        <p className="text-slate-500 font-bold text-sm leading-relaxed mb-8">{confirmModal.message}</p>
+                        <h3 className="text-2xl font-semibold text-slate-900 mb-2 tracking-tight">{confirmModal.title}</h3>
+                        <p className="text-slate-500 font-normal text-sm leading-relaxed mb-8">{confirmModal.message}</p>
                         <div className="flex gap-3">
                             <button 
                                 onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}
-                                className="flex-1 px-6 py-4 bg-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all"
+                                className="flex-1 px-6 py-3 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200 transition-all"
                             >
                                 Annuler
                             </button>
                             <button 
                                 onClick={confirmModal.onConfirm}
-                                className={`flex-1 px-6 py-4 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg ${
-                                    confirmModal.type === 'danger' ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-200' : 
-                                    confirmModal.type === 'warning' ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-200' : 'bg-blue-500 hover:bg-blue-600 shadow-blue-200'
+                                className={`flex-1 px-6 py-3 text-white rounded-lg text-sm font-medium transition-all shadow-sm ${
+                                    confirmModal.type === 'danger' ? 'bg-rose-500 hover:bg-rose-600' : 
+                                    confirmModal.type === 'warning' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-blue-500 hover:bg-blue-600'
                                 }`}
                             >
                                 Confirmer
