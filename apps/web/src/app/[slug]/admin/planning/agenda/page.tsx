@@ -366,38 +366,10 @@ export default function AdminAgendaPage() {
                         </div>
                     </div>
 
-                    {/* Filter Bar */}
-                    <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_10px_30px_rgba(0,0,0,0.02)] flex flex-row items-center gap-8">
-                        <div className="flex items-center gap-4">
-                            <span className="text-sm font-normal text-slate-600 whitespace-nowrap">Filtrer par lieu</span>
-                            <select 
-                                value={locationFilter}
-                                onChange={(e) => setLocationFilter(e.target.value)}
-                                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-slate-900 transition-all min-w-[200px]"
-                            >
-                                <option value="all">Tous les lieux</option>
-                                {(tenant?.locations || []).map((loc: string) => (
-                                    <option key={loc} value={loc}>{loc}</option>
-                                ))}
-                            </select>
-                        </div>
-                        
-                        <div className="relative group flex-1 max-w-xl">
-                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors">🔍</div>
-                            <input 
-                                type="text" 
-                                placeholder="Recherche" 
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-11 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-slate-900 outline-none transition-all"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Navigation Bar Image 2 Style */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-                        <div className="flex items-center gap-6">
-                            <div className="text-base font-bold text-slate-800 tracking-tight">
+                    {/* Integrated Navigation and Filter Bar */}
+                    <div className="bg-white rounded-2xl border border-slate-100 p-3 shadow-[0_10px_30px_rgba(0,0,0,0.02)] flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-center gap-6 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
+                            <div className="text-base font-bold text-slate-800 tracking-tight whitespace-nowrap min-w-[140px]">
                                 {view === 'week' ? (
                                     <>
                                         {weekDays[0].toLocaleDateString("fr-FR", { day: 'numeric', month: 'short' })} — {weekDays[6].toLocaleDateString("fr-FR", { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -408,8 +380,9 @@ export default function AdminAgendaPage() {
                                     </>
                                 )}
                             </div>
-                            <div className="flex items-center gap-2">
-                                <div className="flex items-center bg-white h-10 rounded-lg border border-slate-200 shadow-sm transition-all focus-within:shadow-md overflow-hidden">
+                            
+                            <div className="flex items-center gap-1.5">
+                                <div className="flex items-center bg-slate-50 h-9 rounded-lg border border-slate-200">
                                     <button 
                                         onClick={() => {
                                             const newDate = new Date(currentDate);
@@ -417,13 +390,11 @@ export default function AdminAgendaPage() {
                                             else newDate.setMonth(newDate.getMonth() - 1);
                                             setCurrentDate(newDate);
                                         }} 
-                                        className="px-3 h-full hover:bg-slate-50 transition-all text-slate-400 hover:text-slate-900"
+                                        className="px-2.5 h-full hover:bg-white hover:shadow-sm transition-all text-slate-400 hover:text-slate-900"
                                     >
                                         ←
                                     </button>
-                                    <div className="w-[1px] h-4 bg-slate-200"></div>
-                                    <button onClick={() => setCurrentDate(new Date())} className="px-4 h-full text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors">Aujourd'hui</button>
-                                    <div className="w-[1px] h-4 bg-slate-200"></div>
+                                    <button onClick={() => setCurrentDate(new Date())} className="px-3 h-full text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:bg-white hover:shadow-sm transition-all">Aujourd'hui</button>
                                     <button 
                                         onClick={() => {
                                             const newDate = new Date(currentDate);
@@ -431,21 +402,22 @@ export default function AdminAgendaPage() {
                                             else newDate.setMonth(newDate.getMonth() + 1);
                                             setCurrentDate(newDate);
                                         }} 
-                                        className="px-3 h-full hover:bg-slate-50 transition-all text-slate-400 hover:text-slate-900"
+                                        className="px-2.5 h-full hover:bg-white hover:shadow-sm transition-all text-slate-400 hover:text-slate-900"
                                     >
                                         →
                                     </button>
                                 </div>
-                                <div className="flex items-center bg-slate-100/50 p-1 h-10 rounded-lg border border-slate-200">
+
+                                <div className="flex items-center bg-slate-100/50 p-1 h-9 rounded-lg border border-slate-200">
                                     <button 
                                         onClick={() => setView('week')}
-                                        className={`px-4 h-full text-xs font-medium transition-all rounded-md flex items-center ${view === 'week' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+                                        className={`px-3 h-full text-[10px] font-bold uppercase tracking-wider transition-all rounded-md flex items-center ${view === 'week' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
                                     >
                                         Semaine
                                     </button>
                                     <button 
                                         onClick={() => setView('month')}
-                                        className={`px-4 h-full text-xs font-medium transition-all rounded-md flex items-center ${view === 'month' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+                                        className={`px-3 h-full text-[10px] font-bold uppercase tracking-wider transition-all rounded-md flex items-center ${view === 'month' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
                                     >
                                         Mois
                                     </button>
@@ -453,15 +425,27 @@ export default function AdminAgendaPage() {
                             </div>
                         </div>
 
-                        {/* Legend */}
-                        <div className="flex items-center gap-6">
-                            <div className="flex items-center gap-2.5 group cursor-help">
-                                <span className="w-2.5 h-2.5 rounded-full bg-[#3b82f6] shadow-sm shadow-blue-200 transition-transform group-hover:scale-125"></span>
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Séance</span>
-                            </div>
-                            <div className="flex items-center gap-2.5 group cursor-help">
-                                <span className="w-2.5 h-2.5 rounded-full bg-[#f59e0b] shadow-sm shadow-amber-200 transition-transform group-hover:scale-125"></span>
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Évènement</span>
+                        <div className="flex flex-1 items-center gap-3 md:justify-end">
+                            <select 
+                                value={locationFilter}
+                                onChange={(e) => setLocationFilter(e.target.value)}
+                                className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 outline-none focus:ring-1 focus:ring-slate-900 transition-all min-w-[140px]"
+                            >
+                                <option value="all">Tous les lieux</option>
+                                {(tenant?.locations || []).map((loc: string) => (
+                                    <option key={loc} value={loc}>{loc}</option>
+                                ))}
+                            </select>
+
+                            <div className="relative group flex-1 max-w-[240px]">
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</div>
+                                <input 
+                                    type="text" 
+                                    placeholder="Recherche" 
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full pl-8 pr-4 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-slate-900 outline-none transition-all"
+                                />
                             </div>
                         </div>
                     </div>
@@ -496,18 +480,18 @@ export default function AdminAgendaPage() {
                                 return (
                                     <div 
                                         key={idx} 
-                                        className={`p-1 md:p-1.5 bg-white/50 min-h-[160px] border-r border-slate-100/50 space-y-2.5 transition-colors ${
+                                        className={`px-1 pt-1.5 pb-6 md:px-1.5 md:pt-1.5 md:pb-10 bg-white/50 min-h-[160px] border-r border-slate-100/50 space-y-2.5 transition-colors ${
                                             view === 'month' && !isCurrentMonth ? 'opacity-30 grayscale-[50%]' : ''
                                         } ${isToday ? 'bg-white shadow-inner' : ''}`}
                                     >
-                                        <div className="flex items-start justify-between">
+                                        <div className="flex items-center justify-between">
                                             <div className={`text-sm font-medium transition-all h-8 w-8 flex items-center justify-center rounded-full ${
                                                 isToday ? "bg-slate-900 text-white shadow-lg" : "text-slate-600 group-hover:text-slate-900"
                                             }`}>
                                                 {date.getDate()}
                                             </div>
                                             {dayItems.length > 0 && view === 'month' && (
-                                                <div className="text-[9px] font-medium text-slate-500 lowercase tracking-tight italic">
+                                                <div className="text-[9px] font-medium text-slate-500 lowercase tracking-tight italic pr-1.5">
                                                     {dayItems.length} {dayItems.length > 1 ? 'items' : 'item'}
                                                 </div>
                                             )}
