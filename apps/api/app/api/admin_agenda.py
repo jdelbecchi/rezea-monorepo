@@ -128,12 +128,36 @@ async def get_agenda(
         )
         users_with_pending = set(pending_orders_result.scalars().all())
 
+    status_priority = {
+        'confirmed': 100,
+        'confirmed_payment': 100,
+        'absent': 100,
+        'waiting_list': 50,
+        'pending': 50,
+        'pending_payment': 50,
+        'cancelled': 10,
+        'session_cancelled': 10,
+        'event_cancelled': 10
+    }
+
     sessions_data = []
     for s in sessions:
-        registered_users = []
-        waitlist_users = []
+        user_best_booking = {}
         for b in s.bookings:
-            if not b.user: continue
+            if not b.user_id: continue
+            uid = str(b.user_id)
+            status = b.status.value if hasattr(b.status, 'value') else b.status
+            priority = status_priority.get(status, 0)
+            
+            if uid not in user_best_booking:
+                user_best_booking[uid] = (priority, b)
+            else:
+                existing_p, existing_b = user_best_booking[uid]
+                if priority > existing_p or (priority == existing_p and str(b.id) > str(existing_b.id)):
+                    user_best_booking[uid] = (priority, b)
+
+        registered_users = []
+        for priority, b in user_best_booking.values():
             user_info = {
                 "id": str(b.id),
                 "user_id": str(b.user_id) if b.user_id else None,
@@ -168,8 +192,8 @@ async def get_agenda(
             "allow_waitlist": s.allow_waitlist,
             "is_active": s.is_active,
             "registered_users": registered_users,
-            "waitlist_users": waitlist_users,
-            "waitlist_count": len(waitlist_users),
+            "waitlist_users": [],
+            "waitlist_count": 0,
         })
 
     # ---- Events ----
@@ -201,11 +225,23 @@ async def get_agenda(
 
     events_data = []
     for e in events:
-        registered_users = []
-        waitlist_users = []
+        user_best_reg = {}
         for reg in e.registrations:
-            if not reg.user: continue
-            user_info = {
+            if not reg.user_id: continue
+            uid = str(reg.user_id)
+            status = reg.status.value if hasattr(reg.status, 'value') else reg.status
+            priority = status_priority.get(status, 0)
+            
+            if uid not in user_best_reg:
+                user_best_reg[uid] = (priority, reg)
+            else:
+                existing_p, existing_reg = user_best_reg[uid]
+                if priority > existing_p or (priority == existing_p and str(reg.id) > str(existing_reg.id)):
+                    user_best_reg[uid] = (priority, reg)
+
+        reg_users = []
+        for priority, reg in user_best_reg.values():
+            reg_users.append({
                 "id": str(reg.id),
                 "user_id": str(reg.user_id) if reg.user_id else None,
                 "first_name": reg.user.first_name,
@@ -217,8 +253,7 @@ async def get_agenda(
                 "is_suspended": reg.user.is_suspended,
                 "has_pending_order": reg.user.id in users_with_pending,
                 "status": reg.status.value if hasattr(reg.status, 'value') else reg.status
-            }
-            registered_users.append(user_info)
+            })
 
         events_data.append({
             "id": str(e.id),
@@ -231,14 +266,16 @@ async def get_agenda(
             "instructor_name": e.instructor_name,
             "price_member_cents": e.price_member_cents,
             "price_external_cents": e.price_external_cents,
-            "max_places": e.max_places,
+            "max_participants": e.max_places,
+            "current_participants": e.registrations_count or 0,
+            "credits_required": e.price_member_cents / 100,
             "registrations_count": e.registrations_count or 0,
-            "waitlist_count": len(waitlist_users),
+            "waitlist_count": e.waitlist_count or 0,
             "location": e.location,
             "allow_waitlist": e.allow_waitlist,
             "is_active": e.is_active,
-            "registered_users": registered_users,
-            "waitlist_users": waitlist_users,
+            "registered_users": reg_users,
+            "waitlist_users": [],
         })
 
     return {

@@ -691,7 +691,7 @@ export default function AdminAgendaPage() {
                                     <div className="flex items-center gap-2 whitespace-nowrap">
                                         <span>⏳</span> {selectedItem.type === 'event' ? formatDuration(selectedItem.duration_minutes) : formatDuration(calculateDuration(selectedItem.start_time, selectedItem.end_time))}
                                     </div>
-                                    <div className="flex items-center gap-2 whitespace-nowrap"><span>👥</span> {selectedItem.current_participants}/{selectedItem.max_participants} inscrits</div>
+                                    <div className="flex items-center gap-2 whitespace-nowrap"><span>👥</span> {selectedItem.current_participants}/{selectedItem.max_participants} inscrit{selectedItem.current_participants > 1 ? 's' : ''}</div>
                                     <div className="flex items-center gap-2 whitespace-nowrap">
                                         <span>💎</span> {selectedItem.credits_required || (selectedItem.price_cents ? selectedItem.price_cents / 100 : 0)} crédits
                                     </div>
