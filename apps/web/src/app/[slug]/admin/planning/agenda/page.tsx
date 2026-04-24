@@ -45,9 +45,11 @@ export default function AdminAgendaPage() {
     const [showDuplicateModal, setShowDuplicateModal] = useState(false);
     const [duplicateData, setDuplicateData] = useState({ source_start: "", source_end: "", target_start: "" });
 
-    // Details state
-    const [selectedItem, setSelectedItem] = useState<any | null>(null);
     const [showDetails, setShowDetails] = useState(false);
+    const [selectedItem, setSelectedItem] = useState<any>(null);
+    const [attendanceTab, setAttendanceTab] = useState<'registered' | 'waitlist' | 'cancelled' | 'edit'>('registered');
+    const [contactUser, setContactUser] = useState<any>(null);
+    const [includeWaitlistInEmail, setIncludeWaitlistInEmail] = useState(false);
 
     // Confirmation Modal
     const [confirmModal, setConfirmModal] = useState<{
@@ -135,16 +137,45 @@ export default function AdminAgendaPage() {
                         type: "event" as const, 
                         date: (e?.date || e?.event_date || "").split('T')[0], 
                         time: timeStr,
-                        is_active: true,
                         endTime: dtEnd.getHours().toString().padStart(2, '0') + ":" + dtEnd.getMinutes().toString().padStart(2, '0')
                     };
                 })
             ];
             setItems(flattenedItems);
             
-            // Re-sync selected item if open
-            if (selectedItem) {
-                const updated = flattenedItems.find(i => i.id === selectedItem.id && i.type === selectedItem.type);
+            // Refresh the current item in the details modal if it's open
+            if (showDetails && selectedItem) {
+                const refreshedData = await api.getAdminAgenda(start, end);
+                const refreshedFlattened = [
+                    ...(refreshedData?.sessions || []).map((s: any) => {
+                        const dt = new Date(s.start_time);
+                        const dtEnd = new Date(s.end_time);
+                        return {
+                            ...s,
+                            type: "session" as const,
+                            date: dt.getFullYear() + "-" + String(dt.getMonth() + 1).padStart(2, '0') + "-" + String(dt.getDate()).padStart(2, '0'),
+                            time: dt.getHours().toString().padStart(2, '0') + ":" + dt.getMinutes().toString().padStart(2, '0'),
+                            endTime: dtEnd.getHours().toString().padStart(2, '0') + ":" + dtEnd.getMinutes().toString().padStart(2, '0')
+                        };
+                    }),
+                    ...(refreshedData?.events || []).map((e: any) => {
+                        const timeStr = e?.event_time || e?.time || "00:00";
+                        const parts = timeStr.includes(':') ? timeStr.split(':') : timeStr.includes('h') ? timeStr.split('h') : [timeStr, "0"];
+                        const h = parseInt(parts[0]) || 0;
+                        const m = parseInt(parts[1]) || 0;
+                        const dt = new Date();
+                        dt.setHours(h, m, 0, 0);
+                        const dtEnd = new Date(dt.getTime() + (e.duration_minutes || 60) * 60000);
+                        return { 
+                            ...e, 
+                            type: "event" as const, 
+                            date: (e?.date || e?.event_date || "").split('T')[0], 
+                            time: timeStr,
+                            endTime: dtEnd.getHours().toString().padStart(2, '0') + ":" + dtEnd.getMinutes().toString().padStart(2, '0')
+                        };
+                    })
+                ];
+                const updated = refreshedFlattened.find(i => i.id === selectedItem.id && i.type === selectedItem.type);
                 if (updated) setSelectedItem(updated);
             }
         } catch (err: any) {
@@ -156,6 +187,21 @@ export default function AdminAgendaPage() {
             setLoading(false);
         }
     }, [router, weekDays, monthDays, view]);
+
+    const handleToggleAttendance = async (participant: any) => {
+        try {
+            const newStatus = ['confirmed', 'confirmed_payment'].includes(participant.status) ? 'absent' : 'confirmed';
+            if (selectedItem.type === 'session') {
+                await api.updateAdminBooking(participant.id, { status: newStatus });
+            } else {
+                await api.updateAdminEventRegistration(participant.id, { status: newStatus });
+            }
+            // Trigger a silent background refresh
+            await fetchData();
+        } catch (err) {
+            console.error("Error toggling attendance:", err);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -192,6 +238,13 @@ export default function AdminAgendaPage() {
 
             await fetchData();
             setShowForm(false);
+            setEditingSession(null);
+            
+            // If we were editing in the detail modal, refresh is handled by fetchData background refresh in fetchData loop
+            // but we might want to switch back to registered tab
+            if (showDetails) {
+                setAttendanceTab('registered');
+            }
             setFormData({ ...emptyForm });
         } catch (err) { alert("Erreur lors de la création"); } 
         finally { setSaving(false); }
@@ -229,6 +282,9 @@ export default function AdminAgendaPage() {
             }
             setEditingSession(null);
             setShowForm(false);
+            if (showDetails) {
+                setShowDetails(false);
+            }
             setFormData({ ...emptyForm });
             await fetchData();
         } catch (err) { alert("Erreur lors de la modification"); } 
@@ -509,7 +565,26 @@ export default function AdminAgendaPage() {
                                                 return (
                                                     <div 
                                                         key={item.id}
-                                                        onClick={() => { setSelectedItem(item); setShowDetails(true); }}
+                                                        onClick={() => { 
+                                                            setSelectedItem(item); 
+                                                            setAttendanceTab('registered');
+                                                            setEditingSession(item);
+                                                            setFormData({
+                                                                title: item.title,
+                                                                description: item.description || "",
+                                                                instructor_name: item.instructor_name || "",
+                                                                date: item.date,
+                                                                time: item.time,
+                                                                duration_minutes: item.duration_minutes || 60,
+                                                                max_participants: item.max_participants,
+                                                                credits_required: item.credits_required,
+                                                                location: item.location || "",
+                                                                allow_waitlist: item.allow_waitlist || true,
+                                                                recurrence: "none",
+                                                                recurrence_count: 1,
+                                                            });
+                                                            setShowDetails(true); 
+                                                        }}
                                                         className={`bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-xl hover:translate-y-[-2px] hover:bg-slate-50 transition-all duration-300 border-l-[4px] ${accentColor} cursor-pointer p-2.5 flex flex-col gap-2.5 group/card ${
                                                             item.is_active === false ? "opacity-40 grayscale" : ""
                                                         }`}
@@ -588,141 +663,326 @@ export default function AdminAgendaPage() {
                 </div>
             </main>
 
-            {/* Session Details Modal */}
             {showDetails && selectedItem && (
                 <div className="fixed inset-0 bg-[#0f172a]/60 backdrop-blur-md flex items-center justify-center z-[100] p-4 animate-in fade-in zoom-in duration-300">
                     <div className="bg-white rounded-3xl p-10 max-w-4xl w-full shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
+                        {/* Header */}
                         <div className="flex justify-between items-start mb-8">
-                            <div className="space-y-2">
-                                <div className="flex items-center gap-3">
+                            <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-6">
                                     <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
                                         selectedItem.type === 'session' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-amber-50 text-amber-600 border-amber-100'
                                     }`}>
                                         {selectedItem.type === 'session' ? 'Séance' : 'Évènement'}
                                     </span>
-                                    {!selectedItem.is_active && (
+                                    {selectedItem.is_active === false && (
                                         <span className="bg-rose-50 text-rose-500 border border-rose-100 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">
                                             Annulé
                                         </span>
                                     )}
-                                    <span className="text-slate-300 text-sm font-bold">{selectedItem.time}</span>
+                                    <span className="text-slate-500 text-sm font-bold">{selectedItem.time}-{selectedItem.endTime}</span>
                                 </div>
-                                <h2 className={`text-4xl font-black text-slate-900 tracking-tight ${!selectedItem.is_active ? 'line-through opacity-50' : ''}`}>
+                                <h2 className={`text-2xl font-bold text-slate-900 tracking-tight mb-4 ${!selectedItem.is_active ? 'line-through opacity-50' : ''}`}>
                                     {selectedItem.title}
                                 </h2>
-                                <div className="flex items-center gap-6 text-slate-500 font-bold text-sm">
-                                    <div className="flex items-center gap-2"><span>👤</span> {selectedItem.instructor_name || "N/A"}</div>
-                                    <div className="flex items-center gap-2"><span>📍</span> {selectedItem.location || "Aucun lieu"}</div>
-                                    <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-5 text-slate-600 font-medium text-[13px] mt-8">
+                                    <div className="flex items-center gap-2 whitespace-nowrap"><span>👤</span> {selectedItem.instructor_name || "N/A"}</div>
+                                    <div className="flex items-center gap-2 whitespace-nowrap"><span>📍</span> {selectedItem.location || "Aucun lieu"}</div>
+                                    <div className="flex items-center gap-2 whitespace-nowrap">
                                         <span>⏳</span> {selectedItem.type === 'event' ? formatDuration(selectedItem.duration_minutes) : formatDuration(calculateDuration(selectedItem.start_time, selectedItem.end_time))}
                                     </div>
-                                    <div className="flex items-center gap-2"><span>👥</span> {selectedItem.current_participants}/{selectedItem.max_participants} inscrits</div>
+                                    <div className="flex items-center gap-2 whitespace-nowrap"><span>👥</span> {selectedItem.current_participants}/{selectedItem.max_participants} inscrits</div>
+                                    <div className="flex items-center gap-2 whitespace-nowrap">
+                                        <span>💎</span> {selectedItem.credits_required || (selectedItem.price_cents ? selectedItem.price_cents / 100 : 0)} crédits
+                                    </div>
                                 </div>
                             </div>
-                            <button onClick={() => setShowDetails(false)} className="h-12 w-12 bg-slate-50 hover:bg-slate-100 text-slate-400 rounded-full transition-all text-2xl flex items-center justify-center">×</button>
+                            <div className="flex items-center gap-3 shrink-0 ml-4">
+                                <button 
+                                    onClick={() => setAttendanceTab(attendanceTab === 'edit' ? 'registered' : 'edit')}
+                                    className="bg-slate-900 text-white px-6 py-3 rounded-2xl text-sm font-bold transition-all hover:bg-slate-800 flex items-center gap-2 shadow-xl shadow-slate-900/10 active:scale-95"
+                                >
+                                    <span>{attendanceTab === 'edit' ? '← Retour' : '⚙️ Modifier'}</span>
+                                </button>
+                                <button onClick={() => setShowDetails(false)} className="h-14 w-14 bg-slate-50 hover:bg-slate-100 text-slate-400 rounded-full transition-all text-3xl flex items-center justify-center shrink-0">×</button>
+                            </div>
                         </div>
 
-                        <div className="flex-1 overflow-auto bg-slate-50/50 rounded-2xl border border-slate-100 p-8 mb-8">
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-lg font-black text-slate-800 uppercase tracking-widest">Liste d'émargement</h3>
-                                {selectedItem.registered_users?.length > 0 && (
+                        {/* Body - Tabs & Content */}
+                        <div className="flex-1 overflow-auto bg-slate-50/50 rounded-2xl border border-slate-200 p-8 mb-4">
+                            {attendanceTab !== 'edit' ? (
+                                <>
+                                    <div className="mb-8 border-b border-slate-100">
+                                        <div className="flex gap-10">
+                                            {(() => {
+                                                const pts = selectedItem?.registered_users || [];
+                                                const counts = {
+                                                    registered: pts.filter((p: any) => ['confirmed', 'absent', 'confirmed_payment'].includes(p.status)).length,
+                                                    waitlist: pts.filter((p: any) => ['pending', 'waiting_list', 'pending_payment'].includes(p.status)).length,
+                                                    cancelled: pts.filter((p: any) => ['cancelled', 'session_cancelled', 'event_cancelled'].includes(p.status)).length,
+                                                };
+                                                return [
+                                                    { id: 'registered', label: `Inscrits (${counts.registered})` },
+                                                    { id: 'waitlist', label: `Liste d'attente (${counts.waitlist})` },
+                                                    { id: 'cancelled', label: `Annulés (${counts.cancelled})` }
+                                                ].map((tab) => (
+                                                    <button 
+                                                        key={tab.id}
+                                                        onClick={() => setAttendanceTab(tab.id as any)}
+                                                        className={`pb-4 text-sm font-medium transition-all relative ${
+                                                            attendanceTab === tab.id ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'
+                                                        }`}
+                                                    >
+                                                        {tab.label}
+                                                        {attendanceTab === tab.id && (
+                                                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-900 rounded-full" />
+                                                        )}
+                                                    </button>
+                                                ));
+                                            })()}
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        {(() => {
+                                            const participants = selectedItem.registered_users || [];
+                                            const filtered = participants.filter((p: any) => {
+                                                if (attendanceTab === 'registered') return ['confirmed', 'absent', 'confirmed_payment'].includes(p.status);
+                                                if (attendanceTab === 'waitlist') return ['pending', 'waiting_list', 'pending_payment'].includes(p.status);
+                                                if (attendanceTab === 'cancelled') return ['cancelled', 'session_cancelled', 'event_cancelled'].includes(p.status);
+                                                return false;
+                                            });
+
+                                            if (filtered.length === 0) {
+                                                return <div className="text-center py-12 text-slate-400 font-bold italic text-sm">Aucun participant dans cette liste.</div>;
+                                            }
+
+                                            return (
+                                                <div className="divide-y divide-slate-100 bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+                                                    {filtered.map((u: any) => (
+                                                        <div key={u.id} className="px-6 py-3 flex items-center justify-between group hover:bg-slate-50 transition-all">
+                                                            <div className="flex items-center gap-4 flex-1">
+                                                                {attendanceTab === 'registered' ? (
+                                                                    <button 
+                                                                        onClick={(e) => { e.stopPropagation(); handleToggleAttendance(u); }}
+                                                                        className={`h-9 w-9 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                                                                            ['confirmed', 'confirmed_payment'].includes(u.status) ? 'text-emerald-500 hover:bg-emerald-50' : 'text-rose-500 hover:bg-rose-50'
+                                                                        }`}
+                                                                    >
+                                                                        {['confirmed', 'confirmed_payment'].includes(u.status) ? (
+                                                                            <svg className="w-5 h-5 fill-current" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                                                                        ) : (
+                                                                            <svg className="w-5 h-5 fill-current" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>
+                                                                        )}
+                                                                    </button>
+                                                                ) : (
+                                                                    <div className="h-9 w-9 flex items-center justify-center text-base">
+                                                                        {attendanceTab === 'waitlist' ? '⏳' : '🚫'}
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex-1">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-sm font-black text-slate-900">{u.first_name} {u.last_name}</span>
+                                                                        {u.has_pending_order && (
+                                                                            <span title="Paiement à régulariser" className="text-amber-500 animate-pulse text-base">⚠️</span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <div className="flex items-center gap-2">
+                                                                <button 
+                                                                    onClick={(e) => { e.stopPropagation(); setContactUser(u); }}
+                                                                    className="h-10 w-10 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-full flex items-center justify-center transition-all hover:scale-110"
+                                                                >
+                                                                    <svg className="w-5 h-5 fill-current" viewBox="0 0 20 20"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" /></svg>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="space-y-8 py-4">
+                                    {/* Ligne 1 : Intitulé, Date, Heure */}
+                                    <div className="flex gap-4">
+                                        <div className="flex-[2] space-y-2">
+                                            <label className="text-[10px] font-light uppercase tracking-widest text-slate-400 ml-1">Intitulé</label>
+                                            <input type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full px-4 py-2.5 bg-white border border-slate-100 rounded-xl font-medium text-[13px] text-slate-700 focus:ring-2 focus:ring-slate-900 transition-all outline-none" />
+                                        </div>
+                                        <div className="flex-1 space-y-2">
+                                            <label className="text-[10px] font-light uppercase tracking-widest text-slate-400 ml-1">Date</label>
+                                            <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-2.5 bg-white border border-slate-100 rounded-xl font-medium text-[13px] text-slate-700 outline-none focus:ring-2 focus:ring-slate-900 transition-all shadow-sm" />
+                                        </div>
+                                        <div className="flex-1 space-y-2">
+                                            <label className="text-[10px] font-light uppercase tracking-widest text-slate-400 ml-1">Heure</label>
+                                            <input type="time" value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className="w-full px-4 py-2.5 bg-white border border-slate-100 rounded-xl font-medium text-[13px] text-slate-700 outline-none focus:ring-2 focus:ring-slate-900 transition-all shadow-sm" />
+                                        </div>
+                                    </div>
+
+                                    {/* Ligne 2 : Attribution, Lieu */}
+                                    <div className="flex gap-4">
+                                        <div className="flex-1 space-y-2">
+                                            <label className="text-[10px] font-light uppercase tracking-widest text-slate-400 ml-1">Attribution</label>
+                                            <input type="text" value={formData.instructor_name} onChange={e => setFormData({...formData, instructor_name: e.target.value})} className="w-full px-4 py-2.5 bg-white border border-slate-100 rounded-xl font-medium text-[13px] text-slate-700 outline-none focus:ring-2 focus:ring-slate-900 transition-all shadow-sm" />
+                                        </div>
+                                        <div className="flex-1 space-y-2">
+                                            <label className="text-[10px] font-light uppercase tracking-widest text-slate-400 ml-1">Lieu / Salle</label>
+                                            <select 
+                                                value={formData.location} 
+                                                onChange={e => setFormData({...formData, location: e.target.value})} 
+                                                className="w-full px-4 py-2.5 bg-white border border-slate-100 rounded-xl font-medium text-[13px] text-slate-700 outline-none appearance-none cursor-pointer focus:ring-2 focus:ring-slate-900 transition-all shadow-sm"
+                                            >
+                                                <option value="">Sélectionner un lieu</option>
+                                                {(tenant?.locations || []).map((loc: string) => (
+                                                    <option key={loc} value={loc}>{loc}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Ligne 3 : Durée, Nombre de places, Crédits */}
+                                    <div className="flex gap-4">
+                                        <div className="flex-1 space-y-2">
+                                            <label className="text-[10px] font-light uppercase tracking-widest text-slate-400 ml-1">Durée</label>
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex-1 flex items-center gap-2 bg-white border border-slate-100 rounded-xl px-3 focus-within:ring-2 focus-within:ring-slate-900 transition-all shadow-sm">
+                                                    <input 
+                                                        type="number" 
+                                                        value={Math.floor((formData.duration_minutes || 0) / 60)} 
+                                                        onChange={e => {
+                                                            const h = parseInt(e.target.value) || 0;
+                                                            const m = (formData.duration_minutes || 0) % 60;
+                                                            setFormData({...formData, duration_minutes: (h * 60) + m});
+                                                        }} 
+                                                        className="w-full py-2.5 font-medium text-[13px] text-slate-700 outline-none bg-transparent text-right" 
+                                                        min="0"
+                                                    />
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase">h</span>
+                                                </div>
+                                                <div className="flex-1 flex items-center gap-2 bg-white border border-slate-100 rounded-xl px-3 focus-within:ring-2 focus-within:ring-slate-900 transition-all shadow-sm">
+                                                    <input 
+                                                        type="number" 
+                                                        value={(formData.duration_minutes || 0) % 60} 
+                                                        onChange={e => {
+                                                            const m = parseInt(e.target.value) || 0;
+                                                            const h = Math.floor((formData.duration_minutes || 0) / 60);
+                                                            setFormData({...formData, duration_minutes: (h * 60) + m});
+                                                        }} 
+                                                        className="w-full py-2.5 font-medium text-[13px] text-slate-700 outline-none bg-transparent text-right" 
+                                                        min="0"
+                                                        max="59"
+                                                    />
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase">min</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex-1 space-y-2">
+                                            <label className="text-[10px] font-light uppercase tracking-widest text-slate-400 ml-1">Nombre de places</label>
+                                            <input type="number" value={formData.max_participants} onChange={e => setFormData({...formData, max_participants: parseInt(e.target.value)})} className="w-full px-4 py-2.5 bg-white border border-slate-100 rounded-xl font-medium text-[13px] text-slate-700 outline-none focus:ring-2 focus:ring-slate-900 transition-all shadow-sm" />
+                                            <div className="flex items-center gap-2 pt-1">
+                                                <input 
+                                                    id="allow_waitlist_detail"
+                                                    type="checkbox" 
+                                                    checked={formData.allow_waitlist} 
+                                                    onChange={e => setFormData({...formData, allow_waitlist: e.target.checked})} 
+                                                    className="w-3.5 h-3.5 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                                                />
+                                                <label htmlFor="allow_waitlist_detail" className="text-[10px] font-medium text-slate-400 cursor-pointer select-none">
+                                                    Autoriser la liste d'attente
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div className="flex-1 space-y-2">
+                                            <label className="text-[10px] font-light uppercase tracking-widest text-slate-400 ml-1">Crédits requis</label>
+                                            <input type="number" step="0.5" value={formData.credits_required} onChange={e => setFormData({...formData, credits_required: parseFloat(e.target.value)})} className="w-full px-4 py-2.5 bg-white border border-slate-100 rounded-xl font-medium text-[13px] text-slate-700 outline-none focus:ring-2 focus:ring-slate-900 transition-all shadow-sm" />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="">
+                            {/* Email Section */}
+                            {attendanceTab !== 'edit' && (selectedItem.registered_users || []).length > 0 && (
+                                <div className="flex items-center justify-end gap-6 mb-8 pr-4">
+                                    <div className="text-right">
+                                        <div className="text-[11px] font-medium text-slate-400 italic mb-1">Envoyer un e-mail groupé</div>
+                                        <label className="flex items-center gap-2 cursor-pointer group justify-end">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={includeWaitlistInEmail}
+                                                onChange={(e) => setIncludeWaitlistInEmail(e.target.checked)}
+                                                className="w-4 h-4 rounded border-slate-300 text-blue-500 focus:ring-blue-500"
+                                            />
+                                            <span className="text-[10px] font-medium text-slate-400 group-hover:text-slate-600 transition-colors">Inclure la liste d'attente</span>
+                                        </label>
+                                    </div>
                                     <button 
                                         onClick={() => {
-                                            const emails = selectedItem.registered_users.map((u: any) => u.email).join(',');
+                                            const participants = selectedItem.registered_users || [];
+                                            let targetUsers = participants.filter((p: any) => p.status === 'confirmed');
+                                            if (includeWaitlistInEmail) {
+                                                const wl = participants.filter((p: any) => ['pending', 'waiting_list', 'pending_payment'].includes(p.status));
+                                                targetUsers = [...targetUsers, ...wl];
+                                            }
+                                            const emails = targetUsers.map((u: any) => u.email).join(',');
                                             window.location.href = `mailto:?bcc=${emails}&subject=Information sur votre séance : ${selectedItem.title}`;
                                         }}
-                                        className="px-6 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:shadow-lg transition-all"
+                                        className="h-12 w-12 bg-white shadow-lg shadow-slate-200/50 border border-slate-100 rounded-full flex items-center justify-center text-blue-500 hover:scale-110 transition-all hover:shadow-xl active:scale-95"
+                                        title="Envoyer l'email groupé"
                                     >
-                                        📧 Email groupé
-                                    </button>
-                                )}
-                            </div>
-                            
-                            {selectedItem.registered_users?.length > 0 ? (
-                                <div className="space-y-3">
-                                    {selectedItem.registered_users.map((u: any, idx: number) => (
-                                        <div key={idx} className="bg-white p-4 rounded-2xl border border-slate-200/50 flex items-center justify-between shadow-sm">
-                                            <div className="flex items-center gap-4">
-                                                <div className="h-10 w-10 bg-slate-100 rounded-full flex items-center justify-center text-sm font-black text-slate-400">
-                                                    {u.first_name[0]}{u.last_name[0]}
-                                                </div>
-                                                <div>
-                                                    <div className="text-sm font-black text-slate-900">{u.first_name} {u.last_name}</div>
-                                                    <div className="text-xs font-bold text-slate-400">{u.email}</div>
-                                                </div>
-                                            </div>
-                                            <div className="text-[10px] font-black text-emerald-500 uppercase tracking-widest px-3 py-1 bg-emerald-50 rounded-lg">Présent</div>
+                                        <div className="relative">
+                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                            <span className="absolute inset-0 flex items-center justify-center text-[8px] font-black mt-0.5 ml-0.5">E</span>
                                         </div>
-                                    ))}
+                                    </button>
                                 </div>
-                            ) : (
-                                <div className="text-center py-12 text-slate-400 font-bold italic">Aucun inscrit pour le moment.</div>
                             )}
 
-                            {selectedItem.waitlist_users?.length > 0 && (
-                                <div className="mt-12 pt-8 border-t border-slate-200">
-                                    <div className="flex items-center justify-between mb-6">
-                                        <h3 className="text-lg font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                                            <span>⏳</span> Liste d'attente
-                                        </h3>
+                            {/* Action Buttons */}
+                            <div className="flex items-end justify-between">
+                                <div className="space-y-4">
+                                    <h4 className="text-[10px] font-black uppercase tracking-[0.1em] text-slate-400 ml-1">
+                                        Déprogrammer {selectedItem.type === 'session' ? 'la séance' : "l'évènement"} ?
+                                    </h4>
+                                    <div className="flex gap-3">
+                                        {selectedItem.is_active ? (
+                                            <button 
+                                                onClick={() => handleCancelItem(selectedItem)}
+                                                className="px-6 py-4 bg-amber-50 text-amber-600 rounded-2xl font-bold uppercase tracking-widest text-[10px] hover:bg-amber-100 transition-all border border-amber-100"
+                                            >
+                                                🚫 Annuler
+                                            </button>
+                                        ) : (
+                                            <button 
+                                                onClick={() => handleReactivateItem(selectedItem)}
+                                                className="px-6 py-4 bg-emerald-50 text-emerald-600 rounded-2xl font-bold uppercase tracking-widest text-[10px] hover:bg-emerald-100 transition-all border border-emerald-100"
+                                            >
+                                                🔄 Réactiver
+                                            </button>
+                                        )}
                                         <button 
-                                            onClick={() => {
-                                                const emails = selectedItem.waitlist_users.map((u: any) => u.email).join(',');
-                                                window.location.href = `mailto:?bcc=${emails}&subject=Information sur votre séance : ${selectedItem.title} (Liste d'attente)`;
-                                            }}
-                                            className="px-6 py-2 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all"
+                                            onClick={() => handleDeleteItem(selectedItem)}
+                                            className="px-6 py-4 bg-rose-50 text-rose-500 rounded-2xl font-bold uppercase tracking-widest text-[10px] hover:bg-rose-100 transition-all border border-rose-100"
                                         >
-                                            📧 Email groupé (LA)
+                                            🗑️ Supprimer
                                         </button>
                                     </div>
-                                    <div className="space-y-3">
-                                        {selectedItem.waitlist_users.map((u: any, idx: number) => (
-                                            <div key={idx} className="bg-white/50 p-4 rounded-2xl border border-slate-200/50 flex items-center justify-between shadow-sm">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="h-10 w-10 bg-slate-200/50 rounded-full flex items-center justify-center text-sm font-black text-slate-400">
-                                                        {u.first_name[0]}{u.last_name[0]}
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-sm font-black text-slate-600">{u.first_name} {u.last_name}</div>
-                                                        <div className="text-xs font-bold text-slate-400">{u.email}</div>
-                                                    </div>
-                                                </div>
-                                                <div className="text-[10px] font-black text-orange-500 uppercase tracking-widest px-3 py-1 bg-orange-50 rounded-lg">En attente</div>
-                                            </div>
-                                        ))}
-                                    </div>
                                 </div>
-                            )}
-                        </div>
 
-                        <div className="flex gap-4">
-                            <button 
-                                onClick={() => openEdit(selectedItem)}
-                                className="flex-1 px-8 py-4 bg-white border border-slate-200 text-slate-700 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-50 transition-all shadow-sm"
-                            >
-                                ✏️ Modifier
-                            </button>
-                            {selectedItem.is_active ? (
                                 <button 
-                                    onClick={() => handleCancelItem(selectedItem)}
-                                    className="px-8 py-4 bg-amber-50 text-amber-600 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-amber-100 transition-all border border-amber-100"
+                                    onClick={handleEditSubmit}
+                                    disabled={saving}
+                                    className="px-12 py-4 bg-slate-900 border border-transparent text-white rounded-2xl font-bold text-sm hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 active:scale-95 disabled:opacity-50"
                                 >
-                                    🚫 Annuler
+                                    {saving ? "Chargement..." : "Enregistrer les modifications"}
                                 </button>
-                            ) : (
-                                <button 
-                                    onClick={() => handleReactivateItem(selectedItem)}
-                                    className="px-8 py-4 bg-emerald-50 text-emerald-600 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-emerald-100 transition-all border border-emerald-100"
-                                >
-                                    🔄 Réactiver
-                                </button>
-                            )}
-                            <button 
-                                onClick={() => handleDeleteItem(selectedItem)}
-                                className="px-8 py-4 bg-rose-50 text-rose-500 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-rose-100 transition-all border border-rose-100"
-                            >
-                                🗑️ Supprimer
-                            </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -904,6 +1164,68 @@ export default function AdminAgendaPage() {
                                 <button onClick={handleDuplicate} className="flex-1 px-8 py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-emerald-700 shadow-xl shadow-emerald-900/20">Confirmer</button>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Contact Info Modal */}
+            {contactUser && (
+                <div className="fixed inset-0 bg-[#0f172a]/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-in fade-in duration-300">
+                    <div className="bg-white rounded-[40px] p-10 max-w-sm w-full shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-300">
+                        <div className="text-center mb-8">
+                            <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-2">Informations de contact</h3>
+                            <p className="text-slate-400 font-bold text-sm uppercase tracking-widest">Pour {contactUser.first_name} {contactUser.last_name}</p>
+                        </div>
+
+                        <div className="bg-slate-50/50 rounded-[28px] p-8 border border-slate-100 mb-8 space-y-8">
+                            <div>
+                                <div className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-3">Téléphone</div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xl font-bold text-slate-700">{contactUser.phone || "Non renseigné"}</span>
+                                    {contactUser.phone && (
+                                        <button 
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(contactUser.phone);
+                                            }}
+                                            className="h-10 w-10 bg-white shadow-sm border border-slate-100 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                                            </svg>
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="pt-8 border-t border-slate-100/50">
+                                <div className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-6">Réseaux Sociaux</div>
+                                {contactUser.instagram_handle || contactUser.facebook_handle ? (
+                                    <div className="space-y-4">
+                                        {contactUser.instagram_handle && (
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-lg">📸</span>
+                                                <span className="text-sm font-bold text-slate-600">@{contactUser.instagram_handle}</span>
+                                            </div>
+                                        )}
+                                        {contactUser.facebook_handle && (
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-lg">👤</span>
+                                                <span className="text-sm font-bold text-slate-600">{contactUser.facebook_handle}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-4 text-slate-300 font-bold italic text-sm">Aucun réseau social renseigné</div>
+                                )}
+                            </div>
+                        </div>
+
+                        <button 
+                            onClick={() => setContactUser(null)}
+                            className="w-full py-5 bg-[#0f172a] text-white rounded-[24px] font-black uppercase tracking-widest text-[12px] hover:bg-slate-800 transition-all shadow-xl"
+                        >
+                            Fermer
+                        </button>
                     </div>
                 </div>
             )}

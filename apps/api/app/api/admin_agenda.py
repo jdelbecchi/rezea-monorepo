@@ -12,7 +12,8 @@ from sqlalchemy.orm import selectinload
 from app.db.session import get_db
 from app.models.models import (
     User, UserRole, Session, Booking, BookingStatus, Event, 
-    WaitlistEntry, WaitlistStatus, EventRegistration, EventRegistrationStatus
+    WaitlistEntry, WaitlistStatus, EventRegistration, EventRegistrationStatus,
+    Order, OrderPaymentStatus
 )
 
 router = APIRouter()
@@ -42,7 +43,7 @@ async def get_agenda(
 ):
     """
     Retourne les séances et événements pour une plage de dates.
-    Inclut les noms des inscrits pour les séances.
+    Inclut les noms des inscrits pour les séances et les warnings de paiement.
     """
     tenant_id = request.state.tenant_id
 
@@ -86,22 +87,67 @@ async def get_agenda(
     result = await db.execute(session_query)
     sessions = result.scalars().unique().all()
 
+    # Collect all user IDs to check pending orders in bulk
+    all_user_ids = set()
+    for s in sessions:
+        for b in s.bookings:
+            if b.user_id: all_user_ids.add(b.user_id)
+    
+    # ---- Events Preview (for ID collection) ----
+    event_query_pre = (
+        select(Event)
+        .where(
+            Event.tenant_id == tenant_id,
+            Event.is_active == True,
+            Event.event_date >= start_date.date(),
+            Event.event_date <= end_date.date(),
+        )
+        .options(
+            selectinload(Event.registrations)
+        )
+    )
+    result_pre = await db.execute(event_query_pre)
+    events_pre = result_pre.scalars().all()
+    for e in events_pre:
+        for reg in e.registrations:
+            if reg.user_id: all_user_ids.add(reg.user_id)
+
+    # Check pending orders
+    users_with_pending = set()
+    if all_user_ids:
+        pending_orders_result = await db.execute(
+            select(Order.user_id).where(
+                Order.tenant_id == tenant_id,
+                Order.user_id.in_(all_user_ids),
+                Order.payment_status.in_([
+                    OrderPaymentStatus.PENDING, 
+                    OrderPaymentStatus.WAITING,
+                    OrderPaymentStatus.ISSUE
+                ])
+            )
+        )
+        users_with_pending = set(pending_orders_result.scalars().all())
+
     sessions_data = []
     for s in sessions:
-        # Get confirmed/pending bookings' user names
         registered_users = []
         waitlist_users = []
         for b in s.bookings:
             if not b.user: continue
             user_info = {
+                "id": str(b.id),
+                "user_id": str(b.user_id) if b.user_id else None,
                 "first_name": b.user.first_name,
                 "last_name": b.user.last_name,
                 "email": b.user.email,
+                "phone": b.user.phone,
+                "instagram_handle": b.user.instagram_handle,
+                "facebook_handle": b.user.facebook_handle,
+                "is_suspended": b.user.is_suspended,
+                "has_pending_order": b.user.id in users_with_pending,
+                "status": b.status.value if hasattr(b.status, 'value') else b.status
             }
-            if b.status == BookingStatus.CONFIRMED:
-                registered_users.append(user_info)
-            elif b.status == BookingStatus.PENDING:
-                waitlist_users.append(user_info)
+            registered_users.append(user_info)
 
         sessions_data.append({
             "id": str(s.id),
@@ -120,6 +166,7 @@ async def get_agenda(
             "credits_required": s.credits_required,
             "location": s.location,
             "allow_waitlist": s.allow_waitlist,
+            "is_active": s.is_active,
             "registered_users": registered_users,
             "waitlist_users": waitlist_users,
             "waitlist_count": len(waitlist_users),
@@ -130,6 +177,7 @@ async def get_agenda(
         select(Event)
         .where(
             Event.tenant_id == tenant_id,
+            Event.is_active == True,
             Event.event_date >= start_date.date(),
             Event.event_date <= end_date.date(),
         )
@@ -153,19 +201,24 @@ async def get_agenda(
 
     events_data = []
     for e in events:
-        # Separate registrations into confirmed and waitlist
         registered_users = []
         waitlist_users = []
         for reg in e.registrations:
+            if not reg.user: continue
             user_info = {
-                "first_name": reg.user.first_name if reg.user else "Utilisateur",
-                "last_name": reg.user.last_name if reg.user else "Inconnu",
-                "email": reg.user.email if reg.user else "",
+                "id": str(reg.id),
+                "user_id": str(reg.user_id) if reg.user_id else None,
+                "first_name": reg.user.first_name,
+                "last_name": reg.user.last_name,
+                "email": reg.user.email,
+                "phone": reg.user.phone,
+                "instagram_handle": reg.user.instagram_handle,
+                "facebook_handle": reg.user.facebook_handle,
+                "is_suspended": reg.user.is_suspended,
+                "has_pending_order": reg.user.id in users_with_pending,
+                "status": reg.status.value if hasattr(reg.status, 'value') else reg.status
             }
-            if reg.status == EventRegistrationStatus.CONFIRMED:
-                registered_users.append(user_info)
-            elif reg.status == EventRegistrationStatus.WAITING_LIST:
-                waitlist_users.append(user_info)
+            registered_users.append(user_info)
 
         events_data.append({
             "id": str(e.id),
@@ -183,6 +236,7 @@ async def get_agenda(
             "waitlist_count": len(waitlist_users),
             "location": e.location,
             "allow_waitlist": e.allow_waitlist,
+            "is_active": e.is_active,
             "registered_users": registered_users,
             "waitlist_users": waitlist_users,
         })
