@@ -42,6 +42,7 @@ function AdminOffersContent() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [showForm, setShowForm] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [showErrors, setShowErrors] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
     const fetchOffers = useCallback(async () => {
@@ -79,6 +80,13 @@ function AdminOffersContent() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        // Validation locale
+        if (!formData.offer_code || !formData.name) {
+            setShowErrors(true);
+            return;
+        }
+
         setSaving(true);
         try {
             const payload: any = {
@@ -170,6 +178,7 @@ function AdminOffersContent() {
         setFormData({ ...emptyForm });
         setEditingId(null);
         setShowForm(false);
+        setShowErrors(false);
     };
 
     const filteredOffers = offers.filter(o => {
@@ -197,9 +206,12 @@ function AdminOffersContent() {
                         </div>
                         <button 
                             onClick={() => { resetForm(); setShowForm(true); }}
-                            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors font-medium shadow-sm"
+                            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors font-medium shadow-sm"
                         >
-                            ➕ Nouvelle offre
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            Nouvelle offre
                         </button>
                     </div>
 
@@ -249,9 +261,9 @@ function AdminOffersContent() {
                             <table className="w-full">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">N° Rub</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Rubrique</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">N° Offre</th>
+                                        <th className="px-1 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap w-10">N° Rub</th>
+                                        <th className="px-1 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap w-16">Rubrique</th>
+                                        <th className="px-1 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap w-10">N° Offre</th>
                                         <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Intitulé</th>
                                         <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Tarif</th>
                                         <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Crédits</th>
@@ -269,11 +281,11 @@ function AdminOffersContent() {
                                     ) : (
                                         filteredOffers.map((o) => (
                                             <tr key={o.id} className={`hover:bg-gray-50 transition-colors group ${!o.is_active ? 'opacity-50 select-none' : ''}`}>
-                                                <td className="px-3 py-4 whitespace-nowrap text-xs font-normal text-slate-400 text-center">{o.category_display_order || "-"}</td>
-                                                <td className="px-3 py-4 whitespace-nowrap">
-                                                    <span className="px-2 py-1 bg-slate-50 text-slate-600 rounded-lg text-xs font-normal border border-slate-100">{o.category || "Général"}</span>
+                                                <td className="px-1 py-4 whitespace-nowrap text-[10px] font-normal text-slate-400 text-center w-10">{o.category_display_order || "-"}</td>
+                                                <td className="px-1 py-4 whitespace-nowrap w-16">
+                                                    <span className="px-2 py-0.5 bg-slate-50 text-slate-500 rounded-lg text-xs font-normal border border-slate-100 uppercase tracking-tight">{o.category || "Général"}</span>
                                                 </td>
-                                                <td className="px-3 py-4 whitespace-nowrap text-xs font-normal text-slate-800 text-center">{o.display_order || "-"}</td>
+                                                <td className="px-1 py-4 whitespace-nowrap text-[10px] font-normal text-slate-400 text-center w-10">{o.display_order || "-"}</td>
                                                 <td className="px-3 py-4 whitespace-nowrap">
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-sm font-medium text-slate-900">{o.name}</span>
@@ -283,20 +295,33 @@ function AdminOffersContent() {
                                                     </div>
                                                 </td>
                                                 <td className="px-3 py-4 whitespace-nowrap">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-medium text-slate-900">
-                                                            {o.featured_pricing === 'recurring' && o.price_recurring_cents 
-                                                                ? `${(o.price_recurring_cents/100).toFixed(2).replace('.', ',')}€` 
-                                                                : `${(o.price_lump_sum_cents ? o.price_lump_sum_cents/100 : 0).toFixed(2).replace('.', ',')}€`}
-                                                        </span>
-                                                        {o.featured_pricing === 'recurring' && o.price_recurring_cents && (
-                                                            <span className="text-[11px] text-amber-600 font-normal">/ {o.period} x{o.recurring_count}</span>
+                                                    <div className="flex flex-col gap-0.5">
+                                                        {o.featured_pricing === 'recurring' ? (
+                                                            <>
+                                                                <div className="flex items-baseline gap-1">
+                                                                    <span className="text-sm font-medium text-slate-900">{(o.price_recurring_cents ? o.price_recurring_cents/100 : 0).toFixed(2).replace('.', ',')}€</span>
+                                                                    <span className="text-[11px] text-slate-900 font-normal">/ {o.period} x{o.recurring_count}</span>
+                                                                </div>
+                                                                {o.price_lump_sum_cents && (
+                                                                    <span className="text-[11px] text-slate-400 font-normal">ou {(o.price_lump_sum_cents/100).toFixed(2).replace('.', ',')}€</span>
+                                                                )}
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <span className="text-sm font-medium text-slate-900">{(o.price_lump_sum_cents ? o.price_lump_sum_cents/100 : 0).toFixed(2).replace('.', ',')}€</span>
+                                                                {o.price_recurring_cents && (
+                                                                    <div className="flex items-baseline gap-1">
+                                                                        <span className="text-[11px] text-slate-400 font-normal">ou {(o.price_recurring_cents/100).toFixed(2).replace('.', ',')}€</span>
+                                                                        <span className="text-[11px] text-slate-400 font-normal leading-none">/ {o.period} x{o.recurring_count}</span>
+                                                                    </div>
+                                                                )}
+                                                            </>
                                                         )}
                                                     </div>
                                                 </td>
-                                                <td className="px-3 py-4 whitespace-nowrap">
+                                                <td className="px-3 py-4 whitespace-nowrap text-left">
                                                     {o.is_unlimited ? (
-                                                        <span className="text-purple-600 font-medium text-lg">∞</span>
+                                                        <span className="text-purple-600 font-normal text-lg leading-none">∞</span>
                                                     ) : (
                                                         <span className="text-sm font-normal text-slate-700">
                                                             {o.classes_included || 0} <span className="text-[11px] text-slate-400 font-normal">crédits</span>
@@ -305,7 +330,7 @@ function AdminOffersContent() {
                                                 </td>
                                                 <td className="px-3 py-4 whitespace-nowrap text-sm text-slate-700">
                                                     {o.is_validity_unlimited ? (
-                                                        <span className="text-xs font-medium text-purple-600 uppercase tracking-widest">Illimitée</span>
+                                                        <span className="text-purple-600 font-normal text-lg leading-none">∞</span>
                                                     ) : o.deadline_date ? (
                                                         <span className="text-xs font-medium">{new Date(o.deadline_date).toLocaleDateString("fr-FR")}</span>
                                                     ) : (
@@ -341,9 +366,20 @@ function AdminOffersContent() {
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-10 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
-                            <h3 className="text-lg font-semibold text-slate-900">
-                                {editingId ? "✏️ Modifier l'offre" : "➕ Nouvelle offre"}
-                            </h3>
+                            <div className="flex items-center gap-3">
+                                {editingId ? (
+                                    <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                ) : (
+                                    <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                    </svg>
+                                )}
+                                <h3 className="text-lg font-semibold text-slate-900">
+                                    {editingId ? "Modifier l'offre" : "Nouvelle offre"}
+                                </h3>
+                            </div>
                             <button onClick={resetForm} className="text-gray-400 hover:text-gray-600">
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
@@ -356,12 +392,12 @@ function AdminOffersContent() {
                                     <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider border-b pb-1">Identification</h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
-                                            <label className={`block text-sm font-medium mb-1 ${!formData.offer_code ? 'text-red-500' : 'text-slate-700'}`}>Code Offre *</label>
-                                            <input type="text" required value={formData.offer_code} onChange={e => setFormData({...formData, offer_code: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm ${!formData.offer_code ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="ex: FORFAIT-10" />
+                                            <label className={`block text-sm font-medium mb-1 ${(showErrors && !formData.offer_code) ? 'text-red-500' : 'text-slate-700'}`}>Code Offre *</label>
+                                            <input type="text" value={formData.offer_code} onChange={e => setFormData({...formData, offer_code: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm ${(showErrors && !formData.offer_code) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="ex: FORFAIT-10" />
                                         </div>
                                         <div>
-                                            <label className={`block text-sm font-medium mb-1 ${!formData.name ? 'text-red-500' : 'text-slate-700'}`}>Nom Commercial *</label>
-                                            <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm ${!formData.name ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} />
+                                            <label className={`block text-sm font-medium mb-1 ${(showErrors && !formData.name) ? 'text-red-500' : 'text-slate-700'}`}>Nom Commercial *</label>
+                                            <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm ${(showErrors && !formData.name) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} />
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -420,17 +456,16 @@ function AdminOffersContent() {
                                         </div>
                                         <div className="space-y-3">
                                             <div>
-                                                <label className={`block text-sm font-medium mb-1 ${!formData.is_validity_unlimited && !formData.deadline_date && !formData.validity_duration ? 'text-red-500' : 'text-slate-700'}`}>
+                                                <label className={`block text-sm font-medium mb-1 ${(showErrors && !formData.is_validity_unlimited && !formData.deadline_date && !formData.validity_duration) ? 'text-red-500' : 'text-slate-700'}`}>
                                                     Durée de validité {!formData.is_validity_unlimited && !formData.deadline_date && '*'}
                                                 </label>
                                                 <div className="flex gap-2 items-center">
                                                     <input 
                                                         type="number" 
-                                                        required={!formData.is_validity_unlimited && !formData.deadline_date}
                                                         disabled={formData.is_validity_unlimited} 
                                                         value={formData.validity_duration} 
                                                         onChange={e => setFormData({...formData, validity_duration: e.target.value})} 
-                                                        className={`w-20 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm disabled:bg-gray-100 ${!formData.is_validity_unlimited && !formData.deadline_date && !formData.validity_duration ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} 
+                                                        className={`w-20 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm disabled:bg-gray-100 ${(showErrors && !formData.is_validity_unlimited && !formData.deadline_date && !formData.validity_duration) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} 
                                                     />
                                                     <select disabled={formData.is_validity_unlimited} value={formData.validity_unit} onChange={e => setFormData({...formData, validity_unit: e.target.value as any})} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm disabled:bg-gray-100">
                                                         <option value="months">Mois</option>

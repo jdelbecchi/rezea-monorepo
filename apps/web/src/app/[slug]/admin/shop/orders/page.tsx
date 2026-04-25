@@ -71,6 +71,7 @@ export default function AdminShopOrdersPage() {
     const [offers, setOffers] = useState<OfferOption[]>([]);
     const [createForm, setCreateForm] = useState({ user_id: "", offer_id: "", start_date: "", comment: "" });
     const [saving, setSaving] = useState(false);
+    const [showErrors, setShowErrors] = useState(false);
 
     // Edit modal
     const [editOrder, setEditOrder] = useState<OrderItem | null>(null);
@@ -151,6 +152,12 @@ export default function AdminShopOrdersPage() {
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!createForm.user_id || !createForm.offer_id || !createForm.start_date) {
+            setShowErrors(true);
+            return;
+        }
+
         setSaving(true);
         try {
             await api.createAdminOrder({
@@ -161,6 +168,7 @@ export default function AdminShopOrdersPage() {
             });
             setShowCreate(false);
             setCreateForm({ user_id: "", offer_id: "", start_date: "", comment: "" });
+            setShowErrors(false);
             setMessage({ type: "success", text: "Commande créée avec succès !" });
             fetchData();
         } catch (err: any) {
@@ -430,17 +438,19 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
 
             <main className="flex-1 p-8 overflow-auto">
                 <div className="max-w-7xl mx-auto space-y-6">
-                    {/* Header */}
                     <div className="flex items-center justify-between">
                         <div>
                             <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight">🛍️ Gestion des commandes</h1>
                             <p className="text-base font-normal text-slate-500 mt-1">Suivi des commandes et paiements</p>
                         </div>
                         <button
-                            onClick={() => { setShowCreate(true); loadFormOptions(); }}
-                            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors font-medium"
+                            onClick={() => { setShowCreate(true); setShowErrors(false); loadFormOptions(); }}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors font-medium shadow-sm"
                         >
-                            ➕ Nouvelle commande
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            Nouvelle commande
                         </button>
                     </div>
 
@@ -667,177 +677,255 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
 
             {/* Create Modal */}
             {showCreate && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-6 max-w-lg w-full mx-4 shadow-2xl">
-                        <h3 className="text-lg font-bold text-slate-900 mb-4">➕ Nouvelle commande</h3>
-                        <form onSubmit={handleCreate} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Utilisateur *</label>
-                                <select required value={createForm.user_id} onChange={(e) => setCreateForm({ ...createForm, user_id: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                    <option value="">Sélectionner...</option>
-                                    {users.map((u) => <option key={u.id} value={u.id}>{u.first_name} {u.last_name}</option>)}
-                                </select>
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-10 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                            <div className="flex items-center gap-3">
+                                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                                <h3 className="text-lg font-semibold text-slate-900">Nouvelle commande</h3>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Offre *</label>
-                                <select required value={createForm.offer_id} onChange={(e) => setCreateForm({ ...createForm, offer_id: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                    <option value="">Sélectionner...</option>
-                                    {offers.map((o) => <option key={o.id} value={o.id}>{o.offer_code} — {o.name}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Date de début *</label>
-                                <input type="date" required value={createForm.start_date}
-                                    onChange={(e) => setCreateForm({ ...createForm, start_date: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Commentaire</label>
-                                <textarea value={createForm.comment}
-                                    onChange={(e) => setCreateForm({ ...createForm, comment: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" rows={2} />
-                            </div>
-                            <div className="flex gap-2 justify-end">
-                                <button type="button" onClick={() => setShowCreate(false)}
-                                    className="px-4 py-2 bg-gray-200 text-slate-900 rounded-lg font-medium hover:bg-gray-300">Annuler</button>
-                                <button type="submit" disabled={saving}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50">
-                                    {saving ? "Création..." : "Créer"}
-                                </button>
-                            </div>
-                        </form>
+                            <button onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-gray-600">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-8">
+                            <form id="createOrderForm" onSubmit={handleCreate} className="space-y-8">
+                                {/* Informations client */}
+                                <div className="space-y-4">
+                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Client & Offre</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className={`block text-sm font-medium mb-1 ${(showErrors && !createForm.user_id) ? 'text-red-500' : 'text-slate-700'}`}>Utilisateur *</label>
+                                            <select value={createForm.user_id} onChange={(e) => setCreateForm({ ...createForm, user_id: e.target.value })}
+                                                className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all ${(showErrors && !createForm.user_id) ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                                                <option value="">Sélectionner un client...</option>
+                                                {users.map((u) => <option key={u.id} value={u.id}>{u.first_name} {u.last_name}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className={`block text-sm font-medium mb-1 ${(showErrors && !createForm.offer_id) ? 'text-red-500' : 'text-slate-700'}`}>Offre *</label>
+                                            <select value={createForm.offer_id} onChange={(e) => setCreateForm({ ...createForm, offer_id: e.target.value })}
+                                                className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all ${(showErrors && !createForm.offer_id) ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                                                <option value="">Sélectionner une offre...</option>
+                                                {offers.map((o) => <option key={o.id} value={o.id}>{o.offer_code} — {o.name}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Paramètres */}
+                                <div className="space-y-4">
+                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Paramètres</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className={`block text-sm font-medium mb-1 ${(showErrors && !createForm.start_date) ? 'text-red-500' : 'text-slate-700'}`}>Date de début *</label>
+                                            <input type="date" value={createForm.start_date}
+                                                onChange={(e) => setCreateForm({ ...createForm, start_date: e.target.value })}
+                                                className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all ${(showErrors && !createForm.start_date) ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`} />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Commentaire interne</label>
+                                        <textarea value={createForm.comment}
+                                            onChange={(e) => setCreateForm({ ...createForm, comment: e.target.value })}
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" 
+                                            rows={3} 
+                                            placeholder="Notes visibles uniquement par l'administration..." />
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
+                            <button type="button" onClick={() => setShowCreate(false)}
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
+                                Annuler
+                            </button>
+                            <button type="submit" form="createOrderForm" disabled={saving}
+                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 disabled:opacity-50 transition-all text-sm shadow-sm flex items-center gap-2">
+                                {saving && <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>}
+                                {saving ? "Création..." : "Créer la commande"}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
 
             {/* Edit Modal */}
             {editOrder && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-6 max-w-lg w-full mx-4 shadow-2xl">
-                        <h3 className="text-lg font-bold text-slate-900 mb-4">Modifier la commande</h3>
-                        <form onSubmit={handleEditSubmit} className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Date de début</label>
-                                    <input type="date" value={editForm.start_date}
-                                        onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Date de fin</label>
-                                    <input type="date" value={editForm.end_date}
-                                        onChange={(e) => setEditForm({ ...editForm, end_date: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                        disabled={editOrder.is_validity_unlimited} />
-                                </div>
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-10 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                            <div className="flex items-center gap-3">
+                                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                                <h3 className="text-lg font-semibold text-slate-900">Modifier la commande</h3>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Tarif (€)</label>
-                                    <input type="number" step="0.01" value={editForm.price_cents}
-                                        onChange={(e) => setEditForm({ ...editForm, price_cents: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <div className="flex-1">
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Nombre de crédits</label>
-                                        <input type="number" disabled={editForm.is_unlimited} value={editForm.credits_total}
-                                            onChange={(e) => setEditForm({ ...editForm, credits_total: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100" />
-                                    </div>
-                                    <div className="pt-6">
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input type="checkbox" checked={editForm.is_unlimited}
-                                                onChange={(e) => setEditForm({ ...editForm, is_unlimited: e.target.checked, credits_total: e.target.checked ? "" : editForm.credits_total })}
-                                                className="w-4 h-4 text-blue-600 rounded" />
-                                            <span className="text-sm font-medium text-slate-700">∞</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Paiement</label>
-                                    <select value={editForm.payment_status}
-                                        onChange={(e) => setEditForm({ ...editForm, payment_status: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                        <option value="a_valider">À valider</option>
-                                        <option value="en_attente">En attente</option>
-                                        <option value="echelonne">Échelonné</option>
-                                        <option value="paye">Payé</option>
-                                        <option value="a_regulariser">À régulariser</option>
-                                        <option value="rembourse">Remboursé</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Statut</label>
-                                    <div className="space-y-2">
-                                        <select 
-                                            value={showCustomStatus ? "_custom" : (editForm.status || "active")}
-                                            onChange={(e) => {
-                                                if (e.target.value === "_custom") {
-                                                    setShowCustomStatus(true);
-                                                } else {
-                                                    setShowCustomStatus(false);
-                                                    setEditForm({ ...editForm, status: e.target.value });
-                                                }
-                                            }}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                        >
-                                            <option value="active">Active</option>
-                                            <option value="termine">Terminée</option>
-                                            <option value="expiree">Expirée</option>
-                                            <option value="en_pause">En pause</option>
-                                            <option value="resiliee">Résiliée</option>
-                                            {dynamicStatuses.filter(s => !["active", "termine", "expiree", "en_pause", "Terminé", "terminé"].includes(s)).map(s => (
-                                                <option key={s} value={s}>{s}</option>
-                                            ))}
-                                            <option value="_custom">+ Autre (saisie libre)...</option>
-                                        </select>
-                                        
-                                        {showCustomStatus && (
-                                            <input 
-                                                type="text"
-                                                value={editForm.status}
-                                                onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                                                className="w-full px-3 py-2 border border-blue-300 bg-blue-50 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                placeholder="Saisissez le nouveau statut..."
-                                                autoFocus
-                                            />
-                                        )}
+                            <button onClick={() => setEditOrder(null)} className="text-gray-400 hover:text-gray-600">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-8">
+                            <form id="editOrderForm" onSubmit={handleEditSubmit} className="space-y-8">
+                                {/* Période & Statuts */}
+                                <div className="space-y-4">
+                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Dates & Statut</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Date de début</label>
+                                            <input type="date" value={editForm.start_date}
+                                                onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
+                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Date de fin</label>
+                                            <input type="date" value={editForm.end_date}
+                                                onChange={(e) => setEditForm({ ...editForm, end_date: e.target.value })}
+                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all enabled:hover:border-gray-300 disabled:bg-gray-50 disabled:text-slate-400"
+                                                disabled={editOrder.is_validity_unlimited} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Paiement</label>
+                                            <select value={editForm.payment_status}
+                                                onChange={(e) => setEditForm({ ...editForm, payment_status: e.target.value })}
+                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all hover:border-gray-300">
+                                                <option value="a_valider">À valider</option>
+                                                <option value="en_attente">En attente</option>
+                                                <option value="echelonne">Échelonné</option>
+                                                <option value="paye">Payé</option>
+                                                <option value="a_regulariser">À régulariser</option>
+                                                <option value="rembourse">Remboursé</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Statut</label>
+                                            <div className="space-y-2">
+                                                <select 
+                                                    value={showCustomStatus ? "_custom" : (editForm.status || "active")}
+                                                    onChange={(e) => {
+                                                        if (e.target.value === "_custom") {
+                                                            setShowCustomStatus(true);
+                                                        } else {
+                                                            setShowCustomStatus(false);
+                                                            setEditForm({ ...editForm, status: e.target.value });
+                                                        }
+                                                    }}
+                                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all hover:border-gray-300"
+                                                >
+                                                    <option value="active">Active</option>
+                                                    <option value="termine">Terminée</option>
+                                                    <option value="expiree">Expirée</option>
+                                                    <option value="en_pause">En pause</option>
+                                                    <option value="resiliee">Résiliée</option>
+                                                    {dynamicStatuses.filter(s => !["active", "termine", "expiree", "en_pause", "Terminé", "terminé"].includes(s)).map(s => (
+                                                        <option key={s} value={s}>{s}</option>
+                                                    ))}
+                                                    <option value="_custom">+ Autre (saisie libre)...</option>
+                                                </select>
+                                                
+                                                {showCustomStatus && (
+                                                    <input 
+                                                        type="text"
+                                                        value={editForm.status}
+                                                        onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                                                        className="w-full px-4 py-2.5 border border-blue-100 bg-blue-50 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none animate-in slide-in-from-top-1 duration-200"
+                                                        placeholder="Saisissez le nouveau statut..."
+                                                        autoFocus
+                                                    />
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Commentaire</label>
-                                <textarea value={editForm.comment}
-                                    onChange={(e) => setEditForm({ ...editForm, comment: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" rows={2} />
-                            </div>
-                            <div className="flex gap-2 justify-end">
-                                <button type="button" onClick={() => setEditOrder(null)}
-                                    className="px-4 py-2 bg-gray-200 text-slate-900 rounded-lg font-medium hover:bg-gray-300">Annuler</button>
-                                <button type="submit"
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">Enregistrer</button>
-                            </div>
-                        </form>
+
+                                {/* Financier & Crédits */}
+                                <div className="space-y-4">
+                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Tarif & Crédits</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Tarif (€)</label>
+                                            <input type="number" step="0.01" value={editForm.price_cents}
+                                                onChange={(e) => setEditForm({ ...editForm, price_cents: e.target.value })}
+                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex-1">
+                                                <label className="block text-sm font-medium text-slate-700 mb-1">Nombre de crédits</label>
+                                                <input type="number" disabled={editForm.is_unlimited} value={editForm.credits_total}
+                                                    onChange={(e) => setEditForm({ ...editForm, credits_total: e.target.value })}
+                                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all enabled:hover:border-gray-300 disabled:bg-gray-50 disabled:text-slate-400" />
+                                            </div>
+                                            <div className="pt-6">
+                                                <label className="flex items-center gap-2 cursor-pointer group">
+                                                    <input type="checkbox" checked={editForm.is_unlimited}
+                                                        onChange={(e) => setEditForm({ ...editForm, is_unlimited: e.target.checked, credits_total: e.target.checked ? "" : editForm.credits_total })}
+                                                        className="w-5 h-5 text-slate-900 border-gray-300 rounded-lg focus:ring-slate-500" />
+                                                    <span className="text-lg font-medium text-slate-700 group-hover:text-slate-900 transition-colors">∞</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Notes */}
+                                <div className="space-y-4">
+                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Notes</h4>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Commentaire interne</label>
+                                        <textarea value={editForm.comment}
+                                            onChange={(e) => setEditForm({ ...editForm, comment: e.target.value })}
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" 
+                                            rows={3} />
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
+                            <button type="button" onClick={() => setEditOrder(null)}
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
+                                Annuler
+                            </button>
+                            <button type="submit" form="editOrderForm"
+                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all text-sm shadow-sm">
+                                Enregistrer les modifications
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
 
             {/* Delete Confirmation */}
             {deleteConfirmId && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-2xl">
-                        <h3 className="text-lg font-bold text-slate-900 mb-2">Confirmer la suppression</h3>
-                        <p className="text-slate-600 mb-4">Cette commande sera définitivement supprimée.</p>
-                        <div className="flex gap-2 justify-end">
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-8 text-center">
+                            <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <svg className="w-8 h-8 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-900 mb-2">Confirmer la suppression</h3>
+                            <p className="text-slate-500">Cette commande sera définitivement supprimée. Les crédits associés seront retirés du compte client.</p>
+                        </div>
+                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3">
                             <button onClick={() => setDeleteConfirmId(null)}
-                                className="px-4 py-2 bg-gray-200 text-slate-900 rounded-lg font-medium hover:bg-gray-300">Annuler</button>
+                                className="flex-1 px-4 py-3 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
+                                Annuler
+                            </button>
                             <button onClick={() => handleDelete(deleteConfirmId)}
-                                className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700">Supprimer</button>
+                                className="flex-1 px-4 py-3 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm shadow-rose-200">
+                                Supprimer
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -845,60 +933,95 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
 
             {/* Invoice Modal */}
             {invoiceOrder && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-6 max-w-lg w-full mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-                        <h3 className="text-lg font-bold text-slate-900 mb-4">🧾 Générer une facture</h3>
-                        <div className="space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-xs font-medium text-slate-500 mb-1">N° Facture</label>
-                                    <input type="text" value={invoiceData.invoice_number}
-                                        onChange={(e) => setInvoiceData({ ...invoiceData, invoice_number: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-10 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                            <div className="flex items-center gap-3">
+                                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <h3 className="text-lg font-semibold text-slate-900">Générer une facture</h3>
+                            </div>
+                            <button onClick={() => setInvoiceOrder(null)} className="text-gray-400 hover:text-gray-600">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-8">
+                            <div className="space-y-8">
+                                {/* Parties */}
+                                <div className="space-y-4">
+                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Émetteur & Destinataire</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Émetteur</label>
+                                            <input type="text" value={invoiceData.emitter}
+                                                onChange={(e) => setInvoiceData({ ...invoiceData, emitter: e.target.value })}
+                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Destinataire</label>
+                                            <input type="text" value={invoiceData.recipient}
+                                                onChange={(e) => setInvoiceData({ ...invoiceData, recipient: e.target.value })}
+                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-slate-500 mb-1">Date</label>
-                                    <input type="date" value={invoiceData.invoice_date}
-                                        onChange={(e) => setInvoiceData({ ...invoiceData, invoice_date: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
+
+                                {/* Détails facture */}
+                                <div className="space-y-4">
+                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Détails de la facture</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">N° Facture</label>
+                                            <input type="text" value={invoiceData.invoice_number}
+                                                onChange={(e) => setInvoiceData({ ...invoiceData, invoice_number: e.target.value })}
+                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
+                                            <input type="date" value={invoiceData.invoice_date}
+                                                onChange={(e) => setInvoiceData({ ...invoiceData, invoice_date: e.target.value })}
+                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                                            <input type="text" value={invoiceData.description}
+                                                onChange={(e) => setInvoiceData({ ...invoiceData, description: e.target.value })}
+                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Montant (€)</label>
+                                            <input type="text" value={invoiceData.amount}
+                                                onChange={(e) => setInvoiceData({ ...invoiceData, amount: e.target.value })}
+                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Notes complémentaires</label>
+                                        <textarea value={invoiceData.notes}
+                                            onChange={(e) => setInvoiceData({ ...invoiceData, notes: e.target.value })}
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" 
+                                            rows={2} />
+                                    </div>
                                 </div>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-slate-500 mb-1">Émetteur</label>
-                                <input type="text" value={invoiceData.emitter}
-                                    onChange={(e) => setInvoiceData({ ...invoiceData, emitter: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-slate-500 mb-1">Destinataire</label>
-                                <input type="text" value={invoiceData.recipient}
-                                    onChange={(e) => setInvoiceData({ ...invoiceData, recipient: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-slate-500 mb-1">Description</label>
-                                <input type="text" value={invoiceData.description}
-                                    onChange={(e) => setInvoiceData({ ...invoiceData, description: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-slate-500 mb-1">Montant (€)</label>
-                                <input type="text" value={invoiceData.amount}
-                                    onChange={(e) => setInvoiceData({ ...invoiceData, amount: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-slate-500 mb-1">Notes</label>
-                                <textarea value={invoiceData.notes}
-                                    onChange={(e) => setInvoiceData({ ...invoiceData, notes: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" rows={2} />
                             </div>
                         </div>
-                        <div className="flex gap-2 justify-end mt-4">
+
+                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
                             <button onClick={() => setInvoiceOrder(null)}
-                                className="px-4 py-2 bg-gray-200 text-slate-900 rounded-lg font-medium hover:bg-gray-300">Annuler</button>
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
+                                Annuler
+                            </button>
                             <button onClick={downloadInvoice}
-                                className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700">📥 Télécharger</button>
+                                className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-all text-sm shadow-sm flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                Générer & Télécharger
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -906,106 +1029,166 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
 
             {/* Installments Modal */}
             {installmentsOrder && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl p-6 max-w-2xl w-full mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-                        <h3 className="text-lg font-bold text-slate-900 mb-2">📅 Échéancier</h3>
-                        <p className="text-sm text-slate-500 mb-4">
-                            {installmentsOrder.user_name} — {installmentsOrder.offer_name} ({installmentsOrder.offer_code})
-                        </p>
-
-                        {/* Summary */}
-                        <div className="grid grid-cols-3 gap-4 mb-4">
-                            <div className="bg-green-50 rounded-lg p-3 text-center">
-                                <div className="text-[10px] text-green-600 font-medium uppercase">Perçu (Confirmé + J+7)</div>
-                                <div className="text-lg font-bold text-green-900 border-t border-green-100 mt-1">
-                                    {(installmentsOrder.received_cents / 100).toFixed(2)}€
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-10 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                            <div className="flex items-center gap-3">
+                                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-900 leading-tight">Échéancier de paiement</h3>
+                                    <p className="text-sm text-slate-500 font-normal mt-0.5">
+                                        {installmentsOrder.user_name} — {installmentsOrder.offer_name}
+                                    </p>
                                 </div>
                             </div>
-                            <div className="bg-blue-50 rounded-lg p-3 text-center">
-                                <div className="text-[10px] text-blue-600 font-medium uppercase">À venir / En cours</div>
-                                <div className="text-lg font-bold text-blue-900 border-t border-blue-100 mt-1">
-                                    {(installmentsOrder.pending_cents / 100).toFixed(2)}€
-                                </div>
-                            </div>
-                            <div className="bg-red-50 rounded-lg p-3 text-center">
-                                <div className="text-[10px] text-red-600 font-medium uppercase">Impayés / Erreurs</div>
-                                <div className="text-lg font-bold text-red-900 border-t border-red-100 mt-1">
-                                    {(installmentsOrder.error_cents / 100).toFixed(2)}€
-                                </div>
-                            </div>
+                            <button onClick={() => setInstallmentsOrder(null)} className="text-gray-400 hover:text-gray-600">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
 
-                        {loadingInstallments ? (
-                            <div className="text-center py-4 text-slate-500">Chargement...</div>
-                        ) : installments.length === 0 ? (
-                            <div className="text-center py-4 text-slate-500">Aucune échéance enregistrée</div>
-                        ) : (
-                            <table className="w-full">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Montant</th>
-                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200">
-                                    {installments.map((inst) => {
-                                        const dueDate = new Date(inst.due_date);
-                                        const graceDate = new Date(dueDate);
-                                        graceDate.setDate(dueDate.getDate() + 7);
-                                        const isPastGrace = graceDate <= new Date();
-                                        
-                                        let statusBadge;
-                                        if (inst.is_error) {
-                                            statusBadge = <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-red-100 text-red-800">❌ Impayé</span>;
-                                        } else if (isPastGrace || inst.is_paid) {
-                                            statusBadge = <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-green-100 text-green-800">✅ Payé {inst.is_paid ? "(Manuel)" : "(Auto J+7)"}</span>;
-                                        } else {
-                                            statusBadge = (
-                                                <span 
-                                                    onClick={() => handlePayInstallment(inst.id)}
-                                                    className="px-2 py-1 text-[10px] font-bold rounded-full bg-blue-100 text-blue-800 cursor-pointer hover:bg-blue-200 transition-colors"
-                                                    title="Marquer comme payé (manuel)"
-                                                >
-                                                    ⏳ À venir
-                                                </span>
-                                            );
-                                        }
+                        <div className="flex-1 overflow-y-auto p-8">
+                            {/* Summary Cards */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                                <div className="bg-emerald-50/50 rounded-2xl p-4 border border-emerald-100">
+                                    <div className="text-[10px] text-emerald-600 font-semibold uppercase tracking-wider mb-1">Perçu</div>
+                                    <div className="text-xl font-bold text-emerald-900 border-t border-emerald-100/50 pt-2">
+                                        {(installmentsOrder.received_cents / 100).toFixed(2)}€
+                                    </div>
+                                    <p className="text-[10px] text-emerald-600 mt-1">Confirmé + J+7 automatique</p>
+                                </div>
+                                <div className="bg-blue-50/50 rounded-2xl p-4 border border-blue-100">
+                                    <div className="text-[10px] text-blue-600 font-semibold uppercase tracking-wider mb-1">À venir</div>
+                                    <div className="text-xl font-bold text-blue-900 border-t border-blue-100/50 pt-2">
+                                        {(installmentsOrder.pending_cents / 100).toFixed(2)}€
+                                    </div>
+                                    <p className="text-[10px] text-blue-600 mt-1">Échéances futures / en cours</p>
+                                </div>
+                                <div className="bg-rose-50/50 rounded-2xl p-4 border border-rose-100">
+                                    <div className="text-[10px] text-rose-600 font-semibold uppercase tracking-wider mb-1">Impayés</div>
+                                    <div className="text-xl font-bold text-rose-900 border-t border-rose-100/50 pt-2">
+                                        {(installmentsOrder.error_cents / 100).toFixed(2)}€
+                                    </div>
+                                    <p className="text-[10px] text-rose-600 mt-1">Erreurs & rejets signalés</p>
+                                </div>
+                            </div>
 
-                                        return (
-                                            <tr key={inst.id} className={inst.is_error ? "bg-red-50" : ""}>
-                                                <td className="px-3 py-2 text-sm text-slate-700">
-                                                    {dueDate.toLocaleDateString("fr-FR")}
-                                                </td>
-                                                <td className="px-3 py-2 text-sm font-medium text-slate-900">
-                                                    {(inst.amount_cents / 100).toFixed(2)}€
-                                                </td>
-                                                <td className="px-3 py-2">
-                                                    {statusBadge}
-                                                    {inst.resolved_at && (
-                                                        <div className="text-[9px] text-slate-400">
-                                                            Régularisé le {new Date(inst.resolved_at).toLocaleDateString("fr-FR")}
-                                                        </div>
-                                                    )}
-                                                </td>
-                                                <td className="px-3 py-2 text-sm">
-                                                    {inst.is_error ? (
-                                                        <button onClick={() => handleResolve(inst.id)} className="text-green-600 hover:text-green-800 text-xs font-bold underline">Régulariser</button>
-                                                    ) : (
-                                                        <button onClick={() => handleMarkError(inst.id)} className="text-red-500 hover:text-red-700 text-xs font-medium italic">Signaler Impayé</button>
-                                                    )}
-                                                </td>
+                            {loadingInstallments ? (
+                                <div className="flex flex-col items-center justify-center py-12 text-slate-400 gap-3">
+                                    <svg className="animate-spin h-6 w-6" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span className="text-sm">Chargement de l'échéancier...</span>
+                                </div>
+                            ) : installments.length === 0 ? (
+                                <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                                    <p className="text-sm text-slate-500 font-medium">Aucune échéance enregistrée pour cette commande</p>
+                                </div>
+                            ) : (
+                                <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+                                    <table className="w-full">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-6 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Date prévue</th>
+                                                <th className="px-6 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Montant</th>
+                                                <th className="px-6 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Statut</th>
+                                                <th className="px-6 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Action</th>
                                             </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        )}
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {installments.map((inst) => {
+                                                const dueDate = new Date(inst.due_date);
+                                                const graceDate = new Date(dueDate);
+                                                graceDate.setDate(dueDate.getDate() + 7);
+                                                const isPastGrace = graceDate <= new Date();
+                                                
+                                                return (
+                                                    <tr key={inst.id} className={`group transition-colors ${inst.is_error ? "bg-rose-50/30" : "hover:bg-gray-50"}`}>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-600">
+                                                            {dueDate.toLocaleDateString("fr-FR")}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">
+                                                            {(inst.amount_cents / 100).toFixed(2)}€
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            {inst.is_error ? (
+                                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-100 uppercase tracking-tight">
+                                                                    <div className="w-1 h-1 rounded-full bg-rose-500" />
+                                                                    Impayé
+                                                                </span>
+                                                            ) : (isPastGrace || inst.is_paid) ? (
+                                                                <div className="flex flex-col">
+                                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 uppercase tracking-tight w-fit">
+                                                                        <div className="w-1 h-1 rounded-full bg-emerald-500" />
+                                                                        Payé
+                                                                    </span>
+                                                                    <span className="text-[9px] text-slate-400 mt-1 ml-1">{inst.is_paid ? "Saisie manuelle" : "Auto J+7"}</span>
+                                                                </div>
+                                                            ) : (
+                                                                <button 
+                                                                    onClick={() => handlePayInstallment(inst.id)}
+                                                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-100 uppercase tracking-tight hover:bg-blue-100 transition-colors"
+                                                                    title="Cliquer pour forcer le paiement manuel"
+                                                                >
+                                                                    <div className="w-1 h-1 rounded-full bg-blue-500 animate-pulse" />
+                                                                    À venir
+                                                                </button>
+                                                            )}
+                                                            {inst.resolved_at && (
+                                                                <div className="text-[9px] text-emerald-500 font-medium mt-1">
+                                                                    Régularisé le {new Date(inst.resolved_at).toLocaleDateString("fr-FR")}
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                            {inst.is_error ? (
+                                                                <button onClick={() => handleResolve(inst.id)} className="text-emerald-600 hover:text-emerald-700 text-xs font-bold underline decoration-2 underline-offset-4">Régulariser</button>
+                                                            ) : !(isPastGrace || inst.is_paid) && (
+                                                                <button onClick={() => handleMarkError(inst.id)} className="text-rose-500 hover:text-rose-600 text-[10px] font-semibold italic">Signaler Impayé</button>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
 
-                        <div className="flex justify-end mt-4">
+                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end sticky bottom-0 z-10">
                             <button onClick={() => setInstallmentsOrder(null)}
-                                className="px-4 py-2 bg-gray-200 text-slate-900 rounded-lg font-medium hover:bg-gray-300">Fermer</button>
+                                className="px-6 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm shadow-sm">
+                                Fermer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation */}
+            {deleteConfirmId && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-8 text-center">
+                            <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <svg className="w-8 h-8 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-900 mb-2">Confirmer la suppression</h3>
+                            <p className="text-slate-500">Cette commande sera définitivement supprimée. Les crédits associés seront retirés du compte client.</p>
+                        </div>
+                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3">
+                            <button onClick={() => setDeleteConfirmId(null)}
+                                className="flex-1 px-4 py-3 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
+                                Annuler
+                            </button>
+                            <button onClick={() => handleDelete(deleteConfirmId)}
+                                className="flex-1 px-4 py-3 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm shadow-rose-200">
+                                Supprimer
+                            </button>
                         </div>
                     </div>
                 </div>
