@@ -186,6 +186,7 @@ async def create_order(
         price_cents=price,
         payment_status=payment_status,
         comment=data.comment,
+        user_note=data.user_note,
         status=order_service.normalize_status(initial_status),
         created_by_admin=True,
     )
@@ -373,6 +374,8 @@ async def resolve_installment(
     inst.is_paid = True # Regulated = manually paid
     inst.resolved_at = datetime.utcnow()
     
+    await db.flush()
+    
     # Check if any errors remain -> if not, revert order to echelonne
     error_result = await db.execute(
         select(func.count(Installment.id)).where(
@@ -422,6 +425,8 @@ async def pay_installment(
     inst.is_error = False
     inst.resolved_at = datetime.utcnow()
     
+    await db.flush()
+    
     # Vérifier s'il reste des erreurs sur cette commande
     error_result = await db.execute(
         select(func.count(Installment.id)).where(
@@ -442,6 +447,56 @@ async def pay_installment(
     
     await db.commit()
     return {"status": "ok", "message": "Échéance marquée comme payée"}
+
+
+@router.patch("/{order_id}/installments/{installment_id}/reset")
+async def reset_installment(
+    order_id: str,
+    installment_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_manager),
+):
+    """Remettre une échéance à l'état 'À venir' (non payée, pas d'erreur)"""
+    tenant_id = request.state.tenant_id
+    
+    result = await db.execute(
+        select(Installment).where(
+            Installment.id == installment_id,
+            Installment.order_id == order_id,
+            Installment.tenant_id == tenant_id
+        )
+    )
+    inst = result.scalar_one_or_none()
+    if not inst:
+        raise HTTPException(status_code=404, detail="Échéance non trouvée")
+    
+    inst.is_paid = False
+    inst.is_error = False
+    inst.resolved_at = None
+    inst.marked_error_at = None
+    
+    await db.flush()
+    
+    # Vérifier s'il reste des erreurs sur cette commande pour mettre à jour le statut global
+    error_result = await db.execute(
+        select(func.count(Installment.id)).where(
+            Installment.order_id == order_id,
+            Installment.tenant_id == tenant_id,
+            Installment.is_error == True
+        )
+    )
+    error_count = error_result.scalar()
+    
+    order_result = await db.execute(
+        select(Order).where(Order.id == order_id, Order.tenant_id == tenant_id)
+    )
+    order = order_result.scalar_one()
+    if error_count == 0 and order.payment_status == OrderPaymentStatus.ISSUE:
+        order.payment_status = OrderPaymentStatus.INSTALLMENT
+    
+    await db.commit()
+    return {"status": "ok", "message": "Échéance remise à l'état initial"}
 
 
 # ---- SUSPEND USER CREDITS ----

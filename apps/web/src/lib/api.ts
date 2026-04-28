@@ -41,8 +41,8 @@ apiClient.interceptors.request.use(
       // Si le slug n'est pas dans l'URL (ex: route racine ou réservée), on le récupère du localStorage
       const reservedPaths = ['login', 'register', 'sysadmin', 'dashboard', 'reset-password', 'forgot-password'];
       if (!slug || reservedPaths.includes(slug)) {
-          const storedSlug = localStorage.getItem('tenant_slug');
-          if (storedSlug) slug = storedSlug;
+        const storedSlug = localStorage.getItem('tenant_slug');
+        if (storedSlug) slug = storedSlug;
       }
 
       if (slug && !reservedPaths.includes(slug)) {
@@ -92,22 +92,22 @@ apiClient.interceptors.response.use(
 
         // Pour les pages normales, rediriger vers le portail du club si possible
         localStorage.removeItem('access_token');
-        
+
         const segments = window.location.pathname.split('/');
         const currentSlug = segments[1];
         const reservedPaths = ['login', 'register', 'sysadmin', 'dashboard', 'reset-password', 'forgot-password'];
-        
+
         if (currentSlug && !reservedPaths.includes(currentSlug)) {
-            window.location.href = `/${currentSlug}`;
+          window.location.href = `/${currentSlug}`;
         } else {
-            const storedSlug = localStorage.getItem('tenant_slug');
-            if (storedSlug) {
-                window.location.href = `/${storedSlug}`;
-            } else {
-                window.location.href = '/';
-            }
+          const storedSlug = localStorage.getItem('tenant_slug');
+          if (storedSlug) {
+            window.location.href = `/${storedSlug}`;
+          } else {
+            window.location.href = '/';
+          }
         }
-        
+
         localStorage.removeItem('tenant_slug');
       }
     }
@@ -280,6 +280,7 @@ export interface OrderItem {
   price_cents: number;
   payment_status: PaymentStatus;
   comment: string | null;
+  user_note: string | null;
   created_by_admin: boolean;
   created_at: string;
   updated_at: string | null;
@@ -829,7 +830,7 @@ export const api = {
     return response.data;
   },
 
-  createAdminOrder: async (data: { user_id: string; offer_id: string; start_date: string; comment?: string }) => {
+  createAdminOrder: async (data: { user_id: string; offer_id: string; start_date: string; comment?: string; user_note?: string }) => {
     const response = await apiClient.post('/api/admin/orders', data);
     return response.data;
   },
@@ -860,6 +861,10 @@ export const api = {
   },
   payInstallment: async (orderId: string, installmentId: string) => {
     const response = await apiClient.patch(`/api/admin/orders/${orderId}/installments/${installmentId}/pay`);
+    return response.data;
+  },
+  resetInstallment: async (orderId: string, installmentId: string) => {
+    const response = await apiClient.patch(`/api/admin/orders/${orderId}/installments/${installmentId}/reset`);
     return response.data;
   },
 

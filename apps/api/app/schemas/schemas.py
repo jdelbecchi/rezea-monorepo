@@ -491,6 +491,7 @@ class OrderCreate(BaseModel):
     offer_id: UUID
     start_date: date
     comment: Optional[str] = None
+    user_note: Optional[str] = None
 
 
 class OrderUpdate(BaseModel):
@@ -503,6 +504,7 @@ class OrderUpdate(BaseModel):
     status: Optional[str] = None
     payment_status: Optional[OrderPaymentStatus] = None
     comment: Optional[str] = None
+    user_note: Optional[str] = None
     invoice_number: Optional[str] = None
     invoice_url: Optional[str] = None
 
@@ -537,6 +539,7 @@ class OrderResponse(BaseModel):
     price_cents: int
     payment_status: OrderPaymentStatus
     comment: Optional[str] = None
+    user_note: Optional[str] = None
     created_by_admin: bool = False
     created_at: datetime
     updated_at: Optional[datetime] = None

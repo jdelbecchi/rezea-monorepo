@@ -27,6 +27,12 @@ const emptyForm = {
     offer_display_order: "1",
 };
 
+const formatPrice = (cents: number | null | undefined) => {
+    if (!cents) return "0";
+    const amount = cents / 100;
+    return (amount % 1 === 0 ? amount.toString() : amount.toFixed(2)).replace('.', ',');
+};
+
 function AdminOffersContent() {
     const router = useRouter();
     const params = useParams();
@@ -101,7 +107,7 @@ function AdminOffersContent() {
                 is_unlimited: formData.is_unlimited,
                 classes_included: formData.is_unlimited ? null : (parseInt(formData.classes_included) || null),
                 is_validity_unlimited: formData.is_validity_unlimited,
-                validity_days: (!formData.is_validity_unlimited && !formData.deadline_date) ? (parseInt(formData.validity_duration) * (formData.validity_unit === 'months' ? 30 : 1)) : null,
+                validity_days: (!formData.is_validity_unlimited && !formData.deadline_date) ? (parseInt(formData.validity_duration) * (formData.validity_unit === 'months' ? 30 : formData.validity_unit === 'weeks' ? 7 : 1)) : null,
                 validity_unit: formData.validity_unit,
                 deadline_date: (formData.is_validity_unlimited) ? null : (formData.deadline_date || null),
                 is_unique: formData.is_unique,
@@ -150,7 +156,7 @@ function AdminOffersContent() {
             period: o.period || "mois",
             classes_included: o.classes_included?.toString() || "1",
             is_unlimited: o.is_unlimited,
-            validity_duration: o.validity_days ? (o.validity_unit === 'months' ? Math.round(o.validity_days/30) : o.validity_days).toString() : "1",
+            validity_duration: o.validity_days ? (o.validity_unit === 'months' ? Math.round(o.validity_days/30) : o.validity_unit === 'weeks' ? Math.round(o.validity_days/7) : o.validity_days).toString() : "1",
             validity_unit: o.validity_unit || "months",
             deadline_date: o.deadline_date || "",
             is_validity_unlimited: o.is_validity_unlimited,
@@ -289,6 +295,13 @@ function AdminOffersContent() {
                                                 <td className="px-3 py-4 whitespace-nowrap">
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-sm font-medium text-slate-900">{o.name}</span>
+                                                        {o.description && (
+                                                            <div title={o.description} className="text-slate-400 hover:text-slate-600 transition-colors cursor-help">
+                                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                                                </svg>
+                                                            </div>
+                                                        )}
                                                         {o.is_unique && (
                                                             <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 rounded text-[10px] font-medium uppercase tracking-tight">Achat unique</span>
                                                         )}
@@ -299,19 +312,19 @@ function AdminOffersContent() {
                                                         {o.featured_pricing === 'recurring' ? (
                                                             <>
                                                                 <div className="flex items-baseline gap-1">
-                                                                    <span className="text-sm font-medium text-slate-900">{(o.price_recurring_cents ? o.price_recurring_cents/100 : 0).toFixed(2).replace('.', ',')}€</span>
+                                                                    <span className="text-sm font-medium text-slate-900">{formatPrice(o.price_recurring_cents)}€</span>
                                                                     <span className="text-[11px] text-slate-900 font-normal">/ {o.period} x{o.recurring_count}</span>
                                                                 </div>
                                                                 {o.price_lump_sum_cents && (
-                                                                    <span className="text-[11px] text-slate-400 font-normal">ou {(o.price_lump_sum_cents/100).toFixed(2).replace('.', ',')}€</span>
+                                                                    <span className="text-[11px] text-slate-400 font-normal">ou {formatPrice(o.price_lump_sum_cents)}€</span>
                                                                 )}
                                                             </>
                                                         ) : (
                                                             <>
-                                                                <span className="text-sm font-medium text-slate-900">{(o.price_lump_sum_cents ? o.price_lump_sum_cents/100 : 0).toFixed(2).replace('.', ',')}€</span>
+                                                                <span className="text-sm font-medium text-slate-900">{formatPrice(o.price_lump_sum_cents)}€</span>
                                                                 {o.price_recurring_cents && (
                                                                     <div className="flex items-baseline gap-1">
-                                                                        <span className="text-[11px] text-slate-400 font-normal">ou {(o.price_recurring_cents/100).toFixed(2).replace('.', ',')}€</span>
+                                                                        <span className="text-[11px] text-slate-400 font-normal">ou {formatPrice(o.price_recurring_cents)}€</span>
                                                                         <span className="text-[11px] text-slate-400 font-normal leading-none">/ {o.period} x{o.recurring_count}</span>
                                                                     </div>
                                                                 )}
@@ -335,8 +348,8 @@ function AdminOffersContent() {
                                                         <span className="text-xs font-medium">{new Date(o.deadline_date).toLocaleDateString("fr-FR")}</span>
                                                     ) : (
                                                         <span className="text-xs font-normal text-slate-600">
-                                                            {o.validity_unit === 'months' ? Math.round((o.validity_days || 0) / 30) : (o.validity_days || 0)} 
-                                                            {' '}{o.validity_unit === 'months' ? 'Mois' : 'Jours'}
+                                                            {o.validity_unit === 'months' ? Math.round((o.validity_days || 0) / 30) : o.validity_unit === 'weeks' ? Math.round((o.validity_days || 0) / 7) : (o.validity_days || 0)} 
+                                                            {' '}{o.validity_unit === 'months' ? 'mois' : o.validity_unit === 'weeks' ? 'semaines' : 'jours'}
                                                         </span>
                                                     )}
                                                 </td>
@@ -389,14 +402,14 @@ function AdminOffersContent() {
                             <form onSubmit={handleSubmit} className="space-y-6">
                                 {/* Identification */}
                                 <div className="space-y-4">
-                                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider border-b pb-1">Identification</h4>
+                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Identification</h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label className={`block text-sm font-medium mb-1 ${(showErrors && !formData.offer_code) ? 'text-red-500' : 'text-slate-700'}`}>Code Offre *</label>
                                             <input type="text" value={formData.offer_code} onChange={e => setFormData({...formData, offer_code: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm ${(showErrors && !formData.offer_code) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="ex: FORFAIT-10" />
                                         </div>
                                         <div>
-                                            <label className={`block text-sm font-medium mb-1 ${(showErrors && !formData.name) ? 'text-red-500' : 'text-slate-700'}`}>Nom Commercial *</label>
+                                            <label className={`block text-sm font-medium mb-1 ${(showErrors && !formData.name) ? 'text-red-500' : 'text-slate-700'}`}>Intitulé *</label>
                                             <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm ${(showErrors && !formData.name) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} />
                                         </div>
                                     </div>
@@ -426,30 +439,35 @@ function AdminOffersContent() {
                                             <input type="number" value={formData.offer_display_order} onChange={e => setFormData({...formData, offer_display_order: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" />
                                         </div>
                                     </div>
-                                    <div className="flex gap-6 mt-4">
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input type="checkbox" checked={formData.is_unique} onChange={e => setFormData({...formData, is_unique: e.target.checked})} className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
-                                            <span className="text-sm font-medium text-slate-700">Achat unique (1x par user)</span>
-                                        </label>
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input type="checkbox" checked={formData.is_active} onChange={e => setFormData({...formData, is_active: e.target.checked})} className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500" />
-                                            <span className="text-sm font-medium text-slate-700">Activer l'offre</span>
-                                        </label>
+                                    <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center gap-6 mt-4">
+                                        <div className="w-48">
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Statut de l'offre</label>
+                                            <select value={formData.is_active ? "true" : "false"} onChange={e => setFormData({...formData, is_active: e.target.value === "true"})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm bg-white">
+                                                <option value="true">Active</option>
+                                                <option value="false">Inactive</option>
+                                            </select>
+                                        </div>
+                                        <div className="pt-0 sm:pt-6">
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input type="checkbox" checked={formData.is_unique} onChange={e => setFormData({...formData, is_unique: e.target.checked})} className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
+                                                <span className="text-sm font-medium text-slate-700">Achat unique (1x par user)</span>
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
 
                                 {/* Contenu & Validité */}
                                 <div className="space-y-4">
-                                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider border-b pb-1">Contenu & Validité</h4>
+                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Contenu & Validité</h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-3">
                                             <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-1">Séances incluses</label>
-                                                <div className="flex gap-4 items-center">
-                                                    <input type="number" disabled={formData.is_unlimited} value={formData.classes_included} onChange={e => setFormData({...formData, classes_included: e.target.value})} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm disabled:bg-gray-100" />
+                                                <label className="block text-sm font-medium text-slate-700 mb-1">Nombre de crédits inclus</label>
+                                                <div className="flex flex-col gap-2">
+                                                    <input type="number" disabled={formData.is_unlimited} value={formData.classes_included} onChange={e => setFormData({...formData, classes_included: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm disabled:bg-gray-100" />
                                                     <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap">
                                                         <input type="checkbox" checked={formData.is_unlimited} onChange={e => setFormData({...formData, is_unlimited: e.target.checked})} className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500" />
-                                                        <span className="text-sm font-medium text-slate-700">Illimitées</span>
+                                                        <span className="text-sm font-medium text-slate-700">Illimité</span>
                                                     </label>
                                                 </div>
                                             </div>
@@ -467,9 +485,10 @@ function AdminOffersContent() {
                                                         onChange={e => setFormData({...formData, validity_duration: e.target.value})} 
                                                         className={`w-20 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm disabled:bg-gray-100 ${(showErrors && !formData.is_validity_unlimited && !formData.deadline_date && !formData.validity_duration) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} 
                                                     />
-                                                    <select disabled={formData.is_validity_unlimited} value={formData.validity_unit} onChange={e => setFormData({...formData, validity_unit: e.target.value as any})} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm disabled:bg-gray-100">
-                                                        <option value="months">Mois</option>
-                                                        <option value="days">Jours</option>
+                                                    <select disabled={formData.is_validity_unlimited} value={formData.validity_unit} onChange={e => setFormData({...formData, validity_unit: e.target.value as any})} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm disabled:bg-gray-100 bg-white">
+                                                        <option value="months">mois</option>
+                                                        <option value="weeks">semaine</option>
+                                                        <option value="days">jour</option>
                                                     </select>
                                                 </div>
                                             </div>
@@ -491,7 +510,10 @@ function AdminOffersContent() {
 
                                 {/* Tarification */}
                                 <div className="space-y-4">
-                                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider border-b pb-1">Tarification</h4>
+                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1 flex items-baseline gap-2">
+                                        Tarification
+                                        <span className="normal-case italic font-normal text-[10px] tracking-normal text-slate-400">(Choisissez le tarif que vous souhaitez mettre en avant)</span>
+                                    </h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {/* Paiement Unique */}
                                         <div 
@@ -515,7 +537,7 @@ function AdminOffersContent() {
                                         >
                                             <div className="flex items-center gap-2 mb-3">
                                                 <input type="radio" checked={formData.featured_pricing === 'recurring'} readOnly className="w-4 h-4 text-amber-500" />
-                                                <span className="font-semibold text-slate-900">Abonnement / Récurrence</span>
+                                                <span className="font-semibold text-slate-900">Paiement échelonné / Abonnement</span>
                                             </div>
                                             <div className="space-y-3">
                                                 <div className="flex gap-2">
@@ -523,9 +545,13 @@ function AdminOffersContent() {
                                                         <label className="block text-xs text-slate-500 mb-1">Échéance (€)</label>
                                                         <input type="number" step="0.01" value={formData.price_recurring} onChange={e => setFormData({...formData, price_recurring: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 disabled:bg-gray-100 bg-white text-sm" placeholder="0.00" disabled={formData.featured_pricing !== 'recurring'} />
                                                     </div>
-                                                    <div className="w-24">
+                                                    <div className="w-32">
                                                         <label className="block text-xs text-slate-500 mb-1">Période</label>
-                                                        <input type="text" value={formData.period} onChange={e => setFormData({...formData, period: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 disabled:bg-gray-100 bg-white text-sm" placeholder="ex: mois" disabled={formData.featured_pricing !== 'recurring'} />
+                                                        <select value={formData.period} onChange={e => setFormData({...formData, period: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 disabled:bg-gray-100 bg-white text-sm" disabled={formData.featured_pricing !== 'recurring'}>
+                                                            <option value="mois">mois</option>
+                                                            <option value="semaine">semaine</option>
+                                                            <option value="jour">jour</option>
+                                                        </select>
                                                     </div>
                                                 </div>
                                                 <div>
@@ -539,7 +565,7 @@ function AdminOffersContent() {
 
                                 {/* Description */}
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Description Commerciale</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
                                     <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" rows={3} placeholder="Détails de l'offre..." />
                                 </div>
                             </form>
@@ -563,10 +589,10 @@ function AdminOffersContent() {
                         <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">Confirmer la suppression</h3>
                         <p className="text-slate-500 mb-8 font-normal text-base leading-relaxed">Cette offre sera définitivement retirée de votre catalogue. Cette action est irréversible.</p>
                         <div className="flex gap-3 justify-end">
-                            <button onClick={() => setDeleteConfirmId(null)} className="flex-1 px-4 py-3 bg-gray-100 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all">
+                            <button onClick={() => setDeleteConfirmId(null)} className="px-6 py-2.5 bg-white border border-gray-200 text-slate-600 rounded-xl font-medium hover:bg-gray-50 transition-colors shadow-sm">
                                 Annuler
                             </button>
-                            <button onClick={() => handleDelete(deleteConfirmId)} className="flex-1 px-4 py-3 bg-rose-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-700 transition-all shadow-lg shadow-rose-900/20">
+                            <button onClick={() => handleDelete(deleteConfirmId)} className="px-8 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-colors shadow-sm">
                                 Supprimer
                             </button>
                         </div>

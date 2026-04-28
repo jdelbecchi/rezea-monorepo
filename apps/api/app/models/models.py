@@ -575,6 +575,7 @@ class Order(Base):
 
     # Commentaire
     comment = Column(Text)
+    user_note = Column(Text)
 
     # Statut manuel (Reporté, Pause, Expiré, Résilié, etc.)
     status = Column(String(50))

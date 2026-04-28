@@ -17,8 +17,6 @@ def compute_end_date(offer: Offer, start_date: date) -> Optional[date]:
     if offer.is_validity_unlimited:
         return None
     if offer.validity_days:
-        if offer.validity_unit == "months":
-            return start_date + relativedelta(months=offer.validity_days)
         return start_date + timedelta(days=offer.validity_days)
     if offer.deadline_date:
         return offer.deadline_date
@@ -78,15 +76,16 @@ def build_order_response(order: Order, credits_used: int) -> OrderResponse:
     has_credits = order.is_unlimited or (balance is not None and balance > 0)
     is_past = not order.is_validity_unlimited and order.end_date and order.end_date < today
 
-    if display_status in ["en_pause", "resiliee"]:
-        # Keep it as is
+    if display_status and display_status not in ["active"]:
+        # Tout statut autre que "active" est considéré comme un choix manuel 
+        # ou un état figé que l'on ne recalcule pas automatiquement.
         pass
     elif not has_credits:
         display_status = "termine"
     elif is_past:
         display_status = "expiree"
     else:
-        # Default fallback for "active", "en_cours" or missing values
+        # L'ordre reste "active" ou le devient s'il n'avait pas de statut
         display_status = "active"
 
     # Installments status logic
@@ -128,6 +127,7 @@ def build_order_response(order: Order, credits_used: int) -> OrderResponse:
         price_cents=order.price_cents,
         payment_status=order.payment_status,
         comment=order.comment,
+        user_note=order.user_note,
         created_by_admin=order.created_by_admin,
         created_at=order.created_at,
         updated_at=order.updated_at,

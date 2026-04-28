@@ -34,17 +34,24 @@ function daysUntil(dateStr: string | null): number | null {
     return Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function formatPrice(order: OrderItem): string {
+function formatPrice(order: OrderItem): React.ReactNode {
+    const formatCents = (cents: number) => (cents % 100 === 0) ? (cents / 100).toString() : (cents / 100).toFixed(2).replace('.', ',');
     // Display the featured price from the offer
     if (order.offer_featured_pricing === "recurring" && order.offer_price_recurring_cents) {
-        const amount = (order.offer_price_recurring_cents / 100).toFixed(2);
-        const period = order.offer_period || "";
-        return `${amount}€${period}`.trim();
+        const amount = formatCents(order.offer_price_recurring_cents);
+        const period = order.offer_period ? `/${order.offer_period}` : "";
+        const count = order.offer_recurring_count ? ` x${order.offer_recurring_count}` : "";
+        return (
+            <div className="flex items-baseline gap-1">
+                <span className="text-sm font-medium">{amount}€</span>
+                <span className="text-[11px] text-slate-500 font-normal">{period}{count}</span>
+            </div>
+        );
     }
     if (order.offer_featured_pricing === "lump_sum" && order.offer_price_lump_sum_cents) {
-        return `${(order.offer_price_lump_sum_cents / 100).toFixed(2)}€`;
+        return <span className="text-sm font-medium">{formatCents(order.offer_price_lump_sum_cents)}€</span>;
     }
-    return `${(order.price_cents / 100).toFixed(2)}€`;
+    return <span className="text-sm font-medium">{formatCents(order.price_cents)}€</span>;
 }
 
 export default function AdminShopOrdersPage() {
@@ -54,6 +61,9 @@ export default function AdminShopOrdersPage() {
     const [orders, setOrders] = useState<OrderItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+    // Bulk selection
+    const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
 
     // Filters
     const [searchTerm, setSearchTerm] = useState("");
@@ -69,7 +79,7 @@ export default function AdminShopOrdersPage() {
     const [showCreate, setShowCreate] = useState(false);
     const [users, setUsers] = useState<UserOption[]>([]);
     const [offers, setOffers] = useState<OfferOption[]>([]);
-    const [createForm, setCreateForm] = useState({ user_id: "", offer_id: "", start_date: "", comment: "" });
+    const [createForm, setCreateForm] = useState({ user_id: "", offer_id: "", start_date: "", comment: "", user_note: "" });
     const [saving, setSaving] = useState(false);
     const [showErrors, setShowErrors] = useState(false);
 
@@ -83,11 +93,15 @@ export default function AdminShopOrdersPage() {
         is_unlimited: false,
         status: "",
         payment_status: "",
-        comment: ""
+        comment: "",
+        user_note: ""
     });
 
     // Delete confirm
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+    // Suspend confirm
+    const [showSuspendConfirm, setShowSuspendConfirm] = useState(false);
 
     // Invoice modal
     const [invoiceOrder, setInvoiceOrder] = useState<OrderItem | null>(null);
@@ -110,6 +124,60 @@ export default function AdminShopOrdersPage() {
             return () => clearTimeout(timer);
         }
     }, [message]);
+
+    const toggleSelection = (orderId: string) => {
+        const newSelected = new Set(selectedOrderIds);
+        if (newSelected.has(orderId)) {
+            newSelected.delete(orderId);
+        } else {
+            newSelected.add(orderId);
+        }
+        setSelectedOrderIds(newSelected);
+    };
+
+    const toggleAll = (visibleOrders: OrderItem[]) => {
+        if (selectedOrderIds.size === visibleOrders.length && visibleOrders.length > 0) {
+            setSelectedOrderIds(new Set());
+        } else {
+            setSelectedOrderIds(new Set(visibleOrders.map(o => o.id)));
+        }
+    };
+
+    const handleBulkEmail = () => {
+        const emails = orders
+            .filter(o => selectedOrderIds.has(o.id))
+            .map(o => o.user_email)
+            .filter(Boolean);
+        if (emails.length > 0) {
+            window.open(`mailto:?bcc=${Array.from(new Set(emails)).join(",")}`, "_blank");
+            setSelectedOrderIds(new Set());
+        }
+    };
+
+    const handleBulkSuspend = async () => {
+        setShowSuspendConfirm(true);
+    };
+
+    const confirmBulkSuspend = async () => {
+        setShowSuspendConfirm(false);
+        setLoading(true);
+        try {
+            const selectedOrders = orders.filter(o => selectedOrderIds.has(o.id));
+            const uniqueUserIds = Array.from(new Set(selectedOrders.map(o => o.user_id)));
+            for (const userId of uniqueUserIds) {
+                await api.toggleSuspendUser(userId);
+            }
+            setMessage({ type: "success", text: `${uniqueUserIds.length} client(s) mis à jour avec succès` });
+            setSelectedOrderIds(new Set());
+            const updatedOrders = await api.getAdminOrders();
+            setOrders(updatedOrders);
+        } catch (error) {
+            setMessage({ type: "error", text: "Erreur lors de la mise à jour des crédits" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const fetchData = async () => {
         try {
             // 1. Get user and check permissions BEFORE other data
@@ -165,9 +233,10 @@ export default function AdminShopOrdersPage() {
                 offer_id: createForm.offer_id,
                 start_date: createForm.start_date,
                 comment: createForm.comment || undefined,
+                user_note: createForm.user_note || undefined,
             });
             setShowCreate(false);
-            setCreateForm({ user_id: "", offer_id: "", start_date: "", comment: "" });
+            setCreateForm({ user_id: "", offer_id: "", start_date: "", comment: "", user_note: "" });
             setShowErrors(false);
             setMessage({ type: "success", text: "Commande créée avec succès !" });
             fetchData();
@@ -189,6 +258,7 @@ export default function AdminShopOrdersPage() {
             status: order.status,
             payment_status: order.payment_status,
             comment: order.comment || "",
+            user_note: order.user_note || "",
         });
         const isStd = order.status === "active" || order.status === "termine" || order.status === "" || !order.status;
         setShowCustomStatus(!isStd);
@@ -207,6 +277,7 @@ export default function AdminShopOrdersPage() {
                 status: editForm.status || undefined,
                 payment_status: editForm.payment_status as any || undefined,
                 comment: editForm.comment,
+                user_note: editForm.user_note,
             });
             setEditOrder(null);
             setMessage({ type: "success", text: "Commande modifiée avec succès !" });
@@ -303,16 +374,16 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
         if (!installmentsOrder) return;
         try {
             await api.markInstallmentError(installmentsOrder.id, installmentId);
-            
+
             // Refresh data
             const [instData, ordersData] = await Promise.all([
                 api.getInstallments(installmentsOrder.id),
                 api.getAdminOrders()
             ]);
-            
+
             setInstallments(instData);
             setOrders(ordersData);
-            
+
             // Update the current modal order to refresh totals
             const updatedOrder = ordersData.find(o => o.id === installmentsOrder.id);
             if (updatedOrder) setInstallmentsOrder(updatedOrder);
@@ -327,16 +398,16 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
         if (!installmentsOrder) return;
         try {
             await api.resolveInstallment(installmentsOrder.id, installmentId);
-            
+
             // Refresh data
             const [instData, ordersData] = await Promise.all([
                 api.getInstallments(installmentsOrder.id),
                 api.getAdminOrders()
             ]);
-            
+
             setInstallments(instData);
             setOrders(ordersData);
-            
+
             // Update the current modal order to refresh totals
             const updatedOrder = ordersData.find(o => o.id === installmentsOrder.id);
             if (updatedOrder) setInstallmentsOrder(updatedOrder);
@@ -351,16 +422,16 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
         if (!installmentsOrder) return;
         try {
             await api.payInstallment(installmentsOrder.id, installmentId);
-            
+
             // Refresh data
             const [instData, ordersData] = await Promise.all([
                 api.getInstallments(installmentsOrder.id),
                 api.getAdminOrders()
             ]);
-            
+
             setInstallments(instData);
             setOrders(ordersData);
-            
+
             // Update the current modal order to refresh totals
             const updatedOrder = ordersData.find(o => o.id === installmentsOrder.id);
             if (updatedOrder) setInstallmentsOrder(updatedOrder);
@@ -368,6 +439,30 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
             setMessage({ type: "success", text: "Échéance marquée comme payée." });
         } catch (err: any) {
             setMessage({ type: "error", text: "Erreur lors du marquage comme payé." });
+        }
+    };
+
+    const handleResetInstallment = async (installmentId: string) => {
+        if (!installmentsOrder) return;
+        try {
+            await api.resetInstallment(installmentsOrder.id, installmentId);
+
+            // Refresh data
+            const [instData, ordersData] = await Promise.all([
+                api.getInstallments(installmentsOrder.id),
+                api.getAdminOrders()
+            ]);
+
+            setInstallments(instData);
+            setOrders(ordersData);
+
+            // Update the current modal order to refresh totals
+            const updatedOrder = ordersData.find(o => o.id === installmentsOrder.id);
+            if (updatedOrder) setInstallmentsOrder(updatedOrder);
+
+            setMessage({ type: "success", text: "Échéance remise à l'état initial." });
+        } catch (err: any) {
+            setMessage({ type: "error", text: "Erreur lors de la remise à zéro." });
         }
     };
 
@@ -528,12 +623,38 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                         )}
                     </div>
 
+                    {/* Bulk Actions Bar */}
+                    {selectedOrderIds.size > 0 && (
+                        <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
+                            <div className="flex items-center gap-3">
+                                <span className="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-md">{selectedOrderIds.size}</span>
+                                <span className="text-sm font-medium text-blue-900">commande(s) sélectionnée(s)</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button onClick={handleBulkEmail} className="px-3 py-1.5 bg-white text-blue-600 border border-blue-200 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors shadow-sm flex items-center gap-2">
+                                    📧 Envoyer un email
+                                </button>
+                                <button onClick={handleBulkSuspend} className="px-3 py-1.5 bg-white text-orange-600 border border-orange-200 rounded-lg text-sm font-medium hover:bg-orange-50 transition-colors shadow-sm flex items-center gap-2">
+                                    🚫 Suspendre/réactiver les crédits
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Orders Table */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full">
                                 <thead className="bg-gray-50">
                                     <tr>
+                                        <th className="px-3 py-3 text-left w-10">
+                                            <input
+                                                type="checkbox"
+                                                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                checked={filteredOrders.length > 0 && selectedOrderIds.size === filteredOrders.length}
+                                                onChange={() => toggleAll(filteredOrders)}
+                                            />
+                                        </th>
                                         <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest hidden md:table-cell">date</th>
                                         <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">nom</th>
                                         <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">offre</th>
@@ -569,17 +690,22 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                         const expiryCritical = !order.is_validity_unlimited && days !== null && days <= 7;
                                         return (
                                             <tr key={order.id} className="hover:bg-gray-50">
+                                                <td className="px-3 py-3 w-10">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                        checked={selectedOrderIds.has(order.id)}
+                                                        onChange={() => toggleSelection(order.id)}
+                                                    />
+                                                </td>
                                                 <td className="px-3 py-3 whitespace-nowrap text-sm text-slate-700 hidden md:table-cell">
                                                     {order.created_at ? new Date(order.created_at).toLocaleDateString("fr-FR") : "—"}
                                                 </td>
                                                 <td className="px-3 py-3 whitespace-nowrap text-sm">
                                                     <div className="flex items-center gap-1">
-                                                        <span className={`font-medium ${order.user_is_suspended ? "text-slate-400" : "text-slate-900"}`}>
+                                                        <span className="font-medium text-slate-900">
                                                             {order.user_name}
                                                         </span>
-                                                        {order.user_is_suspended && (
-                                                            <span title="Crédits suspendus" className="text-red-400">🚫</span>
-                                                        )}
                                                         {order.created_by_admin && (
                                                             <span title="Créé par le manager" className="text-amber-500">🛡️</span>
                                                         )}
@@ -589,7 +715,14 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                                     <div className="flex items-center gap-1">
                                                         <span className="text-sm font-medium text-slate-900">{order.offer_code}</span>
                                                         {order.comment && order.comment.trim().length > 0 && (
-                                                            <span title={order.comment} className="text-blue-400 cursor-help">📝</span>
+                                                            <span title={`Commentaire interne : ${order.comment}`} className="text-blue-400 cursor-help">📝</span>
+                                                        )}
+                                                        {order.user_note && order.user_note.trim().length > 0 && (
+                                                            <span title={`Note à l'utilisateur : ${order.user_note}`} className="text-slate-400 cursor-help">
+                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                                                </svg>
+                                                            </span>
                                                         )}
                                                     </div>
                                                 </td>
@@ -609,31 +742,38 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                                         <span className="text-slate-400">—</span>
                                                     )}
                                                 </td>
-                                                <td className="px-3 py-3 whitespace-nowrap text-sm text-slate-700 hidden sm:table-cell">
-                                                    <div>
-                                                        <span className="font-medium">{formatPrice(order)}</span>
-                                                    </div>
+                                                <td className="px-3 py-3 whitespace-nowrap text-slate-700 hidden sm:table-cell">
+                                                    {formatPrice(order)}
                                                 </td>
                                                 <td className="px-3 py-3 whitespace-nowrap text-sm text-slate-700 hidden xl:table-cell">
                                                     {order.is_unlimited ? "∞" : order.credits_total}
                                                 </td>
                                                 <td className="px-3 py-3 whitespace-nowrap hidden sm:table-cell">
                                                     {order.is_unlimited ? (
-                                                        <span className="px-2 py-1 text-xs font-bold rounded-full bg-purple-100 text-purple-800">∞</span>
+                                                        <div className={`flex items-center gap-1 text-sm ${order.user_is_suspended ? "text-red-600 font-semibold" : "text-slate-700 font-medium"}`}>
+                                                            <span>∞</span>
+                                                            {order.user_is_suspended && <span title="Crédits suspendus">🚫</span>}
+                                                        </div>
                                                     ) : (
-                                                        <span className={`px-2 py-1 text-xs font-normal rounded-full ${
-                                                            (order.balance ?? 0) <= 0 ? "bg-red-100 text-red-800" :
-                                                            (order.balance ?? 0) <= 2 ? "bg-orange-100 text-orange-800" :
-                                                            "bg-green-100 text-green-800"
-                                                        }`}>
-                                                            {formatCredits(order.balance)}
-                                                        </span>
+                                                        <div className={`flex items-center gap-1 text-sm ${order.user_is_suspended ? "text-red-600 font-semibold" :
+                                                                (order.balance ?? 0) <= 0 ? "text-red-600" :
+                                                                    (order.balance ?? 0) <= 2 ? "text-orange-600" :
+                                                                        "text-slate-700"
+                                                            }`}>
+                                                            <span>{formatCredits(order.balance)}</span>
+                                                            {order.user_is_suspended && <span title="Crédits suspendus">🚫</span>}
+                                                        </div>
                                                     )}
                                                 </td>
                                                 <td className="px-3 py-3 whitespace-nowrap">
-                                                    <span className={`px-2 py-1 text-xs font-normal rounded-full ${paymentColors[order.payment_status] || "bg-gray-100 text-gray-600"}`}>
-                                                        {PAYMENT_LABELS[order.payment_status] || order.payment_status}
-                                                    </span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`px-2 py-1 text-xs font-normal rounded-full ${paymentColors[order.payment_status] || "bg-gray-100 text-gray-600"}`}>
+                                                            {PAYMENT_LABELS[order.payment_status] || order.payment_status}
+                                                        </span>
+                                                        {(order.payment_status === "echelonne" || order.payment_status === "a_regulariser") && (
+                                                            <button onClick={() => openInstallments(order)} className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all hover:scale-105" title="Échéancier">📅</button>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className="px-3 py-3 whitespace-nowrap hidden md:table-cell">
                                                     <span className={`px-2 py-1 text-xs font-normal rounded-full ${statusColors[order.status] || "bg-indigo-50 text-indigo-600 border border-indigo-100"}`}>
@@ -641,29 +781,16 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                                     </span>
                                                 </td>
                                                 <td className="px-1 py-3 whitespace-nowrap flex items-center justify-center gap-0">
-                                                    <button onClick={() => window.open(`mailto:${order.user_email}`, "_blank")} className="p-0.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all hover:scale-105" title={`Email: ${order.user_email}`}>📧</button>
-                                                    {(order.payment_status === "echelonne" || order.payment_status === "a_regulariser") && (
-                                                        <button onClick={() => openInstallments(order)} className="p-0.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all hover:scale-105" title="Échéancier">📅</button>
-                                                    )}
-                                                    <button onClick={() => openEdit(order)} className="p-0.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-all hover:scale-105" title="Modifier">✏️</button>
-                                                    <button onClick={() => openInvoice(order)} className="p-0.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all hover:scale-105" title="Facture">🧾</button>
-                                                    {order.user_is_suspended ? (
-                                                        <button onClick={() => handleSuspend(order.user_id)} className="p-1 text-slate-300 hover:text-slate-500 hover:bg-slate-50 rounded-lg transition-all hover:scale-105" title="Réactiver les crédits">
-                                                            <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 inline-block"><path d="M8 5v14l11-7z" /></svg>
-                                                        </button>
-                                                    ) : (
-                                                        <button onClick={() => handleSuspend(order.user_id)} className="p-1 text-orange-500 hover:text-orange-700 hover:bg-orange-50 rounded-lg transition-all hover:scale-105" title="Suspendre les crédits">
-                                                            <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 inline-block"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
-                                                        </button>
-                                                    )}
-                                                    <button onClick={() => setDeleteConfirmId(order.id)} className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-all hover:scale-105" title="Supprimer">🗑️</button>
+                                                    <button onClick={() => openEdit(order)} className="p-1 text-blue-600 hover:bg-blue-50 rounded-lg transition-all hover:scale-105" title="Modifier">✏️</button>
+                                                    <button onClick={() => openInvoice(order)} className="p-1 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all hover:scale-105" title="Facture">🧾</button>
+                                                    <button onClick={() => setDeleteConfirmId(order.id)} className="p-1 text-rose-600 hover:bg-rose-50 rounded-lg transition-all hover:scale-105" title="Supprimer">🗑️</button>
                                                 </td>
                                             </tr>
                                         );
                                     })}
                                     {filteredOrders.length === 0 && (
                                         <tr>
-                                            <td colSpan={11} className="px-6 py-8 text-center text-slate-500">
+                                            <td colSpan={12} className="px-6 py-8 text-center text-slate-500">
                                                 {searchTerm || filterStatuses.length > 0 || filterPayments.length > 0 || filterExpiry ? "Aucune commande ne correspond aux filtres" : "Aucune commande pour le moment"}
                                             </td>
                                         </tr>
@@ -733,9 +860,25 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                         <label className="block text-sm font-medium text-slate-700 mb-1">Commentaire interne</label>
                                         <textarea value={createForm.comment}
                                             onChange={(e) => setCreateForm({ ...createForm, comment: e.target.value })}
-                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" 
-                                            rows={3} 
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                            rows={2}
                                             placeholder="Notes visibles uniquement par l'administration..." />
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-2">
+                                            <label className="block text-sm font-medium text-slate-700">Note à l'utilisateur</label>
+                                            <div className="flex items-center gap-1.5 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100">
+                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                </svg>
+                                                <span className="text-[10px] font-semibold uppercase tracking-wider">Commentaire visible dans les commandes de l'utilisateur</span>
+                                            </div>
+                                        </div>
+                                        <textarea value={createForm.user_note}
+                                            onChange={(e) => setCreateForm({ ...createForm, user_note: e.target.value })}
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                            rows={2}
+                                            placeholder="Informations utiles à l'utilisateur (remise, prolongation, etc.)..." />
                                     </div>
                                 </div>
                             </form>
@@ -809,11 +952,12 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                         <div>
                                             <label className="block text-sm font-medium text-slate-700 mb-1">Statut</label>
                                             <div className="space-y-2">
-                                                <select 
+                                                <select
                                                     value={showCustomStatus ? "_custom" : (editForm.status || "active")}
                                                     onChange={(e) => {
                                                         if (e.target.value === "_custom") {
                                                             setShowCustomStatus(true);
+                                                            setEditForm({ ...editForm, status: "" });
                                                         } else {
                                                             setShowCustomStatus(false);
                                                             setEditForm({ ...editForm, status: e.target.value });
@@ -826,19 +970,19 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                                     <option value="expiree">Expirée</option>
                                                     <option value="en_pause">En pause</option>
                                                     <option value="resiliee">Résiliée</option>
-                                                    {dynamicStatuses.filter(s => !["active", "termine", "expiree", "en_pause", "Terminé", "terminé"].includes(s)).map(s => (
+                                                    {dynamicStatuses.filter(s => !["active", "termine", "expiree", "en_pause", "resiliee", "Terminé", "terminé", "Résiliée", "Résilié"].includes(s)).map(s => (
                                                         <option key={s} value={s}>{s}</option>
                                                     ))}
                                                     <option value="_custom">+ Autre (saisie libre)...</option>
                                                 </select>
-                                                
+
                                                 {showCustomStatus && (
-                                                    <input 
+                                                    <input
                                                         type="text"
                                                         value={editForm.status}
                                                         onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
                                                         className="w-full px-4 py-2.5 border border-blue-100 bg-blue-50 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none animate-in slide-in-from-top-1 duration-200"
-                                                        placeholder="Saisissez le nouveau statut..."
+                                                        placeholder="Statut personnalisé..."
                                                         autoFocus
                                                     />
                                                 )}
@@ -883,8 +1027,25 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                         <label className="block text-sm font-medium text-slate-700 mb-1">Commentaire interne</label>
                                         <textarea value={editForm.comment}
                                             onChange={(e) => setEditForm({ ...editForm, comment: e.target.value })}
-                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" 
-                                            rows={3} />
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                            rows={2}
+                                            placeholder="Notes visibles uniquement par l'administration..." />
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-2">
+                                            <label className="block text-sm font-medium text-slate-700">Note à l'utilisateur</label>
+                                            <div className="flex items-center gap-1.5 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100">
+                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                </svg>
+                                                <span className="text-[10px] font-semibold uppercase tracking-wider">Commentaire visible dans les commandes de l'utilisateur</span>
+                                            </div>
+                                        </div>
+                                        <textarea value={editForm.user_note}
+                                            onChange={(e) => setEditForm({ ...editForm, user_note: e.target.value })}
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                            rows={2}
+                                            placeholder="Informations utiles à l'utilisateur (remise, prolongation, etc.)..." />
                                     </div>
                                 </div>
                             </form>
@@ -925,6 +1086,31 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                             <button onClick={() => handleDelete(deleteConfirmId)}
                                 className="flex-1 px-4 py-3 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm shadow-rose-200">
                                 Supprimer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Suspend Confirmation */}
+            {showSuspendConfirm && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-8 text-left">
+                            <h3 className="text-xl font-semibold text-slate-900 mb-4">Confirmer la suspension/réactivation des crédits</h3>
+                            <p className="text-slate-500">
+                                Vous allez suspendre ou réactiver les crédits de <strong>{selectedOrderIds.size}</strong> commande(s).
+                                Les utilisateurs concernés ne pourront plus utiliser leurs crédits tant qu'ils sont suspendus.
+                            </p>
+                        </div>
+                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3">
+                            <button onClick={() => setShowSuspendConfirm(false)}
+                                className="flex-1 px-4 py-3 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-base">
+                                Annuler
+                            </button>
+                            <button onClick={confirmBulkSuspend}
+                                className="flex-1 px-4 py-3 bg-orange-600 text-white rounded-xl font-medium hover:bg-orange-700 transition-all text-base shadow-sm shadow-orange-200">
+                                Confirmer
                             </button>
                         </div>
                     </div>
@@ -1003,7 +1189,7 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                         <label className="block text-sm font-medium text-slate-700 mb-1">Notes complémentaires</label>
                                         <textarea value={invoiceData.notes}
                                             onChange={(e) => setInvoiceData({ ...invoiceData, notes: e.target.value })}
-                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" 
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
                                             rows={2} />
                                     </div>
                                 </div>
@@ -1093,7 +1279,7 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                                 <th className="px-6 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Date prévue</th>
                                                 <th className="px-6 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Montant</th>
                                                 <th className="px-6 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Statut</th>
-                                                <th className="px-6 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Action</th>
+                                                <th className="px-6 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Signaler impayé</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100">
@@ -1102,13 +1288,13 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                                 const graceDate = new Date(dueDate);
                                                 graceDate.setDate(dueDate.getDate() + 7);
                                                 const isPastGrace = graceDate <= new Date();
-                                                
+
                                                 return (
                                                     <tr key={inst.id} className={`group transition-colors ${inst.is_error ? "bg-rose-50/30" : "hover:bg-gray-50"}`}>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-600">
                                                             {dueDate.toLocaleDateString("fr-FR")}
                                                         </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
                                                             {(inst.amount_cents / 100).toFixed(2)}€
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">
@@ -1119,14 +1305,25 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                                                 </span>
                                                             ) : (isPastGrace || inst.is_paid) ? (
                                                                 <div className="flex flex-col">
-                                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 uppercase tracking-tight w-fit">
+                                                                    <button
+                                                                        onClick={() => handleResetInstallment(inst.id)}
+                                                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 uppercase tracking-tight w-fit hover:bg-emerald-100 transition-colors"
+                                                                        title="Cliquer pour repasser en 'À venir'"
+                                                                    >
                                                                         <div className="w-1 h-1 rounded-full bg-emerald-500" />
                                                                         Payé
-                                                                    </span>
-                                                                    <span className="text-[9px] text-slate-400 mt-1 ml-1">{inst.is_paid ? "Saisie manuelle" : "Auto J+7"}</span>
+                                                                    </button>
+                                                                    {inst.is_paid && (
+                                                                        <span className="text-[9px] text-slate-400 mt-1 ml-1">
+                                                                            Saisie manuelle {inst.resolved_at && `le ${new Date(inst.resolved_at).toLocaleDateString("fr-FR")}`}
+                                                                        </span>
+                                                                    )}
+                                                                    {!inst.is_paid && isPastGrace && (
+                                                                        <span className="text-[9px] text-slate-400 mt-1 ml-1">Auto J+7</span>
+                                                                    )}
                                                                 </div>
                                                             ) : (
-                                                                <button 
+                                                                <button
                                                                     onClick={() => handlePayInstallment(inst.id)}
                                                                     className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-100 uppercase tracking-tight hover:bg-blue-100 transition-colors"
                                                                     title="Cliquer pour forcer le paiement manuel"
@@ -1135,18 +1332,21 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                                                     À venir
                                                                 </button>
                                                             )}
-                                                            {inst.resolved_at && (
-                                                                <div className="text-[9px] text-emerald-500 font-medium mt-1">
-                                                                    Régularisé le {new Date(inst.resolved_at).toLocaleDateString("fr-FR")}
-                                                                </div>
-                                                            )}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-right">
-                                                            {inst.is_error ? (
-                                                                <button onClick={() => handleResolve(inst.id)} className="text-emerald-600 hover:text-emerald-700 text-xs font-bold underline decoration-2 underline-offset-4">Régulariser</button>
-                                                            ) : !(isPastGrace || inst.is_paid) && (
-                                                                <button onClick={() => handleMarkError(inst.id)} className="text-rose-500 hover:text-rose-600 text-[10px] font-semibold italic">Signaler Impayé</button>
-                                                            )}
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={inst.is_error}
+                                                                onChange={(e) => {
+                                                                    if (e.target.checked) {
+                                                                        handleMarkError(inst.id);
+                                                                    } else {
+                                                                        handleResolve(inst.id);
+                                                                    }
+                                                                }}
+                                                                className="w-4 h-4 rounded border-gray-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
+                                                                title={inst.is_error ? "Décocher pour régulariser" : "Cocher pour signaler un impayé"}
+                                                            />
                                                         </td>
                                                     </tr>
                                                 );
@@ -1167,26 +1367,43 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                 </div>
             )}
 
+            {/* Suspend Confirmation */}
+            {showSuspendConfirm && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-8 text-left">
+                            <h3 className="text-xl font-semibold text-slate-900 mb-4">Confirmer la suspension ou la réactivation des crédits</h3>
+                            <p className="text-slate-500">Vous allez suspendre ou réactiver les crédits de {selectedOrderIds.size} commande(s). Les utilisateurs concernés par une suspension ne pourront plus utiliser leurs crédits pour s'inscrire.</p>
+                        </div>
+                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3">
+                            <button onClick={() => setShowSuspendConfirm(false)}
+                                className="flex-1 px-4 py-3 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-base">
+                                Annuler
+                            </button>
+                            <button onClick={confirmBulkSuspend}
+                                className="flex-1 px-4 py-3 bg-orange-600 text-white rounded-xl font-medium hover:bg-orange-700 transition-all text-base shadow-sm shadow-orange-200">
+                                Confirmer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Delete Confirmation */}
             {deleteConfirmId && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-8 text-center">
-                            <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <svg className="w-8 h-8 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                            </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-2">Confirmer la suppression</h3>
+                        <div className="p-8 text-left">
+                            <h3 className="text-xl font-semibold text-slate-900 mb-4">Confirmer la suppression</h3>
                             <p className="text-slate-500">Cette commande sera définitivement supprimée. Les crédits associés seront retirés du compte client.</p>
                         </div>
                         <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3">
                             <button onClick={() => setDeleteConfirmId(null)}
-                                className="flex-1 px-4 py-3 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
+                                className="flex-1 px-4 py-3 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-base">
                                 Annuler
                             </button>
                             <button onClick={() => handleDelete(deleteConfirmId)}
-                                className="flex-1 px-4 py-3 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm shadow-rose-200">
+                                className="flex-1 px-4 py-3 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-base shadow-sm shadow-rose-200">
                                 Supprimer
                             </button>
                         </div>
