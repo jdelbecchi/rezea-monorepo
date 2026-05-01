@@ -1115,84 +1115,70 @@ export default function GestionInscriptionsPage() {
             {viewingContact && (
                 <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="absolute inset-0" onClick={() => setViewingContact(null)}></div>
-                    <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl border border-slate-100 p-8 animate-in zoom-in-95 duration-200 relative">
-                        <header className="mb-8">
-                            <h2 className="text-xl font-medium text-slate-900 tracking-tight mb-1">Informations de contact</h2>
-                            <p className="text-slate-400 font-medium text-xs">Pour {viewingContact.user_name}</p>
-                        </header>
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-100 p-8 relative">
+                        <div className="mb-6">
+                            <h3 className="text-xl font-medium text-slate-900 tracking-tight">Informations de contact</h3>
+                            <p className="text-xs font-medium text-slate-400 mt-1">Pour {viewingContact.user_name}</p>
+                        </div>
 
-                        <div className="space-y-4">
-                            {/* Téléphone */}
-                            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between group">
-                                <div className="min-w-0">
-                                    <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-0.5">Téléphone</p>
-                                    <p className="text-slate-800 font-medium text-sm">{viewingContact.user_phone || "Non renseigné"}</p>
-                                </div>
-                                {viewingContact.user_phone && (
-                                    <button 
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(viewingContact.user_phone!);
-                                        }}
-                                        className="w-8 h-8 rounded-full bg-white border border-slate-100 text-slate-400 flex items-center justify-center hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all active:scale-90"
-                                        title="Copier le numéro"
-                                    >
-                                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                                        </svg>
-                                    </button>
+                        <div className="space-y-6">
+                            <div>
+                                <label className="text-[11px] font-medium text-slate-400 block mb-1.5 ml-1">Téléphone</label>
+                                {viewingContact.user_phone ? (
+                                    <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 flex items-center justify-between group transition-colors hover:bg-slate-50">
+                                        <span className="text-sm font-medium text-slate-700">{viewingContact.user_phone}</span>
+                                        <button 
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(viewingContact.user_phone!);
+                                            }}
+                                            className="h-8 w-8 bg-white shadow-sm border border-slate-100 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all active:scale-90"
+                                            title="Copier le numéro"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-4 bg-slate-50/30 rounded-xl border border-dashed border-slate-200 text-slate-300 font-medium italic text-xs">
+                                        Non renseigné
+                                    </div>
                                 )}
                             </div>
 
-                            {/* Réseaux Sociaux */}
-                            {(viewingContact.instagram_handle || viewingContact.facebook_handle) ? (
-                                <div className="grid grid-cols-1 gap-3">
-                                    {viewingContact.instagram_handle && (
-                                        <a 
-                                            href={`https://instagram.com/${viewingContact.instagram_handle.replace('@', '')}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="p-4 rounded-2xl bg-violet-50/50 border border-violet-100 flex items-center justify-between hover:bg-violet-50 transition-colors group"
-                                        >
-                                            <div className="flex items-center gap-3">
+                            <div>
+                                <label className="text-[11px] font-medium text-slate-400 block mb-1.5 ml-1">Réseaux sociaux</label>
+                                {viewingContact.instagram_handle || viewingContact.facebook_handle ? (
+                                    <div className="grid grid-cols-1 gap-3">
+                                        {viewingContact.instagram_handle && (
+                                            <div className="flex items-center gap-3 bg-slate-50/50 p-3.5 rounded-xl border border-slate-100 transition-colors hover:bg-slate-50">
                                                 <span className="text-lg">📸</span>
-                                                <div className="min-w-0">
-                                                    <p className="text-[10px] font-bold text-violet-300 uppercase tracking-widest mb-0.5">Instagram</p>
-                                                    <p className="text-violet-600 font-medium text-sm truncate">{viewingContact.instagram_handle}</p>
-                                                </div>
+                                                <span className="text-xs font-medium text-slate-600">@{viewingContact.instagram_handle}</span>
                                             </div>
-                                            <span className="text-violet-300 group-hover:translate-x-1 transition-transform">→</span>
-                                        </a>
-                                    )}
-                                    {viewingContact.facebook_handle && (
-                                        <a 
-                                            href={viewingContact.facebook_handle.startsWith('http') ? viewingContact.facebook_handle : `https://facebook.com/${viewingContact.facebook_handle}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="p-4 rounded-2xl bg-blue-50/50 border border-blue-100 flex items-center justify-between hover:bg-blue-50 transition-colors group"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-lg">👤</span>
-                                                <div className="min-w-0">
-                                                    <p className="text-[10px] font-bold text-blue-300 uppercase tracking-widest mb-0.5">Facebook</p>
-                                                    <p className="text-blue-600 font-medium text-sm truncate">{viewingContact.facebook_handle}</p>
-                                                </div>
+                                        )}
+                                        {viewingContact.facebook_handle && (
+                                            <div className="flex items-center gap-3 bg-slate-50/50 p-3.5 rounded-xl border border-slate-100 transition-colors hover:bg-slate-50">
+                                                <span className="text-base">👤</span>
+                                                <span className="text-xs font-medium text-slate-600">{viewingContact.facebook_handle}</span>
                                             </div>
-                                            <span className="text-blue-300 group-hover:translate-x-1 transition-transform">→</span>
-                                        </a>
-                                    )}
-                                </div>
-                            ) : (
-                                <p className="text-center py-4 text-slate-300 italic text-[11px]">Aucun réseau social renseigné</p>
-                            )}
-                        </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-4 bg-slate-50/30 rounded-xl border border-dashed border-slate-200 text-slate-300 font-medium italic text-xs">
+                                        Non renseigné
+                                    </div>
+                                )}
+                            </div>
 
-                        <button 
-                            onClick={() => setViewingContact(null)}
-                            className="px-12 py-3.5 mx-auto block mt-8 bg-slate-900 text-white rounded-2xl font-medium hover:bg-slate-800 transition-all active:scale-95 text-xs tracking-wide"
-                        >
-                            Fermer
-                        </button>
+                            <div className="pt-2 flex justify-center">
+                                <button 
+                                    onClick={() => setViewingContact(null)}
+                                    className="px-10 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all text-sm shadow-sm active:scale-95"
+                                >
+                                    Fermer
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

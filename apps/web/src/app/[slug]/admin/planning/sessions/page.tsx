@@ -16,9 +16,9 @@ const emptyForm = {
     instructor_name: "",
     date: "",
     time: "",
-    duration_minutes: 60,
-    max_participants: 12,
-    credits_required: 1,
+    duration_minutes: "" as any,
+    max_participants: "" as any,
+    credits_required: "" as any,
     location: "",
     allow_waitlist: true,
     recurrence: "none" as RecurrenceType,
@@ -44,6 +44,7 @@ function AdminSessionsContent() {
     const [duplicateData, setDuplicateData] = useState({ source_start: "", source_end: "", target_start: "" });
     const [filterFrom, setFilterFrom] = useState("");
     const [filterTo, setFilterTo] = useState("");
+    const [showErrors, setShowErrors] = useState(false);
 
     // Confirmation Modal
     const [confirmModal, setConfirmModal] = useState<{
@@ -105,9 +106,22 @@ function AdminSessionsContent() {
         };
         init();
     }, [router, searchParams, fetchSessions]);
+    
+    const resetForm = () => {
+        setFormData({ ...emptyForm });
+        setEditingSession(null);
+        setShowForm(false);
+        setShowErrors(false);
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        if (!formData.title || !formData.date || !formData.time) {
+            setShowErrors(true);
+            return;
+        }
+
         setSaving(true);
         try {
             const startDateTime = `${formData.date}T${formData.time}:00`;
@@ -127,12 +141,19 @@ function AdminSessionsContent() {
 
             for (const d of dates) {
                 const endD = new Date(d.getTime() + durationMs);
+                
+                // Format manually to preserve local time and avoid UTC offset
+                const formatISO = (date: Date) => {
+                    const pad = (n: number) => n.toString().padStart(2, '0');
+                    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
+                };
+
                 await api.createSession({
                     title: formData.title,
                     description: formData.description || undefined,
                     instructor_name: formData.instructor_name || undefined,
-                    start_time: d.toISOString(),
-                    end_time: endD.toISOString(),
+                    start_time: formatISO(d),
+                    end_time: formatISO(endD),
                     max_participants: formData.max_participants,
                     credits_required: formData.credits_required,
                     location: formData.location || undefined,
@@ -141,8 +162,7 @@ function AdminSessionsContent() {
             }
 
             await fetchSessions();
-            setShowForm(false);
-            setFormData({ ...emptyForm });
+            resetForm();
         } catch (err) {
             alert("Erreur lors de la création");
         } finally {
@@ -153,24 +173,34 @@ function AdminSessionsContent() {
     const handleEditSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!editingSession) return;
+
+        if (!formData.title || !formData.date || !formData.time) {
+            setShowErrors(true);
+            return;
+        }
+
         setSaving(true);
         try {
             const startDt = new Date(`${formData.date}T${formData.time}:00`);
             const endDt = new Date(startDt.getTime() + formData.duration_minutes * 60 * 1000);
+            
+            const formatISO = (date: Date) => {
+                const pad = (n: number) => n.toString().padStart(2, '0');
+                return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
+            };
+
             await api.updateSession(editingSession.id, {
                 title: formData.title,
                 description: formData.description || undefined,
                 instructor_name: formData.instructor_name || undefined,
-                start_time: startDt.toISOString(),
-                end_time: endDt.toISOString(),
+                start_time: formatISO(startDt),
+                end_time: formatISO(endDt),
                 max_participants: formData.max_participants,
                 credits_required: formData.credits_required,
                 location: formData.location || undefined,
                 allow_waitlist: formData.allow_waitlist,
             });
-            setEditingSession(null);
-            setShowForm(false);
-            setFormData({ ...emptyForm });
+            resetForm();
             await fetchSessions();
         } catch (err) {
             alert("Erreur lors de la modification");
@@ -204,8 +234,8 @@ function AdminSessionsContent() {
     const handleCancelSession = async (session: Session) => {
         setConfirmModal({
             show: true,
-            title: "Annuler la séance ?",
-            message: `Êtes-vous sûr de vouloir annuler "${session.title}" ? Les participants seront remboursés et recevront une notification.`,
+            title: "Confirmer l'annulation",
+            message: `Êtes-vous sûr de vouloir annuler "${session.title}" ? Les participants seront recrédités et recevront une notification.`,
             type: 'warning',
             onConfirm: async () => {
                 try {
@@ -236,7 +266,7 @@ function AdminSessionsContent() {
     const handleDeleteSession = async (session: Session) => {
         setConfirmModal({
             show: true,
-            title: "Supprimer définitivement ?",
+            title: "Confirmer la suppression",
             message: `Attention : cette action est irréversible. Les inscriptions liées à "${session.title}" seront supprimées.`,
             type: 'danger',
             onConfirm: async () => {
@@ -289,15 +319,21 @@ function AdminSessionsContent() {
                         <div className="flex items-center gap-3">
                             <button 
                                 onClick={() => setShowDuplicateModal(true)}
-                                className="flex items-center gap-2 px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors font-medium shadow-sm"
+                                className="flex items-center gap-2 px-4 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all font-medium shadow-sm text-sm"
                             >
-                                ↺ Dupliquer
+                                <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                Dupliquer
                             </button>
                             <button 
-                                onClick={() => { setEditingSession(null); setFormData({ ...emptyForm }); setShowForm(true); }}
-                                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors font-medium shadow-sm"
+                                onClick={() => { resetForm(); setShowForm(true); }}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-medium shadow-sm text-sm"
                             >
-                                ➕ Nouvelle séance
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                                Nouvelle séance
                             </button>
                         </div>
                     </div>
@@ -363,8 +399,8 @@ function AdminSessionsContent() {
                         </div>
                     </div>
 
-                    {/* Table Image 2 Style */}
-                    <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_10px_40px_rgba(0,0,0,0.02)] overflow-hidden">
+                    {/* Table Style Harmonized */}
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-gray-50 border-b border-slate-100">
@@ -391,7 +427,13 @@ function AdminSessionsContent() {
                                             <td className="px-3 py-4 whitespace-nowrap max-w-[200px] truncate">
                                                 <div className="flex items-center gap-2">
                                                     <span className={`text-sm font-medium text-slate-900 ${!s.is_active ? 'line-through text-slate-400' : ''}`}>{s.title}</span>
-                                                    <button onClick={() => openEdit(s)} className="text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity">✏️</button>
+                                                    {s.description && s.description.trim().length > 0 && (
+                                                        <span title={`Informations : ${s.description}`} className="text-blue-400 cursor-help">
+                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                                            </svg>
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="px-3 py-4 whitespace-nowrap text-sm font-normal text-slate-500 text-center">{formatDuration(Math.round((new Date(s.end_time).getTime() - date.getTime())/60000))}</td>
@@ -461,200 +503,312 @@ function AdminSessionsContent() {
                         </table>
                     </div>
 
-                    {/* Footer Hint */}
-                    <div className="pt-4 text-center">
-                        <p className="text-[10px] uppercase font-black tracking-widest text-slate-300">Gestion des séances de sport • Rezea Admin</p>
-                    </div>
+
                 </div>
             </main>
 
             {/* Modal Form Image 2 Style */}
             {showForm && (
-                <div className="fixed inset-0 bg-[#0f172a]/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-2xl p-10 max-w-2xl w-full shadow-2xl border border-slate-100 overflow-y-auto max-h-[90vh]">
-                        <h2 className="text-2xl font-semibold text-slate-900 mb-8 tracking-tight">
-                            {editingSession ? "✏️ Modifier la séance" : "➕ Créer une séance"}
-                        </h2>
-                        <form onSubmit={editingSession ? handleEditSubmit : handleSubmit} className="space-y-6">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className={`text-xs font-medium ml-1 ${!formData.title ? 'text-red-500' : 'text-slate-500'}`}>Intitulé *</label>
-                                    <input type="text" required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-slate-900 outline-none font-medium text-slate-700 ${!formData.title ? 'border-red-300 bg-red-50' : 'bg-white border-slate-200'}`} />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-medium text-slate-500 ml-1">Lieu / Salle</label>
-                                    <select 
-                                        value={formData.location} 
-                                        onChange={e => setFormData({...formData, location: e.target.value})} 
-                                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-900 outline-none font-medium text-slate-700"
-                                    >
-                                        <option value="">Aucun lieu spécifique</option>
-                                        {(tenant?.locations || []).map((loc: string) => (
-                                            <option key={loc} value={loc}>{loc}</option>
-                                        ))}
-                                    </select>
-                                </div>
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                        {/* Header */}
+                        <div className="p-10 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                            <div className="flex items-center gap-3">
+                                {editingSession ? (
+                                    <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                ) : (
+                                    <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                    </svg>
+                                )}
+                                <h3 className="text-lg font-semibold text-slate-900">
+                                    {editingSession ? "Modifier la séance" : "Nouvelle séance"}
+                                </h3>
                             </div>
-                            <div className="grid grid-cols-3 gap-4">
-                                <div className="space-y-2">
-                                    <label className={`text-xs font-medium ml-1 ${!formData.date ? 'text-red-500' : 'text-slate-500'}`}>Date *</label>
-                                    <input type="date" required value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-slate-900 outline-none font-medium text-slate-700 ${!formData.date ? 'border-red-300 bg-red-50' : 'bg-white border-slate-200'}`} />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className={`text-xs font-medium ml-1 ${!formData.time ? 'text-red-500' : 'text-slate-500'}`}>Heure *</label>
-                                    <input type="time" required value={formData.time} onChange={e => setFormData({...formData, time: e.target.value})} className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-slate-900 outline-none font-medium text-slate-700 ${!formData.time ? 'border-red-300 bg-red-50' : 'bg-white border-slate-200'}`} />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-medium text-slate-500 ml-1">Durée</label>
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex-1 relative">
-                                            <input 
-                                                type="number" 
-                                                min="0"
-                                                placeholder="HH"
-                                                value={Math.floor(formData.duration_minutes / 60) || ""} 
-                                                onChange={e => {
-                                                    const h = parseInt(e.target.value) || 0;
-                                                    const m = formData.duration_minutes % 60;
-                                                    setFormData({...formData, duration_minutes: h * 60 + m});
-                                                }} 
-                                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-900 outline-none font-medium text-slate-700 text-center" 
-                                            />
-                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-slate-300 pointer-events-none">H</span>
-                                        </div>
-                                        <div className="flex-1 relative">
-                                            <input 
-                                                type="number" 
-                                                min="0"
-                                                max="59"
-                                                placeholder="MM"
-                                                value={formData.duration_minutes % 60 || ""} 
-                                                onChange={e => {
-                                                    const m = Math.min(59, parseInt(e.target.value) || 0);
-                                                    const h = Math.floor(formData.duration_minutes / 60);
-                                                    setFormData({...formData, duration_minutes: h * 60 + m});
-                                                }} 
-                                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-900 outline-none font-medium text-slate-700 text-center" 
-                                            />
-                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-slate-300 pointer-events-none">MIN</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            <button onClick={resetForm} className="text-gray-400 hover:text-gray-600 transition-colors">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-medium text-slate-500 ml-1">Attribution (Intervenant)</label>
-                                    <input type="text" value={formData.instructor_name} onChange={e => setFormData({...formData, instructor_name: e.target.value})} placeholder="Ex: Jean Expert" className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-900 outline-none font-medium text-slate-700" />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className={`text-xs font-medium ml-1 ${!formData.max_participants && formData.max_participants !== 0 ? 'text-red-500' : 'text-slate-500'}`}>Capacité *</label>
-                                        <input type="number" min="1" required value={formData.max_participants} onChange={e => setFormData({...formData, max_participants: parseInt(e.target.value)})} className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-slate-900 outline-none font-medium text-slate-700 ${!formData.max_participants && formData.max_participants !== 0 ? 'border-red-300 bg-red-50' : 'bg-white border-slate-200'}`} />
+                        {/* Body */}
+                        <div className="flex-1 overflow-y-auto p-10">
+                            <form id="sessionForm" onSubmit={editingSession ? handleEditSubmit : handleSubmit} className="space-y-10">
+                                
+                                {/* Section: Détails */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-1.5">
+                                        <label className={`text-sm font-medium ${(showErrors && !formData.title) ? 'text-red-500' : 'text-slate-700'}`}>Intitulé *</label>
+                                        <input 
+                                            type="text" 
+                                            required 
+                                            value={formData.title} 
+                                            onChange={e => setFormData({...formData, title: e.target.value})} 
+                                            placeholder="Ex: Yoga Vinyasa, Cross-Training..."
+                                            className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all ${!formData.title && showErrors ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`} 
+                                        />
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className={`text-xs font-medium ml-1 ${!formData.credits_required && formData.credits_required !== 0 ? 'text-red-500' : 'text-slate-500'}`}>Crédits *</label>
-                                        <input type="number" min="0" step="0.5" required value={formData.credits_required} onChange={e => setFormData({...formData, credits_required: parseFloat(e.target.value)})} className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-slate-900 outline-none font-medium text-slate-700 ${!formData.credits_required && formData.credits_required !== 0 ? 'border-red-300 bg-red-50' : 'bg-white border-slate-200'}`} />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                <input 
-                                    type="checkbox" 
-                                    id="allow_waitlist" 
-                                    checked={formData.allow_waitlist} 
-                                    onChange={e => setFormData({...formData, allow_waitlist: e.target.checked})}
-                                    className="w-5 h-5 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
-                                />
-                                <label htmlFor="allow_waitlist" className="text-xs font-bold text-slate-700 cursor-pointer select-none">
-                                    Autoriser la liste d'attente (Illimitée)
-                                </label>
-                            </div>
-                            {!editingSession && (
-                                <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-4">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-2">Récurrence</label>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <select value={formData.recurrence} onChange={e => setFormData({...formData, recurrence: e.target.value as any})} className="px-5 py-3.5 bg-white border border-slate-100 rounded-2xl font-bold text-slate-700">
-                                            <option value="none">Une seule fois</option>
-                                            <option value="daily">Quotidien</option>
-                                            <option value="weekly">Hebdomadaire</option>
-                                            <option value="monthly">Mensuel</option>
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-medium text-slate-700">Lieu / Salle</label>
+                                        <select 
+                                            value={formData.location} 
+                                            onChange={e => setFormData({...formData, location: e.target.value})} 
+                                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 appearance-none cursor-pointer"
+                                        >
+                                            <option value="">Aucun lieu spécifique</option>
+                                            {(tenant?.locations || []).map((loc: string) => (
+                                                <option key={loc} value={loc}>{loc}</option>
+                                            ))}
                                         </select>
-                                        {formData.recurrence !== "none" && (
-                                            <input type="number" min="2" max="52" value={formData.recurrence_count} onChange={e => setFormData({...formData, recurrence_count: parseInt(e.target.value)})} className="px-5 py-3.5 bg-white border border-slate-100 rounded-2xl font-bold text-slate-700" placeholder="Nombre d'occurrences" />
-                                        )}
+                                    </div>
+                                    <div className="md:col-span-2 space-y-1.5">
+                                        <label className="text-sm font-medium text-slate-700">Informations</label>
+                                        <textarea 
+                                            value={formData.description} 
+                                            onChange={e => setFormData({...formData, description: e.target.value})} 
+                                            placeholder="Informations complémentaires visibles par les utilisateurs sur le planning..." 
+                                            className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 min-h-[80px] resize-none"
+                                            rows={2}
+                                        />
                                     </div>
                                 </div>
-                            )}
-                            <div className="flex gap-4 pt-4">
-                                <button type="button" onClick={() => setShowForm(false)} className="flex-1 px-6 py-3 bg-slate-100 text-slate-600 rounded-lg font-medium hover:bg-slate-200 transition-all">Annuler</button>
-                                <button type="submit" disabled={saving} className="flex-1 px-6 py-3 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-all shadow-sm disabled:opacity-50">
-                                    {saving ? "Chargement..." : editingSession ? "Enregistrer" : "Créer la séance"}
-                                </button>
-                            </div>
-                        </form>
+
+                                {/* Section: Planification */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="space-y-1.5">
+                                        <label className={`text-sm font-medium ${(showErrors && !formData.date) ? 'text-red-500' : 'text-slate-700'}`}>Date *</label>
+                                        <input 
+                                            type="date" 
+                                            required 
+                                            value={formData.date} 
+                                            onChange={e => setFormData({...formData, date: e.target.value})} 
+                                            className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all ${!formData.date && showErrors ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`} 
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className={`text-sm font-medium ${(showErrors && !formData.time) ? 'text-red-500' : 'text-slate-700'}`}>Heure *</label>
+                                        <input 
+                                            type="time" 
+                                            required 
+                                            value={formData.time} 
+                                            onChange={e => setFormData({...formData, time: e.target.value})} 
+                                            className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all ${!formData.time && showErrors ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`} 
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-medium text-slate-700">Durée *</label>
+                                        <input 
+                                            type="time" 
+                                            required 
+                                            value={formData.duration_minutes ? `${Math.floor(formData.duration_minutes / 60).toString().padStart(2, '0')}:${(formData.duration_minutes % 60).toString().padStart(2, '0')}` : ""}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                if (!val) {
+                                                    setFormData({...formData, duration_minutes: "" as any});
+                                                    return;
+                                                }
+                                                const [h, m] = val.split(':').map(Number);
+                                                setFormData({...formData, duration_minutes: (h || 0) * 60 + (m || 0)});
+                                            }}
+                                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 appearance-none cursor-pointer"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Section: Logistique */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-medium text-slate-700">Attribution (Intervenant)</label>
+                                        <input 
+                                            type="text" 
+                                            value={formData.instructor_name} 
+                                            onChange={e => setFormData({...formData, instructor_name: e.target.value})} 
+                                            placeholder="Ex: Jean Expert" 
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" 
+                                        />
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-1.5">
+                                                <label className="text-sm font-medium text-slate-700">Capacité *</label>
+                                                <input 
+                                                    type="number" 
+                                                    min="1" 
+                                                    required 
+                                                    value={formData.max_participants} 
+                                                    onChange={e => setFormData({...formData, max_participants: e.target.value === "" ? "" : parseInt(e.target.value)})} 
+                                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" 
+                                                    placeholder="12"
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <label className="text-sm font-medium text-slate-700">Crédits *</label>
+                                                <input 
+                                                    type="number" 
+                                                    min="0" 
+                                                    step="any" 
+                                                    required 
+                                                    value={formData.credits_required} 
+                                                    onChange={e => setFormData({...formData, credits_required: e.target.value === "" ? "" : parseFloat(e.target.value)})} 
+                                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" 
+                                                    placeholder="1"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 pl-1">
+                                            <input 
+                                                type="checkbox" 
+                                                id="allow_waitlist" 
+                                                checked={formData.allow_waitlist} 
+                                                onChange={e => setFormData({...formData, allow_waitlist: e.target.checked})}
+                                                className="w-4 h-4 rounded-md border-gray-300 text-slate-900 focus:ring-slate-500 cursor-pointer"
+                                            />
+                                            <label htmlFor="allow_waitlist" className="text-xs font-medium text-slate-500 cursor-pointer select-none">
+                                                Autoriser la liste d'attente
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Section: Récurrence (Création uniquement) */}
+                                {!editingSession && (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-1.5">
+                                                <label className="text-sm font-medium text-slate-700">Fréquence</label>
+                                                <select 
+                                                    value={formData.recurrence} 
+                                                    onChange={e => setFormData({...formData, recurrence: e.target.value as any})} 
+                                                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 appearance-none cursor-pointer"
+                                                >
+                                                    <option value="none">Une seule fois</option>
+                                                    <option value="daily">Quotidien</option>
+                                                    <option value="weekly">Hebdomadaire</option>
+                                                    <option value="monthly">Mensuel</option>
+                                                </select>
+                                            </div>
+                                            {formData.recurrence !== "none" && (
+                                                <div className="space-y-1.5 animate-in zoom-in-95 duration-200">
+                                                    <label className="text-sm font-medium text-slate-700">Nombre d'occurrences</label>
+                                                    <input 
+                                                        type="number" 
+                                                        min="2" 
+                                                        max="52" 
+                                                        value={formData.recurrence_count} 
+                                                        onChange={e => setFormData({...formData, recurrence_count: parseInt(e.target.value)})} 
+                                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" 
+                                                        placeholder="Nombre d'occurrences" 
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                )}
+                            </form>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
+                            <button 
+                                type="button" 
+                                onClick={resetForm} 
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm"
+                            >
+                                Annuler
+                            </button>
+                            <button 
+                                type="submit" 
+                                form="sessionForm"
+                                disabled={saving} 
+                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 disabled:opacity-50 transition-all text-sm shadow-sm flex items-center gap-2"
+                            >
+                                {saving && (
+                                    <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                )}
+                                {saving ? "Enregistrement..." : editingSession ? "Enregistrer les modifications" : "Créer la séance"}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
 
             {/* Duplicate Modal */}
             {showDuplicateModal && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-                    <div className="bg-white rounded-2xl p-10 max-w-lg w-full shadow-2xl">
-                        <h3 className="text-2xl font-semibold text-slate-900 mb-2 tracking-tight">Dupliquer des séances</h3>
-                        <p className="text-slate-500 text-sm mb-8 font-normal">Copiez un bloc de séances vers une autre période</p>
-                        <div className="space-y-6">
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
+                        <div className="p-10 border-b border-gray-100 flex items-center justify-between bg-white">
+                            <div className="flex items-center gap-3">
+                                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <h3 className="text-lg font-semibold text-slate-900">Dupliquer des séances</h3>
+                            </div>
+                            <button onClick={() => setShowDuplicateModal(false)} className="text-gray-400 hover:text-gray-600">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="p-10 space-y-8">
+                            <p className="text-slate-500 text-sm font-normal">Copiez un bloc de séances vers une autre période pour gagner du temps.</p>
+                            
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Source : Du</label>
-                                    <input type="date" value={duplicateData.source_start} onChange={e => setDuplicateData({...duplicateData, source_start: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-700" />
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium text-slate-700">Du</label>
+                                    <input type="date" value={duplicateData.source_start} onChange={e => setDuplicateData({...duplicateData, source_start: e.target.value})} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Au</label>
-                                    <input type="date" value={duplicateData.source_end} onChange={e => setDuplicateData({...duplicateData, source_end: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-700" />
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium text-slate-700">Au</label>
+                                    <input type="date" value={duplicateData.source_end} onChange={e => setDuplicateData({...duplicateData, source_end: e.target.value})} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Cible : Nouvelle date de début</label>
-                                <input type="date" value={duplicateData.target_start} onChange={e => setDuplicateData({...duplicateData, target_start: e.target.value})} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-700" />
+
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-medium text-slate-700">Nouvelle date de début</label>
+                                <input type="date" value={duplicateData.target_start} onChange={e => setDuplicateData({...duplicateData, target_start: e.target.value})} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
                             </div>
-                            <div className="flex gap-4 pt-4">
-                                <button type="button" onClick={() => setShowDuplicateModal(false)} className="flex-1 px-6 py-3 bg-slate-100 text-slate-600 rounded-lg font-medium">Annuler</button>
-                                <button onClick={handleDuplicate} className="flex-1 px-6 py-3 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 shadow-sm">Confirmer la duplication</button>
-                            </div>
+                        </div>
+
+                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end items-center">
+                            <button type="button" onClick={() => setShowDuplicateModal(false)} className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
+                                Annuler
+                            </button>
+                            <button onClick={handleDuplicate} className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-all text-sm shadow-sm">
+                                Confirmer la duplication
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
             {/* Confirmation Modal */}
             {confirmModal.show && (
-                <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-2xl p-10 max-w-md w-full shadow-2xl border border-slate-100">
-                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-6 ${
-                            confirmModal.type === 'danger' ? 'bg-rose-50 text-rose-500' : 
-                            confirmModal.type === 'warning' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'
-                        }`}>
-                            {confirmModal.type === 'danger' ? '⚠️' : confirmModal.type === 'warning' ? '🚫' : '🔄'}
-                        </div>
-                        <h3 className="text-2xl font-semibold text-slate-900 mb-2 tracking-tight">{confirmModal.title}</h3>
-                        <p className="text-slate-500 font-normal text-sm leading-relaxed mb-8">{confirmModal.message}</p>
-                        <div className="flex gap-3">
-                            <button 
-                                onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}
-                                className="flex-1 px-6 py-3 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200 transition-all"
-                            >
-                                Annuler
-                            </button>
-                            <button 
-                                onClick={confirmModal.onConfirm}
-                                className={`flex-1 px-6 py-3 text-white rounded-lg text-sm font-medium transition-all shadow-sm ${
-                                    confirmModal.type === 'danger' ? 'bg-rose-500 hover:bg-rose-600' : 
-                                    confirmModal.type === 'warning' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-blue-500 hover:bg-blue-600'
-                                }`}
-                            >
-                                Confirmer
-                            </button>
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-10">
+                            <h3 className="text-xl font-semibold text-slate-900 mb-2">{confirmModal.title}</h3>
+                            <p className="text-slate-500 text-base leading-relaxed">{confirmModal.message}</p>
+                            <div className="mt-8 flex gap-3 justify-end items-center">
+                                <button 
+                                    onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}
+                                    className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm"
+                                >
+                                    Annuler
+                                </button>
+                                <button 
+                                    onClick={confirmModal.onConfirm}
+                                    className={`px-6 py-2.5 text-white rounded-xl font-medium transition-all text-sm shadow-sm ${
+                                        confirmModal.type === 'danger' ? 'bg-rose-600 hover:bg-rose-700' : 
+                                        confirmModal.type === 'warning' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-slate-900 hover:bg-slate-800'
+                                    }`}
+                                >
+                                    Confirmer
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

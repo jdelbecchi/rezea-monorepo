@@ -540,7 +540,7 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                         </div>
                         <button
                             onClick={() => { setShowCreate(true); setShowErrors(false); loadFormOptions(); }}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors font-medium shadow-sm"
+                            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-medium shadow-sm text-sm"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -715,7 +715,11 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                                     <div className="flex items-center gap-1">
                                                         <span className="text-sm font-medium text-slate-900">{order.offer_code}</span>
                                                         {order.comment && order.comment.trim().length > 0 && (
-                                                            <span title={`Commentaire interne : ${order.comment}`} className="text-blue-400 cursor-help">📝</span>
+                                                            <span title={`Commentaire interne : ${order.comment}`} className="text-blue-400 cursor-help">
+                                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                                                </svg>
+                                                            </span>
                                                         )}
                                                         {order.user_note && order.user_note.trim().length > 0 && (
                                                             <span title={`Note à l'utilisateur : ${order.user_note}`} className="text-slate-400 cursor-help">
@@ -823,63 +827,57 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                         <div className="flex-1 overflow-y-auto p-8">
                             <form id="createOrderForm" onSubmit={handleCreate} className="space-y-8">
                                 {/* Informations client */}
-                                <div className="space-y-4">
-                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Client & Offre</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div>
-                                            <label className={`block text-sm font-medium mb-1 ${(showErrors && !createForm.user_id) ? 'text-red-500' : 'text-slate-700'}`}>Utilisateur *</label>
-                                            <select value={createForm.user_id} onChange={(e) => setCreateForm({ ...createForm, user_id: e.target.value })}
-                                                className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all ${(showErrors && !createForm.user_id) ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                                                <option value="">Sélectionner un client...</option>
-                                                {users.map((u) => <option key={u.id} value={u.id}>{u.first_name} {u.last_name}</option>)}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className={`block text-sm font-medium mb-1 ${(showErrors && !createForm.offer_id) ? 'text-red-500' : 'text-slate-700'}`}>Offre *</label>
-                                            <select value={createForm.offer_id} onChange={(e) => setCreateForm({ ...createForm, offer_id: e.target.value })}
-                                                className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all ${(showErrors && !createForm.offer_id) ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                                                <option value="">Sélectionner une offre...</option>
-                                                {offers.map((o) => <option key={o.id} value={o.id}>{o.offer_code} — {o.name}</option>)}
-                                            </select>
-                                        </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className={`block text-sm font-medium mb-1 ${(showErrors && !createForm.user_id) ? 'text-red-500' : 'text-slate-700'}`}>Utilisateur *</label>
+                                        <select value={createForm.user_id} onChange={(e) => setCreateForm({ ...createForm, user_id: e.target.value })}
+                                            className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all ${(showErrors && !createForm.user_id) ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                                            <option value="">Sélectionner un client...</option>
+                                            {users.map((u) => <option key={u.id} value={u.id}>{u.first_name} {u.last_name}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className={`block text-sm font-medium mb-1 ${(showErrors && !createForm.offer_id) ? 'text-red-500' : 'text-slate-700'}`}>Offre *</label>
+                                        <select value={createForm.offer_id} onChange={(e) => setCreateForm({ ...createForm, offer_id: e.target.value })}
+                                            className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all ${(showErrors && !createForm.offer_id) ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                                            <option value="">Sélectionner une offre...</option>
+                                            {offers.map((o) => <option key={o.id} value={o.id}>{o.offer_code} — {o.name}</option>)}
+                                        </select>
                                     </div>
                                 </div>
 
                                 {/* Paramètres */}
-                                <div className="space-y-4">
-                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Paramètres</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div>
-                                            <label className={`block text-sm font-medium mb-1 ${(showErrors && !createForm.start_date) ? 'text-red-500' : 'text-slate-700'}`}>Date de début *</label>
-                                            <input type="date" value={createForm.start_date}
-                                                onChange={(e) => setCreateForm({ ...createForm, start_date: e.target.value })}
-                                                className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all ${(showErrors && !createForm.start_date) ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`} />
-                                        </div>
-                                    </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Commentaire interne</label>
-                                        <textarea value={createForm.comment}
-                                            onChange={(e) => setCreateForm({ ...createForm, comment: e.target.value })}
-                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
-                                            rows={2}
-                                            placeholder="Notes visibles uniquement par l'administration..." />
+                                        <label className={`block text-sm font-medium mb-1 ${(showErrors && !createForm.start_date) ? 'text-red-500' : 'text-slate-700'}`}>Date de début *</label>
+                                        <input type="date" value={createForm.start_date}
+                                            onChange={(e) => setCreateForm({ ...createForm, start_date: e.target.value })}
+                                            className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all ${(showErrors && !createForm.start_date) ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`} />
                                     </div>
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-2">
-                                            <label className="block text-sm font-medium text-slate-700">Note à l'utilisateur</label>
-                                            <div className="flex items-center gap-1.5 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100">
-                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                                </svg>
-                                                <span className="text-[10px] font-semibold uppercase tracking-wider">Commentaire visible dans les commandes de l'utilisateur</span>
-                                            </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Commentaire interne</label>
+                                    <textarea value={createForm.comment}
+                                        onChange={(e) => setCreateForm({ ...createForm, comment: e.target.value })}
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                        rows={2}
+                                        placeholder="Notes visibles uniquement par l'administration..." />
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2">
+                                        <label className="block text-sm font-medium text-slate-700">Note à l'utilisateur</label>
+                                        <div className="flex items-center gap-1.5 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100">
+                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            </svg>
+                                            <span className="text-[10px] font-semibold uppercase tracking-wider">Commentaire visible dans les commandes de l'utilisateur</span>
                                         </div>
-                                        <textarea value={createForm.user_note}
-                                            onChange={(e) => setCreateForm({ ...createForm, user_note: e.target.value })}
-                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
-                                            rows={2}
-                                            placeholder="Informations utiles à l'utilisateur (remise, prolongation, etc.)..." />
                                     </div>
+                                    <textarea value={createForm.user_note}
+                                        onChange={(e) => setCreateForm({ ...createForm, user_note: e.target.value })}
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                        rows={2}
+                                        placeholder="Informations utiles à l'utilisateur (remise, prolongation, etc.)..." />
                                 </div>
                             </form>
                         </div>
@@ -920,133 +918,124 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                         <div className="flex-1 overflow-y-auto p-8">
                             <form id="editOrderForm" onSubmit={handleEditSubmit} className="space-y-8">
                                 {/* Période & Statuts */}
-                                <div className="space-y-4">
-                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Dates & Statut</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Date de début</label>
-                                            <input type="date" value={editForm.start_date}
-                                                onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
-                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Date de fin</label>
-                                            <input type="date" value={editForm.end_date}
-                                                onChange={(e) => setEditForm({ ...editForm, end_date: e.target.value })}
-                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all enabled:hover:border-gray-300 disabled:bg-gray-50 disabled:text-slate-400"
-                                                disabled={editOrder.is_validity_unlimited} />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Paiement</label>
-                                            <select value={editForm.payment_status}
-                                                onChange={(e) => setEditForm({ ...editForm, payment_status: e.target.value })}
-                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all hover:border-gray-300">
-                                                <option value="a_valider">À valider</option>
-                                                <option value="en_attente">En attente</option>
-                                                <option value="echelonne">Échelonné</option>
-                                                <option value="paye">Payé</option>
-                                                <option value="a_regulariser">À régulariser</option>
-                                                <option value="rembourse">Remboursé</option>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Date de début</label>
+                                        <input type="date" value={editForm.start_date}
+                                            onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Date de fin</label>
+                                        <input type="date" value={editForm.end_date}
+                                            onChange={(e) => setEditForm({ ...editForm, end_date: e.target.value })}
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all enabled:hover:border-gray-300 disabled:bg-gray-50 disabled:text-slate-400"
+                                            disabled={editOrder.is_validity_unlimited} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Paiement</label>
+                                        <select value={editForm.payment_status}
+                                            onChange={(e) => setEditForm({ ...editForm, payment_status: e.target.value })}
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all hover:border-gray-300">
+                                            <option value="a_valider">À valider</option>
+                                            <option value="en_attente">En attente</option>
+                                            <option value="echelonne">Échelonné</option>
+                                            <option value="paye">Payé</option>
+                                            <option value="a_regulariser">À régulariser</option>
+                                            <option value="rembourse">Remboursé</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Statut</label>
+                                        <div className="space-y-2">
+                                            <select
+                                                value={showCustomStatus ? "_custom" : (editForm.status || "active")}
+                                                onChange={(e) => {
+                                                    if (e.target.value === "_custom") {
+                                                        setShowCustomStatus(true);
+                                                        setEditForm({ ...editForm, status: "" });
+                                                    } else {
+                                                        setShowCustomStatus(false);
+                                                        setEditForm({ ...editForm, status: e.target.value });
+                                                    }
+                                                }}
+                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all hover:border-gray-300"
+                                            >
+                                                <option value="active">Active</option>
+                                                <option value="termine">Terminée</option>
+                                                <option value="expiree">Expirée</option>
+                                                <option value="en_pause">En pause</option>
+                                                <option value="resiliee">Résiliée</option>
+                                                {dynamicStatuses.filter(s => !["active", "termine", "expiree", "en_pause", "resiliee", "Terminé", "terminé", "Résiliée", "Résilié"].includes(s)).map(s => (
+                                                    <option key={s} value={s}>{s}</option>
+                                                ))}
+                                                <option value="_custom">+ Autre (saisie libre)...</option>
                                             </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Statut</label>
-                                            <div className="space-y-2">
-                                                <select
-                                                    value={showCustomStatus ? "_custom" : (editForm.status || "active")}
-                                                    onChange={(e) => {
-                                                        if (e.target.value === "_custom") {
-                                                            setShowCustomStatus(true);
-                                                            setEditForm({ ...editForm, status: "" });
-                                                        } else {
-                                                            setShowCustomStatus(false);
-                                                            setEditForm({ ...editForm, status: e.target.value });
-                                                        }
-                                                    }}
-                                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all hover:border-gray-300"
-                                                >
-                                                    <option value="active">Active</option>
-                                                    <option value="termine">Terminée</option>
-                                                    <option value="expiree">Expirée</option>
-                                                    <option value="en_pause">En pause</option>
-                                                    <option value="resiliee">Résiliée</option>
-                                                    {dynamicStatuses.filter(s => !["active", "termine", "expiree", "en_pause", "resiliee", "Terminé", "terminé", "Résiliée", "Résilié"].includes(s)).map(s => (
-                                                        <option key={s} value={s}>{s}</option>
-                                                    ))}
-                                                    <option value="_custom">+ Autre (saisie libre)...</option>
-                                                </select>
 
-                                                {showCustomStatus && (
-                                                    <input
-                                                        type="text"
-                                                        value={editForm.status}
-                                                        onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                                                        className="w-full px-4 py-2.5 border border-blue-100 bg-blue-50 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none animate-in slide-in-from-top-1 duration-200"
-                                                        placeholder="Statut personnalisé..."
-                                                        autoFocus
-                                                    />
-                                                )}
-                                            </div>
+                                            {showCustomStatus && (
+                                                <input
+                                                    type="text"
+                                                    value={editForm.status}
+                                                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                                                    className="w-full px-4 py-2.5 border border-blue-100 bg-blue-50 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none animate-in slide-in-from-top-1 duration-200"
+                                                    placeholder="Statut personnalisé..."
+                                                    autoFocus
+                                                />
+                                            )}
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Financier & Crédits */}
-                                <div className="space-y-4">
-                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Tarif & Crédits</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Tarif (€)</label>
-                                            <input type="number" step="0.01" value={editForm.price_cents}
-                                                onChange={(e) => setEditForm({ ...editForm, price_cents: e.target.value })}
-                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Tarif (€)</label>
+                                        <input type="number" step="0.01" value={editForm.price_cents}
+                                            onChange={(e) => setEditForm({ ...editForm, price_cents: e.target.value })}
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex-1">
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Nombre de crédits</label>
+                                            <input type="number" disabled={editForm.is_unlimited} value={editForm.credits_total}
+                                                onChange={(e) => setEditForm({ ...editForm, credits_total: e.target.value })}
+                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all enabled:hover:border-gray-300 disabled:bg-gray-50 disabled:text-slate-400" />
                                         </div>
-                                        <div className="flex items-center gap-4">
-                                            <div className="flex-1">
-                                                <label className="block text-sm font-medium text-slate-700 mb-1">Nombre de crédits</label>
-                                                <input type="number" disabled={editForm.is_unlimited} value={editForm.credits_total}
-                                                    onChange={(e) => setEditForm({ ...editForm, credits_total: e.target.value })}
-                                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all enabled:hover:border-gray-300 disabled:bg-gray-50 disabled:text-slate-400" />
-                                            </div>
-                                            <div className="pt-6">
-                                                <label className="flex items-center gap-2 cursor-pointer group">
-                                                    <input type="checkbox" checked={editForm.is_unlimited}
-                                                        onChange={(e) => setEditForm({ ...editForm, is_unlimited: e.target.checked, credits_total: e.target.checked ? "" : editForm.credits_total })}
-                                                        className="w-5 h-5 text-slate-900 border-gray-300 rounded-lg focus:ring-slate-500" />
-                                                    <span className="text-lg font-medium text-slate-700 group-hover:text-slate-900 transition-colors">∞</span>
-                                                </label>
-                                            </div>
+                                        <div className="pt-6">
+                                            <label className="flex items-center gap-2 cursor-pointer group">
+                                                <input type="checkbox" checked={editForm.is_unlimited}
+                                                    onChange={(e) => setEditForm({ ...editForm, is_unlimited: e.target.checked, credits_total: e.target.checked ? "" : editForm.credits_total })}
+                                                    className="w-5 h-5 text-slate-900 border-gray-300 rounded-lg focus:ring-slate-500" />
+                                                <span className="text-lg font-medium text-slate-700 group-hover:text-slate-900 transition-colors">∞</span>
+                                            </label>
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Notes */}
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Commentaire interne</label>
+                                    <textarea value={editForm.comment}
+                                        onChange={(e) => setEditForm({ ...editForm, comment: e.target.value })}
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                        rows={2}
+                                        placeholder="Notes visibles uniquement par l'administration..." />
+                                </div>
                                 <div className="space-y-4">
-                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Notes</h4>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Commentaire interne</label>
-                                        <textarea value={editForm.comment}
-                                            onChange={(e) => setEditForm({ ...editForm, comment: e.target.value })}
-                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
-                                            rows={2}
-                                            placeholder="Notes visibles uniquement par l'administration..." />
-                                    </div>
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-2">
-                                            <label className="block text-sm font-medium text-slate-700">Note à l'utilisateur</label>
-                                            <div className="flex items-center gap-1.5 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100">
-                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                                </svg>
-                                                <span className="text-[10px] font-semibold uppercase tracking-wider">Commentaire visible dans les commandes de l'utilisateur</span>
-                                            </div>
+                                    <div className="flex items-center gap-2">
+                                        <label className="block text-sm font-medium text-slate-700">Note à l'utilisateur</label>
+                                        <div className="flex items-center gap-1.5 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100">
+                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            </svg>
+                                            <span className="text-[10px] font-semibold uppercase tracking-wider">Commentaire visible dans les commandes de l'utilisateur</span>
                                         </div>
-                                        <textarea value={editForm.user_note}
-                                            onChange={(e) => setEditForm({ ...editForm, user_note: e.target.value })}
-                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
-                                            rows={2}
-                                            placeholder="Informations utiles à l'utilisateur (remise, prolongation, etc.)..." />
                                     </div>
+                                    <textarea value={editForm.user_note}
+                                        onChange={(e) => setEditForm({ ...editForm, user_note: e.target.value })}
+                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                        rows={2}
+                                        placeholder="Informations utiles à l'utilisateur (remise, prolongation, etc.)..." />
                                 </div>
                             </form>
                         </div>
@@ -1069,24 +1058,19 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
             {deleteConfirmId && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-8 text-center">
-                            <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <svg className="w-8 h-8 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
+                        <div className="p-10">
+                            <h3 className="text-xl font-semibold text-slate-900 mb-2">Confirmer la suppression</h3>
+                            <p className="text-slate-500 text-base leading-relaxed">Cette commande sera définitivement supprimée. Les crédits associés seront retirés du compte client.</p>
+                            <div className="flex gap-3 justify-end items-center mt-8">
+                                <button onClick={() => setDeleteConfirmId(null)}
+                                    className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
+                                    Annuler
+                                </button>
+                                <button onClick={() => handleDelete(deleteConfirmId)}
+                                    className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm">
+                                    Supprimer
+                                </button>
                             </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-2">Confirmer la suppression</h3>
-                            <p className="text-slate-500">Cette commande sera définitivement supprimée. Les crédits associés seront retirés du compte client.</p>
-                        </div>
-                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3">
-                            <button onClick={() => setDeleteConfirmId(null)}
-                                className="flex-1 px-4 py-3 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
-                                Annuler
-                            </button>
-                            <button onClick={() => handleDelete(deleteConfirmId)}
-                                className="flex-1 px-4 py-3 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm shadow-rose-200">
-                                Supprimer
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -1096,22 +1080,22 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
             {showSuspendConfirm && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-8 text-left">
-                            <h3 className="text-xl font-semibold text-slate-900 mb-4">Confirmer la suspension/réactivation des crédits</h3>
-                            <p className="text-slate-500">
+                        <div className="p-10">
+                            <h3 className="text-xl font-semibold text-slate-900 mb-2">Confirmer la suspension/réactivation</h3>
+                            <p className="text-slate-500 text-base leading-relaxed">
                                 Vous allez suspendre ou réactiver les crédits de <strong>{selectedOrderIds.size}</strong> commande(s).
                                 Les utilisateurs concernés ne pourront plus utiliser leurs crédits tant qu'ils sont suspendus.
                             </p>
-                        </div>
-                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3">
-                            <button onClick={() => setShowSuspendConfirm(false)}
-                                className="flex-1 px-4 py-3 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-base">
-                                Annuler
-                            </button>
-                            <button onClick={confirmBulkSuspend}
-                                className="flex-1 px-4 py-3 bg-orange-600 text-white rounded-xl font-medium hover:bg-orange-700 transition-all text-base shadow-sm shadow-orange-200">
-                                Confirmer
-                            </button>
+                            <div className="flex gap-3 justify-end items-center mt-8">
+                                <button onClick={() => setShowSuspendConfirm(false)}
+                                    className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
+                                    Annuler
+                                </button>
+                                <button onClick={confirmBulkSuspend}
+                                    className="px-6 py-2.5 bg-orange-600 text-white rounded-xl font-medium hover:bg-orange-700 transition-all text-sm shadow-sm">
+                                    Confirmer
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1367,49 +1351,7 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                 </div>
             )}
 
-            {/* Suspend Confirmation */}
-            {showSuspendConfirm && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-8 text-left">
-                            <h3 className="text-xl font-semibold text-slate-900 mb-4">Confirmer la suspension ou la réactivation des crédits</h3>
-                            <p className="text-slate-500">Vous allez suspendre ou réactiver les crédits de {selectedOrderIds.size} commande(s). Les utilisateurs concernés par une suspension ne pourront plus utiliser leurs crédits pour s'inscrire.</p>
-                        </div>
-                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3">
-                            <button onClick={() => setShowSuspendConfirm(false)}
-                                className="flex-1 px-4 py-3 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-base">
-                                Annuler
-                            </button>
-                            <button onClick={confirmBulkSuspend}
-                                className="flex-1 px-4 py-3 bg-orange-600 text-white rounded-xl font-medium hover:bg-orange-700 transition-all text-base shadow-sm shadow-orange-200">
-                                Confirmer
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
-            {/* Delete Confirmation */}
-            {deleteConfirmId && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-8 text-left">
-                            <h3 className="text-xl font-semibold text-slate-900 mb-4">Confirmer la suppression</h3>
-                            <p className="text-slate-500">Cette commande sera définitivement supprimée. Les crédits associés seront retirés du compte client.</p>
-                        </div>
-                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3">
-                            <button onClick={() => setDeleteConfirmId(null)}
-                                className="flex-1 px-4 py-3 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-base">
-                                Annuler
-                            </button>
-                            <button onClick={() => handleDelete(deleteConfirmId)}
-                                className="flex-1 px-4 py-3 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-base shadow-sm shadow-rose-200">
-                                Supprimer
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }
