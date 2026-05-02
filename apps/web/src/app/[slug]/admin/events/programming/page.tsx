@@ -38,6 +38,12 @@ const emptyForm = {
     allow_waitlist: true,
 };
 
+const formatPrice = (cents: number) => {
+    if (cents === 0) return "Offert";
+    const amount = cents / 100;
+    return (amount % 1 === 0 ? amount.toString() : amount.toFixed(2).replace(".", ",")) + "€";
+};
+
 export default function AdminEventsProgrammingPage() {
     const router = useRouter();
     const params = useParams();
@@ -102,8 +108,8 @@ export default function AdminEventsProgrammingPage() {
             const memberPriceStr = formData.price_member_cents || "";
             const externalPriceStr = formData.price_external_cents || "";
             
-            const memberVal = memberPriceStr || externalPriceStr || "0";
-            const externalVal = externalPriceStr || memberPriceStr || "0";
+            const memberVal = memberPriceStr.toString().replace(',', '.') || "0";
+            const externalVal = externalPriceStr.toString().replace(',', '.') || "0";
 
             const data = {
                 event_date: formData.event_date,
@@ -157,7 +163,7 @@ export default function AdminEventsProgrammingPage() {
         setConfirmModal({
             show: true,
             title: "Annuler l'évènement ?",
-            message: `Êtes-vous sûr de vouloir annuler "${event.title}" ? Les participants seront informés et remboursés le cas échéant.`,
+            message: `Êtes-vous sûr de vouloir annuler votre évènement "${event.title}" ? Les inscriptions seront également annulées et les participants seront informés.`,
             type: 'warning',
             onConfirm: async () => {
                 try {
@@ -267,7 +273,7 @@ export default function AdminEventsProgrammingPage() {
                         </div>
                         <button
                             onClick={() => { setShowForm(true); setEditingId(null); setFormData({ ...emptyForm }); }}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-medium shadow-sm text-sm active:scale-95"
+                            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-medium shadow-sm text-sm active:scale-95 tracking-tight"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -324,175 +330,7 @@ export default function AdminEventsProgrammingPage() {
                         </div>
                     </div>
 
-                    {showForm && (
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                            <h2 className="text-xl font-bold text-slate-900 mb-4">
-                                {editingId ? "Modifier l'événement" : "Créer un événement"}
-                            </h2>
-                            <form onSubmit={handleSubmit} className="space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                    <div>
-                                        <label className={`block text-sm font-medium mb-1 ${!formData.event_date ? 'text-red-500' : 'text-slate-700'}`}>Date *</label>
-                                        <input
-                                            type="date"
-                                            required
-                                            value={formData.event_date}
-                                            onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
-                                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${!formData.event_date ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className={`block text-sm font-medium mb-1 ${!formData.event_time ? 'text-red-500' : 'text-slate-700'}`}>Heure *</label>
-                                        <input
-                                            type="time"
-                                            required
-                                            value={formData.event_time}
-                                            onChange={(e) => setFormData({ ...formData, event_time: e.target.value })}
-                                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${!formData.event_time ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
-                                        />
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <label className={`block text-sm font-medium mb-1 ${!formData.title ? 'text-red-500' : 'text-slate-700'}`}>Intitulé *</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={formData.title}
-                                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${!formData.title ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
-                                            placeholder="Ex: Cours de Yoga"
-                                        />
-                                    </div>
-                                </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div>
-                                        <label className={`block text-sm font-medium mb-1 ${!formData.duration_minutes || formData.duration_minutes === "0" ? 'text-red-500' : 'text-slate-700'}`}>Durée *</label>
-                                        <div className="flex items-center gap-2">
-                                            <div className="flex-1 relative">
-                                                <input 
-                                                    type="number" 
-                                                    min="0"
-                                                    placeholder="HH"
-                                                    value={Math.floor(parseInt(formData.duration_minutes || "0") / 60) || ""} 
-                                                    onChange={e => {
-                                                        const h = parseInt(e.target.value) || 0;
-                                                        const m = parseInt(formData.duration_minutes || "0") % 60;
-                                                        setFormData({...formData, duration_minutes: (h * 60 + m).toString()});
-                                                    }} 
-                                                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center ${!formData.duration_minutes || formData.duration_minutes === "0" ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} 
-                                                />
-                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-300 pointer-events-none">H</span>
-                                            </div>
-                                            <div className="flex-1 relative">
-                                                <input 
-                                                    type="number" 
-                                                    min="0"
-                                                    max="59"
-                                                    placeholder="MM"
-                                                    value={parseInt(formData.duration_minutes || "0") % 60 || ""} 
-                                                    onChange={e => {
-                                                        const m = Math.min(59, parseInt(e.target.value) || 0);
-                                                        const h = Math.floor(parseInt(formData.duration_minutes || "0") / 60);
-                                                        setFormData({...formData, duration_minutes: (h * 60 + m).toString()});
-                                                    }} 
-                                                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center ${!formData.duration_minutes || formData.duration_minutes === "0" ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} 
-                                                />
-                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-300 pointer-events-none">MIN</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Tarif Membre (€)</label>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
-                                            value={formData.price_member_cents}
-                                            onChange={(e) => setFormData({ ...formData, price_member_cents: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            placeholder="0"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Tarif Extérieur (€)</label>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
-                                            value={formData.price_external_cents}
-                                            onChange={(e) => setFormData({ ...formData, price_external_cents: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            placeholder="15"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div>
-                                        <label className={`block text-sm font-medium mb-1 ${!formData.instructor_name ? 'text-red-500' : 'text-slate-700'}`}>Attribution (animateur) *</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={formData.instructor_name}
-                                            onChange={(e) => setFormData({ ...formData, instructor_name: e.target.value })}
-                                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${!formData.instructor_name ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
-                                            placeholder="Ex: Jean Dupont"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Lieu (Salle)</label>
-                                        <input
-                                            type="text"
-                                            value={formData.location}
-                                            onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            placeholder="Ex: Salle 1, Dojo..."
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className={`block text-sm font-medium mb-1 ${!formData.max_places ? 'text-red-500' : 'text-slate-700'}`}>places disponibles *</label>
-                                        <input
-                                            type="number"
-                                            required
-                                            min="1"
-                                            value={formData.max_places}
-                                            onChange={(e) => setFormData({ ...formData, max_places: e.target.value })}
-                                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${!formData.max_places ? 'border-red-300 bg-red-50' : 'border-gray-300'}`}
-                                            placeholder="20"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-                                    <textarea
-                                        rows={3}
-                                        value={formData.description}
-                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                                        placeholder="Détails de l'évènement (affichés sur le récapitulatif d'inscription)..."
-                                    />
-                                </div>
-
-                                <div>
-                                    <button
-                                        type="submit"
-                                        disabled={saving}
-                                        className="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors disabled:opacity-50"
-                                    >
-                                        {saving ? "Enregistrement..." : editingId ? "Mettre à jour" : "Créer l'événement"}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={resetForm}
-                                        className="ml-2 px-6 py-2 bg-gray-200 text-slate-900 rounded-lg font-bold hover:bg-gray-300 transition-colors"
-                                    >
-                                        Annuler
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    )}
 
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                         <div className="overflow-x-auto">
@@ -506,12 +344,14 @@ export default function AdminEventsProgrammingPage() {
                                         <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">lieu</th>
                                         <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">attribution</th>
                                         <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">tarifs</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">inscriptions</th>
+                                        <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">inscriptions</th>
                                         <th className="px-3 py-4 text-center text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {filteredEvents.map((event) => (
+                                    {filteredEvents.map((event) => {
+                                        const fillPercent = (event.registrations_count / event.max_places) * 100;
+                                        return (
                                         <tr key={event.id} className={`hover:bg-gray-50 transition-all group ${!event.is_active ? 'opacity-50' : ''}`}>
                                             <td className="px-3 py-4 whitespace-nowrap text-sm text-slate-700">
                                                 {new Date(event.event_date).toLocaleDateString("fr-FR")}
@@ -521,7 +361,6 @@ export default function AdminEventsProgrammingPage() {
                                                 <div className="flex items-center gap-2">
                                                     <span className={`text-sm font-medium text-slate-900 ${!event.is_active ? 'line-through text-slate-400' : ''}`}>{event.title}</span>
                                                     {event.description && event.description.length > 0 && <span title={event.description} className="text-slate-400 text-xs cursor-help">📝</span>}
-                                                    <button onClick={() => handleEdit(event)} className="text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity">✏️</button>
                                                 </div>
                                             </td>
                                             <td className="px-3 py-4 whitespace-nowrap text-sm text-slate-500 text-center">{formatDuration(event.duration_minutes)}</td>
@@ -536,12 +375,33 @@ export default function AdminEventsProgrammingPage() {
                                             </td>
                                             <td className="px-3 py-4 text-sm font-normal text-slate-500 whitespace-nowrap">{event.instructor_name || "—"}</td>
                                             <td className="px-3 py-4 whitespace-nowrap text-sm text-slate-700">
-                                                <span className="font-medium text-slate-900">{(event.price_member_cents / 100).toFixed(2)}€</span>
+                                                <span className="font-medium text-slate-900">{formatPrice(event.price_member_cents)}</span>
                                                 <span className="mx-1 text-slate-400">/</span>
-                                                <span className="text-slate-500">{(event.price_external_cents / 100).toFixed(2)}€</span>
+                                                <span className="text-slate-500">{formatPrice(event.price_external_cents)}</span>
                                             </td>
-                                            <td className="px-3 py-4 whitespace-nowrap">
-                                                <span className="text-sm font-medium text-slate-900">{event.registrations_count}/{event.max_places}</span>
+                                            <td className="px-3 py-4 text-center whitespace-nowrap">
+                                                <span className={`inline-flex items-center justify-center px-4 py-1 rounded-full text-xs font-normal border ${
+                                                    event.registrations_count === 0 
+                                                        ? "bg-slate-50 text-slate-400 border-slate-100" 
+                                                        : fillPercent >= 100
+                                                            ? "bg-emerald-100 text-emerald-900 border-emerald-200 font-bold"
+                                                            : fillPercent > 70 
+                                                                ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
+                                                                : fillPercent >= 40 
+                                                                    ? "bg-blue-50 text-blue-500 border-blue-100"
+                                                                    : "bg-amber-50 text-amber-600 border-amber-100"
+                                                }`}>
+                                                    {event.registrations_count}/{event.max_places}
+                                                    {event.allow_waitlist && (event.waitlist_count ?? 0) > 0 && (
+                                                        <span className="flex items-center gap-0.5 ml-1 text-orange-600" title="Liste d'attente">
+                                                            <span>⏳</span>
+                                                            <span className="text-xs">({event.waitlist_count})</span>
+                                                        </span>
+                                                    )}
+                                                    {event.allow_waitlist && (event.waitlist_count ?? 0) === 0 && (
+                                                        <span className="ml-1 opacity-50 text-xs" title="Liste d'attente autorisée">⏳</span>
+                                                    )}
+                                                </span>
                                             </td>
                                             <td className="px-3 py-4 whitespace-nowrap text-center flex items-center justify-center gap-0.5">
                                                 <button onClick={() => handleEdit(event)} className="p-1 hover:bg-blue-50 text-blue-500 rounded-lg transition-all hover:scale-105" title="Modifier">✏️</button>
@@ -553,7 +413,8 @@ export default function AdminEventsProgrammingPage() {
                                                 <button onClick={() => handleDeleteEvent(event)} className="p-0.5 hover:bg-rose-50 text-rose-500 rounded-lg transition-all hover:scale-105" title="Supprimer">🗑️</button>
                                             </td>
                                         </tr>
-                                    ))}
+                                    );
+                                })}
                                 </tbody>
                             </table>
                         </div>
@@ -561,23 +422,224 @@ export default function AdminEventsProgrammingPage() {
                 </div>
             </main>
 
-            {confirmModal.show && (
-                <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-xl flex items-center justify-center z-[200] p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-3xl p-10 max-w-md w-full shadow-2xl border border-slate-100">
-                        <div className={`w-16 h-16 rounded-3xl flex items-center justify-center text-3xl mb-6 ${
-                            confirmModal.type === 'danger' ? 'bg-rose-50 text-rose-500' : 
-                            confirmModal.type === 'warning' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'
-                        }`}>
-                            {confirmModal.type === 'danger' ? '⚠️' : confirmModal.type === 'warning' ? '🚫' : '🔄'}
+            {showForm && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                        {/* Header */}
+                        <div className="p-10 border-b border-gray-100 flex items-center justify-between bg-white">
+                            <div className="flex items-center gap-3">
+                                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                                <h3 className="text-[17px] font-semibold text-slate-900 tracking-tight">
+                                    {editingId ? "Modifier l'évènement" : "Nouvel évènement"}
+                                </h3>
+                            </div>
+                            <button onClick={resetForm} className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-slate-50 rounded-lg">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
-                        <h3 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">{confirmModal.title}</h3>
-                        <p className="text-slate-500 font-bold text-sm leading-relaxed mb-8">{confirmModal.message}</p>
-                        <div className="flex gap-3">
-                            <button onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))} className="flex-1 px-6 py-4 bg-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Annuler</button>
-                            <button onClick={confirmModal.onConfirm} className={`flex-1 px-6 py-4 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg ${
-                                confirmModal.type === 'danger' ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-200' : 
-                                confirmModal.type === 'warning' ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-200' : 'bg-blue-500 hover:bg-blue-600 shadow-blue-200'
-                            }`}>Confirmer</button>
+
+                        {/* Body */}
+                        <div className="flex-1 overflow-y-auto p-10">
+                            <form id="eventForm" onSubmit={handleSubmit} className="space-y-10">
+                                {/* Section: Informations générales */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-medium text-slate-700">Intitulé *</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            value={formData.title}
+                                            onChange={e => setFormData({ ...formData, title: e.target.value })}
+                                            placeholder="Ex: Soirée Portes Ouvertes..."
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all hover:border-gray-300"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-medium text-slate-700">Lieu / Salle</label>
+                                        <select
+                                            value={formData.location}
+                                            onChange={e => setFormData({ ...formData, location: e.target.value })}
+                                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 appearance-none cursor-pointer"
+                                        >
+                                            <option value="">Aucun lieu spécifique</option>
+                                            {(tenant?.locations || []).map((loc: string) => (
+                                                <option key={loc} value={loc}>{loc}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="md:col-span-2 space-y-1.5">
+                                        <label className="text-sm font-medium text-slate-700">Description</label>
+                                        <textarea
+                                            value={formData.description}
+                                            onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                            placeholder="Détails de l'évènement..."
+                                            className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 min-h-[80px] resize-none"
+                                            rows={2}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Section: Planification */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-medium text-slate-700">Date *</label>
+                                        <input
+                                            type="date"
+                                            required
+                                            value={formData.event_date}
+                                            onChange={e => setFormData({ ...formData, event_date: e.target.value })}
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-medium text-slate-700">Heure *</label>
+                                        <input
+                                            type="time"
+                                            required
+                                            value={formData.event_time}
+                                            onChange={e => setFormData({ ...formData, event_time: e.target.value })}
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-medium text-slate-700">Durée *</label>
+                                        <input
+                                            type="time"
+                                            required
+                                            value={formData.duration_minutes ? `${Math.floor(formData.duration_minutes / 60).toString().padStart(2, '0')}:${(formData.duration_minutes % 60).toString().padStart(2, '0')}` : ""}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                if (!val) return;
+                                                const [h, m] = val.split(':').map(Number);
+                                                setFormData({ ...formData, duration_minutes: (h || 0) * 60 + (m || 0) });
+                                            }}
+                                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 appearance-none cursor-pointer"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Section: Logistique */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-medium text-slate-700">Attribution (Intervenant)</label>
+                                        <input
+                                            type="text"
+                                            value={formData.instructor_name}
+                                            onChange={e => setFormData({ ...formData, instructor_name: e.target.value })}
+                                            placeholder="Ex: Jean Expert"
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                        />
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="space-y-1.5">
+                                            <label className="text-sm font-medium text-slate-700">Capacité *</label>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                required
+                                                value={formData.max_places}
+                                                onChange={e => setFormData({ ...formData, max_places: parseInt(e.target.value) || 0 })}
+                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                                placeholder="Capacité max"
+                                            />
+                                        </div>
+                                        <div className="flex items-center gap-2 pl-1">
+                                            <input
+                                                type="checkbox"
+                                                id="allow_waitlist"
+                                                checked={formData.allow_waitlist}
+                                                onChange={e => setFormData({ ...formData, allow_waitlist: e.target.checked })}
+                                                className="w-4 h-4 rounded-md border-gray-300 text-slate-900 focus:ring-slate-500 cursor-pointer"
+                                            />
+                                            <label htmlFor="allow_waitlist" className="text-xs font-medium text-slate-500 cursor-pointer select-none">
+                                                Autoriser la liste d'attente
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Tarification</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-1.5">
+                                            <label className="text-sm font-medium text-slate-700">Tarif membre (€) *</label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                required
+                                                value={formData.price_member_cents}
+                                                onChange={e => setFormData({ ...formData, price_member_cents: e.target.value })}
+                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                                placeholder="0.00"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-sm font-medium text-slate-700">Tarif extérieur (€) *</label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                required
+                                                value={formData.price_external_cents}
+                                                onChange={e => setFormData({ ...formData, price_external_cents: e.target.value })}
+                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                                placeholder="0.00"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
+                            <button
+                                type="button"
+                                onClick={resetForm}
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="submit"
+                                form="eventForm"
+                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all text-sm shadow-sm"
+                            >
+                                {editingId ? "Enregistrer les modifications" : "Créer l'évènement"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {confirmModal.show && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-10">
+                            <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">{confirmModal.title}</h3>
+                            <p className="text-slate-500 text-sm font-normal leading-relaxed">{confirmModal.message}</p>
+                            <div className="mt-8 flex gap-3 justify-end items-center">
+                                <button 
+                                    onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}
+                                    className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm"
+                                >
+                                    Annuler
+                                </button>
+                                <button 
+                                    onClick={confirmModal.onConfirm}
+                                    className={`px-6 py-2.5 text-white rounded-xl font-medium transition-all text-sm shadow-sm ${
+                                        confirmModal.type === 'danger' ? 'bg-rose-600 hover:bg-rose-700' : 
+                                        confirmModal.type === 'warning' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-slate-900 hover:bg-slate-800'
+                                    }`}
+                                >
+                                    Confirmer
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

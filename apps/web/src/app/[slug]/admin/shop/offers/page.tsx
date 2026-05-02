@@ -212,7 +212,7 @@ function AdminOffersContent() {
                         </div>
                         <button 
                             onClick={() => { resetForm(); setShowForm(true); }}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-medium shadow-sm text-sm"
+                            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-medium shadow-sm text-sm tracking-tight active:scale-95"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -376,7 +376,7 @@ function AdminOffersContent() {
             </main>
 
             {showForm && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-10 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
                             <div className="flex items-center gap-3">
@@ -389,7 +389,7 @@ function AdminOffersContent() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                     </svg>
                                 )}
-                                <h3 className="text-lg font-semibold text-slate-900">
+                                <h3 className="text-[17px] font-semibold text-slate-900 tracking-tight">
                                     {editingId ? "Modifier l'offre" : "Nouvelle offre"}
                                 </h3>
                             </div>

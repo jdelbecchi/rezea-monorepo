@@ -58,7 +58,7 @@ export default function AdminAgendaPage() {
         message: string;
         onConfirm: () => void;
         type: 'danger' | 'warning' | 'info';
-    }>({ show: false, title: "", message: "", onConfirm: () => {}, type: 'info' });
+    }>({ show: false, title: "", message: "", onConfirm: () => { }, type: 'info' });
 
     const weekDays = useMemo(() => {
         const days = [];
@@ -78,7 +78,7 @@ export default function AdminAgendaPage() {
         const days = [];
         const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
         const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-        
+
         // Find the Monday of the week containing the 1st of the month
         const firstDay = startOfMonth.getDay();
         const diff = startOfMonth.getDate() - firstDay + (firstDay === 0 ? -6 : 1);
@@ -132,17 +132,17 @@ export default function AdminAgendaPage() {
                     const dt = new Date();
                     dt.setHours(h, m, 0, 0);
                     const dtEnd = new Date(dt.getTime() + (e.duration_minutes || 60) * 60000);
-                    return { 
-                        ...e, 
-                        type: "event" as const, 
-                        date: (e?.date || e?.event_date || "").split('T')[0], 
+                    return {
+                        ...e,
+                        type: "event" as const,
+                        date: (e?.date || e?.event_date || "").split('T')[0],
                         time: timeStr,
                         endTime: dtEnd.getHours().toString().padStart(2, '0') + ":" + dtEnd.getMinutes().toString().padStart(2, '0')
                     };
                 })
             ];
             setItems(flattenedItems);
-            
+
             // Refresh the current item in the details modal if it's open
             if (showDetails && selectedItem) {
                 const refreshedData = await api.getAdminAgenda(start, end);
@@ -166,10 +166,10 @@ export default function AdminAgendaPage() {
                         const dt = new Date();
                         dt.setHours(h, m, 0, 0);
                         const dtEnd = new Date(dt.getTime() + (e.duration_minutes || 60) * 60000);
-                        return { 
-                            ...e, 
-                            type: "event" as const, 
-                            date: (e?.date || e?.event_date || "").split('T')[0], 
+                        return {
+                            ...e,
+                            type: "event" as const,
+                            date: (e?.date || e?.event_date || "").split('T')[0],
                             time: timeStr,
                             endTime: dtEnd.getHours().toString().padStart(2, '0') + ":" + dtEnd.getMinutes().toString().padStart(2, '0')
                         };
@@ -224,7 +224,7 @@ export default function AdminAgendaPage() {
 
             for (const d of dates) {
                 const endD = new Date(d.getTime() + durationMs);
-                
+
                 // Format manually to preserve local time and avoid UTC offset
                 const formatISO = (date: Date) => {
                     const pad = (n: number) => n.toString().padStart(2, '0');
@@ -247,14 +247,14 @@ export default function AdminAgendaPage() {
             await fetchData();
             setShowForm(false);
             setEditingSession(null);
-            
+
             // If we were editing in the detail modal, refresh is handled by fetchData background refresh in fetchData loop
             // but we might want to switch back to registered tab
             if (showDetails) {
                 setAttendanceTab('registered');
             }
             setFormData({ ...emptyForm });
-        } catch (err) { alert("Erreur lors de la création"); } 
+        } catch (err) { alert("Erreur lors de la création"); }
         finally { setSaving(false); }
     };
 
@@ -278,7 +278,7 @@ export default function AdminAgendaPage() {
             } else {
                 const startDt = new Date(`${formData.date}T${formData.time}:00`);
                 const endDt = new Date(startDt.getTime() + formData.duration_minutes * 60 * 1000);
-                
+
                 const formatISO = (date: Date) => {
                     const pad = (n: number) => n.toString().padStart(2, '0');
                     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
@@ -303,7 +303,7 @@ export default function AdminAgendaPage() {
             }
             setFormData({ ...emptyForm });
             await fetchData();
-        } catch (err) { alert("Erreur lors de la modification"); } 
+        } catch (err) { alert("Erreur lors de la modification"); }
         finally { setSaving(false); }
     };
 
@@ -413,7 +413,7 @@ export default function AdminAgendaPage() {
 
             <main className="flex-1 p-4 md:p-6 overflow-auto bg-[#fafafa]">
                 <div className="max-w-full mx-auto space-y-6 animate-in fade-in duration-500 px-2">
-                    
+
                     {/* Header Modernized */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div className="space-y-1">
@@ -434,7 +434,7 @@ export default function AdminAgendaPage() {
                             </button>
                             <button
                                 onClick={() => { setShowForm(true); setEditingSession(null); setFormData({ ...emptyForm }); }}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-medium shadow-sm text-sm"
+                                className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-medium shadow-sm text-sm tracking-tight active:scale-95"
                             >
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -458,28 +458,28 @@ export default function AdminAgendaPage() {
                                     </>
                                 )}
                             </div>
-                            
+
                             <div className="flex items-center gap-1.5">
                                 <div className="flex items-center bg-slate-50 h-9 rounded-lg border border-slate-200">
-                                    <button 
+                                    <button
                                         onClick={() => {
                                             const newDate = new Date(currentDate);
                                             if (view === 'week') newDate.setDate(newDate.getDate() - 7);
                                             else newDate.setMonth(newDate.getMonth() - 1);
                                             setCurrentDate(newDate);
-                                        }} 
+                                        }}
                                         className="px-2.5 h-full hover:bg-white hover:shadow-sm transition-all text-slate-400 hover:text-slate-900"
                                     >
                                         ←
                                     </button>
                                     <button onClick={() => setCurrentDate(new Date())} className="px-3 h-full text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:bg-white hover:shadow-sm transition-all">Aujourd'hui</button>
-                                    <button 
+                                    <button
                                         onClick={() => {
                                             const newDate = new Date(currentDate);
                                             if (view === 'week') newDate.setDate(newDate.getDate() + 7);
                                             else newDate.setMonth(newDate.getMonth() + 1);
                                             setCurrentDate(newDate);
-                                        }} 
+                                        }}
                                         className="px-2.5 h-full hover:bg-white hover:shadow-sm transition-all text-slate-400 hover:text-slate-900"
                                     >
                                         →
@@ -487,13 +487,13 @@ export default function AdminAgendaPage() {
                                 </div>
 
                                 <div className="flex items-center bg-slate-100/50 p-1 h-9 rounded-lg border border-slate-200">
-                                    <button 
+                                    <button
                                         onClick={() => setView('week')}
                                         className={`px-3 h-full text-[10px] font-bold uppercase tracking-wider transition-all rounded-md flex items-center ${view === 'week' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
                                     >
                                         Semaine
                                     </button>
-                                    <button 
+                                    <button
                                         onClick={() => setView('month')}
                                         className={`px-3 h-full text-[10px] font-bold uppercase tracking-wider transition-all rounded-md flex items-center ${view === 'month' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
                                     >
@@ -504,7 +504,7 @@ export default function AdminAgendaPage() {
                         </div>
 
                         <div className="flex flex-1 items-center gap-3 md:justify-end">
-                            <select 
+                            <select
                                 value={locationFilter}
                                 onChange={(e) => setLocationFilter(e.target.value)}
                                 className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 outline-none focus:ring-1 focus:ring-slate-900 transition-all min-w-[140px]"
@@ -517,9 +517,9 @@ export default function AdminAgendaPage() {
 
                             <div className="relative group flex-1 max-w-[240px]">
                                 <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</div>
-                                <input 
-                                    type="text" 
-                                    placeholder="Recherche" 
+                                <input
+                                    type="text"
+                                    placeholder="Recherche"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="w-full pl-8 pr-4 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-slate-900 outline-none transition-all"
@@ -549,23 +549,21 @@ export default function AdminAgendaPage() {
                                     .filter(i => {
                                         if (!searchTerm) return true;
                                         const q = searchTerm.toLowerCase();
-                                        return (i.title || "").toLowerCase().includes(q) || 
-                                               (i.instructor_name || "").toLowerCase().includes(q) || 
-                                               (i.location || "").toLowerCase().includes(q);
+                                        return (i.title || "").toLowerCase().includes(q) ||
+                                            (i.instructor_name || "").toLowerCase().includes(q) ||
+                                            (i.location || "").toLowerCase().includes(q);
                                     })
                                     .sort((a, b) => a.time.localeCompare(b.time));
 
                                 return (
-                                    <div 
-                                        key={idx} 
-                                        className={`px-1 pt-1.5 pb-6 md:px-1.5 md:pt-1.5 md:pb-10 bg-white/50 min-h-[160px] border-r border-slate-100/50 space-y-2.5 transition-colors ${
-                                            view === 'month' && !isCurrentMonth ? 'opacity-30 grayscale-[50%]' : ''
-                                        } ${isToday ? 'bg-white shadow-inner' : ''}`}
+                                    <div
+                                        key={idx}
+                                        className={`px-1 pt-1.5 pb-6 md:px-1.5 md:pt-1.5 md:pb-10 bg-white/50 min-h-[160px] border-r border-slate-100/50 space-y-2.5 transition-colors ${view === 'month' && !isCurrentMonth ? 'opacity-30 grayscale-[50%]' : ''
+                                            } ${isToday ? 'bg-white shadow-inner' : ''}`}
                                     >
                                         <div className="flex items-center justify-between">
-                                            <div className={`text-sm font-medium transition-all h-8 w-8 flex items-center justify-center rounded-full ${
-                                                isToday ? "bg-slate-900 text-white shadow-lg" : "text-slate-600 group-hover:text-slate-900"
-                                            }`}>
+                                            <div className={`text-sm font-medium transition-all h-8 w-8 flex items-center justify-center rounded-full ${isToday ? "bg-slate-900 text-white shadow-lg" : "text-slate-600 group-hover:text-slate-900"
+                                                }`}>
                                                 {date.getDate()}
                                             </div>
                                             {dayItems.length > 0 && view === 'month' && (
@@ -579,16 +577,20 @@ export default function AdminAgendaPage() {
                                             {dayItems.map(item => {
                                                 const isSession = item.type === "session";
                                                 const fillPercent = (item.current_participants / item.max_participants) * 100;
-                                                const accentColor = isSession ? "border-blue-500" : "border-orange-500";
-                                                const hoverBorder = isSession ? "group-hover/card:border-blue-200" : "group-hover/card:border-orange-200";
-                                                const hoverBg = isSession ? "group-hover/card:bg-blue-50/30" : "group-hover/card:bg-orange-50/30";
-                                                const iconColor = isSession ? "text-blue-500/50" : "text-orange-500/50";
-                                                
+                                                const accentColor = isSession ? "border-blue-600" : "border-[#FBC02D]";
+                                                const cardBg = isSession ? "bg-white" : "bg-gradient-to-b from-[#FEECA8] to-white";
+                                                const cardBorder = isSession ? "border-slate-200" : "border-[#FBC02D]/30";
+                                                const titleBg = isSession ? "bg-slate-50" : "bg-white/60 backdrop-blur-sm";
+                                                const titleBorder = isSession ? "border-slate-100" : "border-[#FBC02D]/50";
+                                                const titleText = isSession ? "text-slate-900" : "text-yellow-900";
+                                                const hoverBorder = isSession ? "group-hover/card:border-blue-200" : "group-hover/card:border-yellow-400";
+                                                const hoverBg = isSession ? "group-hover/card:bg-blue-50/30" : "group-hover/card:bg-yellow-100/20";
+
                                                 return (
-                                                    <div 
+                                                    <div
                                                         key={item.id}
-                                                        onClick={() => { 
-                                                            setSelectedItem(item); 
+                                                        onClick={() => {
+                                                            setSelectedItem(item);
                                                             setAttendanceTab('registered');
                                                             setEditingSession(item);
                                                             setFormData({
@@ -605,11 +607,10 @@ export default function AdminAgendaPage() {
                                                                 recurrence: "none",
                                                                 recurrence_count: 1,
                                                             });
-                                                            setShowDetails(true); 
+                                                            setShowDetails(true);
                                                         }}
-                                                        className={`bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-xl hover:translate-y-[-2px] hover:bg-slate-50 transition-all duration-300 border-l-[4px] ${accentColor} cursor-pointer p-2.5 flex flex-col gap-2.5 group/card ${
-                                                            item.is_active === false ? "opacity-40 grayscale" : ""
-                                                        }`}
+                                                        className={`${cardBg} border ${cardBorder} rounded-xl shadow-sm hover:shadow-xl hover:translate-y-[-2px] transition-all duration-300 border-l-[4px] ${accentColor} cursor-pointer p-2.5 flex flex-col gap-2.5 group/card ${item.is_active === false ? "opacity-40 grayscale" : ""
+                                                            }`}
                                                     >
                                                         {/* Top Row: Time (Restored visibility) */}
                                                         <div className="flex flex-col items-center">
@@ -617,7 +618,7 @@ export default function AdminAgendaPage() {
                                                                 {item.time} — {item.endTime}
                                                             </span>
                                                             <div className="w-full mt-2">
-                                                                <h4 className={`w-full bg-slate-50 text-slate-900 font-bold text-[13px] leading-snug px-3 py-2 rounded-xl border border-slate-100 shadow-sm transition-all ${hoverBorder} ${hoverBg} text-center`}>
+                                                                <h4 className={`w-full ${titleBg} ${titleText} font-bold text-[13px] leading-snug px-3 py-2 rounded-xl border ${titleBorder} shadow-sm transition-all ${hoverBorder} ${hoverBg} text-center`}>
                                                                     {item.title}
                                                                 </h4>
                                                             </div>
@@ -632,24 +633,27 @@ export default function AdminAgendaPage() {
                                                                     </svg>
                                                                     <span className="truncate text-slate-500 font-medium">{item.instructor_name || "Non assigné"}</span>
                                                                 </div>
-                                                                
+
                                                                 <div className="flex items-center gap-2 shrink-0">
                                                                     {(() => {
                                                                         const current = item.current_participants ?? 0;
                                                                         const max = item.max_participants ?? 0;
                                                                         const percent = max > 0 ? (current / max) * 100 : 0;
-                                                                        
-                                                                        let badgeClass = "bg-slate-50 text-slate-400 border-slate-100"; // Gris par défaut (0/0 ou inactif)
-                                                                        
-                                                                        if (item.is_active !== false && max > 0) {
-                                                                            if (percent >= 100) badgeClass = "bg-emerald-100 text-emerald-900 border-emerald-200";
-                                                                            else if (percent > 70) badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-100";
-                                                                            else if (percent >= 40) badgeClass = "bg-blue-50 text-blue-700 border-blue-100";
-                                                                            else badgeClass = "bg-amber-50 text-amber-700 border-amber-100";
-                                                                        }
+
+                                                                        const badgeStyle = (item.is_active === false || max === 0)
+                                                                            ? "bg-slate-50 text-slate-400 border-slate-100"
+                                                                            : current === 0
+                                                                                ? "bg-slate-50 text-slate-400 border-slate-100"
+                                                                                : percent >= 100
+                                                                                    ? "bg-emerald-100 text-emerald-900 border-emerald-200 font-bold"
+                                                                                    : percent > 70 
+                                                                                        ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
+                                                                                        : percent >= 40 
+                                                                                            ? "bg-blue-50 text-blue-500 border-blue-100"
+                                                                                            : "bg-amber-50 text-amber-600 border-amber-100";
 
                                                                         return (
-                                                                            <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${badgeClass}`}>
+                                                                            <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${badgeStyle}`}>
                                                                                 {current}/{max}
                                                                             </div>
                                                                         );
@@ -692,9 +696,8 @@ export default function AdminAgendaPage() {
                         <div className="flex justify-between items-start mb-8">
                             <div className="flex-1">
                                 <div className="flex items-center gap-3 mb-6">
-                                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
-                                        selectedItem.type === 'session' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-amber-50 text-amber-600 border-amber-100'
-                                    }`}>
+                                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${selectedItem.type === 'session' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-amber-50 text-amber-600 border-amber-100'
+                                        }`}>
                                         {selectedItem.type === 'session' ? 'Séance' : 'Évènement'}
                                     </span>
                                     {selectedItem.is_active === false && (
@@ -713,14 +716,35 @@ export default function AdminAgendaPage() {
                                     <div className="flex items-center gap-2 whitespace-nowrap">
                                         <span>⏳</span> {selectedItem.type === 'event' ? formatDuration(selectedItem.duration_minutes) : formatDuration(calculateDuration(selectedItem.start_time, selectedItem.end_time))}
                                     </div>
-                                    <div className="flex items-center gap-2 whitespace-nowrap"><span>👥</span> {selectedItem.current_participants}/{selectedItem.max_participants} inscrit{selectedItem.current_participants > 1 ? 's' : ''}</div>
+                                    <div className="flex items-center gap-2 whitespace-nowrap">
+                                        <span>👥</span> 
+                                        {(() => {
+                                            const current = selectedItem.current_participants ?? 0;
+                                            const max = selectedItem.max_participants ?? 0;
+                                            const percent = max > 0 ? (current / max) * 100 : 0;
+                                            const badgeStyle = current === 0 
+                                                ? "bg-slate-50 text-slate-400 border-slate-100" 
+                                                : percent >= 100
+                                                    ? "bg-emerald-100 text-emerald-900 border-emerald-200 font-black"
+                                                    : percent > 70 
+                                                        ? "bg-emerald-50 text-emerald-600 border-emerald-100 font-bold" 
+                                                        : percent >= 40 
+                                                            ? "bg-blue-50 text-blue-500 border-blue-100 font-bold"
+                                                            : "bg-amber-50 text-amber-600 border-amber-100 font-bold";
+                                            return (
+                                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs border ${badgeStyle}`}>
+                                                    {current}/{max} inscrit{current > 1 ? 's' : ''}
+                                                </span>
+                                            );
+                                        })()}
+                                    </div>
                                     <div className="flex items-center gap-2 whitespace-nowrap">
                                         <span>💎</span> {selectedItem.credits_required || (selectedItem.price_cents ? selectedItem.price_cents / 100 : 0)} crédits
                                     </div>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3 shrink-0 ml-4">
-                                <button 
+                                <button
                                     onClick={() => setAttendanceTab(attendanceTab === 'edit' ? 'registered' : 'edit')}
                                     className="bg-slate-900 text-white px-6 py-3 rounded-2xl text-sm font-medium transition-all hover:bg-slate-800 flex items-center gap-2 shadow-xl shadow-slate-900/10 active:scale-95"
                                 >
@@ -748,12 +772,11 @@ export default function AdminAgendaPage() {
                                                     { id: 'waitlist', label: `Liste d'attente (${counts.waitlist})` },
                                                     { id: 'cancelled', label: `Annulés (${counts.cancelled})` }
                                                 ].map((tab) => (
-                                                    <button 
+                                                    <button
                                                         key={tab.id}
                                                         onClick={() => setAttendanceTab(tab.id as any)}
-                                                        className={`pb-4 text-sm font-medium transition-all relative ${
-                                                            attendanceTab === tab.id ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'
-                                                        }`}
+                                                        className={`pb-4 text-sm font-medium transition-all relative ${attendanceTab === tab.id ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'
+                                                            }`}
                                                     >
                                                         {tab.label}
                                                         {attendanceTab === tab.id && (
@@ -785,11 +808,10 @@ export default function AdminAgendaPage() {
                                                         <div key={u.id} className="px-6 py-3 flex items-center justify-between group hover:bg-slate-50 transition-all">
                                                             <div className="flex items-center gap-4 flex-1">
                                                                 {attendanceTab === 'registered' ? (
-                                                                    <button 
+                                                                    <button
                                                                         onClick={(e) => { e.stopPropagation(); handleToggleAttendance(u); }}
-                                                                        className={`h-9 w-9 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
-                                                                            ['confirmed', 'confirmed_payment'].includes(u.status) ? 'text-emerald-500 hover:bg-emerald-50' : 'text-rose-500 hover:bg-rose-50'
-                                                                        }`}
+                                                                        className={`h-9 w-9 rounded-xl flex items-center justify-center transition-all cursor-pointer ${['confirmed', 'confirmed_payment'].includes(u.status) ? 'text-emerald-500 hover:bg-emerald-50' : 'text-rose-500 hover:bg-rose-50'
+                                                                            }`}
                                                                     >
                                                                         {['confirmed', 'confirmed_payment'].includes(u.status) ? (
                                                                             <svg className="w-5 h-5 fill-current" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
@@ -811,9 +833,9 @@ export default function AdminAgendaPage() {
                                                                     </div>
                                                                 </div>
                                                             </div>
-                                                            
+
                                                             <div className="flex items-center gap-2">
-                                                                <button 
+                                                                <button
                                                                     onClick={(e) => { e.stopPropagation(); setContactUser(u); }}
                                                                     className="h-10 w-10 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-full flex items-center justify-center transition-all hover:scale-110"
                                                                 >
@@ -833,19 +855,19 @@ export default function AdminAgendaPage() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-1.5">
                                             <label className="text-sm font-medium text-slate-700">Intitulé *</label>
-                                            <input 
-                                                type="text" 
-                                                required 
-                                                value={formData.title} 
-                                                onChange={e => setFormData({...formData, title: e.target.value})} 
-                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all hover:border-gray-300" 
+                                            <input
+                                                type="text"
+                                                required
+                                                value={formData.title}
+                                                onChange={e => setFormData({ ...formData, title: e.target.value })}
+                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all hover:border-gray-300"
                                             />
                                         </div>
                                         <div className="space-y-1.5">
                                             <label className="text-sm font-medium text-slate-700">Lieu / Salle</label>
-                                            <select 
-                                                value={formData.location} 
-                                                onChange={e => setFormData({...formData, location: e.target.value})} 
+                                            <select
+                                                value={formData.location}
+                                                onChange={e => setFormData({ ...formData, location: e.target.value })}
                                                 className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 appearance-none cursor-pointer"
                                             >
                                                 <option value="">Aucun lieu spécifique</option>
@@ -856,10 +878,10 @@ export default function AdminAgendaPage() {
                                         </div>
                                         <div className="md:col-span-2 space-y-1.5">
                                             <label className="text-sm font-medium text-slate-700">Informations</label>
-                                            <textarea 
-                                                value={formData.description} 
-                                                onChange={e => setFormData({...formData, description: e.target.value})} 
-                                                placeholder="Informations complémentaires visibles par les utilisateurs sur le planning..." 
+                                            <textarea
+                                                value={formData.description}
+                                                onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                                placeholder="Informations complémentaires visibles par les utilisateurs sur le planning..."
                                                 className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 min-h-[80px] resize-none"
                                                 rows={2}
                                             />
@@ -870,35 +892,35 @@ export default function AdminAgendaPage() {
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                         <div className="space-y-1.5">
                                             <label className="text-sm font-medium text-slate-700">Date *</label>
-                                            <input 
-                                                type="date" 
-                                                required 
-                                                value={formData.date} 
-                                                onChange={e => setFormData({...formData, date: e.target.value})} 
-                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" 
+                                            <input
+                                                type="date"
+                                                required
+                                                value={formData.date}
+                                                onChange={e => setFormData({ ...formData, date: e.target.value })}
+                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
                                             />
                                         </div>
                                         <div className="space-y-1.5">
                                             <label className="text-sm font-medium text-slate-700">Heure *</label>
-                                            <input 
-                                                type="time" 
-                                                required 
-                                                value={formData.time} 
-                                                onChange={e => setFormData({...formData, time: e.target.value})} 
-                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" 
+                                            <input
+                                                type="time"
+                                                required
+                                                value={formData.time}
+                                                onChange={e => setFormData({ ...formData, time: e.target.value })}
+                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
                                             />
                                         </div>
                                         <div className="space-y-1.5">
                                             <label className="text-sm font-medium text-slate-700">Durée *</label>
-                                            <input 
-                                                type="time" 
-                                                required 
+                                            <input
+                                                type="time"
+                                                required
                                                 value={formData.duration_minutes ? `${Math.floor(formData.duration_minutes / 60).toString().padStart(2, '0')}:${(formData.duration_minutes % 60).toString().padStart(2, '0')}` : ""}
                                                 onChange={e => {
                                                     const val = e.target.value;
                                                     if (!val) return;
                                                     const [h, m] = val.split(':').map(Number);
-                                                    setFormData({...formData, duration_minutes: (h || 0) * 60 + (m || 0)});
+                                                    setFormData({ ...formData, duration_minutes: (h || 0) * 60 + (m || 0) });
                                                 }}
                                                 className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 appearance-none cursor-pointer"
                                             />
@@ -909,46 +931,46 @@ export default function AdminAgendaPage() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-1.5">
                                             <label className="text-sm font-medium text-slate-700">Attribution (Intervenant)</label>
-                                            <input 
-                                                type="text" 
-                                                value={formData.instructor_name} 
-                                                onChange={e => setFormData({...formData, instructor_name: e.target.value})} 
-                                                placeholder="Ex: Jean Expert" 
-                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" 
+                                            <input
+                                                type="text"
+                                                value={formData.instructor_name}
+                                                onChange={e => setFormData({ ...formData, instructor_name: e.target.value })}
+                                                placeholder="Ex: Jean Expert"
+                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
                                             />
                                         </div>
                                         <div className="space-y-4">
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="space-y-1.5">
                                                     <label className="text-sm font-medium text-slate-700">Capacité *</label>
-                                                    <input 
-                                                        type="number" 
-                                                        min="1" 
-                                                        required 
-                                                        value={formData.max_participants} 
-                                                        onChange={e => setFormData({...formData, max_participants: parseInt(e.target.value) || 0})} 
-                                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" 
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        required
+                                                        value={formData.max_participants}
+                                                        onChange={e => setFormData({ ...formData, max_participants: parseInt(e.target.value) || 0 })}
+                                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
                                                     />
                                                 </div>
                                                 <div className="space-y-1.5">
                                                     <label className="text-sm font-medium text-slate-700">Crédits *</label>
-                                                    <input 
-                                                        type="number" 
-                                                        min="0" 
-                                                        step="any" 
-                                                        required 
-                                                        value={formData.credits_required} 
-                                                        onChange={e => setFormData({...formData, credits_required: parseFloat(e.target.value) || 0})} 
-                                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" 
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        step="any"
+                                                        required
+                                                        value={formData.credits_required}
+                                                        onChange={e => setFormData({ ...formData, credits_required: parseFloat(e.target.value) || 0 })}
+                                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
                                                     />
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2 pl-1">
-                                                <input 
-                                                    type="checkbox" 
-                                                    id="allow_waitlist_edit" 
-                                                    checked={formData.allow_waitlist} 
-                                                    onChange={e => setFormData({...formData, allow_waitlist: e.target.checked})}
+                                                <input
+                                                    type="checkbox"
+                                                    id="allow_waitlist_edit"
+                                                    checked={formData.allow_waitlist}
+                                                    onChange={e => setFormData({ ...formData, allow_waitlist: e.target.checked })}
                                                     className="w-4 h-4 rounded-md border-gray-300 text-slate-900 focus:ring-slate-500 cursor-pointer"
                                                 />
                                                 <label htmlFor="allow_waitlist_edit" className="text-xs font-medium text-slate-500 cursor-pointer select-none">
@@ -969,8 +991,8 @@ export default function AdminAgendaPage() {
                                     <div className="text-right">
                                         <div className="text-[11px] font-medium text-slate-400 italic mb-1">Envoyer un e-mail groupé</div>
                                         <label className="flex items-center gap-2 cursor-pointer group justify-end">
-                                            <input 
-                                                type="checkbox" 
+                                            <input
+                                                type="checkbox"
                                                 checked={includeWaitlistInEmail}
                                                 onChange={(e) => setIncludeWaitlistInEmail(e.target.checked)}
                                                 className="w-4 h-4 rounded border-slate-300 text-blue-500 focus:ring-blue-500"
@@ -978,7 +1000,7 @@ export default function AdminAgendaPage() {
                                             <span className="text-[10px] font-medium text-slate-400 group-hover:text-slate-600 transition-colors">Inclure la liste d'attente</span>
                                         </label>
                                     </div>
-                                    <button 
+                                    <button
                                         onClick={() => {
                                             const participants = selectedItem.registered_users || [];
                                             let targetUsers = participants.filter((p: any) => p.status === 'confirmed');
@@ -1008,21 +1030,21 @@ export default function AdminAgendaPage() {
                                     </h4>
                                     <div className="flex gap-3">
                                         {selectedItem.is_active ? (
-                                            <button 
+                                            <button
                                                 onClick={() => handleCancelItem(selectedItem)}
                                                 className="px-4 py-2.5 bg-white text-amber-600 border border-amber-100 rounded-xl font-medium text-sm hover:bg-amber-50 transition-all"
                                             >
                                                 Annuler
                                             </button>
                                         ) : (
-                                            <button 
+                                            <button
                                                 onClick={() => handleReactivateItem(selectedItem)}
                                                 className="px-4 py-2.5 bg-white text-emerald-600 border border-emerald-100 rounded-xl font-medium text-sm hover:bg-emerald-50 transition-all"
                                             >
                                                 Réactiver
                                             </button>
                                         )}
-                                        <button 
+                                        <button
                                             onClick={() => handleDeleteItem(selectedItem)}
                                             className="px-4 py-2.5 bg-white text-rose-600 border border-rose-100 rounded-xl font-medium text-sm hover:bg-rose-50 transition-all"
                                         >
@@ -1031,7 +1053,7 @@ export default function AdminAgendaPage() {
                                     </div>
                                 </div>
 
-                                <button 
+                                <button
                                     onClick={handleEditSubmit}
                                     disabled={saving}
                                     className="px-8 py-2.5 bg-slate-900 border border-transparent text-white rounded-xl font-medium text-sm hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 active:scale-95 disabled:opacity-50"
@@ -1051,18 +1073,17 @@ export default function AdminAgendaPage() {
                             <h3 className="text-xl font-semibold text-slate-900 mb-2">{confirmModal.title}</h3>
                             <p className="text-slate-500 text-base leading-relaxed">{confirmModal.message}</p>
                             <div className="mt-8 flex gap-3 justify-end items-center">
-                                <button 
+                                <button
                                     onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}
                                     className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm"
                                 >
                                     Annuler
                                 </button>
-                                <button 
+                                <button
                                     onClick={confirmModal.onConfirm}
-                                    className={`px-6 py-2.5 text-white rounded-xl font-medium transition-all text-sm shadow-sm ${
-                                        confirmModal.type === 'danger' ? 'bg-rose-600 hover:bg-rose-700' : 
-                                        confirmModal.type === 'warning' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-slate-900 hover:bg-slate-800'
-                                    }`}
+                                    className={`px-6 py-2.5 text-white rounded-xl font-medium transition-all text-sm shadow-sm ${confirmModal.type === 'danger' ? 'bg-rose-600 hover:bg-rose-700' :
+                                            confirmModal.type === 'warning' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-slate-900 hover:bg-slate-800'
+                                        }`}
                                 >
                                     Confirmer
                                 </button>
@@ -1088,7 +1109,7 @@ export default function AdminAgendaPage() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                     </svg>
                                 )}
-                                <h3 className="text-lg font-semibold text-slate-900">
+                                <h3 className="text-[17px] font-semibold text-slate-900 tracking-tight">
                                     {editingSession ? "Modifier la séance" : "Nouvelle séance"}
                                 </h3>
                             </div>
@@ -1102,25 +1123,25 @@ export default function AdminAgendaPage() {
                         {/* Body */}
                         <div className="flex-1 overflow-y-auto p-10">
                             <form id="sessionForm" onSubmit={editingSession ? handleEditSubmit : handleSubmit} className="space-y-10">
-                                
+
                                 {/* Section: Détails */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-1.5">
                                         <label className="text-sm font-medium text-slate-700">Intitulé *</label>
-                                        <input 
-                                            type="text" 
-                                            required 
-                                            value={formData.title} 
-                                            onChange={e => setFormData({...formData, title: e.target.value})} 
+                                        <input
+                                            type="text"
+                                            required
+                                            value={formData.title}
+                                            onChange={e => setFormData({ ...formData, title: e.target.value })}
                                             placeholder="Ex: Yoga Vinyasa, Cross-Training..."
-                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all hover:border-gray-300" 
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all hover:border-gray-300"
                                         />
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="text-sm font-medium text-slate-700">Lieu / Salle</label>
-                                        <select 
-                                            value={formData.location} 
-                                            onChange={e => setFormData({...formData, location: e.target.value})} 
+                                        <select
+                                            value={formData.location}
+                                            onChange={e => setFormData({ ...formData, location: e.target.value })}
                                             className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 appearance-none cursor-pointer"
                                         >
                                             <option value="">Aucun lieu spécifique</option>
@@ -1131,10 +1152,10 @@ export default function AdminAgendaPage() {
                                     </div>
                                     <div className="md:col-span-2 space-y-1.5">
                                         <label className="text-sm font-medium text-slate-700">Informations</label>
-                                        <textarea 
-                                            value={formData.description} 
-                                            onChange={e => setFormData({...formData, description: e.target.value})} 
-                                            placeholder="Informations complémentaires visibles par les utilisateurs sur le planning..." 
+                                        <textarea
+                                            value={formData.description}
+                                            onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                            placeholder="Informations complémentaires visibles par les utilisateurs sur le planning..."
                                             className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 min-h-[80px] resize-none"
                                             rows={2}
                                         />
@@ -1145,38 +1166,38 @@ export default function AdminAgendaPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="space-y-1.5">
                                         <label className="text-sm font-medium text-slate-700">Date *</label>
-                                        <input 
-                                            type="date" 
-                                            required 
-                                            value={formData.date} 
-                                            onChange={e => setFormData({...formData, date: e.target.value})} 
-                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" 
+                                        <input
+                                            type="date"
+                                            required
+                                            value={formData.date}
+                                            onChange={e => setFormData({ ...formData, date: e.target.value })}
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
                                         />
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="text-sm font-medium text-slate-700">Heure *</label>
-                                        <input 
-                                            type="time" 
-                                            required 
-                                            value={formData.time} 
-                                            onChange={e => setFormData({...formData, time: e.target.value})} 
-                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" 
+                                        <input
+                                            type="time"
+                                            required
+                                            value={formData.time}
+                                            onChange={e => setFormData({ ...formData, time: e.target.value })}
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
                                         />
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="text-sm font-medium text-slate-700">Durée *</label>
-                                        <input 
-                                            type="time" 
-                                            required 
+                                        <input
+                                            type="time"
+                                            required
                                             value={formData.duration_minutes ? `${Math.floor(formData.duration_minutes / 60).toString().padStart(2, '0')}:${(formData.duration_minutes % 60).toString().padStart(2, '0')}` : ""}
                                             onChange={e => {
                                                 const val = e.target.value;
                                                 if (!val) {
-                                                    setFormData({...formData, duration_minutes: "" as any});
+                                                    setFormData({ ...formData, duration_minutes: "" as any });
                                                     return;
                                                 }
                                                 const [h, m] = val.split(':').map(Number);
-                                                setFormData({...formData, duration_minutes: (h || 0) * 60 + (m || 0)});
+                                                setFormData({ ...formData, duration_minutes: (h || 0) * 60 + (m || 0) });
                                             }}
                                             className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 appearance-none cursor-pointer"
                                         />
@@ -1187,48 +1208,48 @@ export default function AdminAgendaPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-1.5">
                                         <label className="text-sm font-medium text-slate-700">Attribution (Intervenant)</label>
-                                        <input 
-                                            type="text" 
-                                            value={formData.instructor_name} 
-                                            onChange={e => setFormData({...formData, instructor_name: e.target.value})} 
-                                            placeholder="Ex: Jean Expert" 
-                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" 
+                                        <input
+                                            type="text"
+                                            value={formData.instructor_name}
+                                            onChange={e => setFormData({ ...formData, instructor_name: e.target.value })}
+                                            placeholder="Ex: Jean Expert"
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
                                         />
                                     </div>
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-1.5">
                                                 <label className="text-sm font-medium text-slate-700">Capacité *</label>
-                                                <input 
-                                                    type="number" 
-                                                    min="1" 
-                                                    required 
-                                                    value={formData.max_participants} 
-                                                    onChange={e => setFormData({...formData, max_participants: e.target.value === "" ? "" : parseInt(e.target.value)})} 
-                                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" 
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    required
+                                                    value={formData.max_participants}
+                                                    onChange={e => setFormData({ ...formData, max_participants: e.target.value === "" ? "" : parseInt(e.target.value) })}
+                                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
                                                     placeholder="12"
                                                 />
                                             </div>
                                             <div className="space-y-1.5">
                                                 <label className="text-sm font-medium text-slate-700">Crédits *</label>
-                                                <input 
-                                                    type="number" 
-                                                    min="0" 
-                                                    step="any" 
-                                                    required 
-                                                    value={formData.credits_required} 
-                                                    onChange={e => setFormData({...formData, credits_required: e.target.value === "" ? "" : parseFloat(e.target.value)})} 
-                                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" 
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    step="any"
+                                                    required
+                                                    value={formData.credits_required}
+                                                    onChange={e => setFormData({ ...formData, credits_required: e.target.value === "" ? "" : parseFloat(e.target.value) })}
+                                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
                                                     placeholder="1"
                                                 />
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2 pl-1">
-                                            <input 
-                                                type="checkbox" 
-                                                id="allow_waitlist" 
-                                                checked={formData.allow_waitlist} 
-                                                onChange={e => setFormData({...formData, allow_waitlist: e.target.checked})}
+                                            <input
+                                                type="checkbox"
+                                                id="allow_waitlist"
+                                                checked={formData.allow_waitlist}
+                                                onChange={e => setFormData({ ...formData, allow_waitlist: e.target.checked })}
                                                 className="w-4 h-4 rounded-md border-gray-300 text-slate-900 focus:ring-slate-500 cursor-pointer"
                                             />
                                             <label htmlFor="allow_waitlist" className="text-xs font-medium text-slate-500 cursor-pointer select-none">
@@ -1240,52 +1261,52 @@ export default function AdminAgendaPage() {
 
                                 {/* Section: Récurrence (Création uniquement) */}
                                 {!editingSession && (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="space-y-1.5">
-                                                <label className="text-sm font-medium text-slate-700">Fréquence</label>
-                                                <select 
-                                                    value={formData.recurrence} 
-                                                    onChange={e => setFormData({...formData, recurrence: e.target.value as any})} 
-                                                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 appearance-none cursor-pointer"
-                                                >
-                                                    <option value="none">Une seule fois</option>
-                                                    <option value="daily">Quotidien</option>
-                                                    <option value="weekly">Hebdomadaire</option>
-                                                    <option value="monthly">Mensuel</option>
-                                                </select>
-                                            </div>
-                                            {formData.recurrence !== "none" && (
-                                                <div className="space-y-1.5 animate-in zoom-in-95 duration-200">
-                                                    <label className="text-sm font-medium text-slate-700">Nombre d'occurrences</label>
-                                                    <input 
-                                                        type="number" 
-                                                        min="2" 
-                                                        max="52" 
-                                                        value={formData.recurrence_count} 
-                                                        onChange={e => setFormData({...formData, recurrence_count: parseInt(e.target.value)})} 
-                                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" 
-                                                        placeholder="Nombre d'occurrences" 
-                                                    />
-                                                </div>
-                                            )}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-1.5">
+                                            <label className="text-sm font-medium text-slate-700">Fréquence</label>
+                                            <select
+                                                value={formData.recurrence}
+                                                onChange={e => setFormData({ ...formData, recurrence: e.target.value as any })}
+                                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 appearance-none cursor-pointer"
+                                            >
+                                                <option value="none">Une seule fois</option>
+                                                <option value="daily">Quotidien</option>
+                                                <option value="weekly">Hebdomadaire</option>
+                                                <option value="monthly">Mensuel</option>
+                                            </select>
                                         </div>
+                                        {formData.recurrence !== "none" && (
+                                            <div className="space-y-1.5 animate-in zoom-in-95 duration-200">
+                                                <label className="text-sm font-medium text-slate-700">Nombre d'occurrences</label>
+                                                <input
+                                                    type="number"
+                                                    min="2"
+                                                    max="52"
+                                                    value={formData.recurrence_count}
+                                                    onChange={e => setFormData({ ...formData, recurrence_count: parseInt(e.target.value) })}
+                                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                                    placeholder="Nombre d'occurrences"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
                             </form>
                         </div>
 
                         {/* Footer */}
                         <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
-                            <button 
-                                type="button" 
-                                onClick={() => setShowForm(false)} 
+                            <button
+                                type="button"
+                                onClick={() => setShowForm(false)}
                                 className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm"
                             >
                                 Annuler
                             </button>
-                            <button 
-                                type="submit" 
+                            <button
+                                type="submit"
                                 form="sessionForm"
-                                disabled={saving} 
+                                disabled={saving}
                                 className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 disabled:opacity-50 transition-all text-sm shadow-sm flex items-center gap-2"
                             >
                                 {saving && (
@@ -1321,20 +1342,20 @@ export default function AdminAgendaPage() {
 
                         <div className="p-10 space-y-8">
                             <p className="text-slate-500 text-sm font-normal">Copiez un bloc de séances vers une autre période pour gagner du temps.</p>
-                            
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
                                     <label className="text-sm font-medium text-slate-700">Du</label>
-                                    <input type="date" value={duplicateData.source_start} onChange={e => setDuplicateData({...duplicateData, source_start: e.target.value})} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
+                                    <input type="date" value={duplicateData.source_start} onChange={e => setDuplicateData({ ...duplicateData, source_start: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
                                 </div>
                                 <div className="space-y-1.5">
                                     <label className="text-sm font-medium text-slate-700">Au</label>
-                                    <input type="date" value={duplicateData.source_end} onChange={e => setDuplicateData({...duplicateData, source_end: e.target.value})} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
+                                    <input type="date" value={duplicateData.source_end} onChange={e => setDuplicateData({ ...duplicateData, source_end: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
                                 </div>
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-sm font-medium text-slate-700">Cible : Nouvelle date de début</label>
-                                <input type="date" value={duplicateData.target_start} onChange={e => setDuplicateData({...duplicateData, target_start: e.target.value})} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
+                                <input type="date" value={duplicateData.target_start} onChange={e => setDuplicateData({ ...duplicateData, target_start: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
                             </div>
                             <div className="flex gap-3 justify-end pt-4">
                                 <button type="button" onClick={() => setShowDuplicateModal(false)} className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
@@ -1364,7 +1385,7 @@ export default function AdminAgendaPage() {
                                 {contactUser.phone ? (
                                     <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 flex items-center justify-between group transition-colors hover:bg-slate-50">
                                         <span className="text-sm font-medium text-slate-700">{contactUser.phone}</span>
-                                        <button 
+                                        <button
                                             onClick={() => {
                                                 navigator.clipboard.writeText(contactUser.phone);
                                             }}
@@ -1408,7 +1429,7 @@ export default function AdminAgendaPage() {
                             </div>
 
                             <div className="pt-2 flex justify-center">
-                                <button 
+                                <button
                                     onClick={() => setContactUser(null)}
                                     className="px-10 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all text-sm shadow-sm active:scale-95"
                                 >

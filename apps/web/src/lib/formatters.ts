@@ -52,7 +52,7 @@ export const formatCredits = (balance: any): string => {
  * Formate un prix en centimes (ex: 1000 -> 10€, 1050 -> 10.50€, 0 -> OFFERT)
  */
 export const formatPrice = (cents: number | null | undefined): string => {
-    if (cents === 0) return "OFFERT";
+    if (cents === 0) return "Offert";
     if (cents === null || cents === undefined) return "—";
     
     const amount = cents / 100;

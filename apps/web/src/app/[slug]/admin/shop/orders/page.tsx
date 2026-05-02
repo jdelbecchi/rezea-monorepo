@@ -715,18 +715,16 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                                     <div className="flex items-center gap-1">
                                                         <span className="text-sm font-medium text-slate-900">{order.offer_code}</span>
                                                         {order.comment && order.comment.trim().length > 0 && (
-                                                            <span title={`Commentaire interne : ${order.comment}`} className="text-blue-400 cursor-help">
-                                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                                                                </svg>
+                                                            <span title={`Commentaire interne : ${order.comment}`} className="cursor-help text-sm">
+                                                                📝
                                                             </span>
                                                         )}
                                                         {order.user_note && order.user_note.trim().length > 0 && (
-                                                            <span title={`Note à l'utilisateur : ${order.user_note}`} className="text-slate-400 cursor-help">
-                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <div title={`Note à l'utilisateur : ${order.user_note}`} className="text-slate-400 hover:text-slate-600 transition-colors cursor-help">
+                                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                                                                 </svg>
-                                                            </span>
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </td>
@@ -815,7 +813,7 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                 <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                 </svg>
-                                <h3 className="text-lg font-semibold text-slate-900">Nouvelle commande</h3>
+                                <h3 className="text-[17px] font-semibold text-slate-900 tracking-tight">Nouvelle commande</h3>
                             </div>
                             <button onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-gray-600">
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -906,7 +904,7 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                 <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                 </svg>
-                                <h3 className="text-lg font-semibold text-slate-900">Modifier la commande</h3>
+                                <h3 className="text-lg font-semibold text-slate-900 tracking-tight">Modifier la commande</h3>
                             </div>
                             <button onClick={() => setEditOrder(null)} className="text-gray-400 hover:text-gray-600">
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1056,10 +1054,10 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
 
             {/* Delete Confirmation */}
             {deleteConfirmId && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-10">
-                            <h3 className="text-xl font-semibold text-slate-900 mb-2">Confirmer la suppression</h3>
+                            <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">Confirmer la suppression</h3>
                             <p className="text-slate-500 text-base leading-relaxed">Cette commande sera définitivement supprimée. Les crédits associés seront retirés du compte client.</p>
                             <div className="flex gap-3 justify-end items-center mt-8">
                                 <button onClick={() => setDeleteConfirmId(null)}
@@ -1078,10 +1076,10 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
 
             {/* Suspend Confirmation */}
             {showSuspendConfirm && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-10">
-                            <h3 className="text-xl font-semibold text-slate-900 mb-2">Confirmer la suspension/réactivation</h3>
+                            <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">Confirmer la suspension/réactivation</h3>
                             <p className="text-slate-500 text-base leading-relaxed">
                                 Vous allez suspendre ou réactiver les crédits de <strong>{selectedOrderIds.size}</strong> commande(s).
                                 Les utilisateurs concernés ne pourront plus utiliser leurs crédits tant qu'ils sont suspendus.
@@ -1103,14 +1101,14 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
 
             {/* Invoice Modal */}
             {invoiceOrder && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-10 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
                             <div className="flex items-center gap-3">
                                 <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
-                                <h3 className="text-lg font-semibold text-slate-900">Générer une facture</h3>
+                                <h3 className="text-[17px] font-semibold text-slate-900 tracking-tight">Générer une facture</h3>
                             </div>
                             <button onClick={() => setInvoiceOrder(null)} className="text-gray-400 hover:text-gray-600">
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1199,7 +1197,7 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
 
             {/* Installments Modal */}
             {installmentsOrder && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-10 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
                             <div className="flex items-center gap-3">
@@ -1207,7 +1205,7 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
                                 <div>
-                                    <h3 className="text-lg font-semibold text-slate-900 leading-tight">Échéancier de paiement</h3>
+                                    <h3 className="text-[17px] font-semibold text-slate-900 leading-tight tracking-tight">Échéancier de paiement</h3>
                                     <p className="text-sm text-slate-500 font-normal mt-0.5">
                                         {installmentsOrder.user_name} — {installmentsOrder.offer_name}
                                     </p>

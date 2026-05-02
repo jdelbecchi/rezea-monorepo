@@ -328,7 +328,7 @@ function AdminSessionsContent() {
                             </button>
                             <button 
                                 onClick={() => { resetForm(); setShowForm(true); }}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-medium shadow-sm text-sm"
+                                className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-medium shadow-sm text-sm tracking-tight active:scale-95"
                             >
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -450,11 +450,15 @@ function AdminSessionsContent() {
                                             <td className="px-3 py-4 text-center whitespace-nowrap">
                                                 <span className={`inline-flex items-center justify-center px-4 py-1 rounded-full text-xs font-normal border ${
                                                     !s.is_active ? "bg-slate-100 text-slate-400 border-slate-200" :
-                                                    fillPercent >= 100 
-                                                        ? "bg-rose-50 text-rose-600 border-rose-100" 
-                                                        : fillPercent > 0 
-                                                            ? "bg-amber-100 text-amber-700 border-amber-200" 
-                                                            : "bg-blue-50 text-blue-500 border-blue-100"
+                                                    s.current_participants === 0 
+                                                        ? "bg-slate-50 text-slate-400 border-slate-100" 
+                                                        : fillPercent >= 100
+                                                            ? "bg-emerald-100 text-emerald-900 border-emerald-200 font-bold"
+                                                            : fillPercent > 70 
+                                                                ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
+                                                                : fillPercent >= 40 
+                                                                    ? "bg-blue-50 text-blue-500 border-blue-100"
+                                                                    : "bg-amber-50 text-amber-600 border-amber-100"
                                                 }`}>
                                                     {s.current_participants}/{s.max_participants}
                                                     {s.allow_waitlist && (s.waitlist_count ?? 0) > 0 && (
@@ -509,7 +513,7 @@ function AdminSessionsContent() {
 
             {/* Modal Form Image 2 Style */}
             {showForm && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                         {/* Header */}
                         <div className="p-10 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
@@ -523,7 +527,7 @@ function AdminSessionsContent() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                     </svg>
                                 )}
-                                <h3 className="text-lg font-semibold text-slate-900">
+                                <h3 className="text-[17px] font-semibold text-slate-900 tracking-tight">
                                     {editingSession ? "Modifier la séance" : "Nouvelle séance"}
                                 </h3>
                             </div>
@@ -745,7 +749,7 @@ function AdminSessionsContent() {
                                 <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
-                                <h3 className="text-lg font-semibold text-slate-900">Dupliquer des séances</h3>
+                                <h3 className="text-lg font-semibold text-slate-900 tracking-tight">Dupliquer des séances</h3>
                             </div>
                             <button onClick={() => setShowDuplicateModal(false)} className="text-gray-400 hover:text-gray-600">
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -790,7 +794,7 @@ function AdminSessionsContent() {
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-10">
-                            <h3 className="text-xl font-semibold text-slate-900 mb-2">{confirmModal.title}</h3>
+                            <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">{confirmModal.title}</h3>
                             <p className="text-slate-500 text-base leading-relaxed">{confirmModal.message}</p>
                             <div className="mt-8 flex gap-3 justify-end items-center">
                                 <button 

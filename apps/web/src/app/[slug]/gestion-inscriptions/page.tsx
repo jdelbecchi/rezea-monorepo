@@ -615,18 +615,18 @@ export default function GestionInscriptionsPage() {
                                                                         const max = session.max_participants ?? 0;
                                                                         const percent = max > 0 ? (current / max) * 100 : 0;
                                                                         
-                                                                        let textColor = "text-slate-400";
-                                                                        let fontWeight = "font-bold";
-                                                                        
-                                                                        if (max > 0) {
-                                                                            if (percent >= 100) { textColor = "text-emerald-900"; fontWeight = "font-black"; }
-                                                                            else if (percent > 70) textColor = "text-emerald-600";
-                                                                            else if (percent >= 40) textColor = "text-blue-600";
-                                                                            else textColor = "text-amber-600";
-                                                                        }
+                                                                        const badgeStyle = current === 0 
+                                                                            ? "bg-slate-50 text-slate-400 border-slate-100" 
+                                                                            : percent >= 100
+                                                                                ? "bg-emerald-100 text-emerald-900 border-emerald-200 font-black"
+                                                                                : percent > 70 
+                                                                                    ? "bg-emerald-50 text-emerald-600 border-emerald-100 font-bold" 
+                                                                                    : percent >= 40 
+                                                                                        ? "bg-blue-50 text-blue-500 border-blue-100 font-bold"
+                                                                                        : "bg-amber-50 text-amber-600 border-amber-100 font-bold";
 
                                                                         return (
-                                                                            <span className={`${textColor} ${fontWeight} text-sm md:text-base shrink-0 transition-colors`}>
+                                                                            <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-xs md:text-sm border transition-all ${badgeStyle}`}>
                                                                                 {current}/{max}
                                                                             </span>
                                                                         );
@@ -777,18 +777,18 @@ export default function GestionInscriptionsPage() {
                                                                         const max = event.max_places ?? 0;
                                                                         const percent = max > 0 ? (current / max) * 100 : 0;
                                                                         
-                                                                        let textColor = "text-slate-400"; // Gris par défaut
-                                                                        let fontWeight = "font-bold";
-                                                                        
-                                                                        if (max > 0) {
-                                                                            if (percent >= 100) { textColor = "text-emerald-900"; fontWeight = "font-black"; }
-                                                                            else if (percent > 70) textColor = "text-emerald-600";
-                                                                            else if (percent >= 40) textColor = "text-blue-600";
-                                                                            else textColor = "text-amber-600";
-                                                                        }
+                                                                        const badgeStyle = current === 0 
+                                                                            ? "bg-slate-50 text-slate-400 border-slate-100" 
+                                                                            : percent >= 100
+                                                                                ? "bg-emerald-100 text-emerald-900 border-emerald-200 font-black"
+                                                                                : percent > 70 
+                                                                                    ? "bg-emerald-50 text-emerald-600 border-emerald-100 font-bold" 
+                                                                                    : percent >= 40 
+                                                                                        ? "bg-blue-50 text-blue-500 border-blue-100 font-bold"
+                                                                                        : "bg-amber-50 text-amber-600 border-amber-100 font-bold";
 
                                                                         return (
-                                                                            <span className={`${textColor} ${fontWeight} text-sm md:text-base shrink-0 transition-colors`}>
+                                                                            <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-xs md:text-sm border transition-all ${badgeStyle}`}>
                                                                                 {current}/{max}
                                                                             </span>
                                                                         );

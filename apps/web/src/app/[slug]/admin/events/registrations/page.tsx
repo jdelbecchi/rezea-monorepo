@@ -66,13 +66,13 @@ export default function AdminEventRegistrationsPage() {
     const [users, setUsers] = useState<UserOption[]>([]);
     const [events, setEvents] = useState<EventOption[]>([]);
     const [createForm, setCreateForm] = useState({
-        user_id: "", event_id: "", price_paid_cents: 0, payment_status: "a_valider", notes: "",
+        user_id: "", event_id: "", price_paid_cents: "", payment_status: "a_valider", notes: "",
     });
     const [saving, setSaving] = useState(false);
 
     // Edit modal
     const [editReg, setEditReg] = useState<AdminEventRegistrationItem | null>(null);
-    const [editForm, setEditForm] = useState({ notes: "", status: "", payment_status: "", price_paid_cents: 0 });
+    const [editForm, setEditForm] = useState({ notes: "", status: "", payment_status: "", price_paid_cents: "" as string });
 
     // Delete confirm
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -165,7 +165,7 @@ export default function AdminEventRegistrationsPage() {
         setCreateForm({
             ...createForm,
             event_id: eventId,
-            price_paid_cents: evt ? evt.price_member_cents : 0,
+            price_paid_cents: evt ? (evt.price_member_cents / 100).toString() : "0",
         });
     };
 
@@ -176,12 +176,12 @@ export default function AdminEventRegistrationsPage() {
             await api.createAdminEventRegistration({
                 user_id: createForm.user_id,
                 event_id: createForm.event_id,
-                price_paid_cents: createForm.price_paid_cents,
+                price_paid_cents: Math.round(parseFloat(createForm.price_paid_cents.toString().replace(',', '.') || "0") * 100),
                 payment_status: createForm.payment_status,
                 notes: createForm.notes || undefined,
             });
             setShowCreate(false);
-            setCreateForm({ user_id: "", event_id: "", price_paid_cents: 0, payment_status: "a_valider", notes: "" });
+            setCreateForm({ user_id: "", event_id: "", price_paid_cents: "", payment_status: "a_valider", notes: "" });
             setMessage({ type: "success", text: "Inscription créée avec succès !" });
             await loadRegistrations();
         } catch (err: any) {
@@ -197,7 +197,7 @@ export default function AdminEventRegistrationsPage() {
             notes: reg.notes || "",
             status: reg.status,
             payment_status: reg.payment_status,
-            price_paid_cents: reg.price_paid_cents
+            price_paid_cents: (reg.price_paid_cents / 100).toString()
         });
     };
 
@@ -209,7 +209,7 @@ export default function AdminEventRegistrationsPage() {
                 notes: editForm.notes || undefined,
                 status: editForm.status || undefined,
                 payment_status: editForm.payment_status || undefined,
-                price_paid_cents: editForm.price_paid_cents,
+                price_paid_cents: Math.round(parseFloat(editForm.price_paid_cents.toString().replace(',', '.') || "0") * 100),
             });
             setEditReg(null);
             setMessage({ type: "success", text: "Inscription modifiée avec succès !" });
@@ -316,7 +316,11 @@ th{background:#f1f5f9}
         return (a.event_title || "").localeCompare(b.event_title || "");
     });
 
-    const formatPrice = (cents: number) => (cents / 100).toFixed(2).replace(".", ",") + " €";
+    const formatPrice = (cents: number) => {
+        if (cents === 0) return "Offert";
+        const amount = cents / 100;
+        return (amount % 1 === 0 ? amount.toString() : amount.toFixed(2).replace(".", ",")) + " €";
+    };
 
     const handleExport = () => {
         const BOM = "\uFEFF";
@@ -592,8 +596,8 @@ th{background:#f1f5f9}
                                     <div>
                                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Tarif (€)</label>
                                         <input type="number" step="0.01" min="0" placeholder="0.00"
-                                            value={(createForm.price_paid_cents / 100).toFixed(2)}
-                                            onChange={(e) => setCreateForm({ ...createForm, price_paid_cents: Math.round(parseFloat(e.target.value || "0") * 100) })}
+                                            value={createForm.price_paid_cents}
+                                            onChange={(e) => setCreateForm({ ...createForm, price_paid_cents: e.target.value })}
                                             className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all" />
                                     </div>
                                     <div>
@@ -670,8 +674,8 @@ th{background:#f1f5f9}
                                 <div>
                                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Tarif (€)</label>
                                     <input type="number" step="0.01" min="0"
-                                        value={(editForm.price_paid_cents / 100).toFixed(2)}
-                                        onChange={(e) => setEditForm({ ...editForm, price_paid_cents: Math.round(parseFloat(e.target.value || "0") * 100) })}
+                                        value={editForm.price_paid_cents}
+                                        onChange={(e) => setEditForm({ ...editForm, price_paid_cents: e.target.value })}
                                         className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all" />
                                 </div>
                                 <div className="col-span-2">
