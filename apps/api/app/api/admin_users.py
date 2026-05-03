@@ -134,9 +134,14 @@ async def list_users(
     """Liste tous les utilisateurs du tenant (sauf owners)"""
     tenant_id = request.state.tenant_id
 
-    query = select(User).where(
-        User.tenant_id == tenant_id,
-        User.role != UserRole.OWNER,
+    from app.models.models import CreditAccount
+    query = (
+        select(User, CreditAccount.balance)
+        .outerjoin(CreditAccount, User.id == CreditAccount.user_id)
+        .where(
+            User.tenant_id == tenant_id,
+            User.role != UserRole.OWNER,
+        )
     )
 
     # Filtres
@@ -160,7 +165,11 @@ async def list_users(
     query = query.order_by(User.created_at.desc()).offset(skip).limit(limit)
 
     result = await db.execute(query)
-    users = result.scalars().all()
+    rows = result.all()
+    users = []
+    for user_obj, balance in rows:
+        user_obj.balance = balance
+        users.append(user_obj)
 
     # Logique pour calculer is_active et is_active_member dynamiquement
     from app.models.models import Order
@@ -235,20 +244,26 @@ async def get_user(
     """Récupère les détails d'un utilisateur"""
     tenant_id = request.state.tenant_id
 
+    from app.models.models import CreditAccount
     result = await db.execute(
-        select(User).where(
+        select(User, CreditAccount.balance)
+        .outerjoin(CreditAccount, User.id == CreditAccount.user_id)
+        .where(
             User.id == user_id,
             User.tenant_id == tenant_id,
             User.role != UserRole.OWNER,
         )
     )
-    user = result.scalar_one_or_none()
+    row = result.first()
 
-    if not user:
+    if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Utilisateur non trouvé"
         )
+    
+    user, balance = row
+    user.balance = balance
 
     # Calcul dynamique du statut
     from app.models.models import Order

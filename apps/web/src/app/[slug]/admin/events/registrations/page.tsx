@@ -24,6 +24,7 @@ const STATUS_LABELS: Record<string, string> = {
     waiting_list: "Sur liste",
     cancelled: "Annulé",
     absent: "Absent",
+    event_deleted: "Évènement supprimé",
 };
 
 const PAYMENT_LABELS: Record<string, string> = {
@@ -33,7 +34,7 @@ const PAYMENT_LABELS: Record<string, string> = {
     rembourse: "Remboursé",
 };
 
-interface UserOption { id: string; first_name: string; last_name: string; }
+interface UserOption { id: string; first_name: string; last_name: string; balance?: number; }
 interface EventOption {
     id: string; title: string; event_date: string; event_time: string;
     max_places: number; registrations_count: number;
@@ -67,12 +68,13 @@ export default function AdminEventRegistrationsPage() {
     const [events, setEvents] = useState<EventOption[]>([]);
     const [createForm, setCreateForm] = useState({
         user_id: "", event_id: "", price_paid_cents: "", payment_status: "a_valider", notes: "",
+        user_note: "", price_type: "member" as "member" | "external"
     });
     const [saving, setSaving] = useState(false);
 
     // Edit modal
     const [editReg, setEditReg] = useState<AdminEventRegistrationItem | null>(null);
-    const [editForm, setEditForm] = useState({ notes: "", status: "", payment_status: "", price_paid_cents: "" as string });
+    const [editForm, setEditForm] = useState({ notes: "", user_note: "", status: "", payment_status: "", price_paid_cents: "" as string });
 
     // Delete confirm
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -162,10 +164,28 @@ export default function AdminEventRegistrationsPage() {
 
     const onEventChange = (eventId: string) => {
         const evt = events.find(e => e.id === eventId);
+        let price = "0";
+        if (evt) {
+            price = ((createForm.price_type === "member" ? evt.price_member_cents : evt.price_external_cents) / 100).toString();
+        }
         setCreateForm({
             ...createForm,
             event_id: eventId,
-            price_paid_cents: evt ? (evt.price_member_cents / 100).toString() : "0",
+            price_paid_cents: price,
+        });
+    };
+
+    const onPriceTypeChange = (type: "member" | "external") => {
+        const evt = events.find(e => e.id === createForm.event_id);
+        let price = createForm.price_paid_cents;
+        if (evt) {
+            const amount = (type === "member" ? evt.price_member_cents : evt.price_external_cents) / 100;
+            price = (amount % 1 === 0 ? amount.toString() : amount.toFixed(2).replace('.', ','));
+        }
+        setCreateForm({
+            ...createForm,
+            price_type: type,
+            price_paid_cents: price,
         });
     };
 
@@ -179,9 +199,10 @@ export default function AdminEventRegistrationsPage() {
                 price_paid_cents: Math.round(parseFloat(createForm.price_paid_cents.toString().replace(',', '.') || "0") * 100),
                 payment_status: createForm.payment_status,
                 notes: createForm.notes || undefined,
+                user_note: createForm.user_note || undefined,
             });
             setShowCreate(false);
-            setCreateForm({ user_id: "", event_id: "", price_paid_cents: "", payment_status: "a_valider", notes: "" });
+            setCreateForm({ user_id: "", event_id: "", price_paid_cents: "", payment_status: "a_valider", notes: "", user_note: "", price_type: "member" });
             setMessage({ type: "success", text: "Inscription créée avec succès !" });
             await loadRegistrations();
         } catch (err: any) {
@@ -195,6 +216,7 @@ export default function AdminEventRegistrationsPage() {
         setEditReg(reg);
         setEditForm({
             notes: reg.notes || "",
+            user_note: reg.user_note || "",
             status: reg.status,
             payment_status: reg.payment_status,
             price_paid_cents: (reg.price_paid_cents / 100).toString()
@@ -207,6 +229,7 @@ export default function AdminEventRegistrationsPage() {
         try {
             await api.updateAdminEventRegistration(editReg.id, {
                 notes: editForm.notes || undefined,
+                user_note: editForm.user_note || undefined,
                 status: editForm.status || undefined,
                 payment_status: editForm.payment_status || undefined,
                 price_paid_cents: Math.round(parseFloat(editForm.price_paid_cents.toString().replace(',', '.') || "0") * 100),
@@ -282,7 +305,11 @@ th{background:#f1f5f9}
             const q = searchTerm.toLowerCase();
             if (!r.user_name.toLowerCase().includes(q) && !r.event_title.toLowerCase().includes(q)) return false;
         }
-        if (filterStatuses.length > 0 && !filterStatuses.includes(r.status)) return false;
+        if (filterStatuses.length > 0) {
+            // "Inscrit" (confirmed) matches both confirmed and pending_payment
+            const effectiveStatus = r.status === "pending_payment" ? "confirmed" : r.status;
+            if (!filterStatuses.includes(effectiveStatus)) return false;
+        }
         if (filterPayments.length > 0 && !filterPayments.includes(r.payment_status)) return false;
         
         // Filter by date range
@@ -380,7 +407,7 @@ th{background:#f1f5f9}
             { value: "absent", label: "❌ Absent" },
         ];
     };
-
+    
     if (loading) return <div className="p-8 text-center bg-gray-50 min-h-screen">Chargement...</div>;
 
     return (
@@ -392,7 +419,7 @@ th{background:#f1f5f9}
                     <div className="flex items-center justify-between">
                         <div>
                             <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight">🎉 Inscriptions aux évènements</h1>
-                            <p className="text-base font-normal text-slate-500 mt-1">Gestion des inscrits et des règlements</p>
+                            <p className="text-base font-normal text-slate-500 mt-1">Suivi des inscriptions et paiements des évènements</p>
                         </div>
                         <button
                             onClick={() => { setShowCreate(true); loadFormOptions(); }}
@@ -555,30 +582,40 @@ th{background:#f1f5f9}
             {/* Create Modal */}
             {showCreate && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-3xl p-10 max-w-xl w-full shadow-2xl animate-in zoom-in-95 duration-200">
-                        <div className="flex items-center justify-between mb-8">
-                            <h3 className="text-2xl font-semibold text-slate-900 tracking-tight">➕ Nouvelle inscription</h3>
-                            <button onClick={() => setShowCreate(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                    <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col overflow-hidden max-h-[90vh]">
+                        {/* Header */}
+                        <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                            <div className="flex items-center gap-3">
+                                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                                <h3 className="text-[17px] font-semibold text-slate-900 tracking-tight">Nouvelle inscription</h3>
+                            </div>
+                            <button onClick={() => setShowCreate(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-50 rounded-lg">
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
 
-                        <form onSubmit={handleCreate} className="space-y-6">
-                            <div className="space-y-4">
+                        <div className="flex-1 overflow-y-auto p-8">
+                            <form onSubmit={handleCreate} id="createRegistrationForm" className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Utilisateur *</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Utilisateur *</label>
                                     <select required value={createForm.user_id} onChange={(e) => setCreateForm({ ...createForm, user_id: e.target.value })}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all">
+                                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300">
                                         <option value="">Sélectionner un utilisateur...</option>
-                                        {users.map((u) => <option key={u.id} value={u.id}>{u.first_name} {u.last_name}</option>)}
+                                        {users.map((u) => (
+                                            <option key={u.id} value={u.id}>
+                                                {u.first_name} {u.last_name}
+                                            </option>
+                                        ))}
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Événement *</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Événement *</label>
                                     <select required value={createForm.event_id} onChange={(e) => onEventChange(e.target.value)}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all">
+                                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300">
                                         <option value="">Sélectionner un événement...</option>
                                         {events.map((ev) => {
                                             const dt = new Date(ev.event_date);
@@ -592,41 +629,80 @@ th{background:#f1f5f9}
                                         })}
                                     </select>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Tarif (€)</label>
-                                        <input type="number" step="0.01" min="0" placeholder="0.00"
-                                            value={createForm.price_paid_cents}
-                                            onChange={(e) => setCreateForm({ ...createForm, price_paid_cents: e.target.value })}
-                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Règlement</label>
-                                        <select value={createForm.payment_status}
-                                            onChange={(e) => setCreateForm({ ...createForm, payment_status: e.target.value })}
-                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all">
-                                            <option value="a_valider">⏳ À valider</option>
-                                            <option value="en_attente">📁 En attente</option>
-                                            <option value="paye">💰 Payé</option>
-                                        </select>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Tarif</label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {(() => {
+                                            const selectedEvent = events.find(e => e.id === createForm.event_id);
+                                            const formatBtnPrice = (cents: number) => {
+                                                const amount = cents / 100;
+                                                return (amount % 1 === 0 ? amount.toString() : amount.toFixed(2).replace('.', ','));
+                                            };
+                                            const memberPrice = selectedEvent ? formatBtnPrice(selectedEvent.price_member_cents) : "0";
+                                            const externalPrice = selectedEvent ? formatBtnPrice(selectedEvent.price_external_cents) : "0";
+                                            
+                                            return (
+                                                <>
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => onPriceTypeChange("member")}
+                                                        className={`px-4 py-2.5 rounded-xl text-xs font-medium transition-all ${createForm.price_type === "member" ? "bg-slate-900 text-white shadow-sm" : "bg-white text-slate-600 border border-gray-200 hover:bg-gray-50"}`}
+                                                    >
+                                                        Tarif membre ({memberPrice} €)
+                                                    </button>
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => onPriceTypeChange("external")}
+                                                        className={`px-4 py-2.5 rounded-xl text-xs font-medium transition-all ${createForm.price_type === "external" ? "bg-slate-900 text-white shadow-sm" : "bg-white text-slate-600 border border-gray-200 hover:bg-gray-50"}`}
+                                                    >
+                                                        Tarif extérieur ({externalPrice} €)
+                                                    </button>
+                                                </>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Notes internes</label>
-                                    <textarea value={createForm.notes} placeholder="Détails facultatifs..."
-                                        onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all" rows={3} />
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Paiement</label>
+                                    <select value={createForm.payment_status}
+                                        onChange={(e) => setCreateForm({ ...createForm, payment_status: e.target.value })}
+                                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300">
+                                        <option value="a_valider">À valider</option>
+                                        <option value="en_attente">En attente</option>
+                                        <option value="paye">Payé</option>
+                                    </select>
                                 </div>
-                            </div>
-                            <div className="flex gap-3 justify-end pt-4">
-                                <button type="button" onClick={() => setShowCreate(false)}
-                                    className="px-6 py-2 text-slate-500 font-medium hover:text-slate-700 transition-colors">Annuler</button>
-                                <button type="submit" disabled={saving}
-                                    className="px-8 py-3 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition-all shadow-lg active:scale-95 disabled:opacity-50">
-                                    {saving ? "Envoi..." : "Inscrire le client"}
-                                </button>
-                            </div>
-                        </form>
+                                <div className="space-y-4 pt-2">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Commentaire interne</label>
+                                        <textarea value={createForm.notes} placeholder="Notes visibles uniquement par l'administration..."
+                                            onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })}
+                                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300" rows={2} />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <label className="text-sm font-medium text-slate-700">Note à l'utilisateur</label>
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-[10px] font-bold text-amber-600 border border-amber-100 uppercase tracking-wider">
+                                                ⚠️ Commentaire visible dans les commandes de l'utilisateur
+                                            </span>
+                                        </div>
+                                        <textarea value={createForm.user_note} placeholder="Informations à transmettre à l'utilisateur..."
+                                            onChange={(e) => setCreateForm({ ...createForm, user_note: e.target.value })}
+                                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300" rows={2} />
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
+                            <button type="button" onClick={() => setShowCreate(false)}
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">Annuler</button>
+                            <button type="submit" form="createRegistrationForm" disabled={saving}
+                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all text-sm shadow-sm active:scale-95 disabled:opacity-50">
+                                {saving ? "Envoi..." : "Valider l'inscription"}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -634,99 +710,127 @@ th{background:#f1f5f9}
             {/* Edit Modal */}
             {editReg && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-3xl p-10 max-w-xl w-full shadow-2xl animate-in zoom-in-95 duration-200">
-                        <div className="flex items-center justify-between mb-8">
-                            <h3 className="text-2xl font-semibold text-slate-900 tracking-tight">Modifier l&apos;inscription</h3>
-                            <button onClick={() => setEditReg(null)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                    <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col overflow-hidden max-h-[90vh]">
+                        <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                            <div className="flex items-center gap-3">
+                                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                                <h3 className="text-[17px] font-semibold text-slate-900 tracking-tight">Modifier l&apos;inscription</h3>
+                            </div>
+                            <button onClick={() => setEditReg(null)} className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-50 rounded-lg">
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
 
-                        <div className="mb-8 p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col gap-1">
-                            <div className="flex justify-between items-center text-sm font-medium">
-                                <span className="text-slate-500">Événement</span>
-                                <span className="text-slate-900">{editReg.event_title}</span>
+                        <div className="flex-1 overflow-y-auto p-8">
+                            <div className="mb-6 p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-2 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-3 opacity-5 text-4xl">🎉</div>
+                                <div className="flex justify-between items-center group">
+                                    <span className="text-sm font-medium text-slate-500">Évènement</span>
+                                    <span className="text-sm font-semibold text-slate-900">{editReg.event_title}</span>
+                                </div>
+                                <div className="flex justify-between items-center group">
+                                    <span className="text-sm font-medium text-slate-500">Utilisateur</span>
+                                    <span className="text-sm font-bold text-emerald-600 px-2 py-1 bg-emerald-50 rounded-lg">{editReg.user_name}</span>
+                                </div>
+                                <div className="flex justify-between items-start group">
+                                    <span className="text-sm font-medium text-slate-500">Date & heure</span>
+                                    <div className="text-right">
+                                        <span className="text-sm font-semibold text-slate-900 block capitalize">
+                                            {editReg.event_date ? format(parseISO(editReg.event_date), "eeee d MMMM", { locale: fr }) : "—"}
+                                        </span>
+                                        <span className="text-xs text-slate-500 font-medium">à {editReg.event_time}</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex justify-between items-center text-sm font-medium">
-                                <span className="text-slate-500">Utilisateur</span>
-                                <span className="text-slate-900 font-bold">{editReg.user_name}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm font-medium">
-                                <span className="text-slate-500">Date & Heure</span>
-                                <span className="text-slate-900 capitalize">{editReg.event_date ? new Date(editReg.event_date).toLocaleDateString("fr-FR", { weekday: 'long', day: 'numeric', month: 'long' }) : "—"} à {editReg.event_time}</span>
-                            </div>
-                        </div>
 
-                        <form onSubmit={handleEditSubmit} className="space-y-6">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Statut</label>
-                                    <select value={editForm.status}
-                                        onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all">
-                                        {getEditStatusOptions(editReg.status).map((opt: any) => (
-                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                        ))}
-                                    </select>
+                            <form onSubmit={handleEditSubmit} className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Statut</label>
+                                        <select value={editForm.status}
+                                            onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300">
+                                            {getEditStatusOptions(editReg.status).map((opt: any) => (
+                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Tarif (€)</label>
+                                        <input type="number" step="0.01" min="0"
+                                            value={editForm.price_paid_cents}
+                                            onChange={(e) => setEditForm({ ...editForm, price_paid_cents: e.target.value })}
+                                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300" />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Paiement</label>
+                                        <select value={editForm.payment_status}
+                                            onChange={(e) => setEditForm({ ...editForm, payment_status: e.target.value })}
+                                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300">
+                                            <option value="a_valider">À valider</option>
+                                            <option value="en_attente">En attente</option>
+                                            <option value="paye">Payé</option>
+                                            <option value="rembourse">Remboursé</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Tarif (€)</label>
-                                    <input type="number" step="0.01" min="0"
-                                        value={editForm.price_paid_cents}
-                                        onChange={(e) => setEditForm({ ...editForm, price_paid_cents: e.target.value })}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all" />
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Commentaire interne</label>
+                                    <textarea value={editForm.notes} placeholder="Notes visibles uniquement par l'administration..."
+                                        onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300" rows={2} />
                                 </div>
-                                <div className="col-span-2">
-                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Paiement</label>
-                                    <select value={editForm.payment_status}
-                                        onChange={(e) => setEditForm({ ...editForm, payment_status: e.target.value })}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all">
-                                        <option value="a_valider">⏳ À valider</option>
-                                        <option value="en_attente">📁 En attente</option>
-                                        <option value="paye">💰 Payé</option>
-                                        <option value="rembourse">↩️ Remboursé</option>
-                                    </select>
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <label className="text-sm font-medium text-slate-700">Note à l'utilisateur</label>
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-[10px] font-bold text-amber-600 border border-amber-100 uppercase tracking-wider">
+                                            ⚠️ Commentaire visible dans les commandes de l'utilisateur
+                                        </span>
+                                    </div>
+                                    <textarea value={editForm.user_note} placeholder="Informations à transmettre à l'utilisateur..."
+                                        onChange={(e) => setEditForm({ ...editForm, user_note: e.target.value })}
+                                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300" rows={2} />
                                 </div>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Notes internes</label>
-                                <textarea value={editForm.notes}
-                                    onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all" rows={2} />
-                            </div>
-                            <div className="flex gap-3 justify-end pt-4">
-                                <button type="button" onClick={() => setEditReg(null)}
-                                    className="px-6 py-2 text-slate-500 font-medium hover:text-slate-700 transition-colors">Annuler</button>
-                                <button type="submit"
-                                    className="px-8 py-3 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition-all shadow-lg active:scale-95">
-                                    Enregistrer
-                                </button>
-                            </div>
-                        </form>
+                                <div className="flex gap-3 justify-end items-center pt-4">
+                                    <button type="button" onClick={() => setEditReg(null)}
+                                        className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">Annuler</button>
+                                    <button type="submit"
+                                        className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all text-sm shadow-sm active:scale-95">
+                                        Enregistrer
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* Delete Confirmation */}
             {deleteConfirmId && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-3xl p-10 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200 text-center">
-                        <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-6 text-rose-500 text-3xl">
-                            🗑️
-                        </div>
-                        <h3 className="text-2xl font-bold text-slate-900 mb-2">Supprimer l&apos;inscription ?</h3>
-                        <p className="text-slate-500 mb-8 leading-relaxed">
-                            Cette action est définitive. La place sera libérée pour d&apos;autres clients.
-                        </p>
-                        <div className="flex gap-3 justify-center">
-                            <button onClick={() => setDeleteConfirmId(null)}
-                                className="px-6 py-2 text-slate-500 font-medium hover:text-slate-700 transition-colors">Annuler</button>
-                            <button onClick={() => handleDelete(deleteConfirmId)}
-                                className="px-8 py-3 bg-rose-600 text-white rounded-xl font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-900/10 active:scale-95">
-                                Oui, supprimer
-                            </button>
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-10">
+                            <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">Confirmer la suppression</h3>
+                            <p className="text-slate-500 text-base leading-relaxed">
+                                Attention : cette action est irréversible. L'inscription sera définitivement supprimée.
+                            </p>
+                            <div className="mt-8 flex gap-3 justify-end items-center">
+                                <button 
+                                    onClick={() => setDeleteConfirmId(null)}
+                                    className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm"
+                                >
+                                    Annuler
+                                </button>
+                                <button 
+                                    onClick={() => handleDelete(deleteConfirmId)}
+                                    className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm active:scale-95"
+                                >
+                                    Confirmer
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -735,56 +839,91 @@ th{background:#f1f5f9}
             {/* Invoice Modal */}
             {invoiceReg && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-3xl p-10 max-w-xl w-full shadow-2xl animate-in zoom-in-95 duration-200">
-                        <div className="flex items-center justify-between mb-8">
-                            <h3 className="text-2xl font-semibold text-slate-900 tracking-tight">📄 Générer une facture</h3>
-                            <button onClick={() => setInvoiceReg(null)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                    <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col overflow-hidden max-h-[90vh]">
+                        {/* Header */}
+                        <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                            <div className="flex items-center gap-3">
+                                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <h3 className="text-[17px] font-semibold text-slate-900 tracking-tight">Générer une facture</h3>
+                            </div>
+                            <button onClick={() => setInvoiceReg(null)} className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-50 rounded-lg">
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
 
-                        <div className="space-y-6">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">N° Facture</label>
-                                    <input type="text" value={invoiceData.invoice_number} onChange={(e) => setInvoiceData({ ...invoiceData, invoice_number: e.target.value })}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all" />
+                        <div className="flex-1 overflow-y-auto p-8 space-y-8">
+                            {/* Section: Émetteur & Destinataire */}
+                            <div>
+                                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">Émetteur & Destinataire</h4>
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Émetteur</label>
+                                        <input type="text" value={invoiceData.emitter} onChange={(e) => setInvoiceData({ ...invoiceData, emitter: e.target.value })}
+                                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Destinataire</label>
+                                        <input type="text" value={invoiceData.recipient} onChange={(e) => setInvoiceData({ ...invoiceData, recipient: e.target.value })}
+                                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300" />
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Date</label>
-                                    <input type="date" value={invoiceData.invoice_date} onChange={(e) => setInvoiceData({ ...invoiceData, invoice_date: e.target.value })}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all" />
+                            </div>
+
+                            {/* Section: Détails de la facture */}
+                            <div>
+                                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">Détails de la facture</h4>
+                                <div className="space-y-6">
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">N° Facture</label>
+                                            <input type="text" value={invoiceData.invoice_number} onChange={(e) => setInvoiceData({ ...invoiceData, invoice_number: e.target.value })}
+                                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
+                                            <input type="date" value={invoiceData.invoice_date} onChange={(e) => setInvoiceData({ ...invoiceData, invoice_date: e.target.value })}
+                                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                                        <input type="text" value={invoiceData.description} onChange={(e) => setInvoiceData({ ...invoiceData, description: e.target.value })}
+                                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Montant (€)</label>
+                                            <input type="text" value={invoiceData.amount} onChange={(e) => setInvoiceData({ ...invoiceData, amount: e.target.value })}
+                                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Notes complémentaires</label>
+                                        <textarea value={invoiceData.notes} onChange={(e) => setInvoiceData({ ...invoiceData, notes: e.target.value })} placeholder="Ex: Paiement effectué le..."
+                                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300" rows={2} />
+                                    </div>
                                 </div>
                             </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Émetteur</label>
-                                <input type="text" value={invoiceData.emitter} onChange={(e) => setInvoiceData({ ...invoiceData, emitter: e.target.value })}
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Destinataire</label>
-                                <input type="text" value={invoiceData.recipient} onChange={(e) => setInvoiceData({ ...invoiceData, recipient: e.target.value })}
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Notes (sur la facture)</label>
-                                <textarea value={invoiceData.notes} onChange={(e) => setInvoiceData({ ...invoiceData, notes: e.target.value })}
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm transition-all" rows={2} />
-                            </div>
-                            <div className="flex gap-3 justify-end pt-4">
-                                <button onClick={() => setInvoiceReg(null)}
-                                    className="px-6 py-2 text-slate-500 font-medium hover:text-slate-700 transition-colors">Annuler</button>
-                                <button onClick={downloadInvoice}
-                                    className="px-8 py-3 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition-all shadow-lg active:scale-95">
-                                    Télécharger le PDF
-                                </button>
-                            </div>
+                        </div>
+
+                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
+                            <button onClick={() => setInvoiceReg(null)}
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">Annuler</button>
+                            <button onClick={downloadInvoice}
+                                className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-all text-sm shadow-sm active:scale-95 flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                Générer & Télécharger
+                            </button>
                         </div>
                     </div>
                 </div>
-            )}
+            )}}
         </div>
     );
 }

@@ -36,14 +36,16 @@ async def list_upcoming_events(
     
     # Get all registrations for this user to check them once
     reg_result = await db.execute(
-        select(EventRegistration.event_id).where(
+        select(EventRegistration.event_id, EventRegistration.status).where(
             and_(
                 EventRegistration.user_id == user_id,
                 EventRegistration.status != EventRegistrationStatus.CANCELLED
             )
         )
     )
-    registered_event_ids = set(reg_result.scalars().all())
+    registrations_data = reg_result.all()
+    registered_event_ids = {r[0] for r in registrations_data}
+    registration_statuses = {r[0]: r[1].value if hasattr(r[1], "value") else r[1] for r in registrations_data}
     
     # Formatage de l'heure pour le schéma
     response = []
@@ -62,6 +64,7 @@ async def list_upcoming_events(
             "registrations_count": e.registrations_count or 0,
             "waitlist_count": e.waitlist_count or 0,
             "is_registered": e.id in registered_event_ids,
+            "registration_status": registration_statuses.get(e.id),
             "location": e.location,
             "description": e.description,
             "allow_waitlist": e.allow_waitlist,
@@ -167,7 +170,9 @@ async def get_event(
             )
         )
     )
-    is_registered = reg_result.scalar_one_or_none() is not None
+    reg = reg_result.scalar_one_or_none()
+    is_registered = reg is not None
+    registration_status = (reg.status.value if hasattr(reg.status, "value") else reg.status) if reg else None
         
     return {
         "id": e.id,
@@ -181,7 +186,9 @@ async def get_event(
         "instructor_name": e.instructor_name,
         "max_places": e.max_places,
         "registrations_count": e.registrations_count or 0,
+        "waitlist_count": e.waitlist_count or 0,
         "is_registered": is_registered,
+        "registration_status": registration_status,
         "location": e.location,
         "description": e.description,
         "allow_waitlist": e.allow_waitlist,
@@ -229,10 +236,11 @@ async def event_checkout(
         )
         
     # 2. Vérifier si complet
-    if (event.registrations_count or 0) >= event.max_places:
+    is_full = (event.registrations_count or 0) >= event.max_places
+    if is_full and not event.allow_waitlist:
         raise HTTPException(status_code=409, detail="Cet événement est complet")
         
-    # 3. Vérifier si déjà inscrit
+    # 3. Vérifier si déjà inscrit (inclut déjà sur liste d'attente)
     result = await db.execute(
         select(EventRegistration).where(
             and_(
@@ -243,7 +251,7 @@ async def event_checkout(
         )
     )
     if result.scalar_one_or_none():
-        raise HTTPException(status_code=409, detail="Vous êtes déjà inscrit à cet événement")
+        raise HTTPException(status_code=409, detail="Vous êtes déjà inscrit ou sur liste d'attente pour cet événement")
 
     # 4. Calculer le prix
     price_cents = event.price_member_cents if tariff == "member" else event.price_external_cents
@@ -256,18 +264,22 @@ async def event_checkout(
     is_link_missing = not tenant.payment_redirect_link if tenant else False
     effective_pay_later = pay_later or is_link_missing
 
+    notes_suffix = " - Liste d'attente" if is_full else (" - Paiement différé" if effective_pay_later else "")
     registration = EventRegistration(
         tenant_id=tenant_id,
         user_id=user_id,
         event_id=event_id,
-        price_paid_cents=price_cents,
-        payment_status=OrderPaymentStatus.WAITING if effective_pay_later else OrderPaymentStatus.PENDING,
-        status=EventRegistrationStatus.CONFIRMED,
-        notes=f"Inscription via PWA (Tarif {tariff}) {' - Paiement différé' if effective_pay_later else ''}"
+        price_paid_cents=0 if is_full else price_cents,
+        payment_status=OrderPaymentStatus.PAID if is_full else (OrderPaymentStatus.WAITING if effective_pay_later else OrderPaymentStatus.PENDING),
+        status=EventRegistrationStatus.WAITING_LIST if is_full else EventRegistrationStatus.CONFIRMED,
+        notes=f"Inscription via PWA (Tarif {tariff}){notes_suffix}"
     )
     
     db.add(registration)
-    event.registrations_count = (event.registrations_count or 0) + 1
+    if is_full:
+        event.waitlist_count = (event.waitlist_count or 0) + 1
+    else:
+        event.registrations_count = (event.registrations_count or 0) + 1
     
     await db.commit()
     await db.refresh(registration)

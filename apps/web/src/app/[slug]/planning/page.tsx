@@ -240,7 +240,7 @@ export default function PlanningPage() {
             title: e.title,
             start_time: `${format(parseISO(e.event_date), 'yyyy-MM-dd')}T${e.event_time}:00`,
             uType: 'event',
-            status: 'confirmed'
+            status: e.registration_status || 'confirmed'
         }));
         
       return [...futureBookings, ...registeredEvents].sort((a: any, b: any) => {
@@ -501,10 +501,12 @@ export default function PlanningPage() {
                       const isEvent = item.uType === 'event';
                       const time = isEvent ? item.event_time : format(parseISO(item.start_time), 'HH:mm');
                       const booked = isEvent ? item.is_registered : isAlreadyBooked(item.id);
-                      const isWaitlisted = !isEvent && myBookings.find(b => b.session_id === item.id && (b.status === 'confirmed' || b.status === 'pending'))?.status === 'pending';
+                      const isWaitlisted = isEvent 
+                        ? (item.registration_status === 'waiting_list')
+                        : myBookings.find(b => b.session_id === item.id && (b.status === 'confirmed' || b.status === 'pending'))?.status === 'pending';
                       const spotsLeft = isEvent ? (item.max_places - (item.registrations_count || 0)) : item.available_spots;
                       const isFull = isEvent ? (spotsLeft <= 0) : item.is_full;
-                      const canWaitlist = !isEvent && item.allow_waitlist && isFull;
+                      const canWaitlist = item.allow_waitlist && isFull;
                       
                       const now = new Date();
                       const limit = (isEvent ? (tenant?.registration_limit_mins || 0) : (tenant?.registration_limit_mins || 0));
@@ -617,13 +619,22 @@ export default function PlanningPage() {
                                 ) : canWaitlist ? (
                                    <div className="flex items-center gap-3">
                                        <span className="text-[10px] md:text-xs text-slate-500 italic font-medium">S'inscrire en liste d'attente ?</span>
-                                       <button 
-                                           disabled={bookingLoading === item.id}
-                                           onClick={() => handleBooking(item.id)}
-                                           className="px-4 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium rounded-full text-[11px] transition-all active:scale-95 border border-amber-200/50"
-                                       >
-                                           {bookingLoading === item.id ? "..." : "oui"}
-                                       </button>
+                                       {isEvent ? (
+                                         <Link 
+                                             href={`/${slug}/events/checkout/${item.id}`}
+                                             className="px-4 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium rounded-full text-[11px] transition-all active:scale-95 border border-amber-200/50"
+                                         >
+                                             oui
+                                         </Link>
+                                       ) : (
+                                         <button 
+                                             disabled={bookingLoading === item.id}
+                                             onClick={() => handleBooking(item.id)}
+                                             className="px-4 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium rounded-full text-[11px] transition-all active:scale-95 border border-amber-200/50"
+                                         >
+                                             {bookingLoading === item.id ? "..." : "oui"}
+                                         </button>
+                                       )}
                                    </div>
                                 ) : isFull ? (
                                    <span className="text-[10px] text-slate-300 italic">Complet</span>

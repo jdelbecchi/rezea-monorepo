@@ -527,7 +527,8 @@ class EventRegistration(Base):
     created_by_admin = Column(Boolean, default=False)
 
     # Notes
-    notes = Column(Text)
+    notes = Column(Text) # Note interne
+    user_note = Column(Text) # Note visible par l'utilisateur
 
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

@@ -140,6 +140,7 @@ export interface User {
   created_by_admin?: boolean;
   is_active_member?: boolean;
   email_verified?: boolean;
+  balance?: number;
   created_at?: string;
   last_login?: string;
   is_blacklisted?: boolean;
@@ -207,6 +208,7 @@ export interface Event {
   max_places: number;
   registrations_count: number;
   is_registered?: boolean;
+  registration_status?: string;
   location?: string;
   allow_waitlist: boolean;
   waitlist_count?: number;
@@ -927,6 +929,7 @@ export const api = {
     price_paid_cents: number;
     payment_status?: string;
     notes?: string;
+    user_note?: string;
   }) => {
     const response = await apiClient.post('/api/admin/event-registrations', data);
     return response.data;

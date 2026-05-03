@@ -5,6 +5,8 @@ import { useRouter, useParams } from "next/navigation";
 import { api, User, AdminBookingItem } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import MultiSelect from "@/components/MultiSelect";
+import { format, parseISO } from "date-fns";
+import { fr } from "date-fns/locale";
 
 const STATUS_LABELS: Record<string, string> = {
     confirmed: "Inscrit",
@@ -14,8 +16,8 @@ const STATUS_LABELS: Record<string, string> = {
     absent: "Absent",
 };
 
-interface UserOption { id: string; first_name: string; last_name: string; }
-interface SessionOption { id: string; title: string; start_time: string; max_participants: number; current_participants: number; }
+interface UserOption { id: string; first_name: string; last_name: string; balance?: number; }
+interface SessionOption { id: string; title: string; start_time: string; max_participants: number; current_participants: number; credits_required?: number; }
 
 export default function AdminBookingsPage() {
     const router = useRouter();
@@ -27,7 +29,7 @@ export default function AdminBookingsPage() {
 
     // Filters
     const [searchTerm, setSearchTerm] = useState("");
-    const [filterStatuses, setFilterStatuses] = useState<string[]>(["confirmed"]);
+    const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
     const [locationFilter, setLocationFilter] = useState("all");
     const [tenant, setTenant] = useState<any>(null);
     const [dateFrom, setDateFrom] = useState("");
@@ -91,8 +93,6 @@ export default function AdminBookingsPage() {
 
     const loadBookings = async () => {
         try {
-            // Load all bookings for the session and filter in frontend for multi-select
-            // Or if we want to be efficient, we can load everything without status filter
             const data = await api.getAdminBookings(undefined);
             setBookings(data);
         } catch (err) {
@@ -116,7 +116,7 @@ export default function AdminBookingsPage() {
                 try {
                     return new Date(s.start_time) >= oneWeekAgo;
                 } catch (e) {
-                    return true; // En cas d'erreur de date, on garde la séance par sécurité
+                    return true;
                 }
             });
             
@@ -126,8 +126,9 @@ export default function AdminBookingsPage() {
         }
     };
 
-    const handleCreate = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleCreate = async (e: React.FormEvent | null) => {
+        if (e) e.preventDefault();
+
         setSaving(true);
         try {
             await api.createAdminBooking({
@@ -181,7 +182,6 @@ export default function AdminBookingsPage() {
         }
     };
 
-    // Filtering
     const filteredBookings = bookings.filter((b) => {
         if (searchTerm) {
             const q = searchTerm.toLowerCase();
@@ -192,11 +192,8 @@ export default function AdminBookingsPage() {
         if (dateTo && b.session_date > dateTo) return false;
         return true;
     }).sort((a, b) => {
-        // 1. Date (Décroissant)
         if (a.session_date !== b.session_date) return b.session_date.localeCompare(a.session_date);
-        // 2. Heure (Décroissant)
         if (a.session_time !== b.session_time) return (b.session_time || "").localeCompare(a.session_time || "");
-        // 3. Intitulé
         return a.session_title.localeCompare(b.session_title);
     });
 
@@ -224,18 +221,17 @@ export default function AdminBookingsPage() {
     };
 
     const getStatusBadge = (booking: AdminBookingItem) => {
-        const base = "px-2 py-1 text-xs font-normal rounded-full border whitespace-nowrap";
+        const base = "inline-flex items-center justify-center px-2 py-1 text-xs font-normal rounded-full border whitespace-nowrap";
         switch (booking.status) {
-            case "confirmed": return <span className={`${base} bg-emerald-50 text-emerald-600 border-emerald-100`}>Validé</span>;
-            case "pending": return <span className={`${base} bg-amber-50 text-amber-600 border-amber-100`}>Sur liste</span>;
-            case "cancelled": return <span className={`${base} bg-rose-50 text-rose-600 border-rose-100`}>Annulé</span>;
-            case "session_cancelled": return <span className={`${base} bg-rose-50 text-rose-600 border-rose-100`}>Séance annulée</span>;
-            case "absent": return <span className={`${base} bg-slate-50 text-slate-600 border-slate-200`}>Absent</span>;
+            case "confirmed": return <span className={`${base} bg-emerald-50 text-emerald-600 border-emerald-100`}>{STATUS_LABELS.confirmed}</span>;
+            case "pending": return <span className={`${base} bg-amber-50 text-amber-600 border-amber-100`}>{STATUS_LABELS.pending}</span>;
+            case "cancelled": return <span className={`${base} bg-rose-50 text-rose-600 border-rose-100`}>{STATUS_LABELS.cancelled}</span>;
+            case "session_cancelled": return <span className={`${base} bg-rose-50 text-rose-600 border-rose-100`}>{STATUS_LABELS.session_cancelled}</span>;
+            case "absent": return <span className={`${base} bg-slate-50 text-slate-600 border-slate-200`}>{STATUS_LABELS.absent}</span>;
             default: return <span className={`${base} bg-gray-50 text-gray-500 border-gray-200`}>{booking.status}</span>;
         }
     };
 
-    // Statuts disponibles dans l'édition (Flexibilité totale)
     const getEditStatusOptions = (currentStatus: string) => {
         if (currentStatus === "session_cancelled") {
             return [
@@ -263,7 +259,7 @@ export default function AdminBookingsPage() {
                     <div className="flex items-center justify-between">
                         <div>
                             <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight">📋 Inscriptions aux séances</h1>
-                            <p className="text-base font-normal text-slate-500 mt-1">Gestion des inscriptions aux séances de cours</p>
+                            <p className="text-base font-normal text-slate-500 mt-1">Consultation et gestion des inscriptions aux séances</p>
                         </div>
                         <button
                             onClick={() => { setShowCreate(true); loadFormOptions(); }}
@@ -304,7 +300,7 @@ export default function AdminBookingsPage() {
                                     ]}
                                     selected={filterStatuses}
                                     onChange={setFilterStatuses}
-                                    placeholder="Toutes"
+                                    placeholder="Tous"
                                 />
                             </div>
                             {tenant && (tenant.locations || []).length > 1 && (
@@ -340,12 +336,6 @@ export default function AdminBookingsPage() {
                             </button>
                         </div>
                     </div>
-
-                    {(searchTerm || dateFrom || dateTo) && (
-                        <div className="mt-2 text-xs text-slate-500">
-                            {filteredBookings.length} inscription{filteredBookings.length > 1 ? "s" : ""} affichée{filteredBookings.length > 1 ? "s" : ""}
-                        </div>
-                    )}
 
                     {/* Bookings Table */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -386,7 +376,7 @@ export default function AdminBookingsPage() {
                                                     )}
                                                 </div>
                                             </td>
-                                            <td className="px-3 py-4 whitespace-nowrap">
+                                            <td className="px-3 py-4 whitespace-nowrap text-center">
                                                 {getStatusBadge(booking)}
                                             </td>
                                             <td className="px-3 py-4 whitespace-nowrap text-center flex items-center justify-center gap-0.5">
@@ -398,9 +388,7 @@ export default function AdminBookingsPage() {
                                     {filteredBookings.length === 0 && (
                                         <tr>
                                             <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
-                                                {searchTerm || dateFrom || dateTo || filterStatuses.length > 0
-                                                    ? "Aucune inscription ne correspond aux filtres"
-                                                    : "Aucune inscription pour le moment"}
+                                                Aucune inscription trouvée.
                                             </td>
                                         </tr>
                                     )}
@@ -413,101 +401,164 @@ export default function AdminBookingsPage() {
 
             {showCreate && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl p-10 max-w-xl w-full mx-4 shadow-2xl animate-in zoom-in-95 duration-200">
-                        <h3 className="text-xl font-semibold text-slate-900 mb-6 tracking-tight">➕ Nouvelle inscription</h3>
-                        <form onSubmit={handleCreate} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Utilisateur *</label>
-                                <select required value={createForm.user_id} onChange={(e) => setCreateForm({ ...createForm, user_id: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                    <option value="">Sélectionner...</option>
-                                    {users.map((u) => <option key={u.id} value={u.id}>{u.first_name} {u.last_name}</option>)}
-                                </select>
+                    <div className="bg-white rounded-3xl max-w-xl w-full mx-4 shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col overflow-hidden max-h-[90vh]">
+                        {/* Header */}
+                        <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                            <div className="flex items-center gap-3">
+                                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                                <h3 className="text-[17px] font-semibold text-slate-900 tracking-tight">Nouvelle inscription</h3>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Séance *</label>
-                                <select required value={createForm.session_id} onChange={(e) => setCreateForm({ ...createForm, session_id: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                    <option value="">Sélectionner...</option>
-                                    {sessions.map((s) => {
-                                        const dt = new Date(s.start_time);
-                                        const dateStr = dt.toLocaleDateString("fr-FR");
-                                        const timeStr = dt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-                                        const spotsLeft = s.max_participants - s.current_participants;
-                                        return (
-                                            <option key={s.id} value={s.id}>
-                                                {dateStr} {timeStr} — {s.title} ({spotsLeft > 0 ? `${spotsLeft} place${spotsLeft > 1 ? "s" : ""}` : "complet"})
+                            <button onClick={() => setShowCreate(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-50 rounded-lg">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-8">
+                            <form onSubmit={(e) => handleCreate(e)} id="createBookingForm" className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Utilisateur *</label>
+                                    <select required value={createForm.user_id} onChange={(e) => setCreateForm({ ...createForm, user_id: e.target.value })}
+                                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300">
+                                        <option value="">Sélectionner...</option>
+                                        {users.map((u) => (
+                                            <option key={u.id} value={u.id}>
+                                                {u.first_name} {u.last_name} ({u.balance ?? 0} crédits)
                                             </option>
-                                        );
-                                    })}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
-                                <textarea value={createForm.notes}
-                                    onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" rows={2} />
-                            </div>
-                            <div className="flex gap-3 justify-end pt-4">
-                                <button type="button" onClick={() => setShowCreate(false)}
-                                    className="px-6 py-2.5 bg-gray-100 text-slate-600 rounded-xl font-medium hover:bg-gray-200 transition-colors">Annuler</button>
-                                <button type="submit" disabled={saving}
-                                    className="px-8 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors shadow-sm disabled:opacity-50">
-                                    {saving ? "Création..." : "Inscrire"}
-                                </button>
-                            </div>
-                        </form>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Séance *</label>
+                                    <select required value={createForm.session_id} onChange={(e) => setCreateForm({ ...createForm, session_id: e.target.value })}
+                                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300">
+                                        <option value="">Sélectionner...</option>
+                                        {sessions.map((s) => {
+                                            const dt = new Date(s.start_time);
+                                            const dateStr = dt.toLocaleDateString("fr-FR");
+                                            const timeStr = dt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+                                            const spotsLeft = s.max_participants - s.current_participants;
+                                            const credits = s.credits_required ?? 0;
+                                            return (
+                                                <option key={s.id} value={s.id}>
+                                                    {dateStr} {timeStr} — {s.title} ({spotsLeft > 0 ? `${spotsLeft} place${spotsLeft > 1 ? "s" : ""}` : "complet"} - {credits} crédits)
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Note interne</label>
+                                    <textarea value={createForm.notes}
+                                        onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })}
+                                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300" rows={2} />
+                                </div>
+                            </form>
+                        </div>
+
+                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
+                            <button type="button" onClick={() => setShowCreate(false)}
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">Annuler</button>
+                            <button type="submit" form="createBookingForm" disabled={saving}
+                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all text-sm shadow-sm active:scale-95 disabled:opacity-50">
+                                {saving ? "Création..." : "Valider l'inscription"}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
 
             {editBooking && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl p-10 max-w-xl w-full mx-4 shadow-2xl animate-in zoom-in-95 duration-200">
-                        <h3 className="text-xl font-semibold text-slate-900 mb-6 tracking-tight">Modifier l&apos;inscription</h3>
-                        <div className="mb-4 p-3 bg-slate-50 rounded-lg text-sm text-slate-600">
-                            <p><strong>Séance :</strong> {editBooking.session_title}</p>
-                            <p><strong>Utilisateur :</strong> {editBooking.user_name}</p>
-                            <p><strong>Date :</strong> {editBooking.session_date ? editBooking.session_date.split('-').reverse().join('/') : "—"} à {editBooking.session_time}</p>
+                    <div className="bg-white rounded-3xl max-w-xl w-full mx-4 shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col overflow-hidden max-h-[90vh]">
+                        <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                            <div className="flex items-center gap-3">
+                                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                                <h3 className="text-[17px] font-semibold text-slate-900 tracking-tight">Modifier l&apos;inscription</h3>
+                            </div>
+                            <button onClick={() => setEditBooking(null)} className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-50 rounded-lg">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
-                        <form onSubmit={handleEditSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Statut</label>
-                                <select value={editForm.status}
-                                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                    {getEditStatusOptions(editBooking.status).map((opt) => (
-                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                    ))}
-                                </select>
+                        <div className="flex-1 overflow-y-auto p-8">
+                            <div className="mb-6 p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-2 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-3 opacity-5 text-4xl">🧘</div>
+                                <div className="flex justify-between items-center group">
+                                    <span className="text-sm font-medium text-slate-500">Séance</span>
+                                    <span className="text-sm font-semibold text-slate-900">{editBooking.session_title}</span>
+                                </div>
+                                <div className="flex justify-between items-center group">
+                                    <span className="text-sm font-medium text-slate-500">Utilisateur</span>
+                                    <span className="text-sm font-bold text-emerald-600 px-2 py-1 bg-emerald-50 rounded-lg">{editBooking.user_name}</span>
+                                </div>
+                                <div className="flex justify-between items-start group">
+                                    <span className="text-sm font-medium text-slate-500">Date & heure</span>
+                                    <div className="text-right">
+                                        <span className="text-sm font-semibold text-slate-900 block capitalize">
+                                            {editBooking.session_date ? format(parseISO(editBooking.session_date), "eeee d MMMM", { locale: fr }) : "—"}
+                                        </span>
+                                        <span className="text-xs text-slate-500 font-medium">à {editBooking.session_time}</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
-                                <textarea value={editForm.notes}
-                                    onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" rows={2} />
-                            </div>
-                            <div className="flex gap-3 justify-end pt-4">
-                                <button type="button" onClick={() => setEditBooking(null)}
-                                    className="px-6 py-2.5 bg-gray-100 text-slate-600 rounded-xl font-medium hover:bg-gray-200 transition-colors">Annuler</button>
-                                <button type="submit"
-                                    className="px-8 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors shadow-sm">Enregistrer</button>
-                            </div>
-                        </form>
+                            <form onSubmit={handleEditSubmit} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Statut</label>
+                                    <select value={editForm.status}
+                                        onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300">
+                                        {getEditStatusOptions(editBooking.status).map((opt) => (
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Note interne</label>
+                                    <textarea value={editForm.notes}
+                                        onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300" rows={2} />
+                                </div>
+                                <div className="flex gap-3 justify-end items-center pt-4">
+                                    <button type="button" onClick={() => setEditBooking(null)}
+                                        className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">Annuler</button>
+                                    <button type="submit"
+                                        className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all text-sm shadow-sm active:scale-95">Enregistrer</button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
             )}
 
             {deleteConfirmId && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl p-10 max-w-md mx-4 shadow-2xl animate-in zoom-in-95 duration-200">
-                        <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">Confirmer la suppression</h3>
-                        <p className="text-slate-500 mb-8 font-normal text-base leading-relaxed">Cette inscription sera définitivement supprimée et les crédits seront remboursés au membre.</p>
-                        <div className="flex gap-3 justify-end">
-                            <button onClick={() => setDeleteConfirmId(null)}
-                                className="flex-1 px-4 py-3 bg-gray-100 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all">Annuler</button>
-                            <button onClick={() => handleDelete(deleteConfirmId)}
-                                className="flex-1 px-4 py-3 bg-rose-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-700 transition-all shadow-lg shadow-rose-900/20">Supprimer</button>
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-10">
+                            <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">Confirmer la suppression</h3>
+                            <p className="text-slate-500 text-base leading-relaxed">
+                                Attention : cette action est irréversible. L'inscription sera définitivement supprimée.
+                            </p>
+                            <div className="mt-8 flex gap-3 justify-end items-center">
+                                <button 
+                                    onClick={() => setDeleteConfirmId(null)}
+                                    className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm"
+                                >
+                                    Annuler
+                                </button>
+                                <button 
+                                    onClick={() => handleDelete(deleteConfirmId)}
+                                    className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm active:scale-95"
+                                >
+                                    Confirmer
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

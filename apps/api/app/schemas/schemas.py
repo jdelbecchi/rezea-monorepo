@@ -96,6 +96,7 @@ class UserResponse(UserBase):
     is_active_override: Optional[bool] = False
     created_by_admin: bool = False
     is_active_member: bool = False
+    balance: Optional[Decimal] = None
     email_verified: bool
     docs_accepted_at: Optional[datetime] = None
     created_at: datetime
@@ -474,6 +475,7 @@ class EventResponse(BaseModel):
     registrations_count: int
     waitlist_count: int = 0
     is_registered: Optional[bool] = False
+    registration_status: Optional[str] = None
     location: Optional[str] = None
     description: Optional[str] = None
     allow_waitlist: bool = True
@@ -627,6 +629,7 @@ class EventRegistrationCreate(BaseModel):
     price_paid_cents: int = 0
     payment_status: Optional[OrderPaymentStatus] = None
     notes: Optional[str] = None
+    user_note: Optional[str] = None
 
 
 class EventRegistrationUpdate(BaseModel):
@@ -634,6 +637,7 @@ class EventRegistrationUpdate(BaseModel):
     notes: Optional[str] = None
     status: Optional[str] = None
     payment_status: Optional[OrderPaymentStatus] = None
+    user_note: Optional[str] = None
 
 
 class EventRegistrationResponse(BaseModel):
@@ -647,6 +651,7 @@ class EventRegistrationResponse(BaseModel):
     payment_status: str
     created_by_admin: bool = False
     notes: Optional[str] = None
+    user_note: Optional[str] = None
     created_at: datetime
     cancelled_at: Optional[datetime] = None
     instructor_name: Optional[str] = None

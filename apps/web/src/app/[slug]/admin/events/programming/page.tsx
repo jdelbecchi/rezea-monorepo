@@ -162,7 +162,7 @@ export default function AdminEventsProgrammingPage() {
     const handleCancelEvent = async (event: EventItem) => {
         setConfirmModal({
             show: true,
-            title: "Annuler l'évènement ?",
+            title: "Confirmer l'annulation",
             message: `Êtes-vous sûr de vouloir annuler votre évènement "${event.title}" ? Les inscriptions seront également annulées et les participants seront informés.`,
             type: 'warning',
             onConfirm: async () => {
@@ -194,7 +194,7 @@ export default function AdminEventsProgrammingPage() {
     const handleDeleteEvent = async (event: EventItem) => {
         setConfirmModal({
             show: true,
-            title: "Suppression définitive ?",
+            title: "Confirmer la suppression",
             message: `Attention : cette action est irréversible. Toutes les données associées à "${event.title}" seront supprimées.`,
             type: 'danger',
             onConfirm: async () => {
@@ -426,11 +426,17 @@ export default function AdminEventsProgrammingPage() {
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
                         {/* Header */}
-                        <div className="p-10 border-b border-gray-100 flex items-center justify-between bg-white">
+                        <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
                             <div className="flex items-center gap-3">
-                                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                </svg>
+                                {editingId ? (
+                                    <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                ) : (
+                                    <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                    </svg>
+                                )}
                                 <h3 className="text-[17px] font-semibold text-slate-900 tracking-tight">
                                     {editingId ? "Modifier l'évènement" : "Nouvel évènement"}
                                 </h3>
@@ -443,8 +449,8 @@ export default function AdminEventsProgrammingPage() {
                         </div>
 
                         {/* Body */}
-                        <div className="flex-1 overflow-y-auto p-10">
-                            <form id="eventForm" onSubmit={handleSubmit} className="space-y-10">
+                        <div className="flex-1 overflow-y-auto p-8">
+                            <form id="eventForm" onSubmit={handleSubmit} className="space-y-8">
                                 {/* Section: Informations générales */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-1.5">

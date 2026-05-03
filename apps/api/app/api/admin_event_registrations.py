@@ -59,6 +59,7 @@ def build_response(reg: EventRegistration, users_with_pending: set = None) -> Ev
         payment_status=p_status,
         created_by_admin=reg.created_by_admin or False,
         notes=reg.notes,
+        user_note=reg.user_note,
         created_at=reg.created_at,
         cancelled_at=reg.cancelled_at,
         event_date=event.event_date.strftime("%Y-%m-%d") if event else "",
@@ -123,7 +124,10 @@ async def list_registrations(
     query = query.options(joinedload(EventRegistration.event), joinedload(EventRegistration.user)).order_by(EventRegistration.created_at.desc())
 
     if status_filter == "confirmed":
-        query = query.where(EventRegistration.status == EventRegistrationStatus.CONFIRMED)
+        query = query.where(EventRegistration.status.in_([
+            EventRegistrationStatus.CONFIRMED,
+            EventRegistrationStatus.PENDING_PAYMENT
+        ]))
     elif status_filter == "cancelled":
         query = query.where(EventRegistration.status == EventRegistrationStatus.CANCELLED)
     elif status_filter == "absent":
@@ -258,6 +262,7 @@ async def create_registration(
         price_paid_cents=price,
         payment_status=payment,
         notes=data.notes,
+        user_note=data.user_note,
         created_by_admin=True,
     )
     db.add(registration)
@@ -350,6 +355,8 @@ async def update_registration(
     # Notes
     if "notes" in update_data:
         reg.notes = update_data["notes"]
+    if "user_note" in update_data:
+        reg.user_note = update_data["user_note"]
 
     # Tarif
     if "price_paid_cents" in update_data:

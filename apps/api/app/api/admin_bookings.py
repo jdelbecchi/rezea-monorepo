@@ -137,6 +137,7 @@ async def list_sessions_for_bookings(
             "start_time": s.start_time.isoformat(),
             "max_participants": s.max_participants,
             "current_participants": s.current_participants,
+            "credits_required": float(s.credits_required),
         }
         for s in sessions
     ]
