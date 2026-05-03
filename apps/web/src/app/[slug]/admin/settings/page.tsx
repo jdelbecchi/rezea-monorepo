@@ -40,6 +40,7 @@ export default function AdminSettingsPage() {
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState<string | null>(null);
     const [message, setMessage] = useState({ text: "", type: "" });
+    const [showHomePreview, setShowHomePreview] = useState(false);
 
     // Form states
     const [formData, setFormData] = useState<Partial<Tenant>>({});
@@ -52,7 +53,7 @@ export default function AdminSettingsPage() {
     const [previewLoginBg, setPreviewLoginBg] = useState<string | null>(null);
     const [newLocation, setNewLocation] = useState("");
     const [showPreview, setShowPreview] = useState(false);
-    const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
+    const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("mobile");
 
     // Helpers for structured description
     const parseDescription = (html: string) => {
@@ -292,12 +293,10 @@ export default function AdminSettingsPage() {
                     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
                         {/* IDENTITY TAB */}
                         {activeTab === "identity" && (
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                <div className="space-y-8">
-                                    {/* Bloc 1: Informations Générales */}
-                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
-                                        <h3 className="text-lg font-semibold flex items-center gap-2">📝 Informations Générales</h3>
-                                        <div className="grid grid-cols-1 gap-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+                                <div className="space-y-8 flex flex-col">
+                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6 flex-1">
+                                        <div className="grid grid-cols-1 gap-4">
                                             <div>
                                                 <label className={`block text-sm font-medium mb-2 ${!formData.name ? 'text-red-500' : 'text-slate-700'}`}>Nom de l&apos;établissement *</label>
                                                 <input
@@ -305,73 +304,87 @@ export default function AdminSettingsPage() {
                                                     required
                                                     value={formData.name || ""}
                                                     onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                                    className={`w-full px-4 py-3 border rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal ${!formData.name ? 'border-red-300 bg-red-50' : 'bg-slate-50 border-slate-200'}`}
+                                                    className={`w-full px-4 py-3 border rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal ${!formData.name ? 'border-red-300 bg-red-50' : 'bg-white border-slate-200'}`}
                                                 />
                                             </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">Description / Slogan</label>
-                                                <textarea
-                                                    value={formData.description || ""}
-                                                    onChange={e => setFormData({ ...formData, description: e.target.value })}
-                                                    rows={3}
-                                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal resize-none"
-                                                />
-                                            </div>
-                                            <div className="pt-2">
-                                                <label className="block text-sm font-medium text-slate-700 mb-4">Logo de l&apos;établissement</label>
-                                                <div className="flex items-center gap-6">
-                                                    <div className="w-24 h-24 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group">
+
+                                            <div className="pt-2 border-t border-slate-100/50">
+                                                <label className="block text-sm font-medium text-slate-700 mb-2 text-center">Logo de l&apos;établissement</label>
+                                                <div className="flex flex-col items-center gap-6">
+                                                    <div className="w-24 h-24 rounded-2xl bg-white border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group">
                                                         {previewLogo ? (
                                                             <img src={previewLogo} className="w-full h-full object-contain p-2" alt="Logo" />
                                                         ) : (
-                                                            <span className="text-2xl">🏗️</span>
-                                                        )}
-                                                        {uploading === 'logo' && (
-                                                            <div className="absolute inset-0 bg-white/80 flex items-center justify-center backdrop-blur-sm">
-                                                                <div className="h-6 w-6 border-2 border-blue-600 border-t-transparent animate-spin rounded-full"></div>
+                                                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 group-hover:text-slate-400 transition-colors">
+                                                                <span className="text-2xl mb-1">🖼️</span>
+                                                                <span className="text-[8px] font-bold uppercase tracking-wider">Aucun logo</span>
                                                             </div>
                                                         )}
+                                                        <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                            <button 
+                                                                onClick={() => logoInputRef.current?.click()}
+                                                                className="p-2 bg-white rounded-xl text-slate-900 shadow-xl scale-90 group-hover:scale-100 transition-transform"
+                                                            >
+                                                                <span className="text-sm">🔄</span>
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex-1 space-y-2">
+                                                    <div className="flex flex-col items-center gap-2">
                                                         <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'logo')} />
                                                         <button 
                                                             onClick={() => logoInputRef.current?.click()}
-                                                            className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 rounded-xl font-medium text-xs transition-all shadow-sm"
+                                                            className="px-6 py-2 bg-white hover:bg-slate-50 text-slate-900 border border-slate-200 rounded-xl font-bold text-xs transition-all shadow-sm"
                                                         >
                                                             Changer le logo
                                                         </button>
-                                                        <p className="text-[10px] text-slate-400 font-normal tracking-wide leading-tight">Recommandé : Fond transparent, max 1MB.</p>
+                                                        <p className="text-[10px] text-slate-400 font-normal tracking-wide leading-tight text-center">Fond transparent recommandé, max 1MB.</p>
+                                                    </div>
                                                 </div>
+                                            </div>
+
+                                            <div className="pt-2 border-t border-slate-100/50">
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">
+                                                    Message de bienvenue <span className="text-slate-400 text-[10px] font-normal ml-1">(facultatif - affiché lors de la création de compte)</span>
+                                                </label>
+                                                <textarea
+                                                    value={formData.welcome_message || ""}
+                                                    onChange={e => setFormData({ ...formData, welcome_message: e.target.value })}
+                                                    placeholder="Bienvenue chez nous !"
+                                                    rows={3}
+                                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal resize-none"
+                                                />
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div className="space-y-8">
-                                    {/* Bloc 2: Personnalisation */}
-                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
-                                        <h3 className="text-lg font-semibold flex items-center gap-2">🎨 Personnalisation</h3>
-                                        
+                                <div className="space-y-8 flex flex-col">
+                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6 flex-1">
                                         <div className="space-y-6">
                                             <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">Bannière (Dashboard)</label>
-                                                <div className="w-full h-32 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group mb-3">
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Header utilisateur</label>
+                                                <div className="w-full h-32 rounded-3xl bg-white border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group mb-3">
                                                     {previewBanner ? (
                                                         <img src={previewBanner} className="w-full h-full object-cover" alt="Banner" />
                                                     ) : (
-                                                        <span className="text-3xl">🌄</span>
-                                                    )}
-                                                    {uploading === 'banner' && (
-                                                        <div className="absolute inset-0 bg-white/80 flex items-center justify-center backdrop-blur-sm">
-                                                            <div className="h-6 w-6 border-2 border-blue-600 border-t-transparent animate-spin rounded-full"></div>
+                                                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 group-hover:text-slate-400 transition-colors">
+                                                            <span className="text-3xl mb-1">🏞️</span>
+                                                            <span className="text-[10px] font-bold uppercase tracking-wider">Aucun header</span>
                                                         </div>
                                                     )}
+                                                    <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                        <button 
+                                                            onClick={() => bannerInputRef.current?.click()}
+                                                            className="p-3 bg-white rounded-2xl text-slate-900 shadow-2xl scale-90 group-hover:scale-100 transition-transform"
+                                                        >
+                                                            <span className="text-lg">📸</span>
+                                                        </button>
+                                                    </div>
                                                 </div>
                                                 <input type="file" ref={bannerInputRef} className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'banner')} />
                                                 <button 
                                                     onClick={() => bannerInputRef.current?.click()}
-                                                    className="w-full py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-xl font-medium text-xs transition-all"
+                                                    className="w-full py-2.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 rounded-xl font-medium text-xs transition-all shadow-sm"
                                                 >
                                                     Changer la bannière
                                                 </button>
@@ -379,39 +392,28 @@ export default function AdminSettingsPage() {
                                             
                                             <div>
                                                 <label className="block text-sm font-medium text-slate-700 mb-2">Couleur d&apos;accentuation</label>
-                                                <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                                    <input
-                                                        type="color"
-                                                        value={formData.primary_color || "#7c3aed"}
-                                                        onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
-                                                        className="w-12 h-12 rounded-xl border-2 border-white shadow-sm cursor-pointer"
-                                                    />
-                                                    <div className="flex-1">
+                                                <div className="flex items-center justify-between gap-3 p-2.5 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                                                    <div className="flex items-center gap-3">
+                                                        <input
+                                                            type="color"
+                                                            value={formData.primary_color || "#7c3aed"}
+                                                            onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
+                                                            className="w-9 h-9 rounded-xl border-2 border-white shadow-sm cursor-pointer"
+                                                        />
                                                         <input
                                                             type="text"
                                                             value={formData.primary_color || "#7c3aed"}
                                                             onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
-                                                            className="bg-transparent border-none p-0 font-mono font-semibold text-base outline-none w-full"
+                                                            className="bg-transparent border-none p-0 font-mono font-bold text-xs outline-none w-20 text-slate-600"
                                                         />
                                                     </div>
-                                                    <div 
-                                                        className="px-4 py-1.5 rounded-lg text-white font-semibold text-[10px] uppercase shadow-sm"
-                                                        style={{ backgroundColor: formData.primary_color }}
+                                                    <button 
+                                                        onClick={() => setShowHomePreview(true)}
+                                                        className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-[9px] uppercase tracking-wider transition-all shadow-md flex items-center gap-2"
                                                     >
-                                                        Aperçu
-                                                    </div>
+                                                        <span>👁️</span> Aperçu
+                                                    </button>
                                                 </div>
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">Message d&apos;accueil</label>
-                                                <textarea
-                                                    value={formData.welcome_message || ""}
-                                                    onChange={e => setFormData({ ...formData, welcome_message: e.target.value })}
-                                                    placeholder="Bienvenue chez nous !"
-                                                    rows={4}
-                                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal"
-                                                />
                                             </div>
                                         </div>
                                     </div>
@@ -502,7 +504,7 @@ export default function AdminSettingsPage() {
                                                         value={structuredDescription.intro}
                                                         onChange={e => setStructuredDescription(prev => ({ ...prev, intro: e.target.value }))}
                                                         placeholder="Ex: Bienvenue dans votre club de bien-être..."
-                                                        className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:bg-white transition-all outline-none font-normal text-slate-700 resize-none min-h-[100px]"
+                                                        className="w-full px-5 py-4 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:bg-white transition-all outline-none font-normal text-slate-700 resize-none min-h-[100px]"
                                                     />
                                                 </div>
 
@@ -567,7 +569,7 @@ export default function AdminSettingsPage() {
                                                     type="number"
                                                     value={formData.registration_limit_mins ?? 0}
                                                     onChange={e => setFormData({ ...formData, registration_limit_mins: parseInt(e.target.value) || 0 })}
-                                                    className="w-full pl-12 pr-20 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-semibold focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                                                    className="w-full pl-12 pr-20 py-4 bg-white border border-slate-200 rounded-2xl font-semibold focus:ring-4 focus:ring-blue-100 transition-all outline-none"
                                                 />
                                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">⏳</span>
                                                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-sm">minutes</span>
@@ -582,7 +584,7 @@ export default function AdminSettingsPage() {
                                                     type="number"
                                                     value={formData.cancellation_limit_mins ?? 45}
                                                     onChange={e => setFormData({ ...formData, cancellation_limit_mins: parseInt(e.target.value) || 0 })}
-                                                    className="w-full pl-12 pr-20 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-semibold focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                                                    className="w-full pl-12 pr-20 py-4 bg-white border border-slate-200 rounded-2xl font-semibold focus:ring-4 focus:ring-blue-100 transition-all outline-none"
                                                 />
                                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">🚫</span>
                                                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-sm">minutes</span>
@@ -853,6 +855,148 @@ export default function AdminSettingsPage() {
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                )}
+                
+                {/* HOME PREVIEW MODAL */}
+                {showHomePreview && (
+                    <div className="fixed inset-0 z-[100] flex flex-col bg-slate-950/40 backdrop-blur-md animate-in fade-in duration-300">
+                        {/* Modal Header */}
+                        <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm">
+                            <div className="flex items-center gap-4">
+                                <h2 className="text-lg font-bold text-slate-900">Aperçu Home Utilisateur</h2>
+                                <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+                                    <button 
+                                        onClick={() => setPreviewMode("desktop")}
+                                        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${previewMode === "desktop" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                                    >
+                                        Ordinateur
+                                    </button>
+                                    <button 
+                                        onClick={() => setPreviewMode("mobile")}
+                                        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${previewMode === "mobile" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                                    >
+                                        Mobile
+                                    </button>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => setShowHomePreview(false)}
+                                className="w-10 h-10 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full transition-all font-bold"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="flex-1 overflow-auto p-4 md:p-8 flex justify-center items-start bg-slate-100/50">
+                            <div className={`bg-white shadow-2xl transition-all duration-500 overflow-hidden relative ${previewMode === "desktop" ? "w-full max-w-5xl rounded-2xl" : "w-[375px] h-[667px] rounded-[3rem] border-[8px] border-slate-900 shadow-black/20"}`}>
+                                <div className={`h-full overflow-y-auto no-scrollbar flex flex-col bg-white ${previewMode === "mobile" ? "pt-8" : ""}`}>
+                                    <div className={`w-full mx-auto flex flex-col bg-white ${previewMode === "desktop" ? "max-w-4xl px-8 pt-8" : ""}`}>
+                                        <div className={`${previewMode === "desktop" ? "lg:grid lg:grid-cols-2 lg:gap-12 lg:items-start" : ""}`}>
+                                            <div className="flex flex-col">
+                                                <header className="px-5 py-3 flex items-center justify-between mb-3">
+                                                    <div className="flex items-center gap-3">
+                                                        {previewLogo ? (
+                                                            <img src={previewLogo} className="h-6 w-6 object-contain" alt="Logo" />
+                                                        ) : (
+                                                            <div className="w-6 h-6 rounded-lg bg-slate-900 flex items-center justify-center text-white text-[8px] font-medium">
+                                                                {formData.name?.[0]?.toUpperCase() || 'R'}
+                                                            </div>
+                                                        )}
+                                                        <span className="text-xs font-semibold tracking-tight text-slate-800">
+                                                            {formData.name || "rezea"}
+                                                        </span>
+                                                    </div>
+                                                </header>
+
+                                                <div className="relative mb-6">
+                                                    <div 
+                                                        className="aspect-video w-full shadow-lg relative bg-slate-50 border border-slate-100 overflow-hidden rounded-xl"
+                                                        style={{ 
+                                                            background: previewBanner 
+                                                                ? `url(${previewBanner}) center/cover no-repeat` 
+                                                                : `linear-gradient(135deg, ${formData.primary_color}20, ${formData.primary_color}40)` 
+                                                        }}
+                                                    >
+                                                        {!previewBanner && (
+                                                            <div className="absolute inset-0 flex items-center justify-center text-slate-300">
+                                                                <span className="text-4xl opacity-20">✨</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex flex-col px-5 pb-8 gap-3">
+                                                <div 
+                                                    className="w-full flex items-center justify-between px-5 py-4 bg-white border rounded-xl shadow-sm"
+                                                    style={{ 
+                                                        boxShadow: `0 4px 12px -2px ${formData.primary_color}25`,
+                                                        borderColor: `${formData.primary_color}20`
+                                                    }}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-xl">🗓️</span>
+                                                        <span className="text-xs font-bold text-slate-800">Planning & réservations</span>
+                                                    </div>
+                                                </div>
+                                                <div 
+                                                    className="w-full flex items-center justify-between px-5 py-4 bg-white border rounded-xl shadow-sm"
+                                                    style={{ 
+                                                        boxShadow: `0 4px 12px -2px ${formData.primary_color}20`,
+                                                        borderColor: `${formData.primary_color}15`
+                                                    }}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-xl">🛍️</span>
+                                                        <span className="text-xs font-bold text-slate-800">Boutique</span>
+                                                    </div>
+                                                </div>
+
+                                                <div 
+                                                    className="w-full flex items-center justify-between px-5 py-4 bg-white border rounded-xl shadow-sm"
+                                                    style={{ 
+                                                        boxShadow: `0 4px 12px -2px ${formData.primary_color}20`,
+                                                        borderColor: `${formData.primary_color}15`
+                                                    }}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-xl">📦</span>
+                                                        <span className="text-xs font-bold text-slate-800">Mes commandes</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {previewMode === "mobile" && (
+                                        <div className="mt-auto border-t border-slate-100 flex items-center justify-around py-3 px-4 bg-white/80 backdrop-blur-sm">
+                                            <div className="flex flex-col items-center gap-1 opacity-40">
+                                                <span className="text-sm">🏠</span>
+                                                <span className="text-[8px] font-bold">Home</span>
+                                            </div>
+                                            <div className="flex flex-col items-center gap-1 opacity-40">
+                                                <span className="text-sm">🗓️</span>
+                                                <span className="text-[8px] font-bold">Planning</span>
+                                            </div>
+                                            <div className="flex flex-col items-center gap-1 opacity-40">
+                                                <span className="text-sm">🛍️</span>
+                                                <span className="text-[8px] font-bold">Shop</span>
+                                            </div>
+                                            <div className="flex flex-col items-center gap-1 opacity-40">
+                                                <span className="text-sm">👤</span>
+                                                <span className="text-[8px] font-bold">Profil</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white border-t border-slate-200 px-8 py-4 flex items-center justify-center gap-2">
+                            <p className="text-xs text-slate-400 italic">Ceci est une simulation basée sur vos réglages actuels</p>
                         </div>
                     </div>
                 )}
