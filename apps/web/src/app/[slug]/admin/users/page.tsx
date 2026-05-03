@@ -284,9 +284,12 @@ export default function AdminUsersPage() {
                             <div className="flex items-center gap-3">
                                 <button
                                     onClick={() => { setShowCreateModal(true); setCreateMessage(""); }}
-                                    className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors font-semibold shadow-md shadow-slate-200"
+                                    className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-medium shadow-sm text-sm active:scale-95"
                                 >
-                                    ➕ Nouveau
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    Nouveau
                                 </button>
                             </div>
                         </div>
@@ -311,7 +314,7 @@ export default function AdminUsersPage() {
                                     onChange={(e) => setRoleFilter(e.target.value)}
                                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-normal appearance-none cursor-pointer"
                                 >
-                                    <option value="">Tous les profils</option>
+                                    <option value="">Tous</option>
                                     <option value="manager">Manager</option>
                                     <option value="staff">Staff</option>
                                     <option value="user">Utilisateur</option>
@@ -324,7 +327,7 @@ export default function AdminUsersPage() {
                                     onChange={(e) => setStatusFilter(e.target.value)}
                                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-normal appearance-none cursor-pointer"
                                 >
-                                    <option value="">Tous les statuts</option>
+                                    <option value="">Tous</option>
                                     <option value="true">Actifs</option>
                                     <option value="false">Inactifs</option>
                                 </select>
@@ -438,18 +441,23 @@ export default function AdminUsersPage() {
             {editingUser && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                        <div className="p-6 border-b border-slate-200">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-semibold text-slate-900 tracking-tight">
-                                    modifier l&apos;utilisateur
+                        <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                            <div className="flex items-center gap-3">
+                                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                                <h2 className="text-[17px] font-semibold text-slate-900 tracking-tight">
+                                    Modifier l&apos;utilisateur
                                 </h2>
-                                <button
-                                    onClick={() => setEditingUser(null)}
-                                    className="text-slate-400 hover:text-slate-600 text-2xl"
-                                >
-                                    ×
-                                </button>
                             </div>
+                            <button
+                                onClick={() => setEditingUser(null)}
+                                className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-50 rounded-lg"
+                            >
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
 
                         <div className="p-6 space-y-6">
@@ -598,7 +606,11 @@ export default function AdminUsersPage() {
                                             onClick={() => setShowEditPassword(!showEditPassword)}
                                             className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600"
                                         >
-                                            {showEditPassword ? "🔒" : "👁️"}
+                                            {showEditPassword ? (
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
+                                            ) : (
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                                            )}
                                         </button>
                                     </div>
                                     <p className="text-xs text-slate-400 mt-1">Min. 8 caractères. Laisser vide pour conserver le mot de passe actuel.</p>
@@ -718,29 +730,27 @@ export default function AdminUsersPage() {
 
             {/* Delete Confirmation Modal */}
             {deletingUser && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-                        <h2 className="text-xl font-bold text-slate-900 mb-2">
-                            Confirmer la suppression
-                        </h2>
-                        <p className="text-slate-600 mb-6">
-                            Êtes-vous sûr de vouloir supprimer{" "}
-                            <strong>{deletingUser.first_name} {deletingUser.last_name}</strong> ?
-                            Cette action est irréversible.
-                        </p>
-                        <div className="flex justify-end gap-3">
-                            <button
-                                onClick={() => setDeletingUser(null)}
-                                className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
-                            >
-                                Annuler
-                            </button>
-                            <button
-                                onClick={handleDelete}
-                                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
-                            >
-                                Supprimer
-                            </button>
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-10">
+                            <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">Confirmer la suppression</h3>
+                            <p className="text-slate-500 text-base leading-relaxed">
+                                Attention : cette action est irréversible. L&apos;utilisateur <strong>{deletingUser.first_name} {deletingUser.last_name}</strong> sera définitivement supprimé.
+                            </p>
+                            <div className="mt-8 flex gap-3 justify-end items-center">
+                                <button 
+                                    onClick={() => setDeletingUser(null)}
+                                    className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm"
+                                >
+                                    Annuler
+                                </button>
+                                <button 
+                                    onClick={handleDelete}
+                                    className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm active:scale-95"
+                                >
+                                    Confirmer la suppression
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -750,18 +760,23 @@ export default function AdminUsersPage() {
             {showCreateModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                        <div className="p-6 border-b border-slate-200">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-bold text-slate-900">
+                        <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                            <div className="flex items-center gap-3">
+                                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                                <h2 className="text-[17px] font-semibold text-slate-900 tracking-tight">
                                     Créer un utilisateur
                                 </h2>
-                                <button
-                                    onClick={() => setShowCreateModal(false)}
-                                    className="text-slate-400 hover:text-slate-600 text-2xl"
-                                >
-                                    ×
-                                </button>
                             </div>
+                            <button
+                                onClick={() => setShowCreateModal(false)}
+                                className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-50 rounded-lg"
+                            >
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
 
                         <div className="p-6 space-y-6">
@@ -808,7 +823,11 @@ export default function AdminUsersPage() {
                                                 onClick={() => setShowPassword(!showPassword)}
                                                 className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600"
                                             >
-                                                {showPassword ? "🔒" : "👁️"}
+                                                {showPassword ? (
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
+                                                ) : (
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                                                )}
                                             </button>
                                         </div>
                                     </div>

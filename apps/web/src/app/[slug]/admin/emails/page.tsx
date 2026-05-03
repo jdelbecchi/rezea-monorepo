@@ -29,6 +29,7 @@ function AdminEmailsContent() {
     const [subject, setSubject] = useState("");
     const [content, setContent] = useState("");
     const [isSending, setIsSending] = useState(false);
+    const [showValidation, setShowValidation] = useState(false);
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
     const [showUserSelector, setShowUserSelector] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
@@ -134,6 +135,7 @@ function AdminEmailsContent() {
     }), [imageHandler]);
 
     const handleSend = async () => {
+        setShowValidation(true);
         if (!subject || !content || content === "<p><br></p>") {
             setMessage({ type: "error", text: "Veuillez remplir l'objet et le contenu de l'email." });
             return;
@@ -158,6 +160,7 @@ function AdminEmailsContent() {
             setSubject("");
             setContent("");
             setSelectedUserIds([]);
+            setShowValidation(false);
         } catch (error) {
             setMessage({ type: "error", text: "Une erreur est survenue lors de l'envoi de l'email." });
         } finally {
@@ -230,11 +233,11 @@ function AdminEmailsContent() {
         <div className="flex min-h-screen bg-slate-50">
             <Sidebar user={user} />
             <main className="flex-1 p-8">
-                <div className="max-w-4xl mx-auto">
+                <div className="max-w-7xl mx-auto">
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight">📧 Diffusion d'Emails</h1>
-                            <p className="text-base font-normal text-slate-500 mt-1">Envoyez des informations ou une newsletter à vos membres.</p>
+                            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight">📧 Diffusion d&apos;emails</h1>
+                            <p className="text-base font-normal text-slate-500 mt-1">Envoyez des informations ou une newsletter à vos utilisateurs.</p>
                         </div>
                     </div>
 
@@ -255,7 +258,7 @@ function AdminEmailsContent() {
                             <div className="flex flex-wrap gap-4 mb-6">
                                 <button
                                     onClick={() => setRecipientType("all")}
-                                    className={`flex-1 py-4 px-6 rounded-xl border-2 transition-all flex flex-col items-center text-center gap-2 ${recipientType === "all" ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm" : "border-slate-100 hover:border-slate-200 bg-slate-50 text-slate-500"}`}
+                                    className={`flex-1 py-4 px-6 rounded-xl border-2 transition-all flex flex-col items-center text-center gap-2 ${recipientType === "all" ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm" : "border-slate-100 hover:border-slate-200 bg-white text-slate-500"}`}
                                 >
                                     <span className="text-2xl">🌍</span>
                                     <span className="font-bold">Tous</span>
@@ -263,7 +266,7 @@ function AdminEmailsContent() {
                                 </button>
                                 <button
                                     onClick={() => setRecipientType("active")}
-                                    className={`flex-1 py-4 px-6 rounded-xl border-2 transition-all flex flex-col items-center text-center gap-2 ${recipientType === "active" ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm" : "border-slate-100 hover:border-slate-200 bg-slate-50 text-slate-500"}`}
+                                    className={`flex-1 py-4 px-6 rounded-xl border-2 transition-all flex flex-col items-center text-center gap-2 ${recipientType === "active" ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm" : "border-slate-100 hover:border-slate-200 bg-white text-slate-500"}`}
                                 >
                                     <span className="text-2xl">✅</span>
                                     <span className="font-bold">Actifs</span>
@@ -271,7 +274,7 @@ function AdminEmailsContent() {
                                 </button>
                                 <button
                                     onClick={() => setRecipientType("selected")}
-                                    className={`flex-1 py-4 px-6 rounded-xl border-2 transition-all flex flex-col items-center text-center gap-2 ${recipientType === "selected" ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm" : "border-slate-100 hover:border-slate-200 bg-slate-50 text-slate-500"}`}
+                                    className={`flex-1 py-4 px-6 rounded-xl border-2 transition-all flex flex-col items-center text-center gap-2 ${recipientType === "selected" ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm" : "border-slate-100 hover:border-slate-200 bg-white text-slate-500"}`}
                                 >
                                     <span className="text-2xl">🎯</span>
                                     <span className="font-bold">Ciblé</span>
@@ -280,7 +283,7 @@ function AdminEmailsContent() {
                             </div>
 
                             {recipientType === "selected" && (
-                                <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-dotted border-slate-300">
+                                <div className="mt-4 p-4 bg-white rounded-xl border border-dotted border-slate-300">
                                     <div className="flex justify-between items-center mb-3">
                                         <span className="text-sm font-medium text-slate-700">
                                             {selectedUserIds.length} utilisateur(s) sélectionné(s)
@@ -328,12 +331,12 @@ function AdminEmailsContent() {
                                                     e.stopPropagation();
                                                     setTemplateToDelete(t);
                                                 }}
-                                                className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all text-xs z-20"
+                                                className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-white text-slate-400 hover:bg-rose-50 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all text-xs z-20"
                                                 title="Supprimer le modèle"
                                             >
                                                 ✕
                                             </button>
-                                            <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors mb-4">
+                                            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors mb-4">
                                                 <span className="text-xl">📄</span>
                                             </div>
                                             <h3 className="font-bold text-slate-900 text-sm truncate mb-1">{t.name}</h3>
@@ -353,14 +356,16 @@ function AdminEmailsContent() {
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className={`block text-sm font-medium mb-1 ${!subject ? 'text-red-500' : 'text-slate-700'}`}>Objet de l'email *</label>
+                                    <label className={`block text-sm font-medium mb-1 ${showValidation && !subject ? 'text-red-500' : 'text-slate-700'}`}>Objet de l'email</label>
                                     <input
                                         type="text"
-                                        required
                                         value={subject}
-                                        onChange={(e) => setSubject(e.target.value)}
-                                        placeholder="Note d'information : [Sujet]"
-                                        className={`w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none ${!subject ? 'border-red-300 bg-red-50' : 'border-slate-200'}`}
+                                        onChange={(e) => {
+                                            setSubject(e.target.value);
+                                            if (e.target.value) setShowValidation(false);
+                                        }}
+                                        placeholder=""
+                                        className={`w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none placeholder:italic ${showValidation && !subject ? 'border-red-500 bg-white' : 'border-slate-200 bg-white'}`}
                                     />
                                 </div>
                                 <div>
@@ -382,7 +387,7 @@ function AdminEmailsContent() {
                                         .quill-editor .ql-toolbar {
                                             border: none !important;
                                             border-bottom: 1px solid #e2e8f0 !important;
-                                            background: #f8fafc;
+                                            background: #ffffff;
                                         }
                                         .quill-editor .ql-container {
                                             border: none !important;
@@ -425,20 +430,33 @@ function AdminEmailsContent() {
             {showUserSelector && (
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                            <h3 className="text-xl font-bold text-slate-900">Sélectionner les destinataires</h3>
-                            <button onClick={() => setShowUserSelector(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+                        <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                            <div className="flex items-center gap-3">
+                                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
+                                <h3 className="text-[17px] font-semibold text-slate-900 tracking-tight">Sélectionner les destinataires</h3>
+                            </div>
+                            <button onClick={() => setShowUserSelector(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-50 rounded-lg">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
                         
                         <div className="p-6 border-b border-slate-100">
                             <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg">🔍</span>
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </span>
                                 <input
                                     type="text"
                                     placeholder="Rechercher un membre..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none"
+                                    className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all"
                                 />
                             </div>
                         </div>
@@ -458,7 +476,7 @@ function AdminEmailsContent() {
                                         <p className="text-xs text-slate-500">{u.email}</p>
                                     </div>
                                     <div className="ml-auto">
-                                        <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold ${u.is_active ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
+                                        <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-normal border ${u.is_active ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-50 text-slate-500 border-slate-200"}`}>
                                             {u.is_active ? "Actif" : "Inactif"}
                                         </span>
                                     </div>
@@ -470,7 +488,7 @@ function AdminEmailsContent() {
                             <span className="text-sm font-medium text-slate-600">{selectedUserIds.length} sélectionné(s)</span>
                             <button
                                 onClick={() => setShowUserSelector(false)}
-                                className="bg-slate-900 text-white px-8 py-2 rounded-xl font-bold hover:bg-slate-800 transition-all"
+                                className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-medium hover:bg-slate-800 transition-all text-sm active:scale-95"
                             >
                                 Terminer
                             </button>
