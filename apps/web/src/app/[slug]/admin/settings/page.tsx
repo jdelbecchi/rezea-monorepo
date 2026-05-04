@@ -244,7 +244,7 @@ export default function AdminSettingsPage() {
         <div className="min-h-screen bg-[#f8fafc] flex flex-col md:flex-row font-sans text-slate-900">
             <Sidebar user={user} />
             <main className="flex-1 p-4 md:p-8 overflow-y-auto">
-                <div className="max-w-5xl mx-auto">
+                <div className="max-w-7xl mx-auto">
                     {/* Header */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                         <div>
@@ -363,7 +363,7 @@ export default function AdminSettingsPage() {
                                         <div className="space-y-6">
                                             <div>
                                                 <label className="block text-sm font-medium text-slate-700 mb-2">Header utilisateur</label>
-                                                <div className="w-full h-32 rounded-3xl bg-white border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group mb-3">
+                                                <div className="w-full h-64 rounded-3xl bg-white border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group mb-3">
                                                     {previewBanner ? (
                                                         <img src={previewBanner} className="w-full h-full object-cover" alt="Banner" />
                                                     ) : (
@@ -391,7 +391,9 @@ export default function AdminSettingsPage() {
                                             </div>
                                             
                                             <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">Couleur d&apos;accentuation</label>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">
+                                                    Couleur d&apos;accentuation <span className="text-slate-400 text-[10px] font-normal ml-1">(Choisissez une couleur foncée à médium pour la visibilité de l&apos;interface utilisateur)</span>
+                                                </label>
                                                 <div className="flex items-center justify-between gap-3 p-2.5 bg-white rounded-2xl border border-slate-100 shadow-sm">
                                                     <div className="flex items-center gap-3">
                                                         <input
@@ -409,9 +411,9 @@ export default function AdminSettingsPage() {
                                                     </div>
                                                     <button 
                                                         onClick={() => setShowHomePreview(true)}
-                                                        className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-[9px] uppercase tracking-wider transition-all shadow-md flex items-center gap-2"
+                                                        className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-[9px] uppercase tracking-wider transition-all shadow-md"
                                                     >
-                                                        <span>👁️</span> Aperçu
+                                                        Aperçu
                                                     </button>
                                                 </div>
                                             </div>
@@ -425,40 +427,8 @@ export default function AdminSettingsPage() {
                         {activeTab === "portal" && (
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 <div className="space-y-8">
-                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
-                                        <div className="flex items-center justify-between">
-                                            <h3 className="text-lg font-semibold flex items-center gap-2">🎨 Apparence du portail</h3>
-                                            <button 
-                                                onClick={() => setShowPreview(true)}
-                                                className="px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl font-medium text-xs transition-all flex items-center gap-2"
-                                            >
-                                                <span>👁️</span> Aperçu du portail
-                                            </button>
-                                        </div>
-                                        
-                                        <div className="space-y-6">
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">Couleur dédiée au portail</label>
-                                                <p className="text-xs text-slate-400 mb-4 font-normal">Si non définie, la couleur d&apos;accentuation du club sera utilisée.</p>
-                                                <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                                    <input
-                                                        type="color"
-                                                        value={formData.login_primary_color || formData.primary_color || "#7c3aed"}
-                                                        onChange={e => setFormData({ ...formData, login_primary_color: e.target.value })}
-                                                        className="w-12 h-12 rounded-xl border-2 border-white shadow-sm cursor-pointer"
-                                                    />
-                                                    <div className="flex-1">
-                                                        <input
-                                                            type="text"
-                                                            value={formData.login_primary_color || ""}
-                                                            placeholder={formData.primary_color}
-                                                            onChange={e => setFormData({ ...formData, login_primary_color: e.target.value })}
-                                                            className="bg-transparent border-none p-0 font-mono font-semibold text-base outline-none w-full"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-
+                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm flex flex-col h-full">
+                                        <div className="space-y-6 flex-1 mb-8">
                                             <div>
                                                 <label className="block text-sm font-medium text-slate-700 mb-2">Image de fond du portail</label>
                                                 <div className="w-full h-48 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group mb-3 shadow-inner">
@@ -484,12 +454,43 @@ export default function AdminSettingsPage() {
                                                     Changer l&apos;image de fond
                                                 </button>
                                             </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Couleur dédiée au portail</label>
+                                                <p className="text-xs text-slate-400 mb-4 font-normal">Si non définie, la couleur d&apos;accentuation du club sera utilisée.</p>
+                                                <div className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                                                    <input
+                                                        type="color"
+                                                        value={formData.login_primary_color || formData.primary_color || "#7c3aed"}
+                                                        onChange={e => setFormData({ ...formData, login_primary_color: e.target.value })}
+                                                        className="w-12 h-12 rounded-xl border-2 border-white shadow-sm cursor-pointer"
+                                                    />
+                                                    <div className="flex-1">
+                                                        <input
+                                                            type="text"
+                                                            value={formData.login_primary_color || ""}
+                                                            placeholder={formData.primary_color}
+                                                            onChange={e => setFormData({ ...formData, login_primary_color: e.target.value })}
+                                                            className="bg-transparent border-none p-0 font-mono font-semibold text-base outline-none w-full"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="pt-6 border-t border-slate-100 flex justify-end mt-auto">
+                                            <button 
+                                                onClick={() => setShowPreview(true)}
+                                                className="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold text-xs transition-all shadow-lg shadow-slate-200"
+                                            >
+                                                Aperçu du portail
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="space-y-8">
-                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6 min-h-[400px]">
+                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6 h-full">
                                         <h3 className="text-lg font-semibold flex items-center gap-2">✨ Textes personnalisés</h3>
                                         <div>
                                             <p className="text-xs text-slate-400 mb-6 font-medium leading-relaxed italic bg-slate-50 p-3 rounded-xl border border-slate-100">
@@ -552,16 +553,16 @@ export default function AdminSettingsPage() {
 
                         {/* RULES TAB */}
                         {activeTab === "rules" && (
-                            <div className="space-y-8">
-                                <section className="bg-white rounded-3xl p-10 border border-slate-200 shadow-sm space-y-8">
-                                    <div className="space-y-2">
-                                        <h3 className="text-xl font-semibold flex items-center gap-3">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+                                <section className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-8 flex flex-col h-full">
+                                    <div className="space-y-1">
+                                        <h3 className="text-lg font-semibold flex items-center gap-2">
                                             ⏱️ Délais de gestion
                                         </h3>
-                                        <p className="text-slate-500 font-normal">Configurez les limites temporelles pour vos activités</p>
+                                        <p className="text-xs text-slate-400 font-normal">Configurez les limites temporelles pour vos activités</p>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-6 flex-1">
                                         <div className="space-y-3">
                                             <label className="block text-sm font-medium text-slate-700">Délai limite d&apos;inscription</label>
                                             <div className="relative group">
@@ -574,7 +575,7 @@ export default function AdminSettingsPage() {
                                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">⏳</span>
                                                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-sm">minutes</span>
                                             </div>
-                                            <p className="text-xs text-slate-400 font-normal">0 = possible jusqu&apos;au début du cours</p>
+                                            <p className="text-[10px] text-slate-400 font-normal">0 = possible jusqu&apos;au début du cours</p>
                                         </div>
 
                                         <div className="space-y-3">
@@ -589,42 +590,42 @@ export default function AdminSettingsPage() {
                                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">🚫</span>
                                                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-sm">minutes</span>
                                             </div>
-                                            <p className="text-xs text-slate-400 font-normal">Passé ce délai, le crédit ne sera pas restitué</p>
+                                            <p className="text-[10px] text-slate-400 font-normal">Passé ce délai, le crédit ne sera pas restitué</p>
                                         </div>
                                     </div>
                                 </section>
 
                                 {/* LOCATIONS SECTION */}
-                                <section className="bg-white rounded-3xl p-10 border border-slate-200 shadow-sm space-y-8">
-                                    <div className="space-y-2">
-                                        <h3 className="text-xl font-semibold flex items-center gap-3">
+                                <section className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-8 flex flex-col h-full">
+                                    <div className="space-y-1">
+                                        <h3 className="text-lg font-semibold flex items-center gap-2">
                                             📍 Locaux & Espaces
                                         </h3>
-                                        <p className="text-slate-500 font-normal">Définissez les salles et lieux de votre établissement pour vos planning</p>
+                                        <p className="text-xs text-slate-400 font-normal">Définissez les salles et lieux de votre établissement</p>
                                     </div>
 
-                                    <div className="space-y-6">
+                                    <div className="space-y-6 flex-1">
                                         <div className="flex gap-3">
                                             <input
                                                 type="text"
-                                                placeholder="Ex: Salle 1, Studio Yoga, Extérieur..."
+                                                placeholder="Ex: Salle 1, Studio Yoga..."
                                                 value={newLocation}
                                                 onChange={e => setNewLocation(e.target.value)}
                                                 onKeyDown={e => e.key === "Enter" && (e.preventDefault(), handleAddLocation())}
-                                                className="flex-1 px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-normal focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                                                className="flex-1 px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-normal focus:ring-4 focus:ring-blue-100 transition-all outline-none text-sm"
                                             />
                                             <button
                                                 onClick={handleAddLocation}
-                                                className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold uppercase tracking-wider text-[10px] hover:bg-slate-800 transition-all"
+                                                className="px-6 py-3.5 bg-slate-900 text-white rounded-2xl font-bold uppercase tracking-wider text-[10px] hover:bg-slate-800 transition-all shadow-sm"
                                             >
                                                 Ajouter
                                             </button>
                                         </div>
 
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                             {(formData.locations || []).map((loc) => (
-                                                <div key={loc} className="group flex items-center justify-between px-5 py-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-slate-300 transition-all">
-                                                    <span className="font-semibold text-slate-700">{loc}</span>
+                                                <div key={loc} className="group flex items-center justify-between px-4 py-3 bg-white border border-slate-100 rounded-2xl hover:border-slate-300 transition-all shadow-sm">
+                                                    <span className="font-semibold text-slate-700 text-sm">{loc}</span>
                                                     <button 
                                                         onClick={() => handleRemoveLocation(loc)}
                                                         className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
@@ -634,8 +635,8 @@ export default function AdminSettingsPage() {
                                                 </div>
                                             ))}
                                             {(formData.locations || []).length === 0 && (
-                                                <div className="col-span-full py-8 text-center border-2 border-dashed border-slate-100 rounded-2xl">
-                                                    <p className="text-slate-400 font-normal text-sm">Aucun lieu configuré</p>
+                                                <div className="col-span-full py-8 text-center border-2 border-dashed border-slate-50 rounded-2xl">
+                                                    <p className="text-slate-400 font-normal text-xs">Aucun lieu configuré</p>
                                                 </div>
                                             )}
                                         </div>
@@ -647,48 +648,92 @@ export default function AdminSettingsPage() {
                         {/* PAYMENT TAB */}
                         {activeTab === "payment" && (
                             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                <section className="bg-white rounded-3xl p-10 border border-slate-200 shadow-sm space-y-8">
-                                    <div className="space-y-2">
-                                        <h3 className="text-xl font-semibold flex items-center gap-3">💶 Paramètres de Paiement</h3>
-                                        <p className="text-slate-500 font-normal">Gérez comment vos membres règlent leurs commandes</p>
+                                <section className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-8">
+                                    <div className="space-y-1">
+                                        <h3 className="text-lg font-semibold flex items-center gap-2">💶 Paramètres de paiement</h3>
+                                        <p className="text-xs text-slate-400 font-normal">Gérer vos moyens de paiement des commandes et inscriptions</p>
                                     </div>
 
-                                    <div className="grid grid-cols-1 gap-8">
-                                        {/* Redirection Link - FIRST and ALWAYS visible */}
-                                        <div className="p-8 bg-blue-50/50 rounded-3xl border border-blue-100/50 space-y-4">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-sm">🔗</div>
+                                    <div className="space-y-6">
+                                        <p className="text-xs text-amber-600 font-normal leading-relaxed italic px-2">
+                                            💡 Si aucun moyen de paiement n&apos;est configuré, le fonctionnement par défaut est celui du &quot;Paiement différé&quot; : la commande est enregistrée au statut &quot;En attente&quot; de paiement. Si vous avez renseigné des instructions ci-dessous, elles seront envoyées systématiquement par email à tous les utilisateurs lors de leur commande.
+                                        </p>
+
+                                        {/* 1. STRIPE */}
+                                        <div className="p-6 bg-white rounded-3xl border border-slate-200 space-y-4">
+                                            <div className="flex items-start gap-4">
+                                                <div className="text-xl -mt-0.5 leading-none">💳</div>
                                                 <div className="flex-1">
-                                                    <h4 className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">Configuration Stripe / CB</h4>
-                                                    <p className="text-xs text-slate-500 font-normal">Accédez à l&apos;interface Stripe pour configurer vos paiements par carte bancaire</p>
+                                                    <h4 className="font-bold text-slate-900 text-base">Stripe / paiement automatisé dans REZEA</h4>
+                                                    <div className="text-xs text-slate-500 font-normal leading-relaxed mt-1 space-y-1">
+                                                        <p>• Configurez la plateforme de paiement Stripe pour gérer votre boutique en ligne.</p>
+                                                        <p>• Le statut de la commande est mis à jour automatiquement à <span className="font-semibold text-emerald-600">&quot;Payé&quot;</span> ou <span className="font-semibold text-emerald-600">&quot;Echelonné&quot;</span> après le paiement.</p>
+                                                    </div>
+                                                    <p className="text-[11px] text-slate-400 font-normal mt-1 italic">
+                                                        ℹ️ Des frais de transaction Stripe s&apos;appliquent (~1.5% + 0.25€ par paiement).
+                                                    </p>
                                                 </div>
                                                 <a 
                                                     href="https://dashboard.stripe.com/settings/apps/com.rezea.app" 
                                                     target="_blank" 
-                                                    className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
+                                                    className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-wider hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 whitespace-nowrap mt-1"
                                                 >
                                                     Configurer
                                                 </a>
                                             </div>
                                         </div>
 
-                                        <div className="p-8 bg-white rounded-3xl border border-slate-200 space-y-6">
-                                            <div className="flex items-center justify-between">
-                                                <div className="space-y-1">
-                                                    <h4 className="font-bold text-slate-900">Autoriser le paiement différé</h4>
-                                                    <p className="text-xs text-slate-500 font-normal">Permettre aux membres de réserver et payer plus tard (Chèque, Espèces, Virement)</p>
+                                        {/* 2. LIEN DE PAIEMENT EXTERNE */}
+                                        <div className="p-6 bg-white rounded-3xl border border-slate-200 space-y-5">
+                                            <div className="flex items-start gap-6">
+                                                <div className="text-xl -mt-0.5 leading-none">🔗</div>
+                                                <div className="flex-1">
+                                                    <h4 className="font-bold text-slate-900 text-base">Lien de redirection / paiement externe</h4>
+                                                    <div className="text-xs text-slate-500 font-normal leading-relaxed mt-1 space-y-1">
+                                                        <p>• Utilisez une autre page internet pour permettre à vos utilisateurs de régler leur commande (votre site internet, HelloAsso, Zeffy, etc.).</p>
+                                                        <p>• Le statut de la commande passe automatiquement à <span className="font-semibold text-amber-600">&quot;À valider&quot;</span>. Vous confirmez manuellement la réception du paiement dans la Gestion des commandes.</p>
+                                                    </div>
+                                                </div>
+                                                <div className="w-80 pt-1">
+                                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 ml-1 text-right">URL de redirection</label>
+                                                    <input
+                                                        type="url"
+                                                        value={formData.payment_redirect_link || ""}
+                                                        onChange={e => setFormData({ ...formData, payment_redirect_link: e.target.value })}
+                                                        placeholder="https://www.helloasso.com/..."
+                                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl font-normal focus:ring-4 focus:ring-blue-100 transition-all outline-none text-sm shadow-inner"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* 3. PAIEMENT DIFFÉRÉ */}
+                                        <div className="p-6 bg-white rounded-3xl border border-slate-200 space-y-6">
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex items-start gap-4 flex-1">
+                                                    <div className="text-xl -mt-0.5 leading-none">🕐</div>
+                                                    <div className="flex-1">
+                                                        <h4 className="font-bold text-slate-900 text-base">Paiement différé / autres moyens de paiement (optionnel)</h4>
+                                                        <div className="text-xs text-slate-500 font-normal leading-relaxed mt-1 space-y-1">
+                                                            <p>• En activant l&apos;option de paiement différé, vous permettez à l&apos;utilisateur qui le souhaite de &quot;payer plus tard&quot; sa commande ou de passer par un autre moyen de paiement (chèque, espèces, virement...). Il n&apos;est pas redirigé vers Stripe ou votre URL.</p>
+                                                            <p>• Vous pouvez renseigner vos instructions pour le réglement différé (IBAN, Paypal, délais de paiement) dans le cadre email ci-dessous.</p>
+                                                            <p>• La commande est enregistrée au statut <span className="font-semibold text-orange-500">&quot;En attente&quot;</span> de paiement. Vous confirmez manuellement la réception du paiement dans la Gestion des commandes.</p>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                                 <button
                                                     onClick={() => setFormData({ ...formData, allow_pay_later: !formData.allow_pay_later })}
-                                                    className={`relative inline-flex h-9 w-16 items-center rounded-full transition-colors focus:outline-none ${formData.allow_pay_later ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                                                    className={`relative inline-flex h-9 w-16 items-center rounded-full transition-colors focus:outline-none flex-shrink-0 ml-4 mt-1 ${formData.allow_pay_later ? 'bg-emerald-500' : 'bg-slate-300'}`}
                                                 >
                                                     <span className={`inline-block h-7 w-7 transform rounded-full bg-white transition-transform ${formData.allow_pay_later ? 'translate-x-8' : 'translate-x-1'}`} />
                                                 </button>
                                             </div>
 
                                             {formData.allow_pay_later && (
-                                                <div className="pt-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                                    <label className="block text-sm font-medium text-slate-700">Instructions de paiement différé</label>
+                                                <div className="pt-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300 border-t border-slate-100">
+                                                    <div className="space-y-1">
+                                                        <label className="block text-sm font-medium text-slate-700">Instructions de paiement :</label>
+                                                    </div>
                                                     <ReactQuill
                                                         theme="snow"
                                                         value={formData.confirmation_email_body || ""}
@@ -697,12 +742,10 @@ export default function AdminSettingsPage() {
                                                         modules={quillModules}
                                                         className="bg-white rounded-2xl overflow-hidden border border-slate-200"
                                                     />
-                                                    <p className="text-[10px] text-slate-400 font-normal leading-relaxed italic">
-                                                        💡 Ce message sera affiché lors de la validation de commande et envoyé par email aux membres choisissant cette option.
-                                                    </p>
                                                 </div>
                                             )}
                                         </div>
+
                                     </div>
                                 </section>
                             </div>
@@ -807,10 +850,10 @@ export default function AdminSettingsPage() {
                         {/* Modal Content - The actual Mock Portal */}
                         <div className="flex-1 overflow-auto p-4 md:p-12 flex items-center justify-center">
                             <div className={`bg-white shadow-2xl overflow-hidden transition-all duration-500 ${previewMode === "mobile" ? "w-[375px] h-[667px] rounded-3xl border-[8px] border-slate-900" : "w-full max-w-5xl h-[600px] rounded-3xl"}`}>
-                                <div className={`h-full flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-slate-100`} style={{ "--primary-color": formData.login_primary_color || formData.primary_color || "#0f172a" } as any}>
+                                <div className={`h-full flex ${previewMode === "mobile" ? "flex-col overflow-y-auto no-scrollbar" : "flex-row divide-x"} divide-slate-100`} style={{ "--primary-color": formData.login_primary_color || formData.primary_color || "#0f172a" } as any}>
                                     
                                     {/* Left Branding Panel */}
-                                    <div className={`${previewMode === "mobile" ? "pt-8 pb-4 px-8 text-center" : "flex-1 p-12"} relative z-10 bg-white flex flex-col justify-center`}>
+                                    <div className={`${previewMode === "mobile" ? "w-full pt-12 pb-8 px-8 text-center" : "flex-1 p-12"} relative z-10 bg-white flex flex-col justify-center`}>
                                         <div className={`space-y-6 ${previewMode === "mobile" ? "flex flex-col items-center" : ""}`}>
                                             <div className="flex items-center gap-4">
                                                 <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white text-xl font-black shadow-lg">
@@ -828,7 +871,7 @@ export default function AdminSettingsPage() {
                                     </div>
 
                                     {/* Right Panel (Image & Form) */}
-                                    <div className={`relative flex-1 flex items-center justify-center overflow-hidden bg-slate-50 ${previewMode === "mobile" ? "min-h-[300px] pt-2 pb-8 px-6" : ""}`}>
+                                    <div className={`relative ${previewMode === "mobile" ? "w-full min-h-[450px] pb-12 px-6" : "flex-1"} flex items-center justify-center overflow-hidden bg-slate-50`}>
                                         {/* Background Image logic mirror */}
                                         {previewLoginBg ? (
                                             <div className="absolute inset-0">
@@ -841,7 +884,7 @@ export default function AdminSettingsPage() {
                                         )}
                                         
                                         {/* Mock Form */}
-                                        <div className="relative z-10 w-full max-w-[280px] scale-90 md:scale-100">
+                                        <div className="relative z-10 w-full max-w-[300px] scale-90 md:scale-100">
                                             <div className="bg-white/95 backdrop-blur-sm p-6 rounded-3xl shadow-xl border border-white/50 space-y-4">
                                                 <h4 className="text-sm font-bold text-slate-900">Accédez à votre espace</h4>
                                                 <div className="space-y-2">
