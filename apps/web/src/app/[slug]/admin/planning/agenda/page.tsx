@@ -507,7 +507,7 @@ export default function AdminAgendaPage() {
                             <select
                                 value={locationFilter}
                                 onChange={(e) => setLocationFilter(e.target.value)}
-                                className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 outline-none focus:ring-1 focus:ring-slate-900 transition-all min-w-[140px]"
+                                className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 outline-none focus:ring-1 focus:ring-slate-900 transition-all min-w-[140px]"
                             >
                                 <option value="all">Tous les lieux</option>
                                 {(tenant?.locations || []).map((loc: string) => (
@@ -578,10 +578,10 @@ export default function AdminAgendaPage() {
                                                 const isSession = item.type === "session";
                                                 const fillPercent = (item.current_participants / item.max_participants) * 100;
                                                 const accentColor = isSession ? "border-blue-600" : "border-[#FBC02D]";
-                                                const cardBg = isSession ? "bg-white" : "bg-gradient-to-b from-[#FEECA8] to-white";
+                                                const cardBg = isSession ? "bg-white" : "bg-gradient-to-b from-[#FEECA8]/50 to-white";
                                                 const cardBorder = isSession ? "border-slate-200" : "border-[#FBC02D]/30";
-                                                const titleBg = isSession ? "bg-slate-50" : "bg-white/60 backdrop-blur-sm";
-                                                const titleBorder = isSession ? "border-slate-100" : "border-[#FBC02D]/50";
+                                                const titleBg = "bg-transparent";
+                                                const titleBorder = "border-transparent";
                                                 const titleText = isSession ? "text-slate-900" : "text-yellow-900";
                                                 const hoverBorder = isSession ? "group-hover/card:border-blue-200" : "group-hover/card:border-yellow-400";
                                                 const hoverBg = isSession ? "group-hover/card:bg-blue-50/30" : "group-hover/card:bg-yellow-100/20";
@@ -618,7 +618,7 @@ export default function AdminAgendaPage() {
                                                                 {item.time} — {item.endTime}
                                                             </span>
                                                             <div className="w-full mt-2">
-                                                                <h4 className={`w-full ${titleBg} ${titleText} font-bold text-[13px] leading-snug px-3 py-2 rounded-xl border ${titleBorder} shadow-sm transition-all ${hoverBorder} ${hoverBg} text-center`}>
+                                                                <h4 className={`w-full ${titleBg} ${titleText} font-bold text-[13px] leading-snug px-3 py-2 rounded-xl border ${titleBorder} transition-all ${hoverBorder} ${hoverBg} text-center`}>
                                                                     {item.title}
                                                                 </h4>
                                                             </div>

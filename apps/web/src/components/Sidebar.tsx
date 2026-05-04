@@ -162,7 +162,7 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
                 </button>
             </div>
 
-            {/* Bouton de bascule rapide vers Vue Client */}
+            {/* Bouton de bascule rapide vers Vue Utilisateur */}
             <div className="mb-6">
                 <Link 
                     href={homePath}
@@ -170,7 +170,7 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
                     onClick={() => setIsMobileMenuOpen(false)}
                 >
                     <span className="text-base">📱</span>
-                    VUE CLIENT
+                    VUE UTILISATEUR
                 </Link>
             </div>
 
