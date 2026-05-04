@@ -255,7 +255,7 @@ export default function AdminSettingsPage() {
                             <button
                                 onClick={handleSave}
                                 disabled={saving}
-                                className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium transition-all shadow-lg shadow-slate-200 disabled:opacity-50 flex items-center gap-2"
+                                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-semibold text-sm transition-all shadow-sm shadow-slate-200 disabled:opacity-50 flex items-center gap-2 active:scale-95"
                             >
                                 {saving ? "Enregistrement..." : "Enregistrer les modifications"}
                             </button>
@@ -274,17 +274,17 @@ export default function AdminSettingsPage() {
                     )}
 
                     {/* Tabs Navigation */}
-                    <div className="flex items-center bg-white p-1.5 rounded-2xl border border-slate-200 mb-8 shadow-sm overflow-x-auto no-scrollbar w-full">
+                    <div className="flex items-center bg-slate-100/50 p-1 rounded-2xl border border-slate-200/60 mb-10 shadow-sm overflow-x-auto no-scrollbar w-full max-w-fit mx-auto md:mx-0">
                         {TABS.map(tab => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all whitespace-nowrap ${activeTab === tab.id
-                                    ? "bg-slate-50 text-slate-900 shadow-sm border border-slate-200"
-                                    : "text-slate-500 hover:bg-slate-50/50 hover:text-slate-900"
+                                className={`flex items-center gap-2.5 px-6 py-2 rounded-[14px] text-sm font-semibold transition-all whitespace-nowrap ${activeTab === tab.id
+                                    ? "bg-white text-slate-900 shadow-sm border border-slate-200"
+                                    : "text-slate-500 hover:text-slate-700"
                                     }`}
                             >
-                                <span className="text-lg">{tab.icon}</span>
+                                <span className="text-base">{tab.icon}</span>
                                 {tab.label}
                             </button>
                         ))}
@@ -481,7 +481,7 @@ export default function AdminSettingsPage() {
                                         <div className="pt-6 border-t border-slate-100 flex justify-end mt-auto">
                                             <button 
                                                 onClick={() => setShowPreview(true)}
-                                                className="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold text-xs transition-all shadow-lg shadow-slate-200"
+                                                className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-semibold text-sm transition-all shadow-lg shadow-slate-200 active:scale-95"
                                             >
                                                 Aperçu du portail
                                             </button>
@@ -515,7 +515,7 @@ export default function AdminSettingsPage() {
                                                         <label className="block text-sm font-medium text-slate-700">Points forts et atouts</label>
                                                         <button 
                                                             onClick={handleAddAtout}
-                                                            className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-3 py-1 rounded-full hover:bg-blue-100 transition-all"
+                                                            className="text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-full hover:bg-blue-100 transition-all active:scale-95"
                                                         >
                                                             + Ajouter un point
                                                         </button>
@@ -605,37 +605,44 @@ export default function AdminSettingsPage() {
                                     </div>
 
                                     <div className="space-y-6 flex-1">
-                                        <div className="flex gap-3">
+                                        <div className="flex gap-3 items-center">
                                             <input
                                                 type="text"
                                                 placeholder="Ex: Salle 1, Studio Yoga..."
                                                 value={newLocation}
                                                 onChange={e => setNewLocation(e.target.value)}
                                                 onKeyDown={e => e.key === "Enter" && (e.preventDefault(), handleAddLocation())}
-                                                className="flex-1 px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl font-normal focus:ring-4 focus:ring-blue-100 transition-all outline-none text-sm"
+                                                className="flex-1 px-5 py-2.5 bg-slate-50 border border-slate-100 rounded-xl font-normal focus:ring-4 focus:ring-blue-100 transition-all outline-none text-sm"
                                             />
                                             <button
                                                 onClick={handleAddLocation}
-                                                className="px-6 py-3.5 bg-slate-900 text-white rounded-2xl font-bold uppercase tracking-wider text-[10px] hover:bg-slate-800 transition-all shadow-sm"
+                                                className="px-4 py-1.5 bg-slate-900 text-white rounded-xl font-semibold text-xs hover:bg-slate-800 transition-all shadow-sm active:scale-95 flex items-center gap-2 leading-none"
                                             >
-                                                Ajouter
+                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                                                </svg>
+                                                <span className="mb-[1px]">Ajouter</span>
                                             </button>
                                         </div>
 
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div className="divide-y divide-slate-100">
                                             {(formData.locations || []).map((loc) => (
-                                                <div key={loc} className="group flex items-center justify-between px-4 py-3 bg-white border border-slate-100 rounded-2xl hover:border-slate-300 transition-all shadow-sm">
-                                                    <span className="font-semibold text-slate-700 text-sm">{loc}</span>
+                                                <div key={loc} className="group flex items-center justify-between py-2.5 transition-all">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-slate-400 text-[10px]">📍</span>
+                                                        <span className="font-medium text-slate-600 text-sm">{loc}</span>
+                                                    </div>
                                                     <button 
                                                         onClick={() => handleRemoveLocation(loc)}
-                                                        className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                                                        className="p-1 text-slate-300 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"
+                                                        title="Supprimer ce lieu"
                                                     >
                                                         🗑️
                                                     </button>
                                                 </div>
                                             ))}
                                             {(formData.locations || []).length === 0 && (
-                                                <div className="col-span-full py-8 text-center border-2 border-dashed border-slate-50 rounded-2xl">
+                                                <div className="py-8 text-center border-2 border-dashed border-slate-50 rounded-xl mt-2">
                                                     <p className="text-slate-400 font-normal text-xs">Aucun lieu configuré</p>
                                                 </div>
                                             )}
@@ -754,62 +761,66 @@ export default function AdminSettingsPage() {
                         {/* DOCUMENTS TAB */}
                         {activeTab === "docs" && (
                             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                <section id="documents-legaux" className="bg-white rounded-3xl p-10 border border-slate-200 shadow-sm space-y-8">
-                                    <div className="space-y-2">
-                                        <h3 className="text-xl font-semibold flex items-center gap-3">📄 Documents légaux</h3>
-                                        <p className="text-slate-500 font-normal">Publiez vos conditions générales et règlement intérieur</p>
+                                <section id="documents-legaux" className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-8">
+                                    <div className="space-y-1">
+                                        <h3 className="text-lg font-semibold flex items-center gap-3">📄 Documents légaux</h3>
+                                        <p className="text-xs text-slate-400 font-normal">Publiez vos conditions générales et règlement intérieur</p>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                         {/* CGV Card */}
                                         <div className="group bg-white rounded-3xl p-8 border border-slate-100 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 relative overflow-hidden flex flex-col items-center text-center space-y-6">
                                             {formData.cgv_url && (
-                                                <div className="absolute top-4 right-4 bg-emerald-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-lg shadow-emerald-500/20">Actif</div>
+                                                <div className="absolute top-4 right-4 bg-emerald-50 text-emerald-600 text-[9px] font-bold px-3 py-1.5 rounded-full border border-emerald-100 flex items-center gap-1.5 shadow-sm">
+                                                    <span className="text-[10px]">✅</span> Fichier en ligne
+                                                </div>
                                             )}
                                             <div className="w-20 h-20 bg-slate-50 rounded-3xl mx-auto flex items-center justify-center text-4xl shadow-sm group-hover:scale-110 transition-transform">📜</div>
                                             <div className="space-y-2">
-                                                <h4 className="text-xl font-semibold">Conditions Générales</h4>
-                                                <p className="text-sm text-slate-400 font-normal">Obligatoire pour les paiements en ligne</p>
+                                                <h4 className="text-lg font-semibold">Conditions Générales</h4>
+                                                <p className="text-xs text-slate-400 font-normal">Obligatoire pour les paiements en ligne</p>
                                             </div>
-                                            <div className="pt-4 w-full">
+                                            <div className="pt-4 flex flex-col items-center gap-4">
                                                 <input type="file" ref={cgvInputRef} className="hidden" accept=".pdf,.doc,.docx" onChange={e => handleFileUpload(e, 'cgv')} />
                                                 <button 
                                                     onClick={() => cgvInputRef.current?.click()}
                                                     disabled={!!uploading}
-                                                    className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold text-sm transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-2 disabled:opacity-50"
+                                                    className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs transition-all shadow-lg shadow-slate-200 flex items-center justify-center gap-2 disabled:opacity-50"
                                                 >
-                                                     {uploading === 'cgv' ? "Upload..." : "Charger le document"}
+                                                     {uploading === 'cgv' ? "Upload..." : "Charger un document"}
                                                 </button>
                                                 {formData.cgv_url && (
-                                                    <a href={`${API_URL}${formData.cgv_url}`} target="_blank" className="block text-blue-600 text-xs font-semibold mt-4 hover:underline">Voir le document actuel</a>
+                                                    <a href={`${API_URL}${formData.cgv_url}`} target="_blank" className="block text-blue-600 text-[10px] font-semibold hover:underline">Voir le document actuel</a>
                                                 )}
                                             </div>
                                         </div>
 
                                         {/* RI Card */}
                                         <div className="group bg-white rounded-3xl p-8 border border-slate-100 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 relative overflow-hidden flex flex-col items-center text-center space-y-6">
-                                            {formData.rules_url && (
-                                                <div className="absolute top-4 right-4 bg-emerald-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-lg shadow-emerald-500/20">Actif</div>
-                                            )}
-                                            <div className="w-20 h-20 bg-slate-50 rounded-3xl mx-auto flex items-center justify-center text-4xl shadow-sm group-hover:scale-110 transition-transform">📋</div>
-                                            <div className="space-y-2">
-                                                <h4 className="text-xl font-semibold">Règlement Intérieur</h4>
-                                                <p className="text-sm text-slate-400 font-normal">Optionnel mais recommandé</p>
-                                            </div>
-                                            <div className="pt-4 w-full">
-                                                <input type="file" ref={rulesInputRef} className="hidden" accept=".pdf,.doc,.docx" onChange={e => handleFileUpload(e, 'rules')} />
-                                                <button 
-                                                    onClick={() => rulesInputRef.current?.click()}
-                                                    disabled={!!uploading}
-                                                    className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold text-sm transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-2 disabled:opacity-50"
-                                                >
-                                                     {uploading === 'rules' ? "Upload..." : "Charger le document"}
-                                                </button>
-                                                {formData.rules_url && (
-                                                    <a href={`${API_URL}${formData.rules_url}`} target="_blank" className="block text-blue-600 text-xs font-semibold mt-4 hover:underline">Voir le document actuel</a>
-                                                )}
-                                            </div>
-                                        </div>
+                                             {formData.rules_url && (
+                                                 <div className="absolute top-4 right-4 bg-emerald-50 text-emerald-600 text-[9px] font-bold px-3 py-1.5 rounded-full border border-emerald-100 flex items-center gap-1.5 shadow-sm">
+                                                     <span className="text-[10px]">✅</span> Fichier en ligne
+                                                 </div>
+                                             )}
+                                             <div className="w-20 h-20 bg-slate-50 rounded-3xl mx-auto flex items-center justify-center text-4xl shadow-sm group-hover:scale-110 transition-transform">📋</div>
+                                             <div className="space-y-2">
+                                                 <h4 className="text-lg font-semibold">Règlement Intérieur</h4>
+                                                 <p className="text-xs text-slate-400 font-normal">Optionnel mais recommandé</p>
+                                             </div>
+                                             <div className="pt-4 flex flex-col items-center gap-4">
+                                                 <input type="file" ref={rulesInputRef} className="hidden" accept=".pdf,.doc,.docx" onChange={e => handleFileUpload(e, 'rules')} />
+                                                 <button 
+                                                     onClick={() => rulesInputRef.current?.click()}
+                                                     disabled={!!uploading}
+                                                     className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs transition-all shadow-lg shadow-slate-200 flex items-center justify-center gap-2 disabled:opacity-50"
+                                                 >
+                                                      {uploading === 'rules' ? "Upload..." : "Charger un document"}
+                                                 </button>
+                                                 {formData.rules_url && (
+                                                     <a href={`${API_URL}${formData.rules_url}`} target="_blank" className="block text-blue-600 text-[10px] font-semibold hover:underline">Voir le document actuel</a>
+                                                 )}
+                                             </div>
+                                         </div>
                                     </div>
                                 </section>
                             </div>
