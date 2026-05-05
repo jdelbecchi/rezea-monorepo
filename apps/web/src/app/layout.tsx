@@ -7,6 +7,7 @@ const livvic = Livvic({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "900"],
   display: 'swap',
+  variable: '--font-livvic',
 });
 
 export const metadata: Metadata = {
@@ -24,7 +25,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr">
-      <body className={livvic.className}>
+      <body className={`${livvic.className} ${livvic.variable}`}>
         <Providers>{children}</Providers>
       </body>
     </html>

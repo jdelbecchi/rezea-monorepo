@@ -21,7 +21,7 @@ const TABS = [
     { id: "portal", label: "Portail", icon: "🌐" },
     { id: "rules", label: "Règles", icon: "⚖️" },
     { id: "payment", label: "Paiements", icon: "💳" },
-    { id: "docs", label: "Documents légaux", icon: "📁" },
+    { id: "docs", label: "Infos & docs légaux", icon: "📁" },
 ];
 
 export default function AdminSettingsPage() {
@@ -241,7 +241,7 @@ export default function AdminSettingsPage() {
     if (loading) return <div className="p-8 text-center bg-slate-50 min-h-screen">Chargement...</div>;
 
     return (
-        <div className="min-h-screen bg-[#f8fafc] flex flex-col md:flex-row font-sans text-slate-900">
+        <div className="min-h-screen bg-[#f8fafc] flex flex-col md:flex-row text-slate-900">
             <Sidebar user={user} />
             <main className="flex-1 p-4 md:p-8 overflow-y-auto">
                 <div className="max-w-7xl mx-auto">
@@ -761,66 +761,152 @@ export default function AdminSettingsPage() {
                         {/* DOCUMENTS TAB */}
                         {activeTab === "docs" && (
                             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                <section id="documents-legaux" className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-8">
+                                {/* LEGAL INFO SECTION */}
+                                <section className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-8">
+                                    <div className="space-y-1">
+                                        <h3 className="text-lg font-semibold flex items-center gap-3">🏛️ Informations de facturation</h3>
+                                        <p className="text-xs text-slate-400 font-normal">Ces informations apparaîtront automatiquement sur les factures générées</p>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Raison sociale</label>
+                                            <input
+                                                type="text"
+                                                value={formData.legal_name || ""}
+                                                onChange={e => setFormData({ ...formData, legal_name: e.target.value })}
+                                                placeholder="Ex: Association Sportive MonClub"
+                                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-sm"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Forme juridique</label>
+                                            <select
+                                                value={formData.legal_form || ""}
+                                                onChange={e => setFormData({ ...formData, legal_form: e.target.value })}
+                                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-sm"
+                                            >
+                                                <option value="">Sélectionner...</option>
+                                                <option value="Association loi 1901">Association loi 1901</option>
+                                                <option value="SARL">SARL</option>
+                                                <option value="SAS">SAS</option>
+                                                <option value="SASU">SASU</option>
+                                                <option value="EURL">EURL</option>
+                                                <option value="Auto-entrepreneur">Auto-entrepreneur</option>
+                                                <option value="SCI">SCI</option>
+                                                <option value="Autre">Autre</option>
+                                            </select>
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Adresse du siège</label>
+                                            <textarea
+                                                value={formData.legal_address || ""}
+                                                onChange={e => setFormData({ ...formData, legal_address: e.target.value })}
+                                                placeholder="Ex: 12 rue de la Paix, 75002 Paris"
+                                                rows={2}
+                                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-sm resize-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">SIRET</label>
+                                            <input
+                                                type="text"
+                                                value={formData.legal_siret || ""}
+                                                onChange={e => setFormData({ ...formData, legal_siret: e.target.value })}
+                                                placeholder="Ex: 123 456 789 00012"
+                                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-sm"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                                                N° TVA intracommunautaire <span className="text-slate-400 text-[10px] font-normal ml-1">(optionnel)</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={formData.legal_vat_number || ""}
+                                                onChange={e => setFormData({ ...formData, legal_vat_number: e.target.value })}
+                                                placeholder="Ex: FR 12 345678901"
+                                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-sm"
+                                            />
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Mention TVA</label>
+                                            <input
+                                                type="text"
+                                                value={formData.legal_vat_mention ?? "TVA non applicable, art. 293 B du CGI"}
+                                                onChange={e => setFormData({ ...formData, legal_vat_mention: e.target.value })}
+                                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-sm"
+                                            />
+                                            <p className="text-[10px] text-slate-400 font-normal mt-1.5 ml-1">Cette mention sera affichée en pied de facture. Laissez par défaut si vous êtes en franchise de base.</p>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                {/* DOCUMENTS SECTION */}
+                                <section id="documents-legaux" className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
                                     <div className="space-y-1">
                                         <h3 className="text-lg font-semibold flex items-center gap-3">📄 Documents légaux</h3>
                                         <p className="text-xs text-slate-400 font-normal">Publiez vos conditions générales et règlement intérieur</p>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        {/* CGV Card */}
-                                        <div className="group bg-white rounded-3xl p-8 border border-slate-100 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 relative overflow-hidden flex flex-col items-center text-center space-y-6">
-                                            {formData.cgv_url && (
-                                                <div className="absolute top-4 right-4 bg-emerald-50 text-emerald-600 text-[9px] font-bold px-3 py-1.5 rounded-full border border-emerald-100 flex items-center gap-1.5 shadow-sm">
-                                                    <span className="text-[10px]">✅</span> Fichier en ligne
+                                    <div className="space-y-4">
+                                        {/* CGV Row */}
+                                        <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 hover:border-slate-200 transition-all group">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-xl group-hover:scale-105 transition-transform">📜</div>
+                                                <div>
+                                                    <h4 className="text-sm font-semibold text-slate-900">Conditions Générales</h4>
+                                                    <p className="text-[10px] text-slate-400 font-normal">Obligatoire pour les paiements en ligne</p>
                                                 </div>
-                                            )}
-                                            <div className="w-20 h-20 bg-slate-50 rounded-3xl mx-auto flex items-center justify-center text-4xl shadow-sm group-hover:scale-110 transition-transform">📜</div>
-                                            <div className="space-y-2">
-                                                <h4 className="text-lg font-semibold">Conditions Générales</h4>
-                                                <p className="text-xs text-slate-400 font-normal">Obligatoire pour les paiements en ligne</p>
                                             </div>
-                                            <div className="pt-4 flex flex-col items-center gap-4">
+                                            <div className="flex items-center gap-3">
+                                                {formData.cgv_url && (
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="bg-emerald-50 text-emerald-600 text-[9px] font-bold px-2.5 py-1 rounded-full border border-emerald-100 flex items-center gap-1">
+                                                            <span className="text-[10px]">✅</span> En ligne
+                                                        </span>
+                                                        <a href={`${API_URL}${formData.cgv_url}`} target="_blank" className="text-blue-600 text-[10px] font-semibold hover:underline">Voir</a>
+                                                    </div>
+                                                )}
                                                 <input type="file" ref={cgvInputRef} className="hidden" accept=".pdf,.doc,.docx" onChange={e => handleFileUpload(e, 'cgv')} />
                                                 <button 
                                                     onClick={() => cgvInputRef.current?.click()}
                                                     disabled={!!uploading}
-                                                    className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs transition-all shadow-lg shadow-slate-200 flex items-center justify-center gap-2 disabled:opacity-50"
+                                                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-[10px] transition-all shadow-sm disabled:opacity-50"
                                                 >
-                                                     {uploading === 'cgv' ? "Upload..." : "Charger un document"}
+                                                     {uploading === 'cgv' ? "Upload..." : "Charger"}
                                                 </button>
-                                                {formData.cgv_url && (
-                                                    <a href={`${API_URL}${formData.cgv_url}`} target="_blank" className="block text-blue-600 text-[10px] font-semibold hover:underline">Voir le document actuel</a>
-                                                )}
                                             </div>
                                         </div>
 
-                                        {/* RI Card */}
-                                        <div className="group bg-white rounded-3xl p-8 border border-slate-100 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 relative overflow-hidden flex flex-col items-center text-center space-y-6">
-                                             {formData.rules_url && (
-                                                 <div className="absolute top-4 right-4 bg-emerald-50 text-emerald-600 text-[9px] font-bold px-3 py-1.5 rounded-full border border-emerald-100 flex items-center gap-1.5 shadow-sm">
-                                                     <span className="text-[10px]">✅</span> Fichier en ligne
-                                                 </div>
-                                             )}
-                                             <div className="w-20 h-20 bg-slate-50 rounded-3xl mx-auto flex items-center justify-center text-4xl shadow-sm group-hover:scale-110 transition-transform">📋</div>
-                                             <div className="space-y-2">
-                                                 <h4 className="text-lg font-semibold">Règlement Intérieur</h4>
-                                                 <p className="text-xs text-slate-400 font-normal">Optionnel mais recommandé</p>
-                                             </div>
-                                             <div className="pt-4 flex flex-col items-center gap-4">
-                                                 <input type="file" ref={rulesInputRef} className="hidden" accept=".pdf,.doc,.docx" onChange={e => handleFileUpload(e, 'rules')} />
-                                                 <button 
-                                                     onClick={() => rulesInputRef.current?.click()}
-                                                     disabled={!!uploading}
-                                                     className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs transition-all shadow-lg shadow-slate-200 flex items-center justify-center gap-2 disabled:opacity-50"
-                                                 >
-                                                      {uploading === 'rules' ? "Upload..." : "Charger un document"}
-                                                 </button>
-                                                 {formData.rules_url && (
-                                                     <a href={`${API_URL}${formData.rules_url}`} target="_blank" className="block text-blue-600 text-[10px] font-semibold hover:underline">Voir le document actuel</a>
-                                                 )}
-                                             </div>
-                                         </div>
+                                        {/* RI Row */}
+                                        <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 hover:border-slate-200 transition-all group">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-xl group-hover:scale-105 transition-transform">📋</div>
+                                                <div>
+                                                    <h4 className="text-sm font-semibold text-slate-900">Règlement Intérieur</h4>
+                                                    <p className="text-[10px] text-slate-400 font-normal">Optionnel mais recommandé</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                {formData.rules_url && (
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="bg-emerald-50 text-emerald-600 text-[9px] font-bold px-2.5 py-1 rounded-full border border-emerald-100 flex items-center gap-1">
+                                                            <span className="text-[10px]">✅</span> En ligne
+                                                        </span>
+                                                        <a href={`${API_URL}${formData.rules_url}`} target="_blank" className="text-blue-600 text-[10px] font-semibold hover:underline">Voir</a>
+                                                    </div>
+                                                )}
+                                                <input type="file" ref={rulesInputRef} className="hidden" accept=".pdf,.doc,.docx" onChange={e => handleFileUpload(e, 'rules')} />
+                                                <button 
+                                                    onClick={() => rulesInputRef.current?.click()}
+                                                    disabled={!!uploading}
+                                                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-[10px] transition-all shadow-sm disabled:opacity-50"
+                                                >
+                                                     {uploading === 'rules' ? "Upload..." : "Charger"}
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </section>
                             </div>

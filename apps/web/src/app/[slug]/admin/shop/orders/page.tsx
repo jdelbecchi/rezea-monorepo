@@ -58,6 +58,7 @@ export default function AdminShopOrdersPage() {
     const router = useRouter();
     const params = useParams();
     const [user, setUser] = useState<User | null>(null);
+    const [tenant, setTenant] = useState<Tenant | null>(null);
     const [orders, setOrders] = useState<OrderItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -89,6 +90,10 @@ export default function AdminShopOrdersPage() {
         start_date: "",
         end_date: "",
         price_cents: "",
+        featured_pricing: "lump_sum" as "lump_sum" | "recurring",
+        price_recurring_cents: "",
+        recurring_count: "",
+        period: "",
         credits_total: "",
         is_unlimited: false,
         status: "",
@@ -106,7 +111,16 @@ export default function AdminShopOrdersPage() {
     // Invoice modal
     const [invoiceOrder, setInvoiceOrder] = useState<OrderItem | null>(null);
     const [invoiceData, setInvoiceData] = useState({
-        invoice_number: "", invoice_date: "", emitter: "", recipient: "", description: "", amount: "", notes: "",
+        invoice_number: "", 
+        invoice_date: "", 
+        emitter: "", 
+        recipient: "", 
+        description: "", 
+        amount_ht: "", 
+        amount_ttc: "", 
+        notes: "",
+        is_acquitted: true,
+        vat_mention: ""
     });
 
     // Installments modal
@@ -189,12 +203,14 @@ export default function AdminShopOrdersPage() {
             setUser(userData);
 
             // 2. Fetch other data
-            const [ordersData, statusesData] = await Promise.all([
+            const [ordersData, statusesData, tenantData] = await Promise.all([
                 api.getAdminOrders(),
-                api.getAdminOrderStatuses()
+                api.getAdminOrderStatuses(),
+                api.getTenantSettings()
             ]);
             setOrders(ordersData);
             setDynamicStatuses(statusesData);
+            setTenant(tenantData);
         } catch (err: any) {
             console.error(err);
             if (err.response?.status === 401) {
@@ -253,6 +269,10 @@ export default function AdminShopOrdersPage() {
             start_date: order.start_date,
             end_date: order.end_date || "",
             price_cents: (order.price_cents / 100).toString(),
+            featured_pricing: order.offer_featured_pricing || "lump_sum",
+            price_recurring_cents: order.offer_price_recurring_cents ? (order.offer_price_recurring_cents / 100).toString() : (order.price_cents / 100).toString(),
+            recurring_count: order.offer_recurring_count?.toString() || "1",
+            period: order.offer_period || "/mois",
             credits_total: order.credits_total?.toString() || "",
             is_unlimited: order.is_unlimited,
             status: order.status,
@@ -262,28 +282,50 @@ export default function AdminShopOrdersPage() {
         });
         const isStd = order.status === "active" || order.status === "termine" || order.status === "" || !order.status;
         setShowCustomStatus(!isStd);
+        setShowErrors(false);
     };
 
     const handleEditSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!editOrder) return;
+
+        // Validation
+        const isLumpSum = editForm.featured_pricing === "lump_sum";
+        const hasPrice = isLumpSum ? !!editForm.price_cents : (!!editForm.price_recurring_cents && !!editForm.recurring_count && !!editForm.period);
+        const hasEndDate = editOrder.is_validity_unlimited || !!editForm.end_date;
+        const hasCredits = editForm.is_unlimited || !!editForm.credits_total;
+
+        if (!editForm.start_date || !hasEndDate || !hasPrice || !hasCredits || !editForm.status || !editForm.payment_status) {
+            setShowErrors(true);
+            return;
+        }
+
+        setSaving(true);
         try {
-            await api.updateAdminOrder(editOrder.id, {
-                start_date: editForm.start_date || undefined,
-                end_date: editForm.end_date || undefined,
-                price_cents: Math.round(parseFloat(editForm.price_cents.replace(',', '.')) * 100),
-                credits_total: editForm.is_unlimited ? null : (editForm.credits_total ? parseInt(editForm.credits_total) : null),
+            const payload: any = {
+                start_date: editForm.start_date,
+                end_date: editForm.end_date || null,
+                price_cents: isLumpSum ? Math.round(parseFloat(editForm.price_cents.replace(',', '.')) * 100) : Math.round(parseFloat(editForm.price_recurring_cents.replace(',', '.')) * 100),
+                featured_pricing: editForm.featured_pricing,
+                price_recurring_cents: !isLumpSum ? Math.round(parseFloat(editForm.price_recurring_cents.replace(',', '.')) * 100) : null,
+                recurring_count: !isLumpSum ? parseInt(editForm.recurring_count) : null,
+                period: !isLumpSum ? editForm.period : null,
+                credits_total: editForm.is_unlimited ? null : parseInt(editForm.credits_total),
                 is_unlimited: editForm.is_unlimited,
-                status: editForm.status || undefined,
-                payment_status: editForm.payment_status as any || undefined,
+                status: editForm.status,
+                payment_status: editForm.payment_status,
                 comment: editForm.comment,
-                user_note: editForm.user_note,
-            });
+                user_note: editForm.user_note
+            };
+
+            await api.updateAdminOrder(editOrder.id, payload);
             setEditOrder(null);
             setMessage({ type: "success", text: "Commande modifiée avec succès !" });
             fetchData();
         } catch (err: any) {
             setMessage({ type: "error", text: err.response?.data?.detail || "Erreur lors de la modification." });
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -302,14 +344,29 @@ export default function AdminShopOrdersPage() {
     const openInvoice = (order: OrderItem) => {
         setInvoiceOrder(order);
         const today = new Date().toISOString().split("T")[0];
+        
+        // Build recipient address string
+        let recipientStr = order.user_name;
+        const addrParts = [];
+        if (order.user_street) addrParts.push(order.user_street);
+        if (order.user_zip_code || order.user_city) {
+            addrParts.push(`${order.user_zip_code || ""} ${order.user_city || ""}`.trim());
+        }
+        if (addrParts.length > 0) {
+            recipientStr += "\n" + addrParts.join("\n");
+        }
+
         setInvoiceData({
             invoice_number: `FAC-${Date.now().toString().slice(-6)}`,
             invoice_date: today,
-            emitter: "Mon Club",
-            recipient: order.user_name,
+            emitter: tenant?.legal_name || tenant?.name || "Mon Club",
+            recipient: recipientStr,
             description: `${order.offer_name} (${order.offer_code})`,
-            amount: (order.price_cents / 100).toFixed(2),
+            amount_ht: "",
+            amount_ttc: (order.price_cents / 100).toFixed(2),
             notes: "",
+            is_acquitted: true,
+            vat_mention: tenant?.legal_vat_mention || ""
         });
     };
 
@@ -324,34 +381,115 @@ export default function AdminShopOrdersPage() {
             console.error("Error saving invoice info:", err);
         }
 
+        const emitterName = invoiceData.emitter;
+        const legalForm = tenant?.legal_form || "";
+        const emitterAddress = tenant?.legal_address || "";
+        const siret = tenant?.legal_siret ? `SIRET : ${tenant.legal_siret}` : "";
+        const vatNumber = tenant?.legal_vat_number ? `TVA : ${tenant.legal_vat_number}` : "";
+        const vatMention = invoiceData.vat_mention;
+
         const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Facture ${invoiceData.invoice_number}</title>
-<style>body{font-family:Arial,sans-serif;max-width:700px;margin:40px auto;padding:20px;color:#333}
-h1{color:#1e40af;border-bottom:2px solid #1e40af;padding-bottom:10px}
-.info{display:flex;justify-content:space-between;margin:20px 0}
-.info div{width:45%}
-table{width:100%;border-collapse:collapse;margin:20px 0}
-th,td{border:1px solid #ddd;padding:10px;text-align:left}
-th{background:#f1f5f9}
-.total{text-align:right;font-size:1.3em;font-weight:bold;margin:20px 0}
-.notes{margin-top:30px;padding:15px;background:#f8fafc;border-radius:8px}
-@media print{body{margin:0}}</style></head><body>
-<h1>FACTURE</h1>
-<div class="info"><div><strong>Émetteur</strong><br>${invoiceData.emitter}</div>
-<div style="text-align:right"><strong>N° :</strong> ${invoiceData.invoice_number}<br><strong>Date :</strong> ${invoiceData.invoice_date}</div></div>
-<div><strong>Destinataire :</strong> ${invoiceData.recipient}</div>
-<table><thead><tr><th>Description</th><th>Période</th><th>Montant</th></tr></thead>
-<tbody><tr><td>${invoiceData.description}</td><td>${invoiceOrder?.start_date} → ${invoiceOrder?.end_date || "Illimité"}</td><td>${invoiceData.amount} €</td></tr></tbody></table>
-<div class="total">Total : ${invoiceData.amount} €</div>
-${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceData.notes}</div>` : ""}
-<div style="margin-top:50px;text-align:center;font-size:0.8em;color:#999">Document généré le ${new Date().toLocaleDateString("fr-FR")}</div>
+<style>
+    body{font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;max-width:800px;margin:40px auto;padding:40px;color:#334155;line-height:1.5;background:#fff}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:60px}
+    .invoice-title{font-size:32px;font-weight:700;color:#0f172a;letter-spacing:-0.025em;margin:0}
+    .emitter-info{font-size:13px;color:#64748b}
+    .emitter-name{font-size:16px;font-weight:700;color:#0f172a;margin-bottom:4px}
+    .details{display:flex;justify-content:space-between;margin-bottom:40px;gap:40px}
+    .details-box{flex:1;padding:24px;background:#f8fafc;border-radius:16px}
+    .details-label{font-size:10px;font-weight:700;text-transform:uppercase;color:#94a3b8;letter-spacing:0.05em;margin-bottom:8px}
+    .details-value{font-size:14px;font-weight:500;white-space:pre-wrap}
+    table{width:100%;border-collapse:collapse;margin:40px 0}
+    th{padding:12px 16px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;color:#64748b;border-bottom:2px solid #e2e8f0;background:#f8fafc}
+    td{padding:16px;font-size:14px;border-bottom:1px solid #f1f5f9}
+    .totals{display:flex;flex-direction:column;align-items:flex-end;gap:8px;margin-top:20px}
+    .total-row{display:flex;justify-content:space-between;width:200px;font-size:14px}
+    .total-main{font-size:20px;font-weight:700;color:#0f172a;border-top:2px solid #e2e8f0;padding-top:12px;margin-top:8px}
+    .vat-mention-inline{font-size:11px;color:#64748b;margin-bottom:4px;text-align:right}
+    .acquitted-stamp{display:${invoiceData.is_acquitted ? "inline-block" : "none"};margin-top:12px;padding:6px 12px;border:2px solid #10b981;color:#10b981;font-size:14px;font-weight:700;text-transform:uppercase;transform:rotate(-5deg);border-radius:8px;opacity:0.9;background:rgba(255,255,255,0.8)}
+    .notes{margin-top:40px;padding:20px;background:#fffaf0;border:1px solid #feebc8;border-radius:12px;font-size:13px}
+    .footer{margin-top:80px;padding-top:20px;border-top:1px solid #f1f5f9;text-align:center;font-size:11px;color:#94a3b8}
+    @media print{body{margin:0;padding:20px}.acquitted-stamp{opacity:1}}
+</style></head><body>
+    <div class="header">
+        <div>
+            <h1 class="invoice-title">FACTURE</h1>
+            <div style="margin-top:8px;font-size:14px;font-weight:600;color:#64748b">N° ${invoiceData.invoice_number}</div>
+        </div>
+        <div class="emitter-info" style="text-align:right">
+            <div class="emitter-name">${emitterName}</div>
+            ${legalForm ? `<div>${legalForm}</div>` : ""}
+            ${emitterAddress ? `<div style="white-space:pre-wrap">${emitterAddress}</div>` : ""}
+            <div>${siret} ${vatNumber}</div>
+            ${vatMention ? `<div style="margin-top:4px;font-style:italic;font-size:11px">${vatMention}</div>` : ""}
+        </div>
+    </div>
+
+    <div class="details">
+        <div class="details-box">
+            <div class="details-label">Destinataire</div>
+            <div class="details-value">${invoiceData.recipient}</div>
+        </div>
+        <div class="details-box" style="max-width:200px">
+            <div class="details-label">Date d'émission</div>
+            <div class="details-value">${new Date(invoiceData.invoice_date).toLocaleDateString("fr-FR")}</div>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width:60%">Description</th>
+                <th style="text-align:right">Total HT</th>
+                <th style="text-align:right">Total TTC</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>
+                    <div style="font-weight:600;color:#0f172a">${invoiceData.description}</div>
+                    <div style="font-size:12px;color:#64748b;margin-top:4px">Période : ${invoiceOrder?.start_date} au ${invoiceOrder?.end_date || "Illimité"}</div>
+                </td>
+                <td style="text-align:right">${invoiceData.amount_ht ? invoiceData.amount_ht + " €" : "-"}</td>
+                <td style="text-align:right;font-weight:700;color:#0f172a">${invoiceData.amount_ttc} €</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="totals">
+        ${invoiceData.amount_ht ? `<div class="total-row"><span>Total HT</span><span>${invoiceData.amount_ht} €</span></div>` : ""}
+        <div class="total-row total-main"><span>Total TTC</span><span>${invoiceData.amount_ttc} €</span></div>
+        <div class="acquitted-stamp">Acquittée le ${new Date(invoiceData.invoice_date).toLocaleDateString("fr-FR")}</div>
+    </div>
+
+    ${invoiceData.notes ? `<div class="notes"><strong>Notes complémentaires :</strong><br>${invoiceData.notes}</div>` : ""}
+
+    <div class="footer">
+        <div>${emitterName} ${legalForm ? " - " + legalForm : ""}</div>
+        <div>${emitterAddress.replace(/\n/g, ", ")}</div>
+        <div style="margin-top:12px;opacity:0.6">Document généré par REZEA - Logiciel de gestion sportive</div>
+    </div>
 </body></html>`;
+
         const blob = new Blob([html], { type: "text/html;charset=utf-8" });
         const url = URL.createObjectURL(blob);
+        
+        // Open in new tab for preview/printing
+        const win = window.open("", "_blank");
+        if (win) {
+            win.document.write(html);
+            win.document.close();
+        }
+
+        // Also trigger download
         const a = document.createElement("a");
         a.href = url;
         a.download = `facture_${invoiceData.invoice_number}.html`;
         a.click();
-        URL.revokeObjectURL(url);
+        
+        // Revoke after a short delay to ensure download started
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+        
         setInvoiceOrder(null);
     };
 
@@ -784,7 +922,12 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                                 </td>
                                                 <td className="px-1 py-3 whitespace-nowrap flex items-center justify-center gap-0">
                                                     <button onClick={() => openEdit(order)} className="p-1 text-blue-600 hover:bg-blue-50 rounded-lg transition-all hover:scale-105" title="Modifier">✏️</button>
-                                                    <button onClick={() => openInvoice(order)} className="p-1 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all hover:scale-105" title="Facture">🧾</button>
+                                                    <div className="relative">
+                                                        <button onClick={() => openInvoice(order)} className="p-1 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all hover:scale-105" title="Facture">🧾</button>
+                                                        {order.invoice_number && (
+                                                            <div className="absolute top-0 right-0 w-2 h-2 bg-rose-500 rounded-full border-2 border-white shadow-sm pointer-events-none animate-in fade-in zoom-in duration-300"></div>
+                                                        )}
+                                                    </div>
                                                     <button onClick={() => setDeleteConfirmId(order.id)} className="p-1 text-rose-600 hover:bg-rose-50 rounded-lg transition-all hover:scale-105" title="Supprimer">🗑️</button>
                                                 </td>
                                             </tr>
@@ -915,36 +1058,27 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
 
                         <div className="flex-1 overflow-y-auto p-8">
                             <form id="editOrderForm" onSubmit={handleEditSubmit} className="space-y-8">
-                                {/* Période & Statuts */}
+                                {/* Période */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Date de début</label>
+                                        <label className={`block text-sm font-medium mb-1 ${(showErrors && !editForm.start_date) ? 'text-red-500' : 'text-slate-700'}`}>Date de début *</label>
                                         <input type="date" value={editForm.start_date}
                                             onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
-                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
+                                            className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all ${(showErrors && !editForm.start_date) ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`} />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Date de fin</label>
+                                        <label className={`block text-sm font-medium mb-1 ${(showErrors && !editForm.end_date && !editOrder.is_validity_unlimited) ? 'text-red-500' : 'text-slate-700'}`}>Date de fin {editOrder.is_validity_unlimited ? '' : '*'}</label>
                                         <input type="date" value={editForm.end_date}
                                             onChange={(e) => setEditForm({ ...editForm, end_date: e.target.value })}
-                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all enabled:hover:border-gray-300 disabled:bg-gray-50 disabled:text-slate-400"
+                                            className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all enabled:hover:border-gray-300 disabled:bg-gray-50 disabled:text-slate-400 ${(showErrors && !editForm.end_date && !editOrder.is_validity_unlimited) ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
                                             disabled={editOrder.is_validity_unlimited} />
                                     </div>
+                                </div>
+
+                                {/* Statuts & Paiement */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Paiement</label>
-                                        <select value={editForm.payment_status}
-                                            onChange={(e) => setEditForm({ ...editForm, payment_status: e.target.value })}
-                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all hover:border-gray-300">
-                                            <option value="a_valider">À valider</option>
-                                            <option value="en_attente">En attente</option>
-                                            <option value="echelonne">Échelonné</option>
-                                            <option value="paye">Payé</option>
-                                            <option value="a_regulariser">À régulariser</option>
-                                            <option value="rembourse">Remboursé</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Statut</label>
+                                        <label className={`block text-sm font-medium mb-1 ${(showErrors && !editForm.status) ? 'text-red-500' : 'text-slate-700'}`}>Statut *</label>
                                         <div className="space-y-2">
                                             <select
                                                 value={showCustomStatus ? "_custom" : (editForm.status || "active")}
@@ -957,7 +1091,7 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                                         setEditForm({ ...editForm, status: e.target.value });
                                                     }
                                                 }}
-                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all hover:border-gray-300"
+                                                className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all ${(showErrors && !editForm.status) ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}
                                             >
                                                 <option value="active">Active</option>
                                                 <option value="termine">Terminée</option>
@@ -975,29 +1109,118 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                                     type="text"
                                                     value={editForm.status}
                                                     onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                                                    className="w-full px-4 py-2.5 border border-blue-100 bg-blue-50 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none animate-in slide-in-from-top-1 duration-200"
+                                                    className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none animate-in slide-in-from-top-1 duration-200 ${(showErrors && !editForm.status) ? 'border-red-300 bg-red-50' : 'border-blue-100 bg-blue-50'}`}
                                                     placeholder="Statut personnalisé..."
                                                     autoFocus
                                                 />
                                             )}
                                         </div>
                                     </div>
+                                    <div>
+                                        <label className={`block text-sm font-medium mb-1 ${(showErrors && !editForm.payment_status) ? 'text-red-500' : 'text-slate-700'}`}>Paiement *</label>
+                                        <select value={editForm.payment_status}
+                                            onChange={(e) => setEditForm({ ...editForm, payment_status: e.target.value })}
+                                            className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all ${(showErrors && !editForm.payment_status) ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                                            <option value="a_valider">À valider</option>
+                                            <option value="en_attente">En attente</option>
+                                            <option value="echelonne">Échelonné</option>
+                                            <option value="paye">Payé</option>
+                                            <option value="a_regulariser">À régulariser</option>
+                                            <option value="rembourse">Remboursé</option>
+                                        </select>
+                                    </div>
                                 </div>
 
-                                {/* Financier & Crédits */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Tarif (€)</label>
-                                        <input type="number" step="0.01" value={editForm.price_cents}
-                                            onChange={(e) => setEditForm({ ...editForm, price_cents: e.target.value })}
-                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
+                                {/* Tarification */}
+                                <div className="space-y-6 bg-slate-50/50 p-6 rounded-2xl border border-slate-100">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label className={`text-[11px] font-semibold uppercase tracking-wider ${(showErrors && !((editForm.featured_pricing === 'lump_sum' && editForm.price_cents) || (editForm.featured_pricing === 'recurring' && editForm.price_recurring_cents && editForm.recurring_count && editForm.period))) ? 'text-red-500' : 'text-slate-400'}`}>
+                                            Tarification *
+                                        </label>
+                                        <div className="flex bg-white p-1 rounded-xl border border-gray-200 shadow-sm">
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditForm({ ...editForm, featured_pricing: "lump_sum" })}
+                                                className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${editForm.featured_pricing === "lump_sum" ? "bg-slate-900 text-white shadow-md" : "text-slate-500 hover:text-slate-700"}`}
+                                            >
+                                                Unique
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditForm({ ...editForm, featured_pricing: "recurring" })}
+                                                className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${editForm.featured_pricing === "recurring" ? "bg-slate-900 text-white shadow-md" : "text-slate-500 hover:text-slate-700"}`}
+                                            >
+                                                Échelonné
+                                            </button>
+                                        </div>
                                     </div>
+
+                                    {editForm.featured_pricing === "lump_sum" ? (
+                                        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <label className="block text-xs font-medium text-slate-500 mb-1.5 ml-1">Prix unique (€)</label>
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={editForm.price_cents}
+                                                    onChange={(e) => setEditForm({ ...editForm, price_cents: e.target.value })}
+                                                    className={`w-full pl-4 pr-12 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all ${showErrors && !editForm.price_cents ? "border-red-300 ring-2 ring-red-50" : "border-gray-200 hover:border-gray-300"}`}
+                                                    placeholder="0.00"
+                                                />
+                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">€</div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <div className="space-y-1.5">
+                                                <label className="block text-xs font-medium text-slate-500 ml-1">Prix / échéance (€)</label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={editForm.price_recurring_cents}
+                                                        onChange={(e) => setEditForm({ ...editForm, price_recurring_cents: e.target.value })}
+                                                        className={`w-full pl-4 pr-10 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all ${showErrors && !editForm.price_recurring_cents ? "border-red-300 ring-2 ring-red-50" : "border-gray-200 hover:border-gray-300"}`}
+                                                        placeholder="0.00"
+                                                    />
+                                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">€</div>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <label className="block text-xs font-medium text-slate-500 ml-1">Période</label>
+                                                <select
+                                                    value={editForm.period}
+                                                    onChange={(e) => setEditForm({ ...editForm, period: e.target.value })}
+                                                    className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all ${showErrors && !editForm.period ? "border-red-300 ring-2 ring-red-50" : "border-gray-200 hover:border-gray-300"}`}
+                                                >
+                                                    <option value="/mois">/ mois</option>
+                                                    <option value="/trimestre">/ trimestre</option>
+                                                    <option value="/an">/ an</option>
+                                                    <option value="/séance">/ séance</option>
+                                                </select>
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <label className="block text-xs font-medium text-slate-500 ml-1">Nb échéances</label>
+                                                <input
+                                                    type="number"
+                                                    value={editForm.recurring_count}
+                                                    onChange={(e) => setEditForm({ ...editForm, recurring_count: e.target.value })}
+                                                    className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all ${showErrors && !editForm.recurring_count ? "border-red-300 ring-2 ring-red-50" : "border-gray-200 hover:border-gray-300"}`}
+                                                    placeholder="12"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Crédits */}
+                                <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
                                     <div className="flex items-center gap-4">
-                                        <div className="flex-1">
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Nombre de crédits</label>
+                                        <div className="w-32">
+                                            <label className={`block text-sm font-medium mb-1 ${(showErrors && !editForm.is_unlimited && !editForm.credits_total) ? 'text-red-500' : 'text-slate-700'}`}>Crédits *</label>
                                             <input type="number" disabled={editForm.is_unlimited} value={editForm.credits_total}
                                                 onChange={(e) => setEditForm({ ...editForm, credits_total: e.target.value })}
-                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all enabled:hover:border-gray-300 disabled:bg-gray-50 disabled:text-slate-400" />
+                                                className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all enabled:hover:border-gray-300 disabled:bg-gray-50 disabled:text-slate-400 ${(showErrors && !editForm.is_unlimited && !editForm.credits_total) ? 'border-red-300 bg-red-50' : 'border-gray-200'}`} />
                                         </div>
                                         <div className="pt-6">
                                             <label className="flex items-center gap-2 cursor-pointer group">
@@ -1103,14 +1326,12 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
             {invoiceOrder && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-10 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                        <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
                             <div className="flex items-center gap-3">
-                                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                <h3 className="text-[17px] font-semibold text-slate-900 tracking-tight">Générer une facture</h3>
+                                <div className="text-xl text-slate-400">🧾</div>
+                                <h3 className="text-lg font-medium text-slate-900 tracking-tight">Générer une facture</h3>
                             </div>
-                            <button onClick={() => setInvoiceOrder(null)} className="text-gray-400 hover:text-gray-600">
+                            <button onClick={() => setInvoiceOrder(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
@@ -1118,60 +1339,101 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-8">
-                            <div className="space-y-8">
+                            <div className="space-y-10">
                                 {/* Parties */}
-                                <div className="space-y-4">
-                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Émetteur & Destinataire</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-4">
+                                        <h4 className="text-[11px] font-medium text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Émetteur</h4>
                                         <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Émetteur</label>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Nom / Raison sociale</label>
                                             <input type="text" value={invoiceData.emitter}
                                                 onChange={(e) => setInvoiceData({ ...invoiceData, emitter: e.target.value })}
-                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
+                                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
                                         </div>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <h4 className="text-[11px] font-medium text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Destinataire</h4>
                                         <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Destinataire</label>
-                                            <input type="text" value={invoiceData.recipient}
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Identité & Adresse</label>
+                                            <textarea value={invoiceData.recipient}
                                                 onChange={(e) => setInvoiceData({ ...invoiceData, recipient: e.target.value })}
-                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
+                                                rows={3}
+                                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 resize-none" />
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Détails facture */}
-                                <div className="space-y-4">
-                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Détails de la facture</h4>
+                                <div className="space-y-6">
+                                    <h4 className="text-[11px] font-medium text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Contenu & Tarification</h4>
+                                    
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div>
                                             <label className="block text-sm font-medium text-slate-700 mb-1">N° Facture</label>
                                             <input type="text" value={invoiceData.invoice_number}
                                                 onChange={(e) => setInvoiceData({ ...invoiceData, invoice_number: e.target.value })}
-                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
+                                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Date d'émission</label>
                                             <input type="date" value={invoiceData.invoice_date}
                                                 onChange={(e) => setInvoiceData({ ...invoiceData, invoice_date: e.target.value })}
-                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
+                                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
                                         </div>
                                         <div className="md:col-span-2">
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Description de la prestation</label>
                                             <input type="text" value={invoiceData.description}
                                                 onChange={(e) => setInvoiceData({ ...invoiceData, description: e.target.value })}
-                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
+                                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Montant (€)</label>
-                                            <input type="text" value={invoiceData.amount}
-                                                onChange={(e) => setInvoiceData({ ...invoiceData, amount: e.target.value })}
-                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Montant HT <span className="text-slate-400 font-normal">(optionnel)</span></label>
+                                            <div className="relative">
+                                                <input type="text" value={invoiceData.amount_ht}
+                                                    onChange={(e) => setInvoiceData({ ...invoiceData, amount_ht: e.target.value })}
+                                                    placeholder="-"
+                                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 pr-8" />
+                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">€</span>
+                                            </div>
                                         </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Montant TTC</label>
+                                            <div className="relative">
+                                                <input type="text" value={invoiceData.amount_ttc}
+                                                    onChange={(e) => setInvoiceData({ ...invoiceData, amount_ttc: e.target.value })}
+                                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm font-semibold outline-none transition-all hover:border-gray-300 pr-8" />
+                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-700 font-semibold text-sm">€</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-3 py-2">
+                                        <input 
+                                            type="checkbox"
+                                            id="is_acquitted"
+                                            checked={invoiceData.is_acquitted}
+                                            onChange={(e) => setInvoiceData({ ...invoiceData, is_acquitted: e.target.checked })}
+                                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                        />
+                                        <label htmlFor="is_acquitted" className="text-sm font-medium text-slate-700">Apposer la mention "ACQUITTÉE"</label>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <h4 className="text-[11px] font-medium text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Notes & Pied de page</h4>
+                                    <div className="space-y-4">
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Mention TVA</label>
+                                        <input type="text" value={invoiceData.vat_mention}
+                                            onChange={(e) => setInvoiceData({ ...invoiceData, vat_mention: e.target.value })}
+                                            placeholder="Ex: TVA non applicable, art. 293 B du CGI"
+                                            className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 mb-1">Notes complémentaires</label>
                                         <textarea value={invoiceData.notes}
                                             onChange={(e) => setInvoiceData({ ...invoiceData, notes: e.target.value })}
-                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                            placeholder="Conditions de réglement, sommes déjà versées..."
+                                            className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 resize-none"
                                             rows={2} />
                                     </div>
                                 </div>
@@ -1184,11 +1446,11 @@ ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceD
                                 Annuler
                             </button>
                             <button onClick={downloadInvoice}
-                                className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-all text-sm shadow-sm flex items-center gap-2">
+                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all text-sm shadow-sm flex items-center gap-2">
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                 </svg>
-                                Générer & Télécharger
+                                Générer la facture
                             </button>
                         </div>
                     </div>

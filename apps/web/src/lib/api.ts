@@ -231,6 +231,12 @@ export interface Tenant {
   welcome_message?: string;
   cgv_url?: string;
   rules_url?: string;
+  legal_name?: string;
+  legal_form?: string;
+  legal_address?: string;
+  legal_siret?: string;
+  legal_vat_number?: string;
+  legal_vat_mention?: string;
   registration_limit_mins: number;
   cancellation_limit_mins: number;
   confirmation_email_body?: string;
@@ -289,6 +295,9 @@ export interface OrderItem {
   user_name: string;
   user_email: string;
   user_is_suspended?: boolean;
+  user_street?: string;
+  user_zip_code?: string;
+  user_city?: string;
   offer_code: string;
   offer_name: string;
   offer_period: string | null;
@@ -695,6 +704,12 @@ export const api = {
     welcome_message: string;
     cgv_url: string;
     rules_url: string;
+    legal_name: string;
+    legal_form: string;
+    legal_address: string;
+    legal_siret: string;
+    legal_vat_number: string;
+    legal_vat_mention: string;
     registration_limit_mins: number;
     cancellation_limit_mins: number;
     confirmation_email_body: string;
