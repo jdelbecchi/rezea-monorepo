@@ -76,6 +76,9 @@ export default function AdminEventRegistrationsPage() {
     const [editReg, setEditReg] = useState<AdminEventRegistrationItem | null>(null);
     const [editForm, setEditForm] = useState({ notes: "", user_note: "", status: "", payment_status: "", price_paid_cents: "" as string });
 
+    // Show errors
+    const [showErrors, setShowErrors] = useState(false);
+
     // Delete confirm
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
@@ -83,9 +86,12 @@ export default function AdminEventRegistrationsPage() {
     const [invoiceReg, setInvoiceReg] = useState<AdminEventRegistrationItem | null>(null);
     const [dateRange, setDateRange] = useState({ start: "", end: "" });
     const [invoiceData, setInvoiceData] = useState({
-        invoice_number: "",
-        invoice_date: "",
         emitter: "Mon Club",
+        legal_form: "",
+        emitter_address: "",
+        siret: "",
+        vat_number: "",
+        vat_mention: "",
         recipient: "",
         description: "",
         amount: "0,00",
@@ -191,6 +197,12 @@ export default function AdminEventRegistrationsPage() {
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!createForm.user_id || !createForm.event_id || !createForm.payment_status) {
+            setShowErrors(true);
+            return;
+        }
+
         setSaving(true);
         try {
             await api.createAdminEventRegistration({
@@ -203,6 +215,7 @@ export default function AdminEventRegistrationsPage() {
             });
             setShowCreate(false);
             setCreateForm({ user_id: "", event_id: "", price_paid_cents: "", payment_status: "a_valider", notes: "", user_note: "", price_type: "member" });
+            setShowErrors(false);
             setMessage({ type: "success", text: "Inscription créée avec succès !" });
             await loadRegistrations();
         } catch (err: any) {
@@ -221,11 +234,19 @@ export default function AdminEventRegistrationsPage() {
             payment_status: reg.payment_status,
             price_paid_cents: (reg.price_paid_cents / 100).toString()
         });
+        setShowErrors(false);
     };
 
     const handleEditSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!editReg) return;
+
+        if (!editForm.status || !editForm.payment_status || editForm.price_paid_cents === "") {
+            setShowErrors(true);
+            return;
+        }
+
+        setSaving(true);
         try {
             await api.updateAdminEventRegistration(editReg.id, {
                 notes: editForm.notes || undefined,
@@ -236,9 +257,12 @@ export default function AdminEventRegistrationsPage() {
             });
             setEditReg(null);
             setMessage({ type: "success", text: "Inscription modifiée avec succès !" });
+            setShowErrors(false);
             await loadRegistrations();
         } catch (err: any) {
             setMessage({ type: "error", text: err.response?.data?.detail || "Erreur lors de la modification." });
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -260,7 +284,7 @@ export default function AdminEventRegistrationsPage() {
         setInvoiceData({
             invoice_number: `EVT-${Date.now().toString().slice(-6)}`,
             invoice_date: today,
-            emitter: user?.tenant_id ? "Votre Club" : "Mon Club",
+            emitter: tenant?.legal_name || tenant?.name || "Votre Établissement",
             recipient: reg.user_name,
             description: `Participation à l'événement: ${reg.event_title}`,
             amount: (reg.price_paid_cents / 100).toFixed(2).replace(".", ","),
@@ -270,25 +294,94 @@ export default function AdminEventRegistrationsPage() {
 
     const downloadInvoice = () => {
         if (!invoiceReg) return;
-        const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Facture ${invoiceData.invoice_number}</title>
-<style>body{font-family:Arial,sans-serif;max-width:700px;margin:40px auto;padding:20px;color:#333}
-h1{color:#1e40af;border-bottom:2px solid #1e40af;padding-bottom:10px}
-.info{display:flex;justify-content:space-between;margin:20px 0}
-.info div{width:45%}
-table{width:100%;border-collapse:collapse;margin:20px 0}
-th,td{border:1px solid #ddd;padding:10px;text-align:left}
-th{background:#f1f5f9}
-.total{text-align:right;font-size:1.3em;font-weight:bold;margin:20px 0}
-.notes{margin-top:30px;padding:15px;background:#f8fafc;border-radius:8px}
-@media print{body{margin:0}}</style></head><body>
-<h1>FACTURE (ÉVÉNEMENT)</h1>
-<div class="info"><div><strong>Émetteur</strong><br>${invoiceData.emitter}</div>
-<div style="text-align:right"><strong>N° :</strong> ${invoiceData.invoice_number}<br><strong>Date :</strong> ${invoiceData.invoice_date}</div></div>
-<div><strong>Destinataire :</strong> ${invoiceData.recipient}</div>
-<table><thead><tr><th>Description</th><th>Date</th><th>Montant</th></tr></thead>
-<tbody><tr><td>${invoiceData.description}</td><td>${invoiceReg.event_date}</td><td>${invoiceData.amount} €</td></tr></tbody></table>
-<div class="total">Total : ${invoiceData.amount} €</div>
-        ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br>${invoiceData.notes}</div>` : ""}
+        const invoiceNumber = invoiceData.invoice_number;
+        const invoiceDate = invoiceData.invoice_date;
+        const emitterName = invoiceData.emitter;
+        const legalForm = tenant?.legal_form || "";
+        const emitterAddress = tenant?.legal_address || "";
+        const siret = tenant?.legal_siret ? `SIRET : ${tenant.legal_siret}` : "";
+        const vatNumber = tenant?.legal_vat_number ? `TVA : ${tenant.legal_vat_number}` : "";
+        const vatMention = tenant?.legal_vat_mention || "";
+        
+        const recipient = invoiceData.recipient;
+        const description = invoiceData.description;
+        const amountTtc = invoiceData.amount;
+
+        const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Facture ${invoiceNumber}</title>
+<style>
+    body{font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;max-width:800px;margin:40px auto;padding:40px;color:#334155;line-height:1.5;background:#fff}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:60px}
+    .invoice-title{font-size:32px;font-weight:700;color:#0f172a;letter-spacing:-0.025em;margin:0}
+    .emitter-info{font-size:13px;color:#64748b}
+    .emitter-name{font-size:16px;font-weight:700;color:#0f172a;margin-bottom:4px}
+    .details{display:flex;justify-content:space-between;margin-bottom:40px;gap:40px}
+    .details-box{flex:1;padding:24px;background:#f8fafc;border-radius:16px}
+    .details-label{font-size:10px;font-weight:700;text-transform:uppercase;color:#94a3b8;letter-spacing:0.05em;margin-bottom:8px}
+    .details-value{font-size:14px;font-weight:500;white-space:pre-wrap}
+    table{width:100%;border-collapse:collapse;margin:40px 0}
+    th{padding:12px 16px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;color:#64748b;border-bottom:2px solid #e2e8f0;background:#f8fafc}
+    td{padding:16px;font-size:14px;border-bottom:1px solid #f1f5f9}
+    .totals{display:flex;flex-direction:column;align-items:flex-end;gap:8px;margin-top:20px}
+    .total-row{display:flex;justify-content:space-between;width:200px;font-size:14px}
+    .total-main{font-size:20px;font-weight:700;color:#0f172a;border-top:2px solid #e2e8f0;padding-top:12px;margin-top:8px}
+    .acquitted-stamp{display:inline-block;margin-top:12px;padding:6px 12px;border:2px solid #10b981;color:#10b981;font-size:14px;font-weight:700;text-transform:uppercase;transform:rotate(-5deg);border-radius:8px;opacity:0.9;background:rgba(255,255,255,0.8)}
+    .footer{margin-top:80px;padding-top:20px;border-top:1px solid #f1f5f9;text-align:center;font-size:11px;color:#94a3b8}
+    @media print{body{margin:0;padding:20px}.acquitted-stamp{opacity:1}}
+</style></head><body>
+    <div class="header">
+        <div>
+            <h1 class="invoice-title">FACTURE</h1>
+            <div style="margin-top:8px;font-size:14px;font-weight:600;color:#64748b">N° ${invoiceNumber}</div>
+        </div>
+        <div class="emitter-info" style="text-align:right">
+            <div class="emitter-name">${emitterName}</div>
+            ${legalForm ? `<div>${legalForm}</div>` : ""}
+            ${emitterAddress ? `<div style="white-space:pre-wrap">${emitterAddress}</div>` : ""}
+            <div>${siret}</div>
+            ${vatNumber ? `<div>${vatNumber}</div>` : ""}
+        </div>
+    </div>
+
+    <div class="details">
+        <div class="details-box">
+            <div class="details-label">Destinataire</div>
+            <div class="details-value">${recipient}</div>
+        </div>
+        <div class="details-box" style="max-width:200px">
+            <div class="details-label">Date d'émission</div>
+            <div class="details-value">${new Date(invoiceDate).toLocaleDateString("fr-FR")}</div>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width:60%">Description</th>
+                <th style="text-align:right">Total TTC</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>
+                    <div style="font-weight:600;color:#0f172a">${description}</div>
+                    <div style="font-size:12px;color:#64748b;margin-top:4px">Date : ${invoiceReg.event_date}</div>
+                </td>
+                <td style="text-align:right;font-weight:700;color:#0f172a">${amountTtc} €</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="totals">
+        <div class="total-row total-main"><span>Total TTC</span><span>${amountTtc} €</span></div>
+        <div class="acquitted-stamp">Acquittée le ${new Date(invoiceDate).toLocaleDateString("fr-FR")}</div>
+    </div>
+
+    <div class="footer">
+        <div>${emitterName} ${legalForm ? " - " + legalForm : ""}</div>
+        <div>${emitterAddress.replace(/\n/g, ", ")}</div>
+        ${vatMention ? `<div style="margin-top:8px;font-style:italic;font-size:11px;opacity:0.9">${vatMention}</div>` : ""}
+        <div style="margin-top:12px;opacity:0.6">Document généré par REZEA - Logiciel de gestion sportive</div>
+    </div>
 </body></html>`;
         const blob = new Blob([html], { type: "text/html;charset=utf-8" });
         const url = URL.createObjectURL(blob);
@@ -601,9 +694,9 @@ th{background:#f1f5f9}
                         <div className="flex-1 overflow-y-auto p-8">
                             <form onSubmit={handleCreate} id="createRegistrationForm" className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Utilisateur *</label>
-                                    <select required value={createForm.user_id} onChange={(e) => setCreateForm({ ...createForm, user_id: e.target.value })}
-                                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300">
+                                    <label className={`block text-sm font-medium mb-1 ${(showErrors && !createForm.user_id) ? 'text-red-500' : 'text-slate-700'}`}>Utilisateur *</label>
+                                    <select value={createForm.user_id} onChange={(e) => setCreateForm({ ...createForm, user_id: e.target.value })}
+                                        className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all ${(showErrors && !createForm.user_id) ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}>
                                         <option value="">Sélectionner un utilisateur...</option>
                                         {users.map((u) => (
                                             <option key={u.id} value={u.id}>
@@ -613,9 +706,9 @@ th{background:#f1f5f9}
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Événement *</label>
-                                    <select required value={createForm.event_id} onChange={(e) => onEventChange(e.target.value)}
-                                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300">
+                                    <label className={`block text-sm font-medium mb-1 ${(showErrors && !createForm.event_id) ? 'text-red-500' : 'text-slate-700'}`}>Événement *</label>
+                                    <select value={createForm.event_id} onChange={(e) => onEventChange(e.target.value)}
+                                        className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all ${(showErrors && !createForm.event_id) ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}>
                                         <option value="">Sélectionner un événement...</option>
                                         {events.map((ev) => {
                                             const dt = new Date(ev.event_date);
@@ -630,7 +723,7 @@ th{background:#f1f5f9}
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Tarif</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Tarif *</label>
                                     <div className="grid grid-cols-2 gap-2">
                                         {(() => {
                                             const selectedEvent = events.find(e => e.id === createForm.event_id);
@@ -750,27 +843,27 @@ th{background:#f1f5f9}
                             <form onSubmit={handleEditSubmit} className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Statut</label>
+                                        <label className={`block text-sm font-medium mb-1 ${(showErrors && !editForm.status) ? 'text-red-500' : 'text-slate-700'}`}>Statut *</label>
                                         <select value={editForm.status}
                                             onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300">
+                                            className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all ${(showErrors && !editForm.status) ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}>
                                             {getEditStatusOptions(editReg.status).map((opt: any) => (
                                                 <option key={opt.value} value={opt.value}>{opt.label}</option>
                                             ))}
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Tarif (€)</label>
+                                        <label className={`block text-sm font-medium mb-1 ${(showErrors && editForm.price_paid_cents === "") ? 'text-red-500' : 'text-slate-700'}`}>Tarif * (€)</label>
                                         <input type="number" step="0.01" min="0"
                                             value={editForm.price_paid_cents}
                                             onChange={(e) => setEditForm({ ...editForm, price_paid_cents: e.target.value })}
-                                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300" />
+                                            className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all ${(showErrors && editForm.price_paid_cents === "") ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`} />
                                     </div>
                                     <div className="col-span-2">
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Paiement</label>
+                                        <label className={`block text-sm font-medium mb-1 ${(showErrors && !editForm.payment_status) ? 'text-red-500' : 'text-slate-700'}`}>Paiement *</label>
                                         <select value={editForm.payment_status}
                                             onChange={(e) => setEditForm({ ...editForm, payment_status: e.target.value })}
-                                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300">
+                                            className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all ${(showErrors && !editForm.payment_status) ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}>
                                             <option value="a_valider">À valider</option>
                                             <option value="en_attente">En attente</option>
                                             <option value="paye">Payé</option>

@@ -365,8 +365,7 @@ export default function AdminShopOrdersPage() {
             amount_ht: "",
             amount_ttc: (order.price_cents / 100).toFixed(2),
             notes: "",
-            is_acquitted: true,
-            vat_mention: tenant?.legal_vat_mention || ""
+            is_acquitted: true
         });
     };
 
@@ -386,7 +385,7 @@ export default function AdminShopOrdersPage() {
         const emitterAddress = tenant?.legal_address || "";
         const siret = tenant?.legal_siret ? `SIRET : ${tenant.legal_siret}` : "";
         const vatNumber = tenant?.legal_vat_number ? `TVA : ${tenant.legal_vat_number}` : "";
-        const vatMention = invoiceData.vat_mention;
+        const vatMention = tenant?.legal_vat_mention || "";
 
         const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Facture ${invoiceData.invoice_number}</title>
 <style>
@@ -420,8 +419,8 @@ export default function AdminShopOrdersPage() {
             <div class="emitter-name">${emitterName}</div>
             ${legalForm ? `<div>${legalForm}</div>` : ""}
             ${emitterAddress ? `<div style="white-space:pre-wrap">${emitterAddress}</div>` : ""}
-            <div>${siret} ${vatNumber}</div>
-            ${vatMention ? `<div style="margin-top:4px;font-style:italic;font-size:11px">${vatMention}</div>` : ""}
+            <div>${siret}</div>
+            ${vatNumber ? `<div>${vatNumber}</div>` : ""}
         </div>
     </div>
 
@@ -467,6 +466,7 @@ export default function AdminShopOrdersPage() {
     <div class="footer">
         <div>${emitterName} ${legalForm ? " - " + legalForm : ""}</div>
         <div>${emitterAddress.replace(/\n/g, ", ")}</div>
+        ${vatMention ? `<div style="margin-top:8px;font-style:italic;font-size:11px;opacity:0.9">${vatMention}</div>` : ""}
         <div style="margin-top:12px;opacity:0.6">Document généré par REZEA - Logiciel de gestion sportive</div>
     </div>
 </body></html>`;
@@ -1420,14 +1420,7 @@ export default function AdminShopOrdersPage() {
                                 </div>
 
                                 <div className="space-y-4">
-                                    <h4 className="text-[11px] font-medium text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Notes & Pied de page</h4>
-                                    <div className="space-y-4">
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Mention TVA</label>
-                                        <input type="text" value={invoiceData.vat_mention}
-                                            onChange={(e) => setInvoiceData({ ...invoiceData, vat_mention: e.target.value })}
-                                            placeholder="Ex: TVA non applicable, art. 293 B du CGI"
-                                            className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
-                                    </div>
+                                    <h4 className="text-[11px] font-medium text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Notes</h4>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 mb-1">Notes complémentaires</label>
                                         <textarea value={invoiceData.notes}

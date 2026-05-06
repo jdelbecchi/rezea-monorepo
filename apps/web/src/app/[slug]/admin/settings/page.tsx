@@ -833,8 +833,9 @@ export default function AdminSettingsPage() {
                                             <label className="block text-sm font-medium text-slate-700 mb-1">Mention TVA</label>
                                             <input
                                                 type="text"
-                                                value={formData.legal_vat_mention ?? "TVA non applicable, art. 293 B du CGI"}
+                                                value={formData.legal_vat_mention || ""}
                                                 onChange={e => setFormData({ ...formData, legal_vat_mention: e.target.value })}
+                                                placeholder="Ex: TVA non applicable, art. 293 B du CGI"
                                                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-sm"
                                             />
                                             <p className="text-[10px] text-slate-400 font-normal mt-1.5 ml-1">Cette mention sera affichée en pied de facture. Laissez par défaut si vous êtes en franchise de base.</p>
