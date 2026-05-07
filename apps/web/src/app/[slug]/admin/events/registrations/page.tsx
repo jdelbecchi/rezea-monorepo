@@ -380,7 +380,7 @@ export default function AdminEventRegistrationsPage() {
         <div>${emitterName} ${legalForm ? " - " + legalForm : ""}</div>
         <div>${emitterAddress.replace(/\n/g, ", ")}</div>
         ${vatMention ? `<div style="margin-top:8px;font-style:italic;font-size:11px;opacity:0.9">${vatMention}</div>` : ""}
-        <div style="margin-top:12px;opacity:0.6">Document généré par REZEA - Logiciel de gestion sportive</div>
+        <div style="margin-top:12px;opacity:0.6">Document généré par Rezea</div>
     </div>
 </body></html>`;
         const blob = new Blob([html], { type: "text/html;charset=utf-8" });
@@ -504,7 +504,7 @@ export default function AdminEventRegistrationsPage() {
     if (loading) return <div className="p-8 text-center bg-gray-50 min-h-screen">Chargement...</div>;
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
+        <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
             <Sidebar user={user} />
             <main className="flex-1 p-8 overflow-auto">
                 <div className="max-w-7xl mx-auto space-y-6">
@@ -607,46 +607,57 @@ export default function AdminEventRegistrationsPage() {
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full">
-                                <thead className="bg-gray-50">
+                                <thead className="bg-slate-100 border-b border-slate-200">
                                     <tr>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">Date</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">Date & heure</th>
                                         <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest w-[300px]">Évènement</th>
                                         <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">NOM</th>
                                         <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest text-center w-24">Tarif</th>
                                         <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest text-center w-32">Paiement</th>
                                         <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest text-center w-32">Statut</th>
-                                        <th className="px-3 py-4 text-center text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Actions</th>
+                                        <th className="px-3 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="bg-white divide-y divide-gray-100">
+                                <tbody className="bg-white divide-y divide-slate-100">
                                     {filteredRegistrations.map((reg) => (
-                                        <tr key={reg.id} className="hover:bg-gray-50 transition-all group">
-                                            <td className="px-3 py-4 whitespace-nowrap text-sm text-slate-600 font-medium font-livvic">
-                                                {reg.event_date ? new Date(reg.event_date).toLocaleDateString("fr-FR") : "—"}
-                                            </td>
-                                            <td className="px-3 py-4 whitespace-nowrap">
+                                        <tr key={reg.id} className="hover:bg-slate-50 transition-colors group">
+                                            <td className="px-3 py-2.5 whitespace-nowrap">
                                                 <div className="flex flex-col">
-                                                    <span className="text-sm font-medium text-slate-900 font-livvic tracking-tight truncate">{reg.event_title}</span>
+                                                    <span className="text-sm font-medium text-slate-900 font-livvic">
+                                                        {reg.event_date ? new Date(reg.event_date).toLocaleDateString("fr-FR") : "—"}
+                                                    </span>
                                                     <span className="text-xs text-slate-500 font-livvic">{reg.event_time}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-3 py-4 whitespace-nowrap text-sm font-livvic">
+                                            <td className="px-3 py-2.5 whitespace-nowrap">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-medium text-slate-900 font-livvic tracking-tight truncate">{reg.event_title}</span>
+                                                    {reg.notes && (
+                                                        <span title={reg.notes} className="text-blue-400 cursor-help">
+                                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                                            </svg>
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-3 py-2.5 whitespace-nowrap text-sm font-livvic">
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-medium text-slate-900">{reg.user_name}</span>
                                                     {reg.created_by_admin && <span title="Ajouté par un manager" className="text-amber-500 text-xs">🛡️</span>}
                                                 </div>
                                             </td>
-                                            <td className="px-3 py-4 whitespace-nowrap text-center text-sm font-medium text-slate-900 font-livvic">
+                                            <td className="px-3 py-2.5 whitespace-nowrap text-center text-sm font-medium text-slate-900 font-livvic">
                                                 {formatPrice(reg.price_paid_cents)}
                                             </td>
-                                            <td className="px-3 py-4 whitespace-nowrap text-center">
+                                            <td className="px-3 py-2.5 whitespace-nowrap text-center">
                                                 {getPaymentBadge(reg)}
                                             </td>
-                                            <td className="px-3 py-4 whitespace-nowrap text-center">
+                                            <td className="px-3 py-2.5 whitespace-nowrap text-center">
                                                 {getStatusBadge(reg)}
                                             </td>
-                                            <td className="px-3 py-4 whitespace-nowrap text-center">
-                                                <div className="flex items-center justify-center gap-0.5">
+                                            <td className="px-3 py-2.5 whitespace-nowrap text-right">
+                                                <div className="flex items-center justify-end gap-0.5">
                                                     {reg.status !== "event_deleted" && (
                                                         <>
                                                             <button onClick={() => openEdit(reg)} className="p-1 hover:bg-blue-50 text-blue-500 rounded-lg transition-all hover:scale-110" title="Modifier">✏️</button>

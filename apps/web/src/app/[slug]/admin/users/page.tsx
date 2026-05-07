@@ -269,7 +269,7 @@ export default function AdminUsersPage() {
     };
 
     return (
-        <div className="flex min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
             <Sidebar user={currentUser} />
             <main className="flex-1 p-8 overflow-auto">
                 <div className="max-w-7xl mx-auto">
@@ -360,21 +360,21 @@ export default function AdminUsersPage() {
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead>
-                                        <tr className="bg-gray-50 border-b border-gray-100">
+                                        <tr className="bg-slate-100 border-b border-slate-200">
                                             <th className="py-3 px-4 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">nom</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">email</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">téléphone</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">ville</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">profil</th>
+                                            <th className="py-3 px-4 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">profil</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">statut</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">créé le</th>
-                                            <th className="py-3 px-4 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">actions</th>
+                                            <th className="px-3 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
                                         {users.map((user) => (
-                                            <tr key={user.id} className="hover:bg-slate-50 transition-colors">
-                                                <td className="py-3 px-4">
+                                            <tr key={user.id} className="hover:bg-slate-50 transition-colors group">
+                                                <td className="py-2.5 px-4">
                                                     <div className="flex items-center gap-2">
                                                         <div className="font-medium text-slate-900">
                                                             {user.first_name} {user.last_name}
@@ -390,12 +390,12 @@ export default function AdminUsersPage() {
                                                 <td className="py-3 px-4 text-slate-600 truncate max-w-[150px]">
                                                     {user.zip_code && `${user.zip_code} `}{user.city || "—"}
                                                 </td>
-                                                <td className="py-3 px-4">
+                                                <td className="py-3 px-4 text-center">
                                                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-normal border ${ROLE_COLORS[user.role] || "bg-gray-50 text-gray-600 border-gray-100"}`}>
                                                         {ROLE_LABELS[user.role] || user.role}
                                                     </span>
                                                 </td>
-                                                <td className="py-3 px-4">
+                                                <td className="py-2.5 px-4">
                                                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-normal border ${user.is_active
                                                         ? "bg-green-50 text-green-700 border-green-100"
                                                         : "bg-rose-50 text-rose-700 border-rose-100"
@@ -404,13 +404,12 @@ export default function AdminUsersPage() {
                                                         {user.is_active_override && <span className="ml-1" title="Statut forcé par admin">🛡️</span>}
                                                     </span>
                                                 </td>
-                                                <td className="py-3 px-4 text-slate-600">
+                                                <td className="py-2.5 px-4 text-slate-600">
                                                     {user.created_at
                                                         ? new Date(user.created_at).toLocaleDateString("fr-FR")
                                                         : "—"}
                                                 </td>
-                                                <td className="py-3 px-4 text-center">
-                                                    <div className="flex items-center justify-center gap-0.5">
+                                                <td className="px-3 py-2.5 whitespace-nowrap text-right flex items-center justify-end gap-0.5">
                                                         <button
                                                             onClick={() => openEditModal(user)}
                                                             className="p-1 hover:bg-blue-50 text-blue-500 rounded-lg transition-all hover:scale-105"
@@ -425,7 +424,6 @@ export default function AdminUsersPage() {
                                                         >
                                                             🗑️
                                                         </button>
-                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}

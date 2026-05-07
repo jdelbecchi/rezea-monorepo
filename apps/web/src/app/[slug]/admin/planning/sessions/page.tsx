@@ -302,7 +302,7 @@ function AdminSessionsContent() {
     if (loading) return <div className="p-8 text-center text-slate-500 font-medium">Chargement...</div>;
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row text-slate-900">
+        <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
             <Sidebar user={user} />
 
             <main className="flex-1 p-8 overflow-auto">
@@ -403,28 +403,28 @@ function AdminSessionsContent() {
                     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                         <table className="w-full text-left border-collapse">
                             <thead>
-                                <tr className="bg-gray-50 border-b border-slate-100">
+                                <tr className="bg-slate-100 border-b border-slate-200">
                                     <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">date</th>
-                                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">heure</th>
+                                    <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">heure</th>
                                     <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest w-[200px]">intitulé</th>
                                     <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">durée</th>
-                                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">lieu</th>
-                                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">attribution</th>
+                                    <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">lieu</th>
+                                    <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">attribution</th>
                                     <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">inscriptions</th>
                                     <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">crédits</th>
-                                    <th className="px-3 py-4 text-center text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Actions</th>
+                                    <th className="px-3 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-50/50">
+                            <tbody className="divide-y divide-slate-100">
                                 {filteredSessions.map(s => {
                                     const date = new Date(s.start_time);
                                     const fillPercent = (s.current_participants / s.max_participants) * 100;
                                     
                                     return (
-                                        <tr key={s.id} className="hover:bg-gray-50 transition-all group">
-                                            <td className="px-3 py-4 whitespace-nowrap text-sm text-slate-700">{format(date, "dd/MM/yyyy")}</td>
-                                            <td className="px-3 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{format(date, "HH:mm")}</td>
-                                            <td className="px-3 py-4 whitespace-nowrap max-w-[200px] truncate">
+                                        <tr key={s.id} className="hover:bg-slate-50 transition-colors group">
+                                            <td className="px-3 py-2.5 whitespace-nowrap text-sm text-slate-700">{format(date, "dd/MM/yyyy")}</td>
+                                            <td className="px-3 py-2.5 whitespace-nowrap text-sm font-medium text-slate-900 text-center">{format(date, "HH:mm")}</td>
+                                            <td className="px-3 py-2.5 whitespace-nowrap max-w-[200px] truncate">
                                                 <div className="flex items-center gap-2">
                                                     <span className={`text-sm font-medium text-slate-900 ${!s.is_active ? 'line-through text-slate-400' : ''}`}>{s.title}</span>
                                                     {s.description && s.description.trim().length > 0 && (
@@ -436,8 +436,8 @@ function AdminSessionsContent() {
                                                     )}
                                                 </div>
                                             </td>
-                                            <td className="px-3 py-4 whitespace-nowrap text-sm font-normal text-slate-500 text-center">{formatDuration(Math.round((new Date(s.end_time).getTime() - date.getTime())/60000))}</td>
-                                            <td className="px-3 py-4 whitespace-nowrap">
+                                            <td className="px-3 py-2.5 whitespace-nowrap text-sm font-normal text-slate-500 text-center">{formatDuration(Math.round((new Date(s.end_time).getTime() - date.getTime())/60000))}</td>
+                                            <td className="px-3 py-2.5 whitespace-nowrap text-center">
                                                 {s.location ? (
                                                     <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 text-slate-600 rounded-lg text-xs font-normal border border-slate-100 whitespace-nowrap">
                                                         📍 {s.location}
@@ -446,8 +446,8 @@ function AdminSessionsContent() {
                                                     <span className="text-slate-300 text-xs italic">—</span>
                                                 )}
                                             </td>
-                                            <td className="px-3 py-4 text-sm font-normal text-slate-500 whitespace-nowrap">{(s as any).instructor_name || "—"}</td>
-                                            <td className="px-3 py-4 text-center whitespace-nowrap">
+                                            <td className="px-3 py-2.5 text-sm font-normal text-slate-500 whitespace-nowrap text-center">{(s as any).instructor_name || "—"}</td>
+                                            <td className="px-3 py-2.5 text-center whitespace-nowrap">
                                                 <span className={`inline-flex items-center justify-center px-4 py-1 rounded-full text-xs font-normal border ${
                                                     !s.is_active ? "bg-slate-100 text-slate-400 border-slate-200" :
                                                     s.current_participants === 0 
@@ -472,8 +472,8 @@ function AdminSessionsContent() {
                                                     )}
                                                 </span>
                                             </td>
-                                            <td className="px-3 py-4 text-center text-sm font-medium text-slate-600 whitespace-nowrap">{s.credits_required}</td>
-                                            <td className="px-3 py-4 text-center flex items-center justify-center gap-0.5 whitespace-nowrap">
+                                            <td className="px-3 py-2.5 text-center text-sm font-medium text-slate-600 whitespace-nowrap">{s.credits_required}</td>
+                                            <td className="px-3 py-2.5 whitespace-nowrap text-right flex items-center justify-end gap-0.5">
                                                 <button onClick={() => openEdit(s)} className="p-1 hover:bg-blue-50 text-blue-500 rounded-lg transition-all hover:scale-105" title="Modifier">✏️</button>
                                                 {s.is_active ? (
                                                     <button 

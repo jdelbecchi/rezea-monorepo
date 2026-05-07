@@ -467,7 +467,7 @@ export default function AdminShopOrdersPage() {
         <div>${emitterName} ${legalForm ? " - " + legalForm : ""}</div>
         <div>${emitterAddress.replace(/\n/g, ", ")}</div>
         ${vatMention ? `<div style="margin-top:8px;font-style:italic;font-size:11px;opacity:0.9">${vatMention}</div>` : ""}
-        <div style="margin-top:12px;opacity:0.6">Document généré par REZEA - Logiciel de gestion sportive</div>
+        <div style="margin-top:12px;opacity:0.6">Document généré par Rezea</div>
     </div>
 </body></html>`;
 
@@ -666,7 +666,7 @@ export default function AdminShopOrdersPage() {
     if (loading) return <div className="p-8 text-center bg-gray-50 min-h-screen">Chargement...</div>;
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
+        <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
             <Sidebar user={user} />
 
             <main className="flex-1 p-8 overflow-auto">
@@ -783,9 +783,9 @@ export default function AdminShopOrdersPage() {
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full">
-                                <thead className="bg-gray-50">
+                                <thead className="bg-slate-100 border-b border-slate-200">
                                     <tr>
-                                        <th className="px-3 py-3 text-left w-10">
+                                        <th className="px-3 py-[10px] text-left w-10 whitespace-nowrap text-xs uppercase tracking-widest">
                                             <input
                                                 type="checkbox"
                                                 className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
@@ -793,20 +793,21 @@ export default function AdminShopOrdersPage() {
                                                 onChange={() => toggleAll(filteredOrders)}
                                             />
                                         </th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest hidden md:table-cell">date</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">nom</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">offre</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest hidden lg:table-cell">début</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest hidden lg:table-cell">fin</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest hidden sm:table-cell">tarif</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest hidden xl:table-cell">crédits</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest hidden sm:table-cell">solde</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">paiement</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest hidden md:table-cell">statut</th>
-                                        <th className="px-3 py-4 text-center text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Actions</th>
+                                        <th className="px-3 py-[10px] text-center text-xs font-medium text-slate-400 uppercase tracking-widest hidden md:table-cell whitespace-nowrap">date</th>
+                                        <th className="px-3 py-[10px] text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">nom</th>
+                                        <th className="px-3 py-[10px] text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">offre</th>
+                                        <th className="px-3 py-[10px] text-center text-xs font-medium text-slate-400 uppercase tracking-widest hidden lg:table-cell whitespace-nowrap">début</th>
+                                        <th className="px-3 py-[10px] text-center text-xs font-medium text-slate-400 uppercase tracking-widest hidden lg:table-cell whitespace-nowrap">fin</th>
+                                        <th className="px-3 py-[10px] text-center text-xs font-medium text-slate-400 uppercase tracking-widest hidden sm:table-cell whitespace-nowrap">tarif</th>
+                                        <th className="px-3 py-[10px] text-center text-xs font-medium text-slate-400 uppercase tracking-widest hidden xl:table-cell whitespace-nowrap">crédits</th>
+                                        <th className="px-3 py-[10px] text-center text-xs font-medium text-slate-400 uppercase tracking-widest hidden sm:table-cell whitespace-nowrap">solde</th>
+                                        <th className="px-3 py-[10px] text-center text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">paiement</th>
+                                        <th className="w-8 py-[10px]"></th>
+                                        <th className="px-3 py-[10px] text-center text-xs font-medium text-slate-400 uppercase tracking-widest hidden md:table-cell whitespace-nowrap">statut</th>
+                                        <th className="px-3 py-[10px] text-right text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
+                                <tbody className="bg-white divide-y divide-slate-100">
                                     {filteredOrders.map((order) => {
                                         const paymentColors: Record<string, string> = {
                                             a_valider: "bg-yellow-100 text-yellow-800",
@@ -827,8 +828,8 @@ export default function AdminShopOrdersPage() {
                                         const expiryWarning = !order.is_validity_unlimited && days !== null && days <= 30;
                                         const expiryCritical = !order.is_validity_unlimited && days !== null && days <= 7;
                                         return (
-                                            <tr key={order.id} className="hover:bg-gray-50">
-                                                <td className="px-3 py-3 w-10">
+                                            <tr key={order.id} className="hover:bg-slate-50 transition-colors group">
+                                                <td className="px-3 py-2.5 w-10">
                                                     <input
                                                         type="checkbox"
                                                         className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
@@ -836,10 +837,10 @@ export default function AdminShopOrdersPage() {
                                                         onChange={() => toggleSelection(order.id)}
                                                     />
                                                 </td>
-                                                <td className="px-3 py-3 whitespace-nowrap text-sm text-slate-700 hidden md:table-cell">
+                                                <td className="px-3 py-2.5 whitespace-nowrap text-sm text-slate-700 hidden md:table-cell text-center">
                                                     {order.created_at ? new Date(order.created_at).toLocaleDateString("fr-FR") : "—"}
                                                 </td>
-                                                <td className="px-3 py-3 whitespace-nowrap text-sm">
+                                                <td className="px-3 py-2.5 whitespace-nowrap text-sm">
                                                     <div className="flex items-center gap-1">
                                                         <span className="font-medium text-slate-900">
                                                             {order.user_name}
@@ -849,7 +850,7 @@ export default function AdminShopOrdersPage() {
                                                         )}
                                                     </div>
                                                 </td>
-                                                <td className="px-3 py-3 whitespace-nowrap">
+                                                <td className="px-3 py-2.5 whitespace-nowrap">
                                                     <div className="flex items-center gap-1">
                                                         <span className="text-sm font-medium text-slate-900">{order.offer_code}</span>
                                                         {order.comment && order.comment.trim().length > 0 && (
@@ -866,10 +867,10 @@ export default function AdminShopOrdersPage() {
                                                         )}
                                                     </div>
                                                 </td>
-                                                <td className="px-3 py-3 whitespace-nowrap text-sm text-slate-700 hidden lg:table-cell">
+                                                <td className="px-3 py-2.5 whitespace-nowrap text-sm text-slate-700 hidden lg:table-cell text-center">
                                                     {new Date(order.start_date).toLocaleDateString("fr-FR")}
                                                 </td>
-                                                <td className="px-3 py-3 whitespace-nowrap text-sm hidden lg:table-cell">
+                                                <td className="px-3 py-2.5 whitespace-nowrap text-sm hidden lg:table-cell text-center">
                                                     {order.is_validity_unlimited ? (
                                                         <span className="font-semibold text-purple-600">♾️ Illimité</span>
                                                     ) : order.end_date ? (
@@ -882,20 +883,20 @@ export default function AdminShopOrdersPage() {
                                                         <span className="text-slate-400">—</span>
                                                     )}
                                                 </td>
-                                                <td className="px-3 py-3 whitespace-nowrap text-slate-700 hidden sm:table-cell">
+                                                <td className="px-3 py-2.5 whitespace-nowrap text-slate-700 hidden sm:table-cell text-center">
                                                     {formatPrice(order)}
                                                 </td>
-                                                <td className="px-3 py-3 whitespace-nowrap text-sm text-slate-700 hidden xl:table-cell">
+                                                <td className="px-3 py-2.5 whitespace-nowrap text-sm text-slate-700 hidden xl:table-cell text-center">
                                                     {order.is_unlimited ? "∞" : order.credits_total}
                                                 </td>
-                                                <td className="px-3 py-3 whitespace-nowrap hidden sm:table-cell">
+                                                <td className="px-3 py-2.5 whitespace-nowrap hidden sm:table-cell text-center">
                                                     {order.is_unlimited ? (
-                                                        <div className={`flex items-center gap-1 text-sm ${order.user_is_suspended ? "text-red-600 font-semibold" : "text-slate-700 font-medium"}`}>
+                                                        <div className={`flex items-center justify-center gap-1 text-sm ${order.user_is_suspended ? "text-red-600 font-semibold" : "text-slate-700 font-medium"}`}>
                                                             <span>∞</span>
                                                             {order.user_is_suspended && <span title="Crédits suspendus">🚫</span>}
                                                         </div>
                                                     ) : (
-                                                        <div className={`flex items-center gap-1 text-sm ${order.user_is_suspended ? "text-red-600 font-semibold" :
+                                                        <div className={`flex items-center justify-center gap-1 text-sm ${order.user_is_suspended ? "text-red-600 font-semibold" :
                                                                 (order.balance ?? 0) <= 0 ? "text-red-600" :
                                                                     (order.balance ?? 0) <= 2 ? "text-orange-600" :
                                                                         "text-slate-700"
@@ -905,30 +906,30 @@ export default function AdminShopOrdersPage() {
                                                         </div>
                                                     )}
                                                 </td>
-                                                <td className="px-3 py-3 whitespace-nowrap">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className={`px-2 py-1 text-xs font-normal rounded-full ${paymentColors[order.payment_status] || "bg-gray-100 text-gray-600"}`}>
-                                                            {PAYMENT_LABELS[order.payment_status] || order.payment_status}
-                                                        </span>
-                                                        {(order.payment_status === "echelonne" || order.payment_status === "a_regulariser") && (
-                                                            <button onClick={() => openInstallments(order)} className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all hover:scale-105" title="Échéancier">📅</button>
-                                                        )}
-                                                    </div>
+                                                <td className="px-3 py-2.5 whitespace-nowrap text-center">
+                                                    <span className={`px-2 py-1 text-xs font-normal rounded-full border whitespace-nowrap ${paymentColors[order.payment_status] || "bg-gray-100 text-gray-600 border-gray-200"}`}>
+                                                        {PAYMENT_LABELS[order.payment_status] || order.payment_status}
+                                                    </span>
                                                 </td>
-                                                <td className="px-3 py-3 whitespace-nowrap hidden md:table-cell">
+                                                <td className="w-8 py-2.5 text-left">
+                                                    {(order.payment_status === "echelonne" || order.payment_status === "a_regulariser") && (
+                                                        <button onClick={() => openInstallments(order)} className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all hover:scale-105" title="Échéancier">📅</button>
+                                                    )}
+                                                </td>
+                                                <td className="px-3 py-2.5 whitespace-nowrap hidden md:table-cell text-center">
                                                     <span className={`px-2 py-1 text-xs font-normal rounded-full ${statusColors[order.status] || "bg-indigo-50 text-indigo-600 border border-indigo-100"}`}>
                                                         {STATUS_LABELS[order.status] || (order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : order.status)}
                                                     </span>
                                                 </td>
-                                                <td className="px-1 py-3 whitespace-nowrap flex items-center justify-center gap-0">
-                                                    <button onClick={() => openEdit(order)} className="p-1 text-blue-600 hover:bg-blue-50 rounded-lg transition-all hover:scale-105" title="Modifier">✏️</button>
+                                                <td className="px-1 py-2.5 whitespace-nowrap flex items-center justify-end gap-0.5">
+                                                    <button onClick={() => openEdit(order)} className="p-1 hover:bg-blue-50 text-blue-500 rounded-lg transition-all hover:scale-110" title="Modifier">✏️</button>
                                                     <div className="relative">
-                                                        <button onClick={() => openInvoice(order)} className="p-1 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all hover:scale-105" title="Facture">🧾</button>
+                                                        <button onClick={() => openInvoice(order)} className="p-1 hover:bg-slate-100 text-slate-500 rounded-lg transition-all hover:scale-110" title="Facture">🧾</button>
                                                         {order.invoice_number && (
                                                             <div className="absolute top-0 right-0 w-2 h-2 bg-rose-500 rounded-full border-2 border-white shadow-sm pointer-events-none animate-in fade-in zoom-in duration-300"></div>
                                                         )}
                                                     </div>
-                                                    <button onClick={() => setDeleteConfirmId(order.id)} className="p-1 text-rose-600 hover:bg-rose-50 rounded-lg transition-all hover:scale-105" title="Supprimer">🗑️</button>
+                                                    <button onClick={() => setDeleteConfirmId(order.id)} className="p-1 hover:bg-rose-50 text-rose-500 rounded-lg transition-all hover:scale-110" title="Supprimer">🗑️</button>
                                                 </td>
                                             </tr>
                                         );

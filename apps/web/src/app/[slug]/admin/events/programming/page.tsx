@@ -261,7 +261,7 @@ export default function AdminEventsProgrammingPage() {
     if (loading) return <div className="p-8 text-center bg-gray-50 min-h-screen">Chargement...</div>;
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
+        <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
             <Sidebar user={user} />
 
             <main className="flex-1 p-8 overflow-auto">
@@ -335,56 +335,61 @@ export default function AdminEventsProgrammingPage() {
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full">
-                                <thead className="bg-gray-50">
+                                <thead className="bg-slate-100 border-b border-slate-200">
                                     <tr>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">date</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">heure</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest w-[300px]">intitulé</th>
-                                        <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">durée</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">lieu</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">attribution</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">tarifs</th>
-                                        <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">inscriptions</th>
-                                        <th className="px-3 py-4 text-center text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Actions</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">Date & Heure</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest w-[300px]">Évènement</th>
+                                        <th className="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">Durée</th>
+                                        <th className="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">Lieu</th>
+                                        <th className="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">Attribution</th>
+                                        <th className="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">Tarifs</th>
+                                        <th className="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">Inscriptions</th>
+                                        <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
+                                <tbody className="bg-white divide-y divide-slate-100">
                                     {filteredEvents.map((event) => {
                                         const fillPercent = (event.registrations_count / event.max_places) * 100;
                                         return (
-                                        <tr key={event.id} className={`hover:bg-gray-50 transition-all group ${!event.is_active ? 'opacity-50' : ''}`}>
-                                            <td className="px-3 py-4 whitespace-nowrap text-sm text-slate-700">
-                                                {new Date(event.event_date).toLocaleDateString("fr-FR")}
-                                            </td>
-                                            <td className="px-3 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{event.event_time}</td>
-                                            <td className="px-3 py-4 whitespace-nowrap max-w-[300px] truncate">
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`text-sm font-medium text-slate-900 ${!event.is_active ? 'line-through text-slate-400' : ''}`}>{event.title}</span>
-                                                    {event.description && event.description.length > 0 && <span title={event.description} className="text-slate-400 text-xs cursor-help">📝</span>}
+                                        <tr key={event.id} className={`hover:bg-slate-50 transition-colors group ${!event.is_active ? 'opacity-50' : ''}`}>
+                                            <td className="px-4 py-2.5 whitespace-nowrap">
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-medium text-slate-900">
+                                                        {new Date(event.event_date).toLocaleDateString("fr-FR")}
+                                                    </span>
+                                                    <span className="text-xs text-slate-500 font-normal">
+                                                        {event.event_time || "—"}
+                                                    </span>
                                                 </div>
                                             </td>
-                                            <td className="px-3 py-4 whitespace-nowrap text-sm text-slate-500 text-center">{formatDuration(event.duration_minutes)}</td>
-                                            <td className="px-3 py-4 whitespace-nowrap">
+                                            <td className="px-4 py-2.5 whitespace-nowrap max-w-[300px] truncate">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-sm font-medium text-slate-900 ${!event.is_active ? 'line-through text-slate-400' : ''}`}>{event.title}</span>
+                                                    {event.description && event.description.length > 0 && <span title={event.description} className="text-blue-400 text-xs cursor-help">📝</span>}
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-2.5 whitespace-nowrap text-sm text-slate-500 text-center">{formatDuration(event.duration_minutes)}</td>
+                                            <td className="px-4 py-2.5 whitespace-nowrap text-center">
                                                 {event.location ? (
-                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 text-slate-600 rounded-lg text-xs font-normal border border-slate-100">
+                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 text-slate-600 rounded-lg text-xs font-normal border border-slate-100">
                                                         📍 {event.location}
                                                     </span>
                                                 ) : (
                                                     <span className="text-slate-300 text-xs italic">—</span>
                                                 )}
                                             </td>
-                                            <td className="px-3 py-4 text-sm font-normal text-slate-500 whitespace-nowrap">{event.instructor_name || "—"}</td>
-                                            <td className="px-3 py-4 whitespace-nowrap text-sm text-slate-700">
+                                            <td className="px-4 py-2.5 text-sm font-normal text-slate-500 whitespace-nowrap text-center">{event.instructor_name || "—"}</td>
+                                            <td className="px-4 py-2.5 whitespace-nowrap text-sm text-slate-700 text-center">
                                                 <span className="font-medium text-slate-900">{formatPrice(event.price_member_cents)}</span>
                                                 <span className="mx-1 text-slate-400">/</span>
                                                 <span className="text-slate-500">{formatPrice(event.price_external_cents)}</span>
                                             </td>
-                                            <td className="px-3 py-4 text-center whitespace-nowrap">
+                                            <td className="px-4 py-2.5 text-center whitespace-nowrap">
                                                 <span className={`inline-flex items-center justify-center px-4 py-1 rounded-full text-xs font-normal border ${
                                                     event.registrations_count === 0 
                                                         ? "bg-slate-50 text-slate-400 border-slate-100" 
                                                         : fillPercent >= 100
-                                                            ? "bg-emerald-100 text-emerald-900 border-emerald-200 font-bold"
+                                                            ? "bg-emerald-50 text-emerald-900 border-emerald-200 font-bold"
                                                             : fillPercent > 70 
                                                                 ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
                                                                 : fillPercent >= 40 
@@ -398,19 +403,16 @@ export default function AdminEventsProgrammingPage() {
                                                             <span className="text-xs">({event.waitlist_count})</span>
                                                         </span>
                                                     )}
-                                                    {event.allow_waitlist && (event.waitlist_count ?? 0) === 0 && (
-                                                        <span className="ml-1 opacity-50 text-xs" title="Liste d'attente autorisée">⏳</span>
-                                                    )}
                                                 </span>
                                             </td>
-                                            <td className="px-3 py-4 whitespace-nowrap text-center flex items-center justify-center gap-0.5">
-                                                <button onClick={() => handleEdit(event)} className="p-1 hover:bg-blue-50 text-blue-500 rounded-lg transition-all hover:scale-105" title="Modifier">✏️</button>
+                                            <td className="px-4 py-2.5 text-right flex items-center justify-end gap-0.5 whitespace-nowrap">
+                                                <button onClick={() => handleEdit(event)} className="p-1 hover:bg-blue-50 text-blue-500 rounded-lg transition-all hover:scale-110" title="Modifier">✏️</button>
                                                 {event.is_active ? (
-                                                    <button onClick={() => handleCancelEvent(event)} className="p-0.5 hover:bg-amber-50 text-amber-500 rounded-lg transition-all hover:scale-105" title="Annuler">🚫</button>
+                                                    <button onClick={() => handleCancelEvent(event)} className="p-1 hover:bg-amber-50 text-amber-500 rounded-lg transition-all hover:scale-110" title="Annuler">🚫</button>
                                                 ) : (
-                                                    <button onClick={() => handleReactivateEvent(event)} className="p-0.5 hover:bg-emerald-50 text-emerald-500 rounded-lg transition-all hover:scale-105" title="Réactiver">🔄</button>
+                                                    <button onClick={() => handleReactivateEvent(event)} className="p-1 hover:bg-emerald-50 text-emerald-500 rounded-lg transition-all hover:scale-110" title="Réactiver">🔄</button>
                                                 )}
-                                                <button onClick={() => handleDeleteEvent(event)} className="p-0.5 hover:bg-rose-50 text-rose-500 rounded-lg transition-all hover:scale-105" title="Supprimer">🗑️</button>
+                                                <button onClick={() => handleDeleteEvent(event)} className="p-1 hover:bg-rose-50 text-rose-500 rounded-lg transition-all hover:scale-110" title="Supprimer">🗑️</button>
                                             </td>
                                         </tr>
                                     );
