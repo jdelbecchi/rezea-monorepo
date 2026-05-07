@@ -36,6 +36,7 @@ export default function RegisterForm({ initialTenantSlug = "", hideTenantField =
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [lookupLoading, setLookupLoading] = useState(false);
+  const [showWelcomePopup, setShowWelcomePopup] = useState(false);
 
   // Debounce tenant lookup
   useEffect(() => {
@@ -93,7 +94,16 @@ export default function RegisterForm({ initialTenantSlug = "", hideTenantField =
       });
 
       await api.register(dataToSave);
-      router.push(hideTenantField ? `/${formData.tenant_slug}?registered=true` : "/login?registered=true");
+      
+      // Récupérer les dernières infos du tenant pour être sûr d'avoir le welcome_message à jour
+      const latestTenant = await api.getTenantBySlug(formData.tenant_slug);
+      setTenant(latestTenant);
+
+      if (latestTenant?.welcome_message) {
+        setShowWelcomePopup(true);
+      } else {
+        router.push(hideTenantField ? `/${formData.tenant_slug}?registered=true` : "/login?registered=true");
+      }
     } catch (err: any) {
       const detail = err.response?.data?.detail;
       if (typeof detail === "string") {
@@ -404,7 +414,50 @@ export default function RegisterForm({ initialTenantSlug = "", hideTenantField =
                 75% { transform: translateX(4px); }
             }
             .shake { animation: shake 0.3s ease-in-out; }
+            .no-scrollbar::-webkit-scrollbar { display: none; }
+            .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         `}</style>
+
+        {/* Welcome Popup */}
+        {showWelcomePopup && tenant && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/40 backdrop-blur-md animate-in fade-in duration-500">
+                <div className="w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl shadow-black/20 overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-10 duration-700">
+                    <div className="relative h-32 w-full overflow-hidden">
+                        {tenant.banner_url ? (
+                            <img src={`${API_URL}${tenant.banner_url}`} className="w-full h-full object-cover" alt="Banner" />
+                        ) : (
+                            <div className="w-full h-full" style={{ backgroundColor: tenant.primary_color || '#0f172a' }} />
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-white to-transparent" />
+                    </div>
+                    
+                    <div className="px-10 pb-10 flex flex-col items-center text-center -mt-12 relative z-10">
+                        <div className="w-24 h-24 bg-white rounded-3xl shadow-xl flex items-center justify-center mb-6 p-4 border border-slate-50">
+                            {tenant.logo_url ? (
+                                <img src={`${API_URL}${tenant.logo_url}`} className="w-full h-full object-contain" alt="Logo" />
+                            ) : (
+                                <span className="text-4xl">👋</span>
+                            )}
+                        </div>
+                        
+                        <h2 className="text-2xl font-bold text-slate-900 mb-4 tracking-tight">
+                            Bienvenue chez {tenant.name} !
+                        </h2>
+                        
+                        <div className="text-slate-600 font-medium leading-relaxed mb-10 whitespace-pre-wrap max-h-[40vh] overflow-y-auto no-scrollbar">
+                            {tenant.welcome_message || "Votre compte a été créé avec succès. Nous sommes ravis de vous accueillir !"}
+                        </div>
+                        
+                        <button
+                            onClick={() => router.push(hideTenantField ? `/${formData.tenant_slug}?registered=true` : "/login?registered=true")}
+                            className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/20 active:scale-[0.98] transition-all hover:bg-slate-800"
+                        >
+                            Commencer l&apos;aventure
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
     </div>
   );
 }

@@ -9,11 +9,11 @@ import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 
 const STATUS_LABELS: Record<string, string> = {
-    confirmed: "Inscrit",
-    pending: "Sur liste",
-    cancelled: "Annulé",
-    session_cancelled: "Séance annulée",
-    absent: "Absent",
+    confirmed: "✅ Inscrit",
+    pending: "⏳ Sur liste",
+    cancelled: "🚫 Annulé",
+    session_cancelled: "🏢 Séance annulée",
+    absent: "👤 Absent",
 };
 
 interface UserOption { id: string; first_name: string; last_name: string; balance?: number; }
@@ -241,6 +241,7 @@ export default function AdminBookingsPage() {
                                         { id: "pending", label: "Sur liste" },
                                         { id: "cancelled", label: "Annulé" },
                                         { id: "absent", label: "Absent" },
+                                        { id: "session_cancelled", label: "Séance annulée" },
                                     ]}
                                     selected={filterStatuses}
                                     onChange={setFilterStatuses}
@@ -357,60 +358,73 @@ export default function AdminBookingsPage() {
             {/* Create Modal */}
             {showCreate && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-100 animate-in zoom-in-95 duration-200">
-                        <div className="p-8 border-b border-slate-50 flex items-center justify-between">
-                            <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Nouvelle inscription</h2>
-                            <button onClick={() => setShowCreate(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                    <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full flex flex-col overflow-hidden border border-slate-100 animate-in zoom-in-95 duration-200 max-h-[90vh]">
+                        {/* Header */}
+                        <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                            <div className="flex items-center gap-3">
+                                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                                <h3 className="text-[17px] font-semibold text-slate-900 tracking-tight">Nouvelle inscription</h3>
+                            </div>
+                            <button onClick={() => setShowCreate(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-50 rounded-lg">
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
-                        <form onSubmit={handleCreate} className="p-8 space-y-6">
-                            <div className="space-y-1.5">
-                                <label className="text-sm font-medium text-slate-700">Utilisateur</label>
-                                <select
-                                    required
-                                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 outline-none transition-all text-sm appearance-none bg-white cursor-pointer"
-                                    value={createForm.user_id}
-                                    onChange={(e) => setCreateForm({ ...createForm, user_id: e.target.value })}
-                                >
-                                    <option value="">Sélectionner un utilisateur</option>
-                                    {users.map(u => (
-                                        <option key={u.id} value={u.id}>{u.first_name} {u.last_name} ({u.balance || 0} crédits)</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-sm font-medium text-slate-700">Séance</label>
-                                <select
-                                    required
-                                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 outline-none transition-all text-sm appearance-none bg-white cursor-pointer"
-                                    value={createForm.session_id}
-                                    onChange={(e) => setCreateForm({ ...createForm, session_id: e.target.value })}
-                                >
-                                    <option value="">Sélectionner une séance</option>
-                                    {sessions.map(s => (
-                                        <option key={s.id} value={s.id}>{format(parseISO(s.start_time), "dd/MM", { locale: fr })} - {s.title} ({s.current_participants}/{s.max_participants}) - {s.credits_required || 0} crédits</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-sm font-medium text-slate-700">Notes (interne)</label>
-                                <textarea
-                                    placeholder="Ajouter un commentaire sur cette inscription..."
-                                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 outline-none transition-all text-sm min-h-[100px] resize-none"
-                                    value={createForm.notes}
-                                    onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })}
-                                />
-                            </div>
-                            <div className="flex gap-4 pt-2">
-                                <button type="button" onClick={() => setShowCreate(false)} className="flex-1 px-4 py-3 border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all font-semibold text-sm">Annuler</button>
-                                <button type="submit" disabled={saving} className="flex-1 px-4 py-3 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 disabled:opacity-50 transition-all font-semibold text-sm shadow-lg shadow-slate-200">
-                                    {saving ? "Création..." : "Inscrire"}
-                                </button>
-                            </div>
-                        </form>
+
+                        <div className="flex-1 overflow-y-auto p-8">
+                            <form onSubmit={handleCreate} id="createBookingForm" className="space-y-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium text-slate-700">Utilisateur *</label>
+                                    <select
+                                        required
+                                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm appearance-none cursor-pointer hover:border-gray-300"
+                                        value={createForm.user_id}
+                                        onChange={(e) => setCreateForm({ ...createForm, user_id: e.target.value })}
+                                    >
+                                        <option value="">Sélectionner un utilisateur...</option>
+                                        {users.map(u => (
+                                            <option key={u.id} value={u.id}>{u.first_name} {u.last_name} ({u.balance || 0} crédits)</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium text-slate-700">Séance *</label>
+                                    <select
+                                        required
+                                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm appearance-none cursor-pointer hover:border-gray-300"
+                                        value={createForm.session_id}
+                                        onChange={(e) => setCreateForm({ ...createForm, session_id: e.target.value })}
+                                    >
+                                        <option value="">Sélectionner une séance...</option>
+                                        {sessions.map(s => (
+                                            <option key={s.id} value={s.id}>{format(parseISO(s.start_time), "dd/MM", { locale: fr })} - {s.title} ({s.current_participants}/{s.max_participants}) - {s.credits_required || 0} crédits</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="space-y-1.5 pt-2">
+                                    <label className="text-sm font-medium text-slate-700">Notes (interne)</label>
+                                    <textarea
+                                        placeholder="Ajouter un commentaire sur cette inscription..."
+                                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm min-h-[100px] resize-none hover:border-gray-300"
+                                        value={createForm.notes}
+                                        onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })}
+                                    />
+                                </div>
+                            </form>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
+                            <button type="button" onClick={() => setShowCreate(false)} 
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">Annuler</button>
+                            <button type="submit" form="createBookingForm" disabled={saving} 
+                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all text-sm shadow-sm active:scale-95 disabled:opacity-50">
+                                {saving ? "Envoi..." : "Valider l'inscription"}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -418,75 +432,106 @@ export default function AdminBookingsPage() {
             {/* Edit Modal */}
             {editBooking && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-100 animate-in zoom-in-95 duration-200">
-                        <div className="p-8 border-b border-slate-50 flex items-center justify-between">
-                            <div className="space-y-1">
-                                <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Modifier l'inscription</h2>
-                                <p className="text-sm text-slate-500 font-medium">{editBooking.user_name} — {editBooking.session_title}</p>
+                    <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full flex flex-col overflow-hidden border border-slate-100 animate-in zoom-in-95 duration-200 max-h-[90vh]">
+                        {/* Header */}
+                        <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                            <div className="flex items-center gap-3">
+                                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                                <h3 className="text-[17px] font-semibold text-slate-900 tracking-tight">Modifier l'inscription</h3>
                             </div>
-                            <button onClick={() => setEditBooking(null)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                            <button onClick={() => setEditBooking(null)} className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-50 rounded-lg">
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
-                        <form onSubmit={handleUpdate} className="p-8 space-y-6">
-                            <div className="space-y-1.5">
-                                <label className="text-sm font-medium text-slate-700">Statut</label>
-                                <select
-                                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 outline-none transition-all text-sm appearance-none bg-white cursor-pointer"
-                                    value={editForm.status}
-                                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                                >
-                                    {Object.entries(STATUS_LABELS).map(([val, label]) => (
-                                        <option key={val} value={val}>{label}</option>
-                                    ))}
-                                </select>
+                        <div className="flex-1 overflow-y-auto p-8">
+                            {/* Summary Banner */}
+                            <div className="mb-6 p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-2 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-3 opacity-5 text-4xl">🗓️</div>
+                                <div className="flex justify-between items-center group">
+                                    <span className="text-sm font-medium text-slate-500 font-livvic">Séance</span>
+                                    <span className="text-sm font-semibold text-slate-900 font-livvic">{editBooking.session_title}</span>
+                                </div>
+                                <div className="flex justify-between items-center group">
+                                    <span className="text-sm font-medium text-slate-500 font-livvic">Utilisateur</span>
+                                    <span className="text-sm font-bold text-emerald-600 px-2 py-1 bg-emerald-50 rounded-lg font-livvic">{editBooking.user_name}</span>
+                                </div>
+                                <div className="flex justify-between items-start group">
+                                    <span className="text-sm font-medium text-slate-500 font-livvic">Date & heure</span>
+                                    <div className="text-right">
+                                        <span className="text-sm font-semibold text-slate-900 block capitalize font-livvic">
+                                            {editBooking.session_date ? format(parseISO(editBooking.session_date), "eeee d MMMM", { locale: fr }) : "—"}
+                                        </span>
+                                        <span className="text-xs text-slate-500 font-medium font-livvic">à {editBooking.session_time}</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="space-y-1.5">
-                                <label className="text-sm font-medium text-slate-700">Notes (interne)</label>
-                                <textarea
-                                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 outline-none transition-all text-sm min-h-[100px] resize-none"
-                                    value={editForm.notes}
-                                    onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                                />
-                            </div>
-                            <div className="flex gap-4 pt-2">
-                                <button type="button" onClick={() => setEditBooking(null)} className="flex-1 px-4 py-3 border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all font-semibold text-sm">Annuler</button>
-                                <button type="submit" disabled={saving} className="flex-1 px-4 py-3 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 disabled:opacity-50 transition-all font-semibold text-sm shadow-lg shadow-slate-200">
-                                    {saving ? "Enregistrement..." : "Enregistrer"}
-                                </button>
-                            </div>
-                        </form>
+
+                            <form onSubmit={handleUpdate} id="editBookingForm" className="space-y-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium text-slate-700">Statut</label>
+                                    <select
+                                        className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm appearance-none cursor-pointer hover:border-gray-300"
+                                        value={editForm.status}
+                                        onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                                    >
+                                        {Object.entries(STATUS_LABELS)
+                                            .filter(([val]) => val !== "session_cancelled" || val === editForm.status)
+                                            .map(([val, label]) => (
+                                                <option key={val} value={val}>{label}</option>
+                                            ))}
+                                    </select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium text-slate-700">Notes (interne)</label>
+                                    <textarea
+                                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm min-h-[100px] resize-none hover:border-gray-300"
+                                        value={editForm.notes}
+                                        onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                                    />
+                                </div>
+                            </form>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
+                            <button type="button" onClick={() => setEditBooking(null)} 
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">Annuler</button>
+                            <button type="submit" form="editBookingForm" disabled={saving} 
+                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all text-sm shadow-sm active:scale-95 disabled:opacity-50">
+                                {saving ? "Envoi..." : "Enregistrer"}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
 
             {/* Delete Modal */}
             {deleteConfirmId && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[32px] shadow-2xl max-w-md w-full p-10 animate-in zoom-in-95 duration-200 border border-slate-100">
-                        <div className="w-20 h-20 bg-rose-50 rounded-3xl flex items-center justify-center mb-8 mx-auto">
-                            <span className="text-4xl">⚠️</span>
-                        </div>
-                        <h2 className="text-2xl font-bold text-slate-900 mb-3 text-center tracking-tight">Supprimer l'inscription ?</h2>
-                        <p className="text-slate-500 mb-10 leading-relaxed text-center font-medium">
-                            Cette action est irréversible. L'utilisateur sera retiré de la séance et ses crédits lui seront restitués si applicable.
-                        </p>
-                        <div className="flex gap-4">
-                            <button
-                                onClick={() => setDeleteConfirmId(null)}
-                                className="flex-1 px-6 py-4 border border-slate-200 rounded-2xl hover:bg-slate-50 text-slate-500 font-bold transition-all active:scale-95"
-                            >
-                                Annuler
-                            </button>
-                            <button
-                                onClick={handleDelete}
-                                disabled={saving}
-                                className="flex-1 px-6 py-4 bg-rose-500 hover:bg-rose-600 text-white rounded-2xl font-bold shadow-xl shadow-rose-200 transition-all active:scale-95 disabled:opacity-50"
-                            >
-                                {saving ? "Suppression..." : "Supprimer"}
-                            </button>
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-10">
+                            <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">Confirmer la suppression</h3>
+                            <p className="text-slate-500 text-base leading-relaxed">
+                                Attention : cette action est irréversible. L'utilisateur sera retiré de la séance et ses crédits lui seront restitués si applicable.
+                            </p>
+                            <div className="mt-8 flex gap-3 justify-end items-center">
+                                <button 
+                                    onClick={() => setDeleteConfirmId(null)}
+                                    className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm"
+                                >
+                                    Annuler
+                                </button>
+                                <button 
+                                    onClick={() => handleDelete(deleteConfirmId)}
+                                    className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm active:scale-95"
+                                >
+                                    Confirmer
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

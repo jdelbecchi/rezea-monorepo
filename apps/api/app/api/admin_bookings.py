@@ -3,6 +3,7 @@ API admin pour la gestion des inscriptions aux séances
 """
 from datetime import datetime, timedelta
 from typing import List, Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
 from sqlalchemy import select, and_
@@ -49,22 +50,24 @@ def build_booking_response(booking: Booking, users_with_pending: set = None) -> 
     if users_with_pending is not None:
         has_pending = booking.user_id in users_with_pending
 
+    from decimal import Decimal
     return AdminBookingResponse(
         id=booking.id,
         tenant_id=booking.tenant_id,
         user_id=booking.user_id,
         session_id=booking.session_id,
         status=booking.status,
-        credits_used=booking.credits_used,
-        created_by_admin=booking.created_by_admin or False,
+        credits_used=booking.credits_used if booking.credits_used is not None else Decimal("0"),
+        created_by_admin=booking.created_by_admin if booking.created_by_admin is not None else False,
         cancellation_type=booking.cancellation_type,
         notes=booking.notes,
-        created_at=booking.created_at,
+        created_at=booking.created_at if booking.created_at is not None else datetime.utcnow(),
         cancelled_at=booking.cancelled_at,
-        session_date=session.start_time.strftime("%Y-%m-%d") if session else "",
-        session_time=session.start_time.strftime("%H:%M") if session else "",
-        session_title=session.title if session else "",
-        user_name=f"{user.first_name} {user.last_name}" if user else "",
+        session_date=session.start_time.strftime("%Y-%m-%d") if (session and session.start_time) else "",
+        session_time=session.start_time.strftime("%H:%M") if (session and session.start_time) else "",
+        session_title=session.title if (session and session.title) else "",
+        session_location=session.location if (session and session.location) else "",
+        user_name=f"{user.first_name} {user.last_name}" if (user and user.first_name and user.last_name) else (user.first_name or user.last_name or "") if user else "",
         user_phone=user.phone if user else None,
         instagram_handle=user.instagram_handle if user else None,
         facebook_handle=user.facebook_handle if user else None,
@@ -153,9 +156,8 @@ async def list_bookings(
     session_id: Optional[str] = Query(None, alias="session_id"),
 ):
     tenant_id = request.state.tenant_id
-    
-    # Restitution automatique des crédits pour les listes d'attente expirées de tout le tenant
-    await auto_restitute_expired_waitlist(db, tenant_id)
+    if isinstance(tenant_id, str):
+        tenant_id = UUID(tenant_id)
     
     query = (
         select(Booking)
@@ -164,22 +166,20 @@ async def list_bookings(
         .order_by(Booking.created_at.desc())
     )
 
-    # Filtre par statut
-    if status_filter == "confirmed":
-        query = query.where(Booking.status == BookingStatus.CONFIRMED)
-    elif status_filter == "pending":
-        query = query.where(Booking.status == BookingStatus.PENDING)
-    elif status_filter == "cancelled":
-        query = query.where(Booking.status == BookingStatus.CANCELLED)
-    elif status_filter == "session_cancelled":
-        query = query.where(Booking.status == BookingStatus.SESSION_CANCELLED)
-    elif status_filter == "absent":
-        query = query.where(Booking.status == BookingStatus.ABSENT)
-    # Filtre par séance
+    if status_filter:
+        if status_filter == "confirmed":
+            query = query.where(Booking.status == BookingStatus.CONFIRMED)
+        elif status_filter == "pending":
+            query = query.where(Booking.status == BookingStatus.PENDING)
+        elif status_filter == "cancelled":
+            query = query.where(Booking.status == BookingStatus.CANCELLED)
+        elif status_filter == "session_cancelled":
+            query = query.where(Booking.status == BookingStatus.SESSION_CANCELLED)
+        elif status_filter == "absent":
+            query = query.where(Booking.status == BookingStatus.ABSENT)
+    
     if session_id:
         query = query.where(Booking.session_id == session_id)
-
-    # Filtre par statut
 
     result = await db.execute(query)
     bookings = result.unique().scalars().all()
@@ -201,7 +201,31 @@ async def list_bookings(
         )
         users_with_pending = set(pending_orders_result.scalars().all())
 
-    return [build_booking_response(b, users_with_pending) for b in bookings]
+    results = []
+    for b in bookings:
+        try:
+            results.append(build_booking_response(b, users_with_pending))
+        except Exception as e:
+            # En cas d'erreur, on crée une ligne "fantôme" pour voir le problème
+            from decimal import Decimal
+            import uuid
+            results.append(AdminBookingResponse(
+                id=getattr(b, 'id', uuid.uuid4()),
+                tenant_id=tenant_id,
+                user_id=uuid.uuid4(),
+                session_id=uuid.uuid4(),
+                status=BookingStatus.CANCELLED,
+                credits_used=Decimal("0"),
+                created_at=datetime.utcnow(),
+                user_name=f"⚠️ ERREUR DONNÉES: {str(e)}",
+                session_title="LIGNE À PROBLÈME",
+                session_date="0000-00-00",
+                session_time="00:00",
+                session_location="DB",
+                has_pending_order=False
+            ))
+    
+    return results
 
 
 # ---- CREATE ----

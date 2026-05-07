@@ -139,6 +139,12 @@ class TenantSettingsUpdate(BaseModel):
     welcome_message: Optional[str] = Field(None, max_length=2000)
     cgv_url: Optional[str] = None
     rules_url: Optional[str] = None
+    legal_name: Optional[str] = Field(None, max_length=255)
+    legal_form: Optional[str] = Field(None, max_length=100)
+    legal_address: Optional[str] = None
+    legal_siret: Optional[str] = Field(None, max_length=20)
+    legal_vat_number: Optional[str] = Field(None, max_length=30)
+    legal_vat_mention: Optional[str] = Field(None, max_length=255)
     registration_limit_mins: Optional[int] = Field(None, ge=0)
     cancellation_limit_mins: Optional[int] = Field(None, ge=0)
     confirmation_email_body: Optional[str] = None
@@ -165,6 +171,12 @@ class TenantResponse(TenantBase):
     welcome_message: Optional[str] = None
     cgv_url: Optional[str] = None
     rules_url: Optional[str] = None
+    legal_name: Optional[str] = None
+    legal_form: Optional[str] = None
+    legal_address: Optional[str] = None
+    legal_siret: Optional[str] = None
+    legal_vat_number: Optional[str] = None
+    legal_vat_mention: Optional[str] = None
     registration_limit_mins: int = 0
     cancellation_limit_mins: int = 45
     confirmation_email_body: Optional[str] = None
@@ -501,6 +513,10 @@ class OrderUpdate(BaseModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     price_cents: Optional[int] = None
+    price_recurring_cents: Optional[int] = None
+    recurring_count: Optional[int] = None
+    featured_pricing: Optional[str] = None
+    period: Optional[str] = None
     credits_total: Optional[Decimal] = None
     is_unlimited: Optional[bool] = None
     status: Optional[str] = None
@@ -539,6 +555,10 @@ class OrderResponse(BaseModel):
     credits_total: Optional[Decimal] = None
     is_unlimited: bool = False
     price_cents: int
+    price_recurring_cents: Optional[int] = None
+    recurring_count: Optional[int] = None
+    featured_pricing: Optional[str] = None
+    period: Optional[str] = None
     payment_status: OrderPaymentStatus
     comment: Optional[str] = None
     user_note: Optional[str] = None
@@ -552,6 +572,9 @@ class OrderResponse(BaseModel):
     user_name: str = ""
     user_email: str = ""
     user_is_suspended: bool = False
+    user_street: Optional[str] = None
+    user_zip_code: Optional[str] = None
+    user_city: Optional[str] = None
     offer_code: str = ""
     offer_name: str = ""
     offer_period: Optional[str] = None
@@ -612,6 +635,7 @@ class AdminBookingResponse(BaseModel):
     session_date: str = ""        # date de la séance
     session_time: str = ""        # heure de la séance
     session_title: str = ""       # intitulé de la séance
+    session_location: str = ""    # lieu de la séance
     user_name: str = ""           # prénom + nom
     user_phone: Optional[str] = None
     instagram_handle: Optional[str] = None

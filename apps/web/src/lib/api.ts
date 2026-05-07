@@ -347,6 +347,7 @@ export interface AdminBookingItem {
   session_date: string;
   session_time: string;
   session_title: string;
+  session_location: string;
   user_name: string;
   user_phone: string | null;
   instagram_handle: string | null;

@@ -919,7 +919,7 @@ export default function AdminEventRegistrationsPage() {
                         <div className="p-10">
                             <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">Confirmer la suppression</h3>
                             <p className="text-slate-500 text-base leading-relaxed">
-                                Attention : cette action est irréversible. L'inscription sera définitivement supprimée.
+                                Attention : cette action est irréversible. L&apos;inscription sera définitivement supprimée.
                             </p>
                             <div className="mt-8 flex gap-3 justify-end items-center">
                                 <button 

@@ -232,7 +232,7 @@ export default function MemberOrdersPage() {
         <div>${emitterName} ${legalForm ? " - " + legalForm : ""}</div>
         <div>${emitterAddress.replace(/\n/g, ", ")}</div>
         ${vatMention ? `<div style="margin-top:8px;font-style:italic;font-size:11px;opacity:0.9">${vatMention}</div>` : ""}
-        <div style="margin-top:12px;opacity:0.6">Document généré par REZEA - Logiciel de gestion sportive</div>
+        <div style="margin-top:12px;opacity:0.6">Document généré par Rezea</div>
     </div>
 </body></html>`;
 

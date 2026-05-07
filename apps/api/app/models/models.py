@@ -93,6 +93,14 @@ class Tenant(Base):
     cgv_url = Column(String(500), nullable=True)
     rules_url = Column(String(500), nullable=True)
     
+    # Informations légales (facturation)
+    legal_name = Column(String(255), nullable=True)          # Raison sociale
+    legal_form = Column(String(100), nullable=True)          # Forme juridique (ex: Association loi 1901)
+    legal_address = Column(Text, nullable=True)              # Adresse du siège
+    legal_siret = Column(String(20), nullable=True)          # SIREN / SIRET
+    legal_vat_number = Column(String(30), nullable=True)     # N° TVA intracommunautaire
+    legal_vat_mention = Column(String(255), nullable=True)   # Mention TVA (ex: "TVA non applicable, art. 293 B du CGI")
+    
     # Paramètres de gestion
     registration_limit_mins = Column(Integer, default=0, nullable=False)  # 0 = pas de limite
     cancellation_limit_mins = Column(Integer, default=45, nullable=False)
@@ -564,8 +572,12 @@ class Order(Base):
     credits_total = Column(Integer)  # null si illimité
     is_unlimited = Column(Boolean, default=False)
 
-    # Tarif (copié de l'offre)
+    # Tarif (copié de l'offre ou personnalisé)
     price_cents = Column(Integer, nullable=False)
+    price_recurring_cents = Column(Integer)
+    recurring_count = Column(Integer)
+    featured_pricing = Column(String(20), default="lump_sum")
+    period = Column(String(50))
 
     # Paiement
     payment_status = Column(

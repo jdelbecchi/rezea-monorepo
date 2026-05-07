@@ -47,16 +47,21 @@ async def require_manager(request: Request, db: AsyncSession = Depends(get_db)) 
 # (Removed: compute_end_date, normalize_status, compute_credits_used, build_order_response - now in order_service)
 
 
-def generate_installments(order: Order, offer: Offer, tenant_id) -> List[Installment]:
+def generate_installments(order: Order, tenant_id) -> List[Installment]:
     """Génère les échéances pour une commande échelonnée"""
     installments = []
     
+    # On utilise les données de la commande (qui sont copiées de l'offre au départ)
+    price = order.price_recurring_cents
+    count = order.recurring_count
+
     # Si pas de prix récurrent, rien à faire
-    if not offer.price_recurring_cents:
+    if not price:
         return installments
 
     # Si pas de nombre d'occurrences (abonnement), on génère par défaut 12 mois
-    count = offer.recurring_count or 12
+    if count is None:
+        count = 12
 
     for i in range(count):
         # Date d'anniversaire : le 8 du mois, à partir du mois suivant la commande
@@ -67,7 +72,7 @@ def generate_installments(order: Order, offer: Offer, tenant_id) -> List[Install
             tenant_id=tenant_id,
             order_id=order.id,
             due_date=due_date,
-            amount_cents=offer.price_recurring_cents,
+            amount_cents=price,
             is_paid=False,  # Pas pointé par défaut
             is_error=False, # Pas d'erreur par défaut
         ))
@@ -184,6 +189,10 @@ async def create_order(
         credits_total=offer.classes_included,
         is_unlimited=offer.is_unlimited,
         price_cents=price,
+        price_recurring_cents=offer.price_recurring_cents,
+        recurring_count=offer.recurring_count,
+        featured_pricing=offer.featured_pricing,
+        period=offer.period,
         payment_status=payment_status,
         comment=data.comment,
         user_note=data.user_note,
@@ -239,13 +248,34 @@ async def update_order(
         setattr(order, field, value)
 
     # Transition to INSTALLMENT: generate installments if they don't exist
-    if "payment_status" in update_data and update_data["payment_status"] == OrderPaymentStatus.INSTALLMENT:
+    payment_is_installment = order.payment_status == OrderPaymentStatus.INSTALLMENT
+    
+    # Si on vient de passer en échelonné OU si on l'était déjà mais que les tarifs ont changé
+    pricing_changed = "price_recurring_cents" in update_data or "recurring_count" in update_data or "featured_pricing" in update_data
+    
+    if payment_is_installment:
         # Check if installments already exist
         check_result = await db.execute(select(Installment).where(Installment.order_id == order.id))
-        if not check_result.scalars().first():
-            installments = generate_installments(order, order.offer, tenant_id)
+        existing_installments = check_result.scalars().all()
+        
+        if not existing_installments:
+            # Création initiale
+            installments = generate_installments(order, tenant_id)
             for inst in installments:
                 db.add(inst)
+        elif pricing_changed:
+            # Si le tarif a changé, on ne régénère que si AUCUNE échéance n'est encore payée ou en erreur
+            # (pour éviter de casser l'historique financier)
+            can_regenerate = all(not inst.is_paid and not inst.is_error for inst in existing_installments)
+            if can_regenerate:
+                # Supprimer les anciennes et recréer
+                for inst in existing_installments:
+                    await db.delete(inst)
+                await db.flush()
+                
+                new_installments = generate_installments(order, tenant_id)
+                for inst in new_installments:
+                    db.add(inst)
 
     await db.commit()
     await db.refresh(order)
