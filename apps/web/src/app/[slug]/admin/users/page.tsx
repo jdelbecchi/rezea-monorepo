@@ -1,6 +1,7 @@
 "use client";
 
 import Sidebar from "@/components/Sidebar";
+import MultiSelect from "@/components/MultiSelect";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { api, User } from "@/lib/api";
@@ -26,7 +27,7 @@ export default function AdminUsersPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
-    const [roleFilter, setRoleFilter] = useState("");
+    const [roleFilter, setRoleFilter] = useState<string[]>([]);
     const [statusFilter, setStatusFilter] = useState<string>("");
     const [totalCount, setTotalCount] = useState(0);
 
@@ -89,7 +90,7 @@ export default function AdminUsersPage() {
         try {
             const params: Record<string, any> = {};
             if (search) params.search = search;
-            if (roleFilter) params.role = roleFilter;
+            if (roleFilter.length > 0) params.role = roleFilter.join(",");
             if (statusFilter !== "") params.is_active = statusFilter === "true";
 
             const [data, countData] = await Promise.all([
@@ -308,17 +309,17 @@ export default function AdminUsersPage() {
                                 />
                             </div>
                             <div className="w-48">
-                                <label className="block text-xs font-medium text-slate-500 mb-1">Profil</label>
-                                <select
-                                    value={roleFilter}
-                                    onChange={(e) => setRoleFilter(e.target.value)}
-                                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-normal appearance-none cursor-pointer"
-                                >
-                                    <option value="">Tous</option>
-                                    <option value="manager">Manager</option>
-                                    <option value="staff">Staff</option>
-                                    <option value="user">Utilisateur</option>
-                                </select>
+                                <MultiSelect
+                                    label="Profil(s)"
+                                    options={[
+                                        { id: "manager", label: "Manager" },
+                                        { id: "staff", label: "Staff" },
+                                        { id: "user", label: "Utilisateur" },
+                                    ]}
+                                    selected={roleFilter}
+                                    onChange={setRoleFilter}
+                                    placeholder="Tous les profils"
+                                />
                             </div>
                             <div className="w-48">
                                 <label className="block text-xs font-medium text-slate-500 mb-1">Statut</label>
@@ -558,29 +559,29 @@ export default function AdminUsersPage() {
                                 <h3 className="text-[10px] font-medium text-slate-400 lowercase tracking-widest mb-3">
                                     détails
                                 </h3>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Date de naissance</label>
-                                        <input
-                                            type="date"
-                                            value={editingUser.birth_date || ""}
-                                            onChange={(e) => updateEditField("birth_date", e.target.value)}
-                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                                        />
+                                    <div className="flex gap-4">
+                                        <div className="flex-1">
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Date de naissance</label>
+                                            <input
+                                                type="date"
+                                                value={editingUser.birth_date || ""}
+                                                onChange={(e) => updateEditField("birth_date", e.target.value)}
+                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                            />
+                                        </div>
+                                        <div className="w-32">
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Profil</label>
+                                            <select
+                                                value={editingUser.role || "user"}
+                                                onChange={(e) => updateEditField("role", e.target.value)}
+                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                            >
+                                                <option value="manager">Manager</option>
+                                                <option value="staff">Staff</option>
+                                                <option value="user">Utilisateur</option>
+                                            </select>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Profil</label>
-                                        <select
-                                            value={editingUser.role || "user"}
-                                            onChange={(e) => updateEditField("role", e.target.value)}
-                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                                        >
-                                            <option value="manager">Manager</option>
-                                            <option value="staff">Staff</option>
-                                            <option value="user">Utilisateur</option>
-                                        </select>
-                                    </div>
-                                </div>
                             </div>
 
                             {/* Mot de passe */}
@@ -707,19 +708,19 @@ export default function AdminUsersPage() {
                             )}
                         </div>
 
-                        <div className="p-6 border-t border-slate-200 flex justify-end gap-3">
+                        <div className="p-6 bg-white border-t border-slate-100 flex justify-end gap-3 items-center sticky bottom-0 z-10">
                             <button
                                 onClick={() => setEditingUser(null)}
-                                className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm"
                             >
                                 Annuler
                             </button>
                             <button
                                 onClick={handleSave}
                                 disabled={saving}
-                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 disabled:opacity-50 transition-all text-sm shadow-sm active:scale-95"
                             >
-                                {saving ? "Enregistrement..." : "Enregistrer"}
+                                {saving ? "Enregistrement..." : "Enregistrer les modifications"}
                             </button>
                         </div>
                     </div>
@@ -730,25 +731,25 @@ export default function AdminUsersPage() {
             {deletingUser && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-10">
+                        <div className="p-10 pb-8">
                             <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">Confirmer la suppression</h3>
                             <p className="text-slate-500 text-base leading-relaxed">
                                 Attention : cette action est irréversible. L&apos;utilisateur <strong>{deletingUser.first_name} {deletingUser.last_name}</strong> sera définitivement supprimé.
                             </p>
-                            <div className="mt-8 flex gap-3 justify-end items-center">
-                                <button 
-                                    onClick={() => setDeletingUser(null)}
-                                    className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm"
-                                >
-                                    Annuler
-                                </button>
-                                <button 
-                                    onClick={handleDelete}
-                                    className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm active:scale-95"
-                                >
-                                    Confirmer la suppression
-                                </button>
-                            </div>
+                        </div>
+                        <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center">
+                            <button 
+                                onClick={() => setDeletingUser(null)}
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm"
+                            >
+                                Annuler
+                            </button>
+                            <button 
+                                onClick={handleDelete}
+                                className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm active:scale-95"
+                            >
+                                Confirmer la suppression
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -829,21 +830,23 @@ export default function AdminUsersPage() {
                                             </button>
                                         </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Téléphone</label>
-                                        <input type="text" value={newUser.phone}
-                                            onChange={(e) => updateNewUserField("phone", e.target.value)}
-                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Profil</label>
-                                        <select value={newUser.role}
-                                            onChange={(e) => updateNewUserField("role", e.target.value)}
-                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
-                                            <option value="manager">Manager</option>
-                                            <option value="staff">Staff</option>
-                                            <option value="user">Utilisateur</option>
-                                        </select>
+                                    <div className="flex gap-4">
+                                        <div className="flex-1">
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Téléphone</label>
+                                            <input type="text" value={newUser.phone}
+                                                onChange={(e) => updateNewUserField("phone", e.target.value)}
+                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" />
+                                        </div>
+                                        <div className="w-32">
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Profil</label>
+                                            <select value={newUser.role}
+                                                onChange={(e) => updateNewUserField("role", e.target.value)}
+                                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                                                <option value="manager">Manager</option>
+                                                <option value="staff">Staff</option>
+                                                <option value="user">Utilisateur</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -922,17 +925,17 @@ export default function AdminUsersPage() {
                             )}
                         </div>
 
-                        <div className="p-6 border-t border-slate-200 flex justify-end gap-3">
+                        <div className="p-6 bg-white border-t border-slate-100 flex justify-end gap-3 items-center sticky bottom-0 z-10">
                             <button
                                 onClick={() => setShowCreateModal(false)}
-                                className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm"
                             >
                                 Annuler
                             </button>
                             <button
                                 onClick={handleCreate}
                                 disabled={creating}
-                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 disabled:opacity-50 transition-all text-sm shadow-sm active:scale-95"
                             >
                                 {creating ? "Création..." : "Créer l'utilisateur"}
                             </button>

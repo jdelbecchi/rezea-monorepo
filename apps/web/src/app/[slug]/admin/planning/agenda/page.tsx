@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { api, User, Session } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
+import MultiSelect from "@/components/MultiSelect";
 import { formatDuration, calculateDuration } from "@/lib/formatters";
 
 type RecurrenceType = "none" | "daily" | "weekly" | "monthly";
@@ -32,7 +33,7 @@ export default function AdminAgendaPage() {
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [locationFilter, setLocationFilter] = useState("all");
+    const [locationFilter, setLocationFilter] = useState<string[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [view, setView] = useState<'week' | 'month'>('week');
     const [tenant, setTenant] = useState<any>(null);
@@ -504,16 +505,15 @@ export default function AdminAgendaPage() {
                         </div>
 
                         <div className="flex flex-1 items-center gap-3 md:justify-end">
-                            <select
-                                value={locationFilter}
-                                onChange={(e) => setLocationFilter(e.target.value)}
-                                className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 outline-none focus:ring-1 focus:ring-slate-900 transition-all min-w-[140px]"
-                            >
-                                <option value="all">Tous les lieux</option>
-                                {(tenant?.locations || []).map((loc: string) => (
-                                    <option key={loc} value={loc}>{loc}</option>
-                                ))}
-                            </select>
+                            <div className="w-32">
+                                <MultiSelect
+                                    options={(tenant?.locations || []).map((loc: string) => ({ id: loc, label: loc }))}
+                                    selected={locationFilter}
+                                    onChange={setLocationFilter}
+                                    placeholder="Lieux"
+                                    className="!bg-slate-50 !border-slate-200 !py-1.5 !text-xs !font-medium"
+                                />
+                            </div>
 
                             <div className="relative group flex-1 max-w-[240px]">
                                 <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</div>
@@ -545,7 +545,7 @@ export default function AdminAgendaPage() {
                                 const dayStr = date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, '0') + "-" + String(date.getDate()).padStart(2, '0');
                                 const dayItems = items
                                     .filter(i => i.date === dayStr)
-                                    .filter(i => locationFilter === "all" || i.location === locationFilter)
+                                    .filter(i => locationFilter.length === 0 || locationFilter.includes(i.location))
                                     .filter(i => {
                                         if (!searchTerm) return true;
                                         const q = searchTerm.toLowerCase();
@@ -983,11 +983,11 @@ export default function AdminAgendaPage() {
                             )}
                         </div>
 
-                        {/* Footer */}
-                        <div className="">
+                        {/* Footer - Harmonized */}
+                        <div className="p-8 bg-white border-t border-gray-100 flex flex-col gap-8 sticky bottom-0 z-10">
                             {/* Email Section */}
                             {attendanceTab !== 'edit' && (selectedItem.registered_users || []).length > 0 && (
-                                <div className="flex items-center justify-end gap-6 mb-8 pr-4">
+                                <div className="flex items-center justify-end gap-6">
                                     <div className="text-right">
                                         <div className="text-[11px] font-medium text-slate-400 italic mb-1">Envoyer un e-mail groupé</div>
                                         <label className="flex items-center gap-2 cursor-pointer group justify-end">
@@ -1069,25 +1069,25 @@ export default function AdminAgendaPage() {
             {confirmModal.show && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-10">
+                        <div className="p-10 pb-8">
                             <h3 className="text-xl font-semibold text-slate-900 mb-2">{confirmModal.title}</h3>
                             <p className="text-slate-500 text-base leading-relaxed">{confirmModal.message}</p>
-                            <div className="mt-8 flex gap-3 justify-end items-center">
-                                <button
-                                    onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}
-                                    className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm"
-                                >
-                                    Annuler
-                                </button>
-                                <button
-                                    onClick={confirmModal.onConfirm}
-                                    className={`px-6 py-2.5 text-white rounded-xl font-medium transition-all text-sm shadow-sm ${confirmModal.type === 'danger' ? 'bg-rose-600 hover:bg-rose-700' :
-                                            confirmModal.type === 'warning' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-slate-900 hover:bg-slate-800'
-                                        }`}
-                                >
-                                    Confirmer
-                                </button>
-                            </div>
+                        </div>
+                        <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center">
+                            <button
+                                onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                onClick={confirmModal.onConfirm}
+                                className={`px-6 py-2.5 text-white rounded-xl font-medium transition-all text-sm shadow-sm active:scale-95 ${confirmModal.type === 'danger' ? 'bg-rose-600 hover:bg-rose-700' :
+                                        confirmModal.type === 'warning' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-slate-900 hover:bg-slate-800'
+                                    }`}
+                            >
+                                Confirmer
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1295,7 +1295,7 @@ export default function AdminAgendaPage() {
                         </div>
 
                         {/* Footer */}
-                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
+                        <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
                             <button
                                 type="button"
                                 onClick={() => setShowForm(false)}
@@ -1340,7 +1340,7 @@ export default function AdminAgendaPage() {
                             </button>
                         </div>
 
-                        <div className="p-10 space-y-8">
+                        <div className="p-10 pb-8 space-y-8">
                             <p className="text-slate-500 text-sm font-normal">Copiez un bloc de séances vers une autre période pour gagner du temps.</p>
 
                             <div className="grid grid-cols-2 gap-4">
@@ -1357,14 +1357,14 @@ export default function AdminAgendaPage() {
                                 <label className="text-sm font-medium text-slate-700">Cible : Nouvelle date de début</label>
                                 <input type="date" value={duplicateData.target_start} onChange={e => setDuplicateData({ ...duplicateData, target_start: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
                             </div>
-                            <div className="flex gap-3 justify-end pt-4">
-                                <button type="button" onClick={() => setShowDuplicateModal(false)} className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
-                                    Annuler
-                                </button>
-                                <button onClick={handleDuplicate} className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-all text-sm shadow-sm">
-                                    Confirmer la duplication
-                                </button>
-                            </div>
+                        </div>
+                        <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center">
+                            <button type="button" onClick={() => setShowDuplicateModal(false)} className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
+                                Annuler
+                            </button>
+                            <button onClick={handleDuplicate} className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-all text-sm shadow-sm active:scale-95">
+                                Confirmer la duplication
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1374,68 +1374,69 @@ export default function AdminAgendaPage() {
             {contactUser && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-in fade-in duration-300">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-100 p-8">
-                        <div className="mb-6">
-                            <h3 className="text-xl font-medium text-slate-900 tracking-tight">Informations de contact</h3>
-                            <p className="text-xs font-medium text-slate-400 mt-1">Pour {contactUser.first_name} {contactUser.last_name}</p>
+                        <div className="p-8 pb-4">
+                            <div className="mb-6">
+                                <h3 className="text-xl font-medium text-slate-900 tracking-tight">Informations de contact</h3>
+                                <p className="text-xs font-medium text-slate-400 mt-1">Pour {contactUser.first_name} {contactUser.last_name}</p>
+                            </div>
+
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="text-[11px] font-medium text-slate-400 block mb-1.5 ml-1">Téléphone</label>
+                                    {contactUser.phone ? (
+                                        <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 flex items-center justify-between group transition-colors hover:bg-slate-50">
+                                            <span className="text-sm font-medium text-slate-700">{contactUser.phone}</span>
+                                            <button
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(contactUser.phone);
+                                                }}
+                                                className="h-8 w-8 bg-white shadow-sm border border-slate-100 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all active:scale-90"
+                                                title="Copier le numéro"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-4 bg-slate-50/30 rounded-xl border border-dashed border-slate-200 text-slate-300 font-medium italic text-xs">
+                                            Non renseigné
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <label className="text-[11px] font-medium text-slate-400 block mb-1.5 ml-1">Réseaux sociaux</label>
+                                    {contactUser.instagram_handle || contactUser.facebook_handle ? (
+                                        <div className="grid grid-cols-1 gap-3">
+                                            {contactUser.instagram_handle && (
+                                                <div className="flex items-center gap-3 bg-slate-50/50 p-3.5 rounded-xl border border-slate-100 transition-colors hover:bg-slate-50">
+                                                    <span className="text-lg">📸</span>
+                                                    <span className="text-xs font-medium text-slate-600">@{contactUser.instagram_handle}</span>
+                                                </div>
+                                            )}
+                                            {contactUser.facebook_handle && (
+                                                <div className="flex items-center gap-3 bg-slate-50/50 p-3.5 rounded-xl border border-slate-100 transition-colors hover:bg-slate-50">
+                                                    <span className="text-base">👤</span>
+                                                    <span className="text-xs font-medium text-slate-600">{contactUser.facebook_handle}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-4 bg-slate-50/30 rounded-xl border border-dashed border-slate-200 text-slate-300 font-medium italic text-xs">
+                                            Non renseigné
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
-
-                        <div className="space-y-6">
-                            <div>
-                                <label className="text-[11px] font-medium text-slate-400 block mb-1.5 ml-1">Téléphone</label>
-                                {contactUser.phone ? (
-                                    <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 flex items-center justify-between group transition-colors hover:bg-slate-50">
-                                        <span className="text-sm font-medium text-slate-700">{contactUser.phone}</span>
-                                        <button
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(contactUser.phone);
-                                            }}
-                                            className="h-8 w-8 bg-white shadow-sm border border-slate-100 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all active:scale-90"
-                                            title="Copier le numéro"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
-                                            </svg>
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-4 bg-slate-50/30 rounded-xl border border-dashed border-slate-200 text-slate-300 font-medium italic text-xs">
-                                        Non renseigné
-                                    </div>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="text-[11px] font-medium text-slate-400 block mb-1.5 ml-1">Réseaux sociaux</label>
-                                {contactUser.instagram_handle || contactUser.facebook_handle ? (
-                                    <div className="grid grid-cols-1 gap-3">
-                                        {contactUser.instagram_handle && (
-                                            <div className="flex items-center gap-3 bg-slate-50/50 p-3.5 rounded-xl border border-slate-100 transition-colors hover:bg-slate-50">
-                                                <span className="text-lg">📸</span>
-                                                <span className="text-xs font-medium text-slate-600">@{contactUser.instagram_handle}</span>
-                                            </div>
-                                        )}
-                                        {contactUser.facebook_handle && (
-                                            <div className="flex items-center gap-3 bg-slate-50/50 p-3.5 rounded-xl border border-slate-100 transition-colors hover:bg-slate-50">
-                                                <span className="text-base">👤</span>
-                                                <span className="text-xs font-medium text-slate-600">{contactUser.facebook_handle}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-4 bg-slate-50/30 rounded-xl border border-dashed border-slate-200 text-slate-300 font-medium italic text-xs">
-                                        Non renseigné
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="pt-2 flex justify-center">
-                                <button
-                                    onClick={() => setContactUser(null)}
-                                    className="px-10 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all text-sm shadow-sm active:scale-95"
-                                >
-                                    Fermer
-                                </button>
-                            </div>
+                        <div className="p-6 bg-white border-t border-gray-100 flex justify-center items-center">
+                            <button
+                                onClick={() => setContactUser(null)}
+                                className="px-10 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all text-sm shadow-sm active:scale-95"
+                            >
+                                Fermer
+                            </button>
                         </div>
                     </div>
                 </div>

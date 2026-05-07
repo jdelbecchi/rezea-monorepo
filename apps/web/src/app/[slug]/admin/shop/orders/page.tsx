@@ -1024,7 +1024,7 @@ export default function AdminShopOrdersPage() {
                             </form>
                         </div>
 
-                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
+                        <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
                             <button type="button" onClick={() => setShowCreate(false)}
                                 className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
                                 Annuler
@@ -1262,7 +1262,7 @@ export default function AdminShopOrdersPage() {
                             </form>
                         </div>
 
-                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
+                        <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
                             <button type="button" onClick={() => setEditOrder(null)}
                                 className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
                                 Annuler
@@ -1280,19 +1280,19 @@ export default function AdminShopOrdersPage() {
             {deleteConfirmId && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-10">
+                        <div className="p-10 pb-8">
                             <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">Confirmer la suppression</h3>
                             <p className="text-slate-500 text-base leading-relaxed">Cette commande sera définitivement supprimée. Les crédits associés seront retirés du compte client.</p>
-                            <div className="flex gap-3 justify-end items-center mt-8">
+                        </div>
+                        <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center">
                                 <button onClick={() => setDeleteConfirmId(null)}
                                     className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
                                     Annuler
                                 </button>
                                 <button onClick={() => handleDelete(deleteConfirmId)}
-                                    className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm">
+                                    className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm active:scale-95">
                                     Supprimer
                                 </button>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -1302,13 +1302,14 @@ export default function AdminShopOrdersPage() {
             {showSuspendConfirm && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-10">
+                        <div className="p-10 pb-8">
                             <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">Confirmer la suspension/réactivation</h3>
                             <p className="text-slate-500 text-base leading-relaxed">
                                 Vous allez suspendre ou réactiver les crédits de <strong>{selectedOrderIds.size}</strong> commande(s).
                                 Les utilisateurs concernés ne pourront plus utiliser leurs crédits tant qu'ils sont suspendus.
                             </p>
-                            <div className="flex gap-3 justify-end items-center mt-8">
+                        </div>
+                        <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center">
                                 <button onClick={() => setShowSuspendConfirm(false)}
                                     className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
                                     Annuler
@@ -1317,7 +1318,6 @@ export default function AdminShopOrdersPage() {
                                     className="px-6 py-2.5 bg-orange-600 text-white rounded-xl font-medium hover:bg-orange-700 transition-all text-sm shadow-sm">
                                     Confirmer
                                 </button>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -1402,8 +1402,8 @@ export default function AdminShopOrdersPage() {
                                             <div className="relative">
                                                 <input type="text" value={invoiceData.amount_ttc}
                                                     onChange={(e) => setInvoiceData({ ...invoiceData, amount_ttc: e.target.value })}
-                                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm font-semibold outline-none transition-all hover:border-gray-300 pr-8" />
-                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-700 font-semibold text-sm">€</span>
+                                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 pr-8" />
+                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-700 text-sm">€</span>
                                             </div>
                                         </div>
                                     </div>
@@ -1434,7 +1434,7 @@ export default function AdminShopOrdersPage() {
                             </div>
                         </div>
 
-                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
+                        <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
                             <button onClick={() => setInvoiceOrder(null)}
                                 className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
                                 Annuler
@@ -1595,7 +1595,7 @@ export default function AdminShopOrdersPage() {
                             )}
                         </div>
 
-                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end sticky bottom-0 z-10">
+                        <div className="p-6 bg-white border-t border-gray-100 flex justify-end sticky bottom-0 z-10">
                             <button onClick={() => setInstallmentsOrder(null)}
                                 className="px-6 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm shadow-sm">
                                 Fermer

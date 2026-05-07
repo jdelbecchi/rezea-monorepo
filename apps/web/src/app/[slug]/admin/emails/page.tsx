@@ -484,7 +484,7 @@ function AdminEmailsContent() {
                             ))}
                         </div>
 
-                        <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
+                        <div className="p-6 bg-gray-50 border-t border-slate-100 flex justify-between items-center">
                             <span className="text-sm font-medium text-slate-600">{selectedUserIds.length} sélectionné(s)</span>
                             <button
                                 onClick={() => setShowUserSelector(false)}
@@ -501,40 +501,36 @@ function AdminEmailsContent() {
             {showSaveModal && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-10 text-center">
-                            <div className="w-20 h-20 bg-blue-50 text-blue-500 rounded-3xl flex items-center justify-center text-3xl mx-auto mb-8 shadow-inner">
-                                💾
-                            </div>
-                            <h3 className="text-2xl font-bold text-slate-900 mb-2">Enregistrer le modèle</h3>
+                        <div className="p-10 pb-8">
+                            <h3 className="text-xl font-semibold text-slate-900 mb-2">Enregistrer le modèle</h3>
                             <p className="text-sm text-slate-500 mb-8 leading-relaxed">Donnez un nom à ce modèle pour le retrouver facilement dans votre bibliothèque.</p>
                             
-                            <div className="relative mb-8">
+                            <div className="relative">
                                 <input
                                     type="text"
                                     autoFocus
                                     value={templateName}
                                     onChange={(e) => setTemplateName(e.target.value)}
                                     placeholder="ex: Newsletter Annonce Stage"
-                                    className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-slate-50/50 text-center font-medium"
+                                    className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-slate-50/50 font-medium"
                                     onKeyDown={(e) => e.key === 'Enter' && handleSaveTemplate()}
                                 />
                             </div>
-
-                            <div className="flex gap-4">
-                                <button 
-                                    onClick={() => setShowSaveModal(false)}
-                                    className="flex-1 py-4 rounded-2xl font-medium text-slate-500 hover:bg-slate-50 transition-all active:scale-95"
-                                >
-                                    Annuler
-                                </button>
-                                <button
-                                    onClick={handleSaveTemplate}
-                                    disabled={isSavingTemplate || !templateName.trim()}
-                                    className="flex-1 py-4 rounded-2xl font-bold bg-slate-900 text-white hover:bg-slate-800 disabled:bg-slate-200 disabled:cursor-not-allowed transition-all shadow-lg active:scale-95"
-                                >
-                                    {isSavingTemplate ? "..." : "Enregistrer"}
-                                </button>
-                            </div>
+                        </div>
+                        <div className="p-6 bg-gray-50 border-t border-slate-100 flex gap-3 justify-end items-center">
+                            <button 
+                                onClick={() => setShowSaveModal(false)}
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm active:scale-95"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                onClick={handleSaveTemplate}
+                                disabled={isSavingTemplate || !templateName.trim()}
+                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 disabled:opacity-50 transition-all text-sm shadow-sm active:scale-95"
+                            >
+                                {isSavingTemplate ? "..." : "Enregistrer"}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -543,28 +539,24 @@ function AdminEmailsContent() {
             {templateToDelete && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-10 text-center">
-                            <div className="w-20 h-20 bg-rose-50 text-rose-500 rounded-3xl flex items-center justify-center text-3xl mx-auto mb-8 shadow-inner">
-                                🗑️
-                            </div>
-                            <h3 className="text-2xl font-bold text-slate-900 mb-2">Supprimer le modèle ?</h3>
-                            <p className="text-sm text-slate-500 mb-8 leading-relaxed">Cette action est irréversible. Le modèle <b>"{templateToDelete.name}"</b> sera définitivement supprimé.</p>
-                            
-                            <div className="flex gap-4">
-                                <button 
-                                    onClick={() => setTemplateToDelete(null)}
-                                    className="flex-1 py-4 rounded-2xl font-medium text-slate-500 hover:bg-slate-50 transition-all active:scale-95"
-                                >
-                                    Annuler
-                                </button>
-                                <button
-                                    onClick={handleDeleteTemplate}
-                                    disabled={isDeleting}
-                                    className="flex-1 py-4 rounded-2xl font-bold bg-rose-500 text-white hover:bg-rose-600 disabled:bg-slate-200 disabled:cursor-not-allowed transition-all shadow-lg shadow-rose-200 active:scale-95"
-                                >
-                                    {isDeleting ? "..." : "Supprimer"}
-                                </button>
-                            </div>
+                        <div className="p-10 pb-8">
+                            <h3 className="text-xl font-semibold text-slate-900 mb-2">Supprimer le modèle ?</h3>
+                            <p className="text-sm text-slate-500 leading-relaxed">Cette action est irréversible. Le modèle <b>"{templateToDelete.name}"</b> sera définitivement supprimé.</p>
+                        </div>
+                        <div className="p-6 bg-gray-50 border-t border-slate-100 flex gap-3 justify-end items-center">
+                            <button 
+                                onClick={() => setTemplateToDelete(null)}
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm active:scale-95"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                onClick={handleDeleteTemplate}
+                                disabled={isDeleting}
+                                className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm active:scale-95"
+                            >
+                                {isDeleting ? "..." : "Supprimer"}
+                            </button>
                         </div>
                     </div>
                 </div>

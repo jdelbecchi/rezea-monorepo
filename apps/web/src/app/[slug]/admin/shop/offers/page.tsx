@@ -585,7 +585,7 @@ function AdminOffersContent() {
                             </form>
                         </div>
                         
-                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
+                        <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
                             <button 
                                 type="button" 
                                 onClick={resetForm} 
@@ -613,10 +613,12 @@ function AdminOffersContent() {
 
             {deleteConfirmId && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-3xl p-10 max-w-md w-full mx-4 shadow-2xl animate-in zoom-in-95 duration-300">
-                        <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">Confirmer la suppression</h3>
-                        <p className="text-slate-500 mb-8 font-normal text-base leading-relaxed">Cette offre sera définitivement retirée de votre catalogue. Cette action est irréversible.</p>
-                        <div className="flex gap-3 justify-end items-center">
+                    <div className="bg-white rounded-3xl max-w-md w-full mx-4 shadow-2xl animate-in zoom-in-95 duration-300 overflow-hidden">
+                        <div className="p-10 pb-8">
+                            <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">Confirmer la suppression</h3>
+                            <p className="text-slate-500 font-normal text-base leading-relaxed">Cette offre sera définitivement retirée de votre catalogue. Cette action est irréversible.</p>
+                        </div>
+                        <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center">
                             <button 
                                 onClick={() => setDeleteConfirmId(null)} 
                                 className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm"
@@ -625,7 +627,7 @@ function AdminOffersContent() {
                             </button>
                             <button 
                                 onClick={() => handleDelete(deleteConfirmId)} 
-                                className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm"
+                                className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm active:scale-95"
                             >
                                 Supprimer
                             </button>

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
 import { api, User, Session } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
+import MultiSelect from "@/components/MultiSelect";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { formatDuration } from "@/lib/formatters";
@@ -33,8 +34,8 @@ function AdminSessionsContent() {
     const [sessions, setSessions] = useState<Session[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
-    const [statusFilter, setStatusFilter] = useState("active");
-    const [locationFilter, setLocationFilter] = useState("all");
+    const [statusFilter, setStatusFilter] = useState<string[]>(["active"]);
+    const [locationFilter, setLocationFilter] = useState<string[]>([]);
     const [tenant, setTenant] = useState<any>(null);
     const [showForm, setShowForm] = useState(false);
     const [formData, setFormData] = useState({ ...emptyForm });
@@ -60,10 +61,10 @@ function AdminSessionsContent() {
             const now = new Date();
             const start = `${now.getFullYear() - 1}-01-01T00:00:00`;
             const end = `${now.getFullYear() + 1}-12-31T23:59:59`;
+            // Fetch all and filter in frontend for MultiSelect flexibility
             const data = await api.getSessions({
                 start_date: start,
-                end_date: end,
-                status: statusFilter === "all" ? undefined : statusFilter
+                end_date: end
             });
             setSessions(data);
             return data;
@@ -71,7 +72,7 @@ function AdminSessionsContent() {
             console.error(err);
             return [];
         }
-    }, [statusFilter]);
+    }, []);
 
     useEffect(() => {
         const init = async () => {
@@ -292,11 +293,48 @@ function AdminSessionsContent() {
         }
     };
 
+    
+    const handleExport = () => {
+        const BOM = "\uFEFF";
+        const header = "Date;Heure;Intitulé;Durée;Lieu;Intervenant;Inscriptions;Crédits";
+        const rows = filteredSessions.map((s) => {
+            const date = new Date(s.start_time);
+            return [
+                format(date, "dd/MM/yyyy"),
+                format(date, "HH:mm"),
+                s.title,
+                formatDuration(Math.round((new Date(s.end_time).getTime() - date.getTime())/60000)),
+                s.location || "",
+                (s as any).instructor_name || "",
+                `${s.current_participants}/${s.max_participants}`,
+                s.credits_required,
+            ].join(";");
+        });
+        const csv = BOM + header + "\n" + rows.join("\n");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        const dateStr = format(new Date(), "yyyy-MM-dd");
+        a.download = `export_programmation_seances_${dateStr}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
     const filteredSessions = sessions.filter(s => {
         const q = searchTerm.toLowerCase();
         const matchesSearch = s.title.toLowerCase().includes(q) || (s.description || "").toLowerCase().includes(q) || ((s as any).instructor_name || "").toLowerCase().includes(q);
-        const matchesLocation = locationFilter === "all" || s.location === locationFilter;
-        return matchesSearch && matchesLocation;
+        const matchesLocation = locationFilter.length === 0 || (s.location && locationFilter.includes(s.location));
+        const matchesStatus = statusFilter.length === 0 || (s.is_active ? statusFilter.includes("active") : statusFilter.includes("cancelled"));
+        
+        // Filter by date range
+        if (filterFrom || filterTo) {
+            const sDate = s.start_time.split('T')[0];
+            if (filterFrom && sDate < filterFrom) return false;
+            if (filterTo && sDate > filterTo) return false;
+        }
+
+        return matchesSearch && matchesLocation && matchesStatus;
     }).sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
 
     if (loading) return <div className="p-8 text-center text-slate-500 font-medium">Chargement...</div>;
@@ -352,34 +390,31 @@ function AdminSessionsContent() {
                                 />
                             </div>
                             
-                            <div>
-                                <label className="block text-xs font-medium text-slate-500 mb-1">Statut</label>
-                                <select 
-                                    value={statusFilter}
-                                    onChange={(e) => setStatusFilter(e.target.value)}
-                                    className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-normal focus:ring-2 focus:ring-blue-500 outline-none min-w-[140px] appearance-none cursor-pointer"
-                                >
-                                    <option value="active">Programmées</option>
-                                    <option value="cancelled">Annulées</option>
-                                    <option value="all">Toutes</option>
-                                </select>
+                            <div className="w-48">
+                                <MultiSelect
+                                    label="Statut(s)"
+                                    options={[
+                                        { id: "active", label: "Programmées" },
+                                        { id: "cancelled", label: "Annulées" },
+                                    ]}
+                                    selected={statusFilter}
+                                    onChange={setStatusFilter}
+                                    placeholder="Toutes"
+                                />
                             </div>
 
                             {(tenant?.locations || []).length > 1 && (
-                                <div>
-                                    <label className="block text-xs font-medium text-slate-500 mb-1">Lieu</label>
-                                    <select 
-                                        value={locationFilter}
-                                        onChange={(e) => setLocationFilter(e.target.value)}
-                                        className="px-3 py-2 border border-gray-300 bg-white rounded-lg text-sm font-normal focus:ring-2 focus:ring-blue-500 outline-none min-w-[140px] appearance-none cursor-pointer"
-                                    >
-                                        <option value="all">Tous les lieux</option>
-                                        {(tenant?.locations || []).map((loc: string) => (
-                                            <option key={loc} value={loc}>{loc}</option>
-                                        ))}
-                                    </select>
+                                <div className="w-32">
+                                    <MultiSelect
+                                        label="Lieu(x)"
+                                        options={(tenant?.locations || []).map((loc: string) => ({ id: loc, label: loc }))}
+                                        selected={locationFilter}
+                                        onChange={setLocationFilter}
+                                        placeholder="Tous les lieux"
+                                    />
                                 </div>
                             )}
+
                             
                             <div>
                                 <label className="block text-xs font-medium text-slate-500 mb-1 text-left">Du</label>
@@ -393,7 +428,10 @@ function AdminSessionsContent() {
                                     className="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-normal focus:ring-2 focus:ring-blue-500 outline-none" />
                             </div>
 
-                            <button className="px-3 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg font-medium hover:bg-emerald-100 transition-colors text-sm whitespace-nowrap shadow-sm flex items-center gap-2">
+                            <button 
+                                onClick={handleExport}
+                                className="px-3 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-lg font-medium hover:bg-emerald-100 transition-colors text-sm whitespace-nowrap shadow-sm flex items-center gap-2"
+                            >
                                 📥 Export Excel
                             </button>
                         </div>
@@ -713,7 +751,7 @@ function AdminSessionsContent() {
                         </div>
 
                         {/* Footer */}
-                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
+                        <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
                             <button 
                                 type="button" 
                                 onClick={resetForm} 
@@ -778,7 +816,7 @@ function AdminSessionsContent() {
                             </div>
                         </div>
 
-                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end items-center">
+                        <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center">
                             <button type="button" onClick={() => setShowDuplicateModal(false)} className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
                                 Annuler
                             </button>
@@ -793,26 +831,26 @@ function AdminSessionsContent() {
             {confirmModal.show && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-10">
+                        <div className="p-10 pb-8">
                             <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">{confirmModal.title}</h3>
                             <p className="text-slate-500 text-base leading-relaxed">{confirmModal.message}</p>
-                            <div className="mt-8 flex gap-3 justify-end items-center">
-                                <button 
-                                    onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}
-                                    className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm"
-                                >
-                                    Annuler
-                                </button>
-                                <button 
-                                    onClick={confirmModal.onConfirm}
-                                    className={`px-6 py-2.5 text-white rounded-xl font-medium transition-all text-sm shadow-sm ${
-                                        confirmModal.type === 'danger' ? 'bg-rose-600 hover:bg-rose-700' : 
-                                        confirmModal.type === 'warning' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-slate-900 hover:bg-slate-800'
-                                    }`}
-                                >
-                                    Confirmer
-                                </button>
-                            </div>
+                        </div>
+                        <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center">
+                            <button 
+                                onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm"
+                            >
+                                Annuler
+                            </button>
+                            <button 
+                                onClick={confirmModal.onConfirm}
+                                className={`px-6 py-2.5 text-white rounded-xl font-medium transition-all text-sm shadow-sm active:scale-95 ${
+                                    confirmModal.type === 'danger' ? 'bg-rose-600 hover:bg-rose-700' : 
+                                    confirmModal.type === 'warning' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-slate-900 hover:bg-slate-800'
+                                }`}
+                            >
+                                Confirmer
+                            </button>
                         </div>
                     </div>
                 </div>

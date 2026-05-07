@@ -8,11 +8,12 @@ interface Option {
 }
 
 interface MultiSelectProps {
-    label: string;
+    label?: string;
     options: Option[];
     selected: string[];
     onChange: (selected: string[]) => void;
     placeholder?: string;
+    className?: string;
 }
 
 export default function MultiSelect({
@@ -21,6 +22,7 @@ export default function MultiSelect({
     selected,
     onChange,
     placeholder = "Tous",
+    className = "",
 }: MultiSelectProps) {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -59,11 +61,11 @@ export default function MultiSelect({
 
     return (
         <div className="relative inline-block w-full" ref={containerRef}>
-            <label className="block text-xs font-medium text-slate-500 mb-1">{label}</label>
+            {label && <label className="block text-xs font-medium text-slate-500 mb-1">{label}</label>}
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm hover:border-blue-400 transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                className={`w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm hover:border-blue-400 transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none ${className}`}
             >
                 <span className="truncate text-slate-700">
                     {getDisplayText()}

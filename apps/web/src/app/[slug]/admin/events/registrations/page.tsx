@@ -59,7 +59,7 @@ export default function AdminEventRegistrationsPage() {
     const [selectedDate, setSelectedDate] = useState<Date>(startOfToday());
     const [currentMonth, setCurrentMonth] = useState(startOfToday());
     const [tenant, setTenant] = useState<Tenant | null>(null);
-    const [locationFilter, setLocationFilter] = useState("all");
+    const [locationFilter, setLocationFilter] = useState<string[]>([]);
     const [isLocationMenuOpen, setIsLocationMenuOpen] = useState(false);
 
     // Create modal
@@ -85,17 +85,16 @@ export default function AdminEventRegistrationsPage() {
     // Invoice
     const [invoiceReg, setInvoiceReg] = useState<AdminEventRegistrationItem | null>(null);
     const [dateRange, setDateRange] = useState({ start: "", end: "" });
-    const [invoiceData, setInvoiceData] = useState({
+    const [invoiceData, setInvoiceData] = useState<any>({
         emitter: "Mon Club",
-        legal_form: "",
-        emitter_address: "",
-        siret: "",
-        vat_number: "",
-        vat_mention: "",
         recipient: "",
+        invoice_number: "",
+        invoice_date: "",
         description: "",
-        amount: "0,00",
+        amount_ht: "",
+        amount_ttc: "0,00",
         notes: "",
+        is_acquitted: true,
     });
 
     useEffect(() => { fetchData(); }, [router]);
@@ -282,20 +281,20 @@ export default function AdminEventRegistrationsPage() {
         setInvoiceReg(reg);
         const today = new Date().toISOString().split("T")[0];
         setInvoiceData({
-            invoice_number: `EVT-${Date.now().toString().slice(-6)}`,
+            invoice_number: `FAC-${Date.now().toString().slice(-6)}`,
             invoice_date: today,
             emitter: tenant?.legal_name || tenant?.name || "Votre Établissement",
             recipient: reg.user_name,
             description: `Participation à l'événement: ${reg.event_title}`,
-            amount: (reg.price_paid_cents / 100).toFixed(2).replace(".", ","),
+            amount_ht: "",
+            amount_ttc: (reg.price_paid_cents / 100).toFixed(2).replace(".", ","),
             notes: "",
+            is_acquitted: reg.payment_status === "paye",
         });
     };
 
     const downloadInvoice = () => {
         if (!invoiceReg) return;
-        const invoiceNumber = invoiceData.invoice_number;
-        const invoiceDate = invoiceData.invoice_date;
         const emitterName = invoiceData.emitter;
         const legalForm = tenant?.legal_form || "";
         const emitterAddress = tenant?.legal_address || "";
@@ -303,11 +302,7 @@ export default function AdminEventRegistrationsPage() {
         const vatNumber = tenant?.legal_vat_number ? `TVA : ${tenant.legal_vat_number}` : "";
         const vatMention = tenant?.legal_vat_mention || "";
         
-        const recipient = invoiceData.recipient;
-        const description = invoiceData.description;
-        const amountTtc = invoiceData.amount;
-
-        const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Facture ${invoiceNumber}</title>
+        const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Facture ${invoiceData.invoice_number}</title>
 <style>
     body{font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;max-width:800px;margin:40px auto;padding:40px;color:#334155;line-height:1.5;background:#fff}
     .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:60px}
@@ -324,14 +319,16 @@ export default function AdminEventRegistrationsPage() {
     .totals{display:flex;flex-direction:column;align-items:flex-end;gap:8px;margin-top:20px}
     .total-row{display:flex;justify-content:space-between;width:200px;font-size:14px}
     .total-main{font-size:20px;font-weight:700;color:#0f172a;border-top:2px solid #e2e8f0;padding-top:12px;margin-top:8px}
-    .acquitted-stamp{display:inline-block;margin-top:12px;padding:6px 12px;border:2px solid #10b981;color:#10b981;font-size:14px;font-weight:700;text-transform:uppercase;transform:rotate(-5deg);border-radius:8px;opacity:0.9;background:rgba(255,255,255,0.8)}
+    .vat-mention-inline{font-size:11px;color:#64748b;margin-bottom:4px;text-align:right}
+    .acquitted-stamp{display:${invoiceData.is_acquitted ? "inline-block" : "none"};margin-top:12px;padding:6px 12px;border:2px solid #10b981;color:#10b981;font-size:14px;font-weight:700;text-transform:uppercase;transform:rotate(-5deg);border-radius:8px;opacity:0.9;background:rgba(255,255,255,0.8)}
+    .notes{margin-top:40px;padding:20px;background:#fffaf0;border:1px solid #feebc8;border-radius:12px;font-size:13px}
     .footer{margin-top:80px;padding-top:20px;border-top:1px solid #f1f5f9;text-align:center;font-size:11px;color:#94a3b8}
     @media print{body{margin:0;padding:20px}.acquitted-stamp{opacity:1}}
 </style></head><body>
     <div class="header">
         <div>
             <h1 class="invoice-title">FACTURE</h1>
-            <div style="margin-top:8px;font-size:14px;font-weight:600;color:#64748b">N° ${invoiceNumber}</div>
+            <div style="margin-top:8px;font-size:14px;font-weight:600;color:#64748b">N° ${invoiceData.invoice_number}</div>
         </div>
         <div class="emitter-info" style="text-align:right">
             <div class="emitter-name">${emitterName}</div>
@@ -345,11 +342,11 @@ export default function AdminEventRegistrationsPage() {
     <div class="details">
         <div class="details-box">
             <div class="details-label">Destinataire</div>
-            <div class="details-value">${recipient}</div>
+            <div class="details-value">${invoiceData.recipient}</div>
         </div>
         <div class="details-box" style="max-width:200px">
             <div class="details-label">Date d'émission</div>
-            <div class="details-value">${new Date(invoiceDate).toLocaleDateString("fr-FR")}</div>
+            <div class="details-value">${new Date(invoiceData.invoice_date).toLocaleDateString("fr-FR")}</div>
         </div>
     </div>
 
@@ -357,24 +354,30 @@ export default function AdminEventRegistrationsPage() {
         <thead>
             <tr>
                 <th style="width:60%">Description</th>
+                <th style="text-align:right">Total HT</th>
                 <th style="text-align:right">Total TTC</th>
             </tr>
         </thead>
         <tbody>
             <tr>
                 <td>
-                    <div style="font-weight:600;color:#0f172a">${description}</div>
-                    <div style="font-size:12px;color:#64748b;margin-top:4px">Date : ${invoiceReg.event_date}</div>
+                    <div style="font-weight:600;color:#0f172a">${invoiceData.description}</div>
+                    <div style="font-size:12px;color:#64748b;margin-top:4px">Date : ${invoiceReg.event_date ? new Date(invoiceReg.event_date).toLocaleDateString("fr-FR") : "—"}</div>
                 </td>
-                <td style="text-align:right;font-weight:700;color:#0f172a">${amountTtc} €</td>
+                <td style="text-align:right">${invoiceData.amount_ht || "-"} ${invoiceData.amount_ht ? "€" : ""}</td>
+                <td style="text-align:right;font-weight:700;color:#0f172a">${invoiceData.amount_ttc} €</td>
             </tr>
         </tbody>
     </table>
 
     <div class="totals">
-        <div class="total-row total-main"><span>Total TTC</span><span>${amountTtc} €</span></div>
-        <div class="acquitted-stamp">Acquittée le ${new Date(invoiceDate).toLocaleDateString("fr-FR")}</div>
+        ${invoiceData.amount_ht ? `<div class="total-row"><span>Total HT</span><span>${invoiceData.amount_ht} €</span></div>` : ""}
+        <div class="total-row total-main"><span>Total TTC</span><span>${invoiceData.amount_ttc} €</span></div>
+        ${vatMention ? `<div class="vat-mention-inline">${vatMention}</div>` : ""}
+        <div class="acquitted-stamp">Acquittée le ${new Date(invoiceData.invoice_date).toLocaleDateString("fr-FR")}</div>
     </div>
+
+    ${invoiceData.notes ? `<div class="notes"><strong>Notes :</strong><br/>${invoiceData.notes.replace(/\n/g, "<br/>")}</div>` : ""}
 
     <div class="footer">
         <div>${emitterName} ${legalForm ? " - " + legalForm : ""}</div>
@@ -417,9 +420,9 @@ export default function AdminEventRegistrationsPage() {
         }
 
         // Filter by location
-        if (locationFilter !== "all" && r.event_id) {
+        if (locationFilter.length > 0 && r.event_id) {
              const evt = events.find(e => e.id === r.event_id);
-             if (evt && evt.location !== locationFilter) return false;
+             if (evt && !locationFilter.includes(evt.location || "")) return false;
         }
 
         return true;
@@ -570,18 +573,14 @@ export default function AdminEventRegistrationsPage() {
                                 />
                             </div>
                             {tenant && (tenant.locations || []).length > 1 && (
-                                <div className="min-w-[140px]">
-                                    <label className="block text-xs font-medium text-slate-500 mb-1">Lieu</label>
-                                    <select 
-                                        value={locationFilter} 
-                                        onChange={(e) => setLocationFilter(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-normal transition-all cursor-pointer"
-                                    >
-                                        <option value="all">Tous les lieux</option>
-                                        {(tenant.locations || []).map(loc => (
-                                            <option key={loc} value={loc}>{loc}</option>
-                                        ))}
-                                    </select>
+                                <div className="w-32">
+                                    <MultiSelect
+                                        label="Lieu(x)"
+                                        options={(tenant.locations || []).map(loc => ({ id: loc, label: loc }))}
+                                        selected={locationFilter}
+                                        onChange={setLocationFilter}
+                                        placeholder="Tous"
+                                    />
                                 </div>
                             )}
                             <div className="flex items-end gap-2">
@@ -799,7 +798,7 @@ export default function AdminEventRegistrationsPage() {
                         </div>
 
                         {/* Footer */}
-                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
+                        <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
                             <button type="button" onClick={() => setShowCreate(false)}
                                 className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">Annuler</button>
                             <button type="submit" form="createRegistrationForm" disabled={saving}
@@ -829,7 +828,7 @@ export default function AdminEventRegistrationsPage() {
                             </button>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-8">
+                        <div className="flex-1 overflow-y-auto p-8 pb-4">
                             <div className="mb-6 p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-2 relative overflow-hidden">
                                 <div className="absolute top-0 right-0 p-3 opacity-5 text-4xl">🎉</div>
                                 <div className="flex justify-between items-center group">
@@ -851,7 +850,7 @@ export default function AdminEventRegistrationsPage() {
                                 </div>
                             </div>
 
-                            <form onSubmit={handleEditSubmit} className="space-y-4">
+                            <form id="editRegistrationForm" onSubmit={handleEditSubmit} className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className={`block text-sm font-medium mb-1 ${(showErrors && !editForm.status) ? 'text-red-500' : 'text-slate-700'}`}>Statut *</label>
@@ -899,15 +898,17 @@ export default function AdminEventRegistrationsPage() {
                                         onChange={(e) => setEditForm({ ...editForm, user_note: e.target.value })}
                                         className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300" rows={2} />
                                 </div>
-                                <div className="flex gap-3 justify-end items-center pt-4">
-                                    <button type="button" onClick={() => setEditReg(null)}
-                                        className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">Annuler</button>
-                                    <button type="submit"
-                                        className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all text-sm shadow-sm active:scale-95">
-                                        Enregistrer
-                                    </button>
-                                </div>
                             </form>
+                        </div>
+                        <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
+                            <button type="button" onClick={() => setEditReg(null)}
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
+                                Annuler
+                            </button>
+                            <button type="submit" form="editRegistrationForm"
+                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all text-sm shadow-sm active:scale-95">
+                                Enregistrer
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -916,12 +917,13 @@ export default function AdminEventRegistrationsPage() {
             {deleteConfirmId && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-10">
+                        <div className="p-10 pb-8">
                             <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">Confirmer la suppression</h3>
                             <p className="text-slate-500 text-base leading-relaxed">
                                 Attention : cette action est irréversible. L&apos;inscription sera définitivement supprimée.
                             </p>
-                            <div className="mt-8 flex gap-3 justify-end items-center">
+                        </div>
+                        <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center">
                                 <button 
                                     onClick={() => setDeleteConfirmId(null)}
                                     className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm"
@@ -934,7 +936,6 @@ export default function AdminEventRegistrationsPage() {
                                 >
                                     Confirmer
                                 </button>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -942,92 +943,131 @@ export default function AdminEventRegistrationsPage() {
 
             {/* Invoice Modal */}
             {invoiceReg && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col overflow-hidden max-h-[90vh]">
-                        {/* Header */}
-                        <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
                             <div className="flex items-center gap-3">
-                                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                <h3 className="text-[17px] font-semibold text-slate-900 tracking-tight">Générer une facture</h3>
+                                <div className="text-xl text-slate-400">🧾</div>
+                                <h3 className="text-lg font-medium text-slate-900 tracking-tight">Générer une facture</h3>
                             </div>
-                            <button onClick={() => setInvoiceReg(null)} className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-50 rounded-lg">
-                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <button onClick={() => setInvoiceReg(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-8 space-y-8">
-                            {/* Section: Émetteur & Destinataire */}
-                            <div>
-                                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">Émetteur & Destinataire</h4>
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Émetteur</label>
-                                        <input type="text" value={invoiceData.emitter} onChange={(e) => setInvoiceData({ ...invoiceData, emitter: e.target.value })}
-                                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300" />
+                        <div className="flex-1 overflow-y-auto p-8">
+                            <div className="space-y-10">
+                                {/* Parties */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-4">
+                                        <h4 className="text-[11px] font-medium text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Émetteur</h4>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Nom / Raison sociale</label>
+                                            <input type="text" value={invoiceData.emitter}
+                                                onChange={(e) => setInvoiceData({ ...invoiceData, emitter: e.target.value })}
+                                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Destinataire</label>
-                                        <input type="text" value={invoiceData.recipient} onChange={(e) => setInvoiceData({ ...invoiceData, recipient: e.target.value })}
-                                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300" />
+                                    <div className="space-y-4">
+                                        <h4 className="text-[11px] font-medium text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Destinataire</h4>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Identité & Adresse</label>
+                                            <textarea value={invoiceData.recipient}
+                                                onChange={(e) => setInvoiceData({ ...invoiceData, recipient: e.target.value })}
+                                                rows={3}
+                                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 resize-none" />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Section: Détails de la facture */}
-                            <div>
-                                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100">Détails de la facture</h4>
+                                {/* Détails facture */}
                                 <div className="space-y-6">
-                                    <div className="grid grid-cols-2 gap-6">
+                                    <h4 className="text-[11px] font-medium text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Contenu & Tarification</h4>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div>
                                             <label className="block text-sm font-medium text-slate-700 mb-1">N° Facture</label>
-                                            <input type="text" value={invoiceData.invoice_number} onChange={(e) => setInvoiceData({ ...invoiceData, invoice_number: e.target.value })}
-                                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300" />
+                                            <input type="text" value={invoiceData.invoice_number}
+                                                onChange={(e) => setInvoiceData({ ...invoiceData, invoice_number: e.target.value })}
+                                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
-                                            <input type="date" value={invoiceData.invoice_date} onChange={(e) => setInvoiceData({ ...invoiceData, invoice_date: e.target.value })}
-                                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300" />
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Date d'émission</label>
+                                            <input type="date" value={invoiceData.invoice_date}
+                                                onChange={(e) => setInvoiceData({ ...invoiceData, invoice_date: e.target.value })}
+                                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
                                         </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-                                        <input type="text" value={invoiceData.description} onChange={(e) => setInvoiceData({ ...invoiceData, description: e.target.value })}
-                                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300" />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="md:col-span-2">
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Description de la prestation</label>
+                                            <input type="text" value={invoiceData.description}
+                                                onChange={(e) => setInvoiceData({ ...invoiceData, description: e.target.value })}
+                                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
+                                        </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Montant (€)</label>
-                                            <input type="text" value={invoiceData.amount} onChange={(e) => setInvoiceData({ ...invoiceData, amount: e.target.value })}
-                                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300" />
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Montant HT <span className="text-slate-400 font-normal">(optionnel)</span></label>
+                                            <div className="relative">
+                                                <input type="text" value={invoiceData.amount_ht}
+                                                    onChange={(e) => setInvoiceData({ ...invoiceData, amount_ht: e.target.value })}
+                                                    placeholder="-"
+                                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 pr-8" />
+                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">€</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Montant TTC</label>
+                                            <div className="relative">
+                                                <input type="text" value={invoiceData.amount_ttc}
+                                                    onChange={(e) => setInvoiceData({ ...invoiceData, amount_ttc: e.target.value })}
+                                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 pr-8" />
+                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-700 text-sm">€</span>
+                                            </div>
                                         </div>
                                     </div>
+
+                                    <div className="flex items-center gap-3 py-2">
+                                        <input 
+                                            type="checkbox"
+                                            id="is_acquitted"
+                                            checked={invoiceData.is_acquitted}
+                                            onChange={(e) => setInvoiceData({ ...invoiceData, is_acquitted: e.target.checked })}
+                                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                        />
+                                        <label htmlFor="is_acquitted" className="text-sm font-medium text-slate-700">Apposer la mention "ACQUITTÉE"</label>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <h4 className="text-[11px] font-medium text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Notes</h4>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 mb-1">Notes complémentaires</label>
-                                        <textarea value={invoiceData.notes} onChange={(e) => setInvoiceData({ ...invoiceData, notes: e.target.value })} placeholder="Ex: Paiement effectué le..."
-                                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all hover:border-gray-300" rows={2} />
+                                        <textarea value={invoiceData.notes}
+                                            onChange={(e) => setInvoiceData({ ...invoiceData, notes: e.target.value })}
+                                            placeholder="Ex: Paiement effectué le..."
+                                            className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 resize-none"
+                                            rows={2} />
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
+                        <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
                             <button onClick={() => setInvoiceReg(null)}
-                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">Annuler</button>
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
+                                Annuler
+                            </button>
                             <button onClick={downloadInvoice}
-                                className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-all text-sm shadow-sm active:scale-95 flex items-center gap-2">
+                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all text-sm shadow-sm flex items-center gap-2">
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                 </svg>
-                                Générer & Télécharger
+                                Générer la facture
                             </button>
                         </div>
                     </div>
                 </div>
-            )}}
+            )}}}
         </div>
     );
 }

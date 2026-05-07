@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { api, User } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
+import MultiSelect from "@/components/MultiSelect";
 import { formatDuration } from "@/lib/formatters";
 
 interface EventItem {
@@ -57,7 +58,7 @@ export default function AdminEventsProgrammingPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [exportFrom, setExportFrom] = useState("");
     const [exportTo, setExportTo] = useState("");
-    const [locationFilter, setLocationFilter] = useState("all");
+    const [locationFilter, setLocationFilter] = useState<string[]>([]);
     const [tenant, setTenant] = useState<any>(null);
 
     // Confirmation Modal
@@ -216,7 +217,7 @@ export default function AdminEventsProgrammingPage() {
                     !(e.description || "").toLowerCase().includes(q) && 
                     !(e.instructor_name || "").toLowerCase().includes(q)) return false;
             }
-            if (locationFilter !== "all" && e.location !== locationFilter) return false;
+            if (locationFilter.length > 0 && !(e.location && locationFilter.includes(e.location))) return false;
             return true;
         });
 
@@ -295,18 +296,14 @@ export default function AdminEventsProgrammingPage() {
                                 />
                             </div>
                             {tenant && (tenant.locations || []).length > 1 && (
-                                <div className="w-48">
-                                    <label className="block text-xs font-medium text-slate-500 mb-1">Lieu</label>
-                                    <select 
-                                        value={locationFilter} 
-                                        onChange={(e) => setLocationFilter(e.target.value)}
-                                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-normal transition-all appearance-none cursor-pointer"
-                                    >
-                                        <option value="all">Tous les lieux</option>
-                                        {(tenant.locations || []).map((loc: string) => (
-                                            <option key={loc} value={loc}>{loc}</option>
-                                        ))}
-                                    </select>
+                                <div className="flex-1 min-w-[200px]">
+                                    <MultiSelect
+                                        label="Lieu(x)"
+                                        options={(tenant.locations || []).map((loc: string) => ({ id: loc, label: loc }))}
+                                        selected={locationFilter}
+                                        onChange={setLocationFilter}
+                                        placeholder="Tous les lieux"
+                                    />
                                 </div>
                             )}
                             <div className="flex items-end gap-2">
@@ -605,7 +602,7 @@ export default function AdminEventsProgrammingPage() {
                         </div>
 
                         {/* Footer */}
-                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
+                        <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
                             <button
                                 type="button"
                                 onClick={resetForm}
@@ -628,26 +625,26 @@ export default function AdminEventsProgrammingPage() {
             {confirmModal.show && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-10">
+                        <div className="p-10 pb-8">
                             <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">{confirmModal.title}</h3>
                             <p className="text-slate-500 text-sm font-normal leading-relaxed">{confirmModal.message}</p>
-                            <div className="mt-8 flex gap-3 justify-end items-center">
-                                <button 
-                                    onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}
-                                    className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm"
-                                >
-                                    Annuler
-                                </button>
-                                <button 
-                                    onClick={confirmModal.onConfirm}
-                                    className={`px-6 py-2.5 text-white rounded-xl font-medium transition-all text-sm shadow-sm ${
-                                        confirmModal.type === 'danger' ? 'bg-rose-600 hover:bg-rose-700' : 
-                                        confirmModal.type === 'warning' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-slate-900 hover:bg-slate-800'
-                                    }`}
-                                >
-                                    Confirmer
-                                </button>
-                            </div>
+                        </div>
+                        <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center">
+                            <button 
+                                onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm"
+                            >
+                                Annuler
+                            </button>
+                            <button 
+                                onClick={confirmModal.onConfirm}
+                                className={`px-6 py-2.5 text-white rounded-xl font-medium transition-all text-sm shadow-sm active:scale-95 ${
+                                    confirmModal.type === 'danger' ? 'bg-rose-600 hover:bg-rose-700' : 
+                                    confirmModal.type === 'warning' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-slate-900 hover:bg-slate-800'
+                                }`}
+                            >
+                                Confirmer
+                            </button>
                         </div>
                     </div>
                 </div>
