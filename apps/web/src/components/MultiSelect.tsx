@@ -14,6 +14,7 @@ interface MultiSelectProps {
     onChange: (selected: string[]) => void;
     placeholder?: string;
     className?: string;
+    icon?: string | React.ReactNode;
 }
 
 export default function MultiSelect({
@@ -23,6 +24,7 @@ export default function MultiSelect({
     onChange,
     placeholder = "Tous",
     className = "",
+    icon,
 }: MultiSelectProps) {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -65,9 +67,14 @@ export default function MultiSelect({
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className={`w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm hover:border-blue-400 transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none ${className}`}
+                className={`w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm hover:border-blue-400 transition-colors focus:ring-2 focus:ring-blue-500 focus:outline-none ${icon ? 'pl-8' : ''} ${className}`}
             >
-                <span className="truncate text-slate-700">
+                {icon && (
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">
+                        {icon}
+                    </div>
+                )}
+                <span className={`truncate ${selected.length === 0 ? "text-slate-400" : "text-slate-700"}`}>
                     {getDisplayText()}
                 </span>
                 <svg

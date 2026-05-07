@@ -60,6 +60,7 @@ export default function AdminEventsProgrammingPage() {
     const [exportTo, setExportTo] = useState("");
     const [locationFilter, setLocationFilter] = useState<string[]>([]);
     const [tenant, setTenant] = useState<any>(null);
+    const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
     // Confirmation Modal
     const [confirmModal, setConfirmModal] = useState<{
@@ -128,15 +129,17 @@ export default function AdminEventsProgrammingPage() {
 
             if (editingId) {
                 await api.updateAdminEvent(editingId, data);
+                setMessage({ type: 'success', text: "Évènement mis à jour avec succès !" });
             } else {
                 await api.createAdminEvent(data);
+                setMessage({ type: 'success', text: "Évènement créé avec succès !" });
             }
 
             const updated = await api.getAdminEvents();
             setEvents(updated);
             resetForm();
         } catch (err: any) {
-            alert(err.response?.data?.detail || "Erreur lors de la sauvegarde");
+            setMessage({ type: 'error', text: err.response?.data?.detail || "Erreur lors de la sauvegarde" });
         } finally {
             setSaving(false);
         }
@@ -171,7 +174,8 @@ export default function AdminEventsProgrammingPage() {
                     await api.cancelAdminEvent(event.id);
                     await fetchData();
                     setConfirmModal(prev => ({ ...prev, show: false }));
-                } catch (err) { alert("Erreur lors de l'annulation"); }
+                    setMessage({ type: 'success', text: "Évènement annulé avec succès" });
+                } catch (err) { setMessage({ type: 'error', text: "Erreur lors de l'annulation" }); }
             }
         });
     };
@@ -187,7 +191,8 @@ export default function AdminEventsProgrammingPage() {
                     await api.reactivateAdminEvent(event.id);
                     await fetchData();
                     setConfirmModal(prev => ({ ...prev, show: false }));
-                } catch (err) { alert("Erreur lors de la réactivation"); }
+                    setMessage({ type: 'success', text: "Évènement réactivé avec succès" });
+                } catch (err) { setMessage({ type: 'error', text: "Erreur lors de la réactivation" }); }
             }
         });
     };
@@ -203,7 +208,8 @@ export default function AdminEventsProgrammingPage() {
                     await api.deleteAdminEvent(event.id);
                     await fetchData();
                     setConfirmModal(prev => ({ ...prev, show: false }));
-                } catch (err) { alert("Erreur lors de la suppression"); }
+                    setMessage({ type: 'success', text: "Évènement supprimé avec succès" });
+                } catch (err) { setMessage({ type: 'error', text: "Erreur lors de la suppression" }); }
             }
         });
     };
@@ -282,6 +288,28 @@ export default function AdminEventsProgrammingPage() {
                             Nouvel évènement
                         </button>
                     </div>
+
+                    {message && (
+                        <div className={`p-3 rounded-xl flex items-center justify-between border animate-in slide-in-from-top-2 duration-300 ${
+                            message.type === 'success' 
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
+                                : 'bg-rose-50 text-rose-700 border-rose-100'
+                        }`}>
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm">
+                                    {message.type === 'success' ? '✅' : '⚠️'}
+                                </span>
+                                <span className="text-sm font-normal text-slate-700 tracking-tight">
+                                    {message.text}
+                                </span>
+                            </div>
+                            <button onClick={() => setMessage(null)} className="text-slate-400 hover:text-slate-600 transition-colors p-1.5 hover:bg-white/50 rounded-lg">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                    )}
 
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
                         <div className="flex flex-col md:flex-row gap-3 items-end flex-wrap">
@@ -362,7 +390,13 @@ export default function AdminEventsProgrammingPage() {
                                             <td className="px-4 py-2.5 whitespace-nowrap max-w-[300px] truncate">
                                                 <div className="flex items-center gap-2">
                                                     <span className={`text-sm font-medium text-slate-900 ${!event.is_active ? 'line-through text-slate-400' : ''}`}>{event.title}</span>
-                                                    {event.description && event.description.length > 0 && <span title={event.description} className="text-blue-400 text-xs cursor-help">📝</span>}
+                                                    {event.description && event.description.length > 0 && (
+                                                        <span title={event.description} className="text-slate-400 hover:text-slate-600 transition-colors cursor-help">
+                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                                            </svg>
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="px-4 py-2.5 whitespace-nowrap text-sm text-slate-500 text-center">{formatDuration(event.duration_minutes)}</td>

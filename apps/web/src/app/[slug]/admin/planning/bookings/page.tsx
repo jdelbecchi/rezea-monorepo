@@ -242,9 +242,24 @@ export default function AdminBookingsPage() {
                     </div>
 
                     {message && (
-                        <div className={`p-4 rounded-2xl flex items-center justify-between animate-in slide-in-from-top-2 duration-300 ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-100'}`}>
-                            <span className="text-sm font-medium">{message.text}</span>
-                            <button onClick={() => setMessage(null)} className="text-slate-400 hover:text-slate-600 transition-colors p-1">&times;</button>
+                        <div className={`p-3 rounded-xl flex items-center justify-between border animate-in slide-in-from-top-2 duration-300 ${
+                            message.type === 'success' 
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
+                                : 'bg-rose-50 text-rose-700 border-rose-100'
+                        }`}>
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm">
+                                    {message.type === 'success' ? '✅' : '⚠️'}
+                                </span>
+                                <span className="text-sm font-normal text-slate-700 tracking-tight">
+                                    {message.text}
+                                </span>
+                            </div>
+                            <button onClick={() => setMessage(null)} className="text-slate-400 hover:text-slate-600 transition-colors p-1.5 hover:bg-white/50 rounded-lg">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
                     )}
 
@@ -334,10 +349,8 @@ export default function AdminBookingsPage() {
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-sm font-medium text-slate-900">{booking.session_title}</span>
                                                     {booking.notes && (
-                                                        <span title={booking.notes} className="text-blue-400 cursor-help">
-                                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                                                            </svg>
+                                                        <span title={`Note interne : ${booking.notes}`} className="text-amber-500 cursor-help text-sm">
+                                                            📝
                                                         </span>
                                                     )}
                                                 </div>

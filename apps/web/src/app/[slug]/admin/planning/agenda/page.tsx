@@ -42,6 +42,7 @@ export default function AdminAgendaPage() {
     const [showForm, setShowForm] = useState(false);
     const [formData, setFormData] = useState({ ...emptyForm });
     const [saving, setSaving] = useState(false);
+    const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [editingSession, setEditingSession] = useState<any | null>(null);
     const [showDuplicateModal, setShowDuplicateModal] = useState(false);
     const [duplicateData, setDuplicateData] = useState({ source_start: "", source_end: "", target_start: "" });
@@ -249,14 +250,16 @@ export default function AdminAgendaPage() {
             setShowForm(false);
             setEditingSession(null);
 
-            // If we were editing in the detail modal, refresh is handled by fetchData background refresh in fetchData loop
-            // but we might want to switch back to registered tab
             if (showDetails) {
                 setAttendanceTab('registered');
             }
             setFormData({ ...emptyForm });
-        } catch (err) { alert("Erreur lors de la création"); }
-        finally { setSaving(false); }
+            setMessage({ type: 'success', text: "Séance(s) créée(s) avec succès !" });
+        } catch (err) {
+            setMessage({ type: 'error', text: "Erreur lors de la sauvegarde" });
+        } finally {
+            setSaving(false);
+        }
     };
 
     const handleEditSubmit = async (e: React.FormEvent) => {
@@ -349,7 +352,8 @@ export default function AdminAgendaPage() {
             });
             setShowDuplicateModal(false);
             await fetchData();
-        } catch (err) { alert("Erreur lors de la duplication"); }
+            setMessage({ type: 'success', text: "Séances dupliquées avec succès !" });
+        } catch (err) { setMessage({ type: 'error', text: "Erreur lors de la duplication" }); }
     };
 
     const handleCancelItem = async (item: any) => {
@@ -364,7 +368,8 @@ export default function AdminAgendaPage() {
                     else await api.cancelAdminEvent(item.id);
                     await fetchData();
                     setConfirmModal(prev => ({ ...prev, show: false }));
-                } catch (err) { alert("Erreur lors de l'annulation"); }
+                    setMessage({ type: 'success', text: "Activité annulée avec succès" });
+                } catch (err) { setMessage({ type: 'error', text: "Erreur lors de l'annulation" }); }
             }
         });
     };
@@ -381,7 +386,8 @@ export default function AdminAgendaPage() {
                     else await api.reactivateAdminEvent(item.id);
                     await fetchData();
                     setConfirmModal(prev => ({ ...prev, show: false }));
-                } catch (err) { alert("Erreur lors de la réactivation"); }
+                    setMessage({ type: 'success', text: "Activité réactivée avec succès" });
+                } catch (err) { setMessage({ type: 'error', text: "Erreur lors de la réactivation" }); }
             }
         });
     };
@@ -399,7 +405,8 @@ export default function AdminAgendaPage() {
                     setShowDetails(false);
                     await fetchData();
                     setConfirmModal(prev => ({ ...prev, show: false }));
-                } catch (err) { alert("Erreur lors de la suppression"); }
+                    setMessage({ type: 'success', text: "Activité supprimée avec succès" });
+                } catch (err) { setMessage({ type: 'error', text: "Erreur lors de la suppression" }); }
             }
         });
     };
@@ -415,33 +422,56 @@ export default function AdminAgendaPage() {
             <main className="flex-1 p-4 md:p-6 overflow-auto bg-[#fafafa]">
                 <div className="max-w-full mx-auto space-y-6 animate-in fade-in duration-500 px-2">
 
-                    {/* Header Modernized */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div className="space-y-1">
-                            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight flex items-center gap-3">
-                                📅 Agenda
-                            </h1>
-                            <p className="text-base font-normal text-slate-500 mt-1">Gérez votre planning et vos inscriptions</p>
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div>
+                                <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight">📅 Agenda</h1>
+                                <p className="text-base font-normal text-slate-500 mt-1">
+                                    Planning global des séances et évènements
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => setShowDuplicateModal(true)}
+                                    className="flex items-center gap-2 px-4 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl hover:bg-slate-50 transition-all font-medium shadow-sm text-sm"
+                                >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                    Dupliquer
+                                </button>
+                                <button
+                                    onClick={() => { setShowForm(true); setEditingSession(null); setFormData({ ...emptyForm }); }}
+                                    className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-medium shadow-sm text-sm active:scale-95"
+                                >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    Nouvelle séance
+                                </button>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={() => setShowDuplicateModal(true)}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl hover:bg-slate-50 transition-all font-medium shadow-sm text-sm"
-                            >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                </svg>
-                                Dupliquer
-                            </button>
-                            <button
-                                onClick={() => { setShowForm(true); setEditingSession(null); setFormData({ ...emptyForm }); }}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-medium shadow-sm text-sm tracking-tight active:scale-95"
-                            >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                </svg>
-                                Nouvelle séance
-                            </button>
+
+                        {message && (
+                            <div className={`p-3 rounded-xl flex items-center justify-between border animate-in slide-in-from-top-2 duration-300 ${
+                                message.type === 'success' 
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
+                                    : 'bg-rose-50 text-rose-700 border-rose-100'
+                            }`}>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm">
+                                        {message.type === 'success' ? '✅' : '⚠️'}
+                                    </span>
+                                    <span className="text-sm font-normal text-slate-700 tracking-tight">
+                                        {message.text}
+                                    </span>
+                                </div>
+                                <button onClick={() => setMessage(null)} className="text-slate-400 hover:text-slate-600 transition-colors p-1.5 hover:bg-white/50 rounded-lg">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        )}
                         </div>
                     </div>
 
@@ -511,6 +541,7 @@ export default function AdminAgendaPage() {
                                     selected={locationFilter}
                                     onChange={setLocationFilter}
                                     placeholder="Lieux"
+                                    icon="📍"
                                     className="!bg-slate-50 !border-slate-200 !py-1.5 !text-xs !font-medium"
                                 />
                             </div>

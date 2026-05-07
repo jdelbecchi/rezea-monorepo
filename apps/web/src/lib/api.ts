@@ -364,13 +364,14 @@ export interface AdminEventRegistrationItem {
   price_paid_cents: number;
   payment_status: PaymentStatus;
   created_by_admin: boolean;
+  user_name: string;
   notes: string | null;
+  user_note: string | null;
   created_at: string;
   cancelled_at: string | null;
   event_date: string;
   event_time: string;
   event_title: string;
-  user_name: string;
   user_phone: string | null;
   instagram_handle: string | null;
   facebook_handle: string | null;

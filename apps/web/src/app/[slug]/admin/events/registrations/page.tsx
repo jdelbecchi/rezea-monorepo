@@ -209,8 +209,8 @@ export default function AdminEventRegistrationsPage() {
                 event_id: createForm.event_id,
                 price_paid_cents: Math.round(parseFloat(createForm.price_paid_cents.toString().replace(',', '.') || "0") * 100),
                 payment_status: createForm.payment_status,
-                notes: createForm.notes || undefined,
-                user_note: createForm.user_note || undefined,
+                notes: createForm.notes,
+                user_note: createForm.user_note,
             });
             setShowCreate(false);
             setCreateForm({ user_id: "", event_id: "", price_paid_cents: "", payment_status: "a_valider", notes: "", user_note: "", price_type: "member" });
@@ -248,10 +248,10 @@ export default function AdminEventRegistrationsPage() {
         setSaving(true);
         try {
             await api.updateAdminEventRegistration(editReg.id, {
-                notes: editForm.notes || undefined,
-                user_note: editForm.user_note || undefined,
-                status: editForm.status || undefined,
-                payment_status: editForm.payment_status || undefined,
+                notes: editForm.notes,
+                user_note: editForm.user_note,
+                status: editForm.status,
+                payment_status: editForm.payment_status,
                 price_paid_cents: Math.round(parseFloat(editForm.price_paid_cents.toString().replace(',', '.') || "0") * 100),
             });
             setEditReg(null);
@@ -530,8 +530,24 @@ export default function AdminEventRegistrationsPage() {
 
                     {/* Message */}
                     {message && (
-                        <div className={`p-4 rounded-lg border animate-in fade-in slide-in-from-top-2 ${message.type === "success" ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-800"}`}>
-                            {message.text}
+                        <div className={`p-3 rounded-xl flex items-center justify-between border animate-in slide-in-from-top-2 duration-300 ${
+                            message.type === 'success' 
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
+                                : 'bg-rose-50 text-rose-700 border-rose-100'
+                        }`}>
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm">
+                                    {message.type === 'success' ? '✅' : '⚠️'}
+                                </span>
+                                <span className="text-sm font-normal text-slate-700 tracking-tight">
+                                    {message.text}
+                                </span>
+                            </div>
+                            <button onClick={() => setMessage(null)} className="text-slate-400 hover:text-slate-600 transition-colors p-1.5 hover:bg-white/50 rounded-lg">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
                     )}
 
@@ -632,8 +648,13 @@ export default function AdminEventRegistrationsPage() {
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-sm font-medium text-slate-900 font-livvic tracking-tight truncate">{reg.event_title}</span>
                                                     {reg.notes && (
-                                                        <span title={reg.notes} className="text-blue-400 cursor-help">
-                                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <span title={`Commentaire interne : ${reg.notes}`} className="text-amber-500 cursor-help text-sm">
+                                                            📝
+                                                        </span>
+                                                    )}
+                                                    {reg.user_note && (
+                                                        <span title={`Note à l'utilisateur : ${reg.user_note}`} className="text-slate-400 hover:text-slate-600 transition-colors cursor-help">
+                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                                                             </svg>
                                                         </span>

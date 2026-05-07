@@ -689,8 +689,24 @@ export default function AdminShopOrdersPage() {
 
                     {/* Message */}
                     {message && (
-                        <div className={`p-4 rounded-lg border ${message.type === "success" ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-800"}`}>
-                            {message.text}
+                        <div className={`p-3 rounded-xl flex items-center justify-between border animate-in slide-in-from-top-2 duration-300 ${
+                            message.type === 'success' 
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
+                                : 'bg-rose-50 text-rose-700 border-rose-100'
+                        }`}>
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm">
+                                    {message.type === 'success' ? '✅' : '⚠️'}
+                                </span>
+                                <span className="text-sm font-normal text-slate-700 tracking-tight">
+                                    {message.text}
+                                </span>
+                            </div>
+                            <button onClick={() => setMessage(null)} className="text-slate-400 hover:text-slate-600 transition-colors p-1.5 hover:bg-white/50 rounded-lg">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
                     )}
 

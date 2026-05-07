@@ -46,6 +46,7 @@ function AdminSessionsContent() {
     const [filterFrom, setFilterFrom] = useState("");
     const [filterTo, setFilterTo] = useState("");
     const [showErrors, setShowErrors] = useState(false);
+    const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
     // Confirmation Modal
     const [confirmModal, setConfirmModal] = useState<{
@@ -151,21 +152,22 @@ function AdminSessionsContent() {
 
                 await api.createSession({
                     title: formData.title,
-                    description: formData.description || undefined,
-                    instructor_name: formData.instructor_name || undefined,
+                    description: formData.description,
+                    instructor_name: formData.instructor_name,
                     start_time: formatISO(d),
                     end_time: formatISO(endD),
                     max_participants: formData.max_participants,
                     credits_required: formData.credits_required,
-                    location: formData.location || undefined,
+                    location: formData.location,
                     allow_waitlist: formData.allow_waitlist,
                 });
             }
 
             await fetchSessions();
             resetForm();
+            setMessage({ type: 'success', text: "Séance(s) créée(s) avec succès !" });
         } catch (err) {
-            alert("Erreur lors de la création");
+            setMessage({ type: 'error', text: "Erreur lors de la création" });
         } finally {
             setSaving(false);
         }
@@ -192,19 +194,20 @@ function AdminSessionsContent() {
 
             await api.updateSession(editingSession.id, {
                 title: formData.title,
-                description: formData.description || undefined,
-                instructor_name: formData.instructor_name || undefined,
+                description: formData.description,
+                instructor_name: formData.instructor_name,
                 start_time: formatISO(startDt),
                 end_time: formatISO(endDt),
                 max_participants: formData.max_participants,
                 credits_required: formData.credits_required,
-                location: formData.location || undefined,
+                location: formData.location,
                 allow_waitlist: formData.allow_waitlist,
             });
             resetForm();
             await fetchSessions();
+            setMessage({ type: 'success', text: "Séance mise à jour avec succès !" });
         } catch (err) {
-            alert("Erreur lors de la modification");
+            setMessage({ type: 'error', text: "Erreur lors de la modification" });
         } finally {
             setSaving(false);
         }
@@ -243,7 +246,8 @@ function AdminSessionsContent() {
                     await api.cancelSession(session.id);
                     await fetchSessions();
                     setConfirmModal(prev => ({ ...prev, show: false }));
-                } catch (err) { alert("Erreur lors de l'annulation"); }
+                    setMessage({ type: 'success', text: "Séance annulée avec succès" });
+                } catch (err) { setMessage({ type: 'error', text: "Erreur lors de l'annulation" }); }
             }
         });
     };
@@ -259,7 +263,8 @@ function AdminSessionsContent() {
                     await api.reactivateSession(session.id);
                     await fetchSessions();
                     setConfirmModal(prev => ({ ...prev, show: false }));
-                } catch (err) { alert("Erreur lors de la réactivation"); }
+                    setMessage({ type: 'success', text: "Séance réactivée avec succès" });
+                } catch (err) { setMessage({ type: 'error', text: "Erreur lors de la réactivation" }); }
             }
         });
     };
@@ -275,7 +280,8 @@ function AdminSessionsContent() {
                     await api.deleteSession(session.id);
                     await fetchSessions();
                     setConfirmModal(prev => ({ ...prev, show: false }));
-                } catch (err) { alert("Erreur lors de la suppression"); }
+                    setMessage({ type: 'success', text: "Séance supprimée avec succès" });
+                } catch (err) { setMessage({ type: 'error', text: "Erreur lors de la suppression" }); }
             }
         });
     };
@@ -288,8 +294,9 @@ function AdminSessionsContent() {
             });
             setShowDuplicateModal(false);
             await fetchSessions();
+            setMessage({ type: 'success', text: "Séances dupliquées avec succès !" });
         } catch (err) {
-            alert("Erreur lors de la duplication");
+            setMessage({ type: 'error', text: "Erreur lors de la duplication" });
         }
     };
 
@@ -365,8 +372,8 @@ function AdminSessionsContent() {
                                 Dupliquer
                             </button>
                             <button 
-                                onClick={() => { resetForm(); setShowForm(true); }}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-medium shadow-sm text-sm tracking-tight active:scale-95"
+                                onClick={() => { setShowForm(true); setEditingSession(null); setFormData({ ...emptyForm }); }}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-medium shadow-sm text-sm active:scale-95 tracking-tight"
                             >
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -375,6 +382,28 @@ function AdminSessionsContent() {
                             </button>
                         </div>
                     </div>
+
+                    {message && (
+                        <div className={`p-3 rounded-xl flex items-center justify-between border animate-in slide-in-from-top-2 duration-300 ${
+                            message.type === 'success' 
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
+                                : 'bg-rose-50 text-rose-700 border-rose-100'
+                        }`}>
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm">
+                                    {message.type === 'success' ? '✅' : '⚠️'}
+                                </span>
+                                <span className="text-sm font-normal text-slate-700 tracking-tight">
+                                    {message.text}
+                                </span>
+                            </div>
+                            <button onClick={() => setMessage(null)} className="text-slate-400 hover:text-slate-600 transition-colors p-1.5 hover:bg-white/50 rounded-lg">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                    )}
 
                     {/* Filter Bar */}
                     <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">

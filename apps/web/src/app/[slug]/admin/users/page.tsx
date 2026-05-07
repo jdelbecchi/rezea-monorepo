@@ -61,6 +61,7 @@ export default function AdminUsersPage() {
     });
     const [creating, setCreating] = useState(false);
     const [createMessage, setCreateMessage] = useState("");
+    const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
     const fetchData = async () => {
         setLoading(true);
@@ -166,7 +167,6 @@ export default function AdminUsersPage() {
         setSaveMessage("");
         try {
             const { id, ...data } = editingUser;
-            // Remove fields we don't want to send
             const cleanData: Record<string, any> = {};
             const editableFields = [
                 "first_name", "last_name", "email", "phone",
@@ -179,19 +179,15 @@ export default function AdminUsersPage() {
                     cleanData[field] = (data as any)[field];
                 }
             }
-            // Include password only if provided
             if (editPassword.trim()) {
                 cleanData.password = editPassword;
             }
             await api.updateAdminUser(id, cleanData);
-            setSaveMessage("Utilisateur mis à jour avec succès");
+            setMessage({ type: 'success', text: "Utilisateur mis à jour avec succès" });
             await fetchUsers();
-            setTimeout(() => {
-                setEditingUser(null);
-                setEditPassword("");
-                setShowEditPassword(false);
-                setSaveMessage("");
-            }, 1000);
+            setEditingUser(null);
+            setEditPassword("");
+            setShowEditPassword(false);
         } catch {
             setSaveMessage("Erreur lors de la mise à jour");
         } finally {
@@ -199,19 +195,18 @@ export default function AdminUsersPage() {
         }
     };
 
-    // Delete user
     const handleDelete = async () => {
         if (!deletingUser) return;
         try {
             await api.deleteAdminUser(deletingUser.id);
             setDeletingUser(null);
             await fetchUsers();
+            setMessage({ type: 'success', text: "Utilisateur supprimé avec succès" });
         } catch {
-            alert("Erreur lors de la suppression");
+            setMessage({ type: 'error', text: "Erreur lors de la suppression" });
         }
     };
 
-    // Create user
     const handleCreate = async () => {
         if (!newUser.first_name || !newUser.last_name || !newUser.email || !newUser.password) {
             setCreateMessage("Veuillez remplir les champs obligatoires (prénom, nom, email, mot de passe)");
@@ -221,11 +216,9 @@ export default function AdminUsersPage() {
         setCreateMessage("");
         try {
             const dataToSend: Record<string, any> = { ...newUser };
-            // Remove empty optional fields
             Object.keys(dataToSend).forEach((key) => {
                 if (dataToSend[key] === "") delete dataToSend[key];
             });
-            // Keep required fields
             dataToSend.first_name = newUser.first_name;
             dataToSend.last_name = newUser.last_name;
             dataToSend.email = newUser.email;
@@ -233,18 +226,15 @@ export default function AdminUsersPage() {
             dataToSend.role = newUser.role;
 
             await api.createAdminUser(dataToSend as any);
-            setCreateMessage("Utilisateur créé avec succès");
+            setMessage({ type: 'success', text: "Utilisateur créé avec succès" });
             await fetchUsers();
-            setTimeout(() => {
-                setShowCreateModal(false);
-                setCreateMessage("");
-                setNewUser({
-                    first_name: "", last_name: "", email: "", password: "",
-                    role: "user", phone: "", street: "", zip_code: "",
-                    city: "", birth_date: "", instagram_handle: "", facebook_handle: "",
-                    is_active_override: false,
-                });
-            }, 1000);
+            setShowCreateModal(false);
+            setNewUser({
+                first_name: "", last_name: "", email: "", password: "",
+                role: "user", phone: "", street: "", zip_code: "",
+                city: "", birth_date: "", instagram_handle: "", facebook_handle: "",
+                is_active_override: false,
+            });
         } catch (err: any) {
             const detail = err?.response?.data?.detail || "Erreur lors de la création";
             setCreateMessage(detail);
@@ -284,15 +274,37 @@ export default function AdminUsersPage() {
                             </div>
                             <div className="flex items-center gap-3">
                                 <button
-                                    onClick={() => { setShowCreateModal(true); setCreateMessage(""); }}
+                                    onClick={() => setShowCreateModal(true)}
                                     className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-medium shadow-sm text-sm active:scale-95"
                                 >
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                     </svg>
-                                    Nouveau
+                                    Nouvel utilisateur
                                 </button>
                             </div>
+
+                            {message && (
+                                <div className={`p-3 rounded-xl flex items-center justify-between border animate-in slide-in-from-top-2 duration-300 ${
+                                    message.type === 'success' 
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
+                                        : 'bg-rose-50 text-rose-700 border-rose-100'
+                                }`}>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm">
+                                            {message.type === 'success' ? '✅' : '⚠️'}
+                                        </span>
+                                        <span className="text-sm font-normal text-slate-700 tracking-tight">
+                                            {message.text}
+                                        </span>
+                                    </div>
+                                    <button onClick={() => setMessage(null)} className="text-slate-400 hover:text-slate-600 transition-colors p-1.5 hover:bg-white/50 rounded-lg">
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                     <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 mb-6">
