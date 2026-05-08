@@ -110,7 +110,7 @@ export default function MemberOrdersPage() {
     const getEventRegistrationStatusStyle = (status: string) => {
         switch (status) {
             case 'pending_payment': return 'bg-amber-100 text-amber-700 border-amber-200';
-            case 'confirmed': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+            case 'confirmed': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
             case 'cancelled': return 'bg-slate-100 text-slate-500 border-slate-200';
             case 'waiting_list': return 'bg-blue-100 text-blue-700 border-blue-200';
             case 'absent': return 'bg-rose-100 text-rose-700 border-rose-200';
@@ -294,13 +294,13 @@ export default function MemberOrdersPage() {
 
                     {/* Tab Switcher */}
                     <div className="flex justify-center mb-8">
-                        <div className="flex gap-2 p-1.5 bg-slate-200/50 rounded-2xl w-fit">
+                        <div className="flex gap-2 p-1.5 bg-slate-100/60 rounded-2xl w-fit">
                             <button 
                                 onClick={() => setActiveTab('offers')}
                                 className={`px-6 py-2.5 rounded-xl text-xs font-medium transition-all duration-300 ${
                                     activeTab === 'offers' 
                                         ? 'text-white shadow-lg' 
-                                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100/50'
                                 }`}
                                 style={activeTab === 'offers' ? {
                                     background: `linear-gradient(135deg, ${tenant?.primary_color || '#2563eb'}CC, ${tenant?.primary_color || '#2563eb'}EE)`,
@@ -314,7 +314,7 @@ export default function MemberOrdersPage() {
                                 className={`px-6 py-2.5 rounded-xl text-xs font-medium transition-all duration-300 ${
                                     activeTab === 'events' 
                                         ? 'text-white shadow-lg' 
-                                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100/50'
                                 }`}
                                 style={activeTab === 'events' ? {
                                     background: `linear-gradient(135deg, ${tenant?.primary_color || '#2563eb'}CC, ${tenant?.primary_color || '#2563eb'}EE)`,
@@ -347,7 +347,7 @@ export default function MemberOrdersPage() {
                                 orders.map((order) => (
                                     <div 
                                         key={order.id} 
-                                        className="bg-slate-50 p-5 md:p-6 rounded-3xl border transition-all duration-300 hover:bg-slate-100 hover:border-slate-400 relative overflow-hidden group"
+                                        className="bg-white p-5 md:p-6 rounded-3xl border transition-all duration-300 hover:bg-slate-50 hover:border-slate-400 relative overflow-hidden group"
                                         style={{ 
                                             boxShadow: `4px 6px 18px -2px ${(tenant?.primary_color || '#2563eb')}45`,
                                             borderColor: `${(tenant?.primary_color || '#2563eb')}20`
@@ -400,13 +400,11 @@ export default function MemberOrdersPage() {
                                             {(order.user_note || (order.payment_status?.toLowerCase().includes('attente') && tenant?.payment_redirect_link) || order.invoice_number) && (
                                                 <div className="pt-4 border-t border-dashed border-slate-100 flex flex-col gap-4">
                                                     {order.user_note && (
-                                                        <div className="w-full">
-                                                            <div className="flex items-start gap-2 bg-white/60 p-4 rounded-2xl border border-slate-100 shadow-sm">
-                                                                <div className="w-5 h-5 flex items-center justify-center text-xs mt-0.5">💬</div>
-                                                                <div className="flex-1">
-                                                                    <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-0.5">Note d'information</p>
-                                                                    <p className="text-xs text-slate-700 font-medium leading-relaxed italic">{order.user_note}</p>
-                                                                </div>
+                                                        <div className="flex items-start gap-2 px-1">
+                                                            <span className="text-sm mt-0.5">💬</span>
+                                                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                                                                <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold whitespace-nowrap">Note d&apos;information :</p>
+                                                                <p className="text-xs text-slate-700 font-medium italic leading-relaxed">{order.user_note}</p>
                                                             </div>
                                                         </div>
                                                     )}
@@ -444,7 +442,7 @@ export default function MemberOrdersPage() {
                                 registrations.map((reg) => (
                                     <div 
                                         key={reg.id} 
-                                        className="bg-slate-50 p-5 md:p-6 rounded-3xl border transition-all duration-300 hover:bg-slate-100 hover:border-slate-400 relative overflow-hidden group"
+                                        className="bg-white p-5 md:p-6 rounded-3xl border transition-all duration-300 hover:bg-slate-50 hover:border-slate-400 relative overflow-hidden group"
                                         style={{ 
                                             boxShadow: `4px 6px 18px -2px ${(tenant?.primary_color || '#2563eb')}45`,
                                             borderColor: `${(tenant?.primary_color || '#2563eb')}20`
@@ -534,7 +532,7 @@ export default function MemberOrdersPage() {
             {/* Detail Modal */}
             {showInfoModal && selectedOrder && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-300">
-                   <div className="bg-white/95 backdrop-blur-xl rounded-[2.5rem] w-full max-w-sm overflow-hidden shadow-2xl border border-white animate-in zoom-in duration-300 p-8 md:p-10 relative">
+                   <div className="bg-white rounded-[2.5rem] w-full max-w-sm overflow-hidden shadow-2xl border border-white animate-in zoom-in duration-300 p-8 md:p-10 relative">
                       {/* Decorative elements */}
                       <div 
                         className="absolute top-0 right-0 w-32 h-32 opacity-10 rounded-full -mr-16 -mt-16"

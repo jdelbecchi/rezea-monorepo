@@ -244,7 +244,7 @@ export default function CheckoutPage() {
                                 ) : (
                                     <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300">
                                         <p className="text-xs text-blue-800 leading-relaxed text-center">
-                                            L&apos;établissement ne propose pas de règlement en ligne pour le moment. Votre commande sera validée immédiatement et le règlement sera à effectuer selon les modalités de l&apos;établissement.
+                                            Le règlement en ligne n&apos;est pas proposé pour le moment. Votre commande sera validée immédiatement et le règlement sera à effectuer selon les modalités de l&apos;établissement.
                                         </p>
                                     </div>
                                 )}

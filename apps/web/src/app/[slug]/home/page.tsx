@@ -267,7 +267,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
             {/* Banner */}
             <div className="relative shrink-0 mb-0 md:mb-8 lg:mb-0">
                 <div 
-                    className="aspect-video w-full shadow-2xl shadow-blue-900/10 relative group bg-slate-50 border border-slate-100 overflow-hidden"
+                    className="aspect-video w-full shadow-xl shadow-blue-900/10 relative group bg-slate-50 border border-slate-100 overflow-hidden"
                     style={{ 
                         background: bannerUrl 
                             ? `url(${bannerUrl}) center/cover no-repeat` 
@@ -289,7 +289,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                     onClick={() => setIsAlertsExpanded(!isAlertsExpanded)}
                     className={`w-full flex items-center justify-center gap-3 py-3 px-6 transition-all
                         ${allAlerts[0].priority === 1 ? 'bg-orange-50' : 
-                          allAlerts[0].priority === 2 ? 'bg-yellow-50/80' : 'bg-sky-50'}`}
+                          allAlerts[0].priority === 2 ? 'bg-[#FFF2B9]/80' : 'bg-sky-50'}`}
                 >
                     <span 
                         className={`text-sm shrink-0 transition-colors duration-300 ${
@@ -302,14 +302,14 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                     <div className="flex items-center justify-center gap-4 flex-1 px-1 text-center">
                         <p className={`text-xs font-medium tracking-tight leading-tight
                             ${allAlerts[0].priority === 1 ? 'text-orange-800' : 
-                            allAlerts[0].priority === 2 ? 'text-yellow-700' : 'text-sky-800'}`}
+                            allAlerts[0].priority === 2 ? 'text-amber-900' : 'text-sky-800'}`}
                         >
                             {allAlerts[0].message}
                         </p>
                         {allAlerts.length > 1 && (
-                            <span className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full font-bold
+                            <span className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full font-medium
                                 ${allAlerts[0].priority === 1 ? 'bg-orange-200 text-orange-900' : 
-                                allAlerts[0].priority === 2 ? 'bg-yellow-200/80 text-yellow-800' : 'bg-sky-200 text-sky-900'}`}
+                                allAlerts[0].priority === 2 ? 'bg-amber-200 text-amber-900' : 'bg-sky-200 text-sky-900'}`}
                             >
                                 +{allAlerts.length - 1}
                             </span>
@@ -331,7 +331,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
             {isAlertsExpanded && allAlerts.length > 0 && (
                 <div className={`px-5 pb-3 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-500 origin-top
                     ${allAlerts[0].priority === 1 ? 'bg-orange-50/50' : 
-                      allAlerts[0].priority === 2 ? 'bg-yellow-50/50' : 'bg-sky-50/50'}`}
+                      allAlerts[0].priority === 2 ? 'bg-[#FFF2B9]/80' : 'bg-sky-50/50'}`}
                 >
                     {allAlerts.map(alert => (
                         <div key={alert.id} className="flex items-start gap-3 p-3 bg-white/90 backdrop-blur-sm rounded-xl hover:bg-white transition-all border border-black/5 shadow-sm active:scale-[0.99]">

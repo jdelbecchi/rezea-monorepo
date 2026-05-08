@@ -110,7 +110,7 @@ export default function CreditsPage() {
                         
                         {/* More discrete balance display - Compact on mobile */}
                         <div 
-                            className="px-6 py-3.5 md:px-8 md:py-4 rounded-2xl border flex items-center justify-center gap-4 md:gap-6 self-center shadow-sm md:transform origin-right"
+                            className="px-5 py-2.5 md:px-6 md:py-3 rounded-2xl border flex items-center justify-center gap-4 md:gap-6 self-center shadow-sm md:transform origin-right"
                             style={{ 
                                 background: `linear-gradient(135deg, white, ${(tenantSettings?.primary_color || '#2563eb')}40)`,
                                 borderColor: `${(tenantSettings?.primary_color || '#2563eb')}30`
@@ -118,8 +118,8 @@ export default function CreditsPage() {
                         >
                             <span className="text-xs md:text-sm font-semibold text-slate-500 capitalize tracking-tight whitespace-nowrap">Mon solde :</span>
                             <div className="flex items-baseline gap-2">
-                                <span className="text-3xl md:text-4xl font-semibold text-slate-900 leading-none">{formatCredits(balance)}</span>
-                                <span className="text-sm md:text-base font-medium text-slate-500 lowercase">crédit{balance > 1 ? 's' : ''}</span>
+                                <span className="text-2xl md:text-3xl font-semibold text-slate-900 leading-none">{formatCredits(balance)}</span>
+                                <span className="text-xs md:text-sm font-medium text-slate-500 lowercase">crédit{balance > 1 ? 's' : ''}</span>
                             </div>
                         </div>
                     </header>
@@ -146,7 +146,7 @@ export default function CreditsPage() {
                                         {categoryOffers.map((offer) => (
                                             <div
                                                 key={offer.id}
-                                                className="group relative bg-slate-50 rounded-2xl p-6 border transition-all duration-300 hover:bg-slate-100 hover:border-slate-400 flex flex-col items-center justify-between overflow-hidden text-center"
+                                                className="group relative bg-white rounded-2xl p-6 border transition-all duration-300 hover:bg-slate-50 hover:border-slate-400 flex flex-col items-center justify-between overflow-hidden text-center"
                                                 style={{ 
                                                     boxShadow: `3px 4px 14px -2px ${(tenantSettings?.primary_color || '#2563eb')}40`,
                                                     borderColor: `${(tenantSettings?.primary_color || '#2563eb')}20`

@@ -1093,7 +1093,7 @@ export default function GestionInscriptionsPage() {
                                 <button 
                                     type="button"
                                     onClick={() => setShowEditSessionModal(false)}
-                                    className="flex-1 py-4 bg-slate-100 text-slate-400 rounded-2xl font-medium hover:bg-slate-200 transition-all text-xs"
+                                    className="flex-1 py-4 bg-white text-black border border-slate-200 rounded-2xl font-medium hover:bg-slate-50 transition-all text-xs"
                                 >
                                     Annuler
                                 </button>
