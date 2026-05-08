@@ -262,7 +262,8 @@ async def event_checkout(
     
     # Si aucun lien de redirection, on force le paiement différé
     is_link_missing = not tenant.payment_redirect_link if tenant else False
-    effective_pay_later = pay_later or is_link_missing
+    is_pay_later_allowed = tenant.allow_pay_later_events if tenant else True
+    effective_pay_later = (pay_later and is_pay_later_allowed) or is_link_missing
 
     notes_suffix = " - Liste d'attente" if is_full else (" - Paiement différé" if effective_pay_later else "")
     registration = EventRegistration(

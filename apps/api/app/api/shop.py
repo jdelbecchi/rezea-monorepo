@@ -63,7 +63,8 @@ async def shop_checkout(
     # Statut paiement selon choix ou lien disponible
     # Si aucun lien de redirection, on force le paiement différé
     is_link_missing = not tenant.payment_redirect_link
-    effective_pay_later = checkout.pay_later or is_link_missing
+    is_pay_later_allowed = tenant.allow_pay_later_offers
+    effective_pay_later = (checkout.pay_later and is_pay_later_allowed) or is_link_missing
     
     # Determine price and payment status based on chosen pricing_type
     if checkout.pricing_type == "recurring" and offer.price_recurring_cents:

@@ -216,27 +216,37 @@ export default function CheckoutPage() {
 
                                 {tenant?.payment_redirect_link ? (
                                     <div className="space-y-4">
-                                        <label className="flex items-center justify-center gap-3 cursor-pointer group mt-8 md:mt-12">
-                                            <div className="relative flex items-center h-5">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={payLater}
-                                                    onChange={(e) => setPayLater(e.target.checked)}
-                                                    className="peer h-5 w-5 cursor-pointer appearance-none rounded border border-slate-300 transition-all checked:border-slate-900 checked:bg-slate-900"
-                                                />
-                                                <span className="absolute text-white opacity-0 peer-checked:opacity-100 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity pointer-events-none">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor" stroke="currentColor" strokeWidth="1">
-                                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                                    </svg>
-                                                </span>
-                                            </div>
-                                            <span className="text-sm font-semibold text-slate-700">Option &quot;Payer plus tard&quot;</span>
-                                        </label>
+                                        {tenant.allow_pay_later_offers ? (
+                                            <>
+                                                <label className="flex items-center justify-center gap-3 cursor-pointer group mt-8 md:mt-12">
+                                                    <div className="relative flex items-center h-5">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={payLater}
+                                                            onChange={(e) => setPayLater(e.target.checked)}
+                                                            className="peer h-5 w-5 cursor-pointer appearance-none rounded border border-slate-300 transition-all checked:border-slate-900 checked:bg-slate-900"
+                                                        />
+                                                        <span className="absolute text-white opacity-0 peer-checked:opacity-100 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity pointer-events-none">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor" stroke="currentColor" strokeWidth="1">
+                                                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                            </svg>
+                                                        </span>
+                                                    </div>
+                                                    <span className="text-sm font-semibold text-slate-700">Option &quot;Payer plus tard&quot;</span>
+                                                </label>
 
-                                        {payLater && (
-                                            <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300">
-                                                <p className="text-xs text-amber-800 leading-relaxed text-center">
-                                                    <strong>Attention !</strong> Si vous choisissez le paiement différé, vous n&apos;êtes pas redirigé vers le lien de paiement. Vos crédits sont disponibles dès maintenant pour réserver vos séances. Le règlement est à effectuer selon les conditions de l&apos;établissement.
+                                                {payLater && (
+                                                    <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300">
+                                                        <p className="text-xs text-amber-800 leading-relaxed text-center">
+                                                            <strong>Attention !</strong> Si vous choisissez le paiement différé, vous n&apos;êtes pas redirigé vers le lien de paiement. Vos crédits sont disponibles dès maintenant pour réserver vos séances. Le règlement est à effectuer selon les conditions de l&apos;établissement.
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <div className="pt-8 md:pt-12 text-center">
+                                                <p className="text-[11px] text-slate-400 italic">
+                                                    Le paiement immédiat est requis pour cette commande.
                                                 </p>
                                             </div>
                                         )}

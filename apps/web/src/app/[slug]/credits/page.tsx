@@ -203,7 +203,7 @@ export default function CreditsPage() {
                                                                 <span className="text-sm font-medium">
                                                                     {offer.deadline_date 
                                                                         ? `jusqu'au ${new Date(offer.deadline_date).toLocaleDateString()}`
-                                                                        : `Validité : ${offer.validity_days} ${offer.validity_unit === 'months' ? 'mois' : 'jours'}`
+                                                                        : `Validité : ${offer.validity_unit === 'months' ? Math.round((offer.validity_days || 0) / 30) : offer.validity_days} ${offer.validity_unit === 'months' ? 'mois' : 'jours'}`
                                                                     }
                                                                 </span>
                                                             </div>

@@ -722,24 +722,47 @@ export default function AdminSettingsPage() {
                                                     <div className="flex-1">
                                                         <h4 className="font-bold text-slate-900 text-base">Paiement différé / autres moyens de paiement (optionnel)</h4>
                                                         <div className="text-xs text-slate-500 font-normal leading-relaxed mt-1 space-y-1">
-                                                            <p>• En activant l&apos;option de paiement différé, vous permettez à l&apos;utilisateur qui le souhaite de &quot;payer plus tard&quot; sa commande ou de passer par un autre moyen de paiement (chèque, espèces, virement...). Il n&apos;est pas redirigé vers Stripe ou votre URL.</p>
-                                                            <p>• Vous pouvez renseigner vos instructions pour le réglement différé (IBAN, Paypal, délais de paiement) dans le cadre email ci-dessous.</p>
-                                                            <p>• La commande est enregistrée au statut <span className="font-semibold text-orange-500">&quot;En attente&quot;</span> de paiement. Vous confirmez manuellement la réception du paiement dans la Gestion des commandes.</p>
+                                                            <p>• En activant l&apos;option de paiement différé, vous permettez à l&apos;utilisateur qui le souhaite de &quot;payer plus tard&quot; sa commande (chèque, espèces, virement...). Il n&apos;est pas redirigé vers Stripe ou votre URL.</p>
+                                                            <p>• Vous pouvez activer cette option indépendamment pour les offres (boutique) et les événements.</p>
+                                                            <p>• La commande est enregistrée au statut <span className="font-semibold text-orange-500">&quot;En attente&quot;</span> de paiement.</p>
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <button
-                                                    onClick={() => setFormData({ ...formData, allow_pay_later: !formData.allow_pay_later })}
-                                                    className={`relative inline-flex h-9 w-16 items-center rounded-full transition-colors focus:outline-none flex-shrink-0 ml-4 mt-1 ${formData.allow_pay_later ? 'bg-emerald-500' : 'bg-slate-300'}`}
-                                                >
-                                                    <span className={`inline-block h-7 w-7 transform rounded-full bg-white transition-transform ${formData.allow_pay_later ? 'translate-x-8' : 'translate-x-1'}`} />
-                                                </button>
                                             </div>
 
-                                            {formData.allow_pay_later && (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                                                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-semibold text-slate-700">Autoriser pour les offres</span>
+                                                        <span className="text-[10px] text-slate-400">Shop / Boutique</span>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => setFormData({ ...formData, allow_pay_later_offers: !formData.allow_pay_later_offers })}
+                                                        className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none flex-shrink-0 ${formData.allow_pay_later_offers ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                                                    >
+                                                        <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${formData.allow_pay_later_offers ? 'translate-x-6' : 'translate-x-1'}`} />
+                                                    </button>
+                                                </div>
+
+                                                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-semibold text-slate-700">Autoriser pour les évènements</span>
+                                                        <span className="text-[10px] text-slate-400">Stages, Ateliers...</span>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => setFormData({ ...formData, allow_pay_later_events: !formData.allow_pay_later_events })}
+                                                        className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none flex-shrink-0 ${formData.allow_pay_later_events ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                                                    >
+                                                        <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${formData.allow_pay_later_events ? 'translate-x-6' : 'translate-x-1'}`} />
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {(formData.allow_pay_later_offers || formData.allow_pay_later_events) && (
                                                 <div className="pt-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300 border-t border-slate-100">
                                                     <div className="space-y-1">
                                                         <label className="block text-sm font-medium text-slate-700">Instructions de paiement :</label>
+                                                        <p className="text-[11px] text-slate-400 italic">Ces instructions seront envoyées par email lors du choix du paiement différé.</p>
                                                     </div>
                                                     <ReactQuill
                                                         theme="snow"

@@ -112,7 +112,8 @@ class Tenant(Base):
     locations = Column(JSON, default=list) # Liste des noms de salles autorisées
     
     # Options de paiement
-    allow_pay_later = Column(Boolean, default=True)
+    allow_pay_later_offers = Column(Boolean, default=True)
+    allow_pay_later_events = Column(Boolean, default=True)
     payment_redirect_link = Column(String(500), nullable=True)
     pay_now_instructions = Column(Text, nullable=True)
     

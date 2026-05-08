@@ -207,6 +207,23 @@ export default function PlanningPage() {
     }
   };
 
+  const handleWaitlistEvent = async (eventId: string) => {
+    setBookingLoading(eventId);
+    setError(null);
+    setSuccess(null);
+    try {
+      // Pour la liste d'attente, on bypass le checkout et on force pay_later (le paiement se fera à la confirmation)
+      await api.checkoutEvent(eventId, 'member', true);
+      setSuccess("Vous êtes sur liste d'attente ! Vous serez prévenu(e) par email si une place se libère.");
+      setTimeout(() => setSuccess(null), 6000);
+      await refreshData();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Erreur lors de l'inscription en liste d'attente.");
+    } finally {
+      setBookingLoading(null);
+    }
+  };
+
   const isAlreadyBooked = (sessionId: string) => {
     return myBookings.some(b => b.session_id === sessionId && (b.status === 'confirmed' || b.status === 'pending'));
   };
@@ -500,17 +517,38 @@ export default function PlanningPage() {
                     .map((item: any) => {
                       const isEvent = item.uType === 'event';
                       const time = isEvent ? item.event_time : format(parseISO(item.start_time), 'HH:mm');
-                      const booked = isEvent ? item.is_registered : isAlreadyBooked(item.id);
-                      const isWaitlisted = isEvent 
-                        ? (item.registration_status === 'waiting_list')
-                        : myBookings.find(b => b.session_id === item.id && (b.status === 'confirmed' || b.status === 'pending'))?.status === 'pending';
+                      
+                      // Identification du statut réel
+                      const booking = isEvent ? null : myBookings.find(b => b.session_id === item.id);
+                      const currentStatus = isEvent 
+                        ? (item.is_registered ? (item.registration_status || 'confirmed') : null) 
+                        : booking?.status;
+
+                      const startTime = parseISO(isEvent ? `${item.event_date}T${item.event_time}:00` : item.start_time);
+                      const now = new Date();
+                      const isPast = isAfter(now, startTime);
+
+                      // Détermination du badge à afficher
+                      let activeStatusLabel = null;
+                      if (currentStatus) {
+                          if (!isPast) {
+                              // Futur : on n'affiche le badge que si l'inscription est active
+                              if (currentStatus === 'confirmed') activeStatusLabel = 'Inscrit';
+                              else if (currentStatus === 'pending' || currentStatus === 'waiting_list') activeStatusLabel = 'Sur liste';
+                          } else {
+                              // Passé : on affiche le statut réel pour information
+                              if (currentStatus === 'confirmed') activeStatusLabel = 'Inscrit';
+                              else if (currentStatus === 'pending' || currentStatus === 'waiting_list') activeStatusLabel = 'Sur liste';
+                              else if (currentStatus === 'cancelled') activeStatusLabel = 'Annulé';
+                              else if (currentStatus === 'absent') activeStatusLabel = 'Absent';
+                          }
+                      }
+
                       const spotsLeft = isEvent ? (item.max_places - (item.registrations_count || 0)) : item.available_spots;
                       const isFull = isEvent ? (spotsLeft <= 0) : item.is_full;
                       const canWaitlist = item.allow_waitlist && isFull;
                       
-                      const now = new Date();
                       const limit = (isEvent ? (tenant?.registration_limit_mins || 0) : (tenant?.registration_limit_mins || 0));
-                      const startTime = parseISO(isEvent ? `${item.event_date}T${item.event_time}:00` : item.start_time);
                       const isClosed = isAfter(now, new Date(startTime.getTime() - limit * 60000));
                       
                       const isExpanded = !!expandedItems[item.id];
@@ -521,6 +559,16 @@ export default function PlanningPage() {
                           ...prev,
                           [item.id]: !prev[item.id]
                         }));
+                      };
+
+                      const getStatusBadgeStyle = (label: string) => {
+                          switch (label) {
+                              case 'Inscrit': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
+                              case 'Sur liste': return 'bg-blue-50 text-blue-600 border-blue-100';
+                              case 'Annulé': return 'bg-yellow-50 text-yellow-600 border-yellow-100';
+                              case 'Absent': return 'bg-orange-50 text-orange-600 border-orange-100';
+                              default: return 'bg-slate-50 text-slate-400 border-slate-100';
+                          }
                       };
 
                       return (
@@ -541,7 +589,6 @@ export default function PlanningPage() {
                               </div>
                             </div>
                           </div>
-
                           {/* 2. RÉSUMÉ : Durée, Crédits | Bouton + d'infos */}
                           <div className="px-5 py-1 flex items-center justify-between gap-4">
                             <div className="flex items-center gap-6">
@@ -604,14 +651,10 @@ export default function PlanningPage() {
                             </span>
 
                             <div className="shrink-0">
-                                {booked ? (
-                                   isWaitlisted ? (
-                                     <div className="py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-amber-50 text-amber-600 border border-amber-100 shadow-sm w-[90px]">Sur liste</div>
-                                   ) : (
-                                     <div className="py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm w-[90px]">
-                                        {isEvent ? 'Inscrit' : 'Inscrit'}
-                                     </div>
-                                   )
+                                {activeStatusLabel ? (
+                                    <div className={`py-2 rounded-xl text-[11px] font-medium flex items-center justify-center border shadow-sm w-[90px] ${getStatusBadgeStyle(activeStatusLabel)}`}>
+                                        {activeStatusLabel}
+                                    </div>
                                 ) : isClosed ? (
                                   <div className="py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-slate-100 text-slate-400 border border-slate-200 cursor-default opacity-50 w-[90px]">
                                     Fermé
@@ -620,12 +663,13 @@ export default function PlanningPage() {
                                    <div className="flex items-center gap-3">
                                        <span className="text-[10px] md:text-xs text-slate-500 italic font-medium">S'inscrire en liste d'attente ?</span>
                                        {isEvent ? (
-                                         <Link 
-                                             href={`/${slug}/events/checkout/${item.id}`}
-                                             className="px-4 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium rounded-full text-[11px] transition-all active:scale-95 border border-amber-200/50"
-                                         >
-                                             oui
-                                         </Link>
+                                          <button 
+                                              disabled={bookingLoading === item.id}
+                                              onClick={() => handleWaitlistEvent(item.id)}
+                                              className="px-4 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium rounded-full text-[11px] transition-all active:scale-95 border border-amber-200/50"
+                                          >
+                                              {bookingLoading === item.id ? "..." : "oui"}
+                                          </button>
                                        ) : (
                                          <button 
                                              disabled={bookingLoading === item.id}
@@ -756,21 +800,14 @@ export default function PlanningPage() {
                   onClick={handleCancelBooking}
                   className="flex-1 py-4 bg-rose-500 text-white font-medium rounded-2xl hover:bg-rose-600 transition-all shadow-xl shadow-rose-100/50 text-xs disabled:opacity-50"
                 >
-                  {bookingLoading === bookingToCancel.id ? "Annulation..." : "Oui, annuler"}
+                  {bookingLoading === bookingToCancel.id ? "..." : "Annuler"}
                 </button>
               </div>
            </div>
         </div>
       )}
 
-      <BottomNav userRole={user?.role} />
-
-      <style jsx global>{`
-          @supports (-webkit-touch-callout: none) {
-              .safe-top { padding-top: env(safe-area-inset-top); }
-              .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-          }
-      `}</style>
+      {!isAdminMode && <BottomNav />}
     </div>
   );
 }

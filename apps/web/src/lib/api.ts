@@ -240,7 +240,8 @@ export interface Tenant {
   registration_limit_mins: number;
   cancellation_limit_mins: number;
   confirmation_email_body?: string;
-  allow_pay_later: boolean;
+  allow_pay_later_offers: boolean;
+  allow_pay_later_events: boolean;
   payment_redirect_link?: string;
   pay_now_instructions?: string;
   locations?: string[];
@@ -715,7 +716,8 @@ export const api = {
     registration_limit_mins: number;
     cancellation_limit_mins: number;
     confirmation_email_body: string;
-    allow_pay_later: boolean;
+    allow_pay_later_offers: boolean;
+    allow_pay_later_events: boolean;
     payment_redirect_link: string;
     pay_now_instructions: string;
     locations: string[];

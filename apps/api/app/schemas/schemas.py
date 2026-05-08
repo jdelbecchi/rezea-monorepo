@@ -148,7 +148,8 @@ class TenantSettingsUpdate(BaseModel):
     registration_limit_mins: Optional[int] = Field(None, ge=0)
     cancellation_limit_mins: Optional[int] = Field(None, ge=0)
     confirmation_email_body: Optional[str] = None
-    allow_pay_later: Optional[bool] = None
+    allow_pay_later_offers: Optional[bool] = None
+    allow_pay_later_events: Optional[bool] = None
     payment_redirect_link: Optional[str] = None
     pay_now_instructions: Optional[str] = None
     locations: Optional[List[str]] = Field(default_factory=list)
@@ -180,7 +181,8 @@ class TenantResponse(TenantBase):
     registration_limit_mins: int = 0
     cancellation_limit_mins: int = 45
     confirmation_email_body: Optional[str] = None
-    allow_pay_later: bool = True
+    allow_pay_later_offers: bool = True
+    allow_pay_later_events: bool = True
     payment_redirect_link: Optional[str] = None
     pay_now_instructions: Optional[str] = None
     locations: Optional[List[str]] = Field(default_factory=list)

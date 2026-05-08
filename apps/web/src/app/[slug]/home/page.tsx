@@ -226,10 +226,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
 
                 <div className="flex items-center gap-2">
                   {/* Desktop Profile Access */}
-                  <Link href={`${basePath}/profile`} className="hidden md:flex items-center gap-3 group">
-                      <div className="flex flex-col items-end">
-                          <span className="text-[10px] font-medium text-slate-400 group-hover:text-slate-600 transition-colors">Mon profil</span>
-                      </div>
+                  <Link href={`${basePath}/profile`} className="hidden md:flex items-center group">
                       <div className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center shadow-sm border border-slate-200 group-hover:bg-white group-hover:shadow-md transition-all">
                           <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" xmlns="http://www.w3.org/2000/svg">
                               <path d="M20 21C20 19.6044 20 18.9067 19.8278 18.3389C19.4405 17.0612 18.4388 16.0595 17.1611 15.6722C16.5933 15.5 15.8956 15.5 14.5 15.5H9.5C8.10442 15.5 7.40665 15.5 6.83886 15.6722C5.56116 16.0595 4.55953 17.0612 4.17224 18.3389C4 18.9067 4 19.6044 4 21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
