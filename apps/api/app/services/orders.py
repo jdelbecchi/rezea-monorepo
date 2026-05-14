@@ -60,14 +60,17 @@ async def compute_credits_used(db: AsyncSession, user_id, tenant_id, start_date:
     )
     return result.scalar() or 0
 
-def build_order_response(order: Order, credits_used: int) -> OrderResponse:
+def build_order_response(order: Order, credits_used: int, global_balance: Optional[float] = None, global_credits_used: Optional[int] = None) -> OrderResponse:
     """
     Builds the OrderResponse with calculated balance and dynamic status.
     This logic MUST be shared between Admin and User Shop APIs.
     """
-    balance = None
-    if not order.is_unlimited and order.credits_total is not None:
+    balance = global_balance
+    if balance is None and not order.is_unlimited and order.credits_total is not None:
         balance = order.credits_total - credits_used
+    
+    # Use global_credits_used if provided, else fall back to the order-specific one
+    effective_credits_used = global_credits_used if global_credits_used is not None else credits_used
     
     # Logic: use manual status if present, otherwise calculate automatic one
     today = date.today()
@@ -146,7 +149,7 @@ def build_order_response(order: Order, credits_used: int) -> OrderResponse:
         offer_price_recurring_cents=order.price_recurring_cents,
         offer_price_lump_sum_cents=order.price_cents if order.featured_pricing == "lump_sum" else None,
         offer_recurring_count=order.recurring_count,
-        credits_used=credits_used,
+        credits_used=effective_credits_used,
         balance=balance,
         status=display_status,
         received_cents=received_cents,

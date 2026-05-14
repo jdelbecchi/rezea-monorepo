@@ -174,8 +174,21 @@ async def shop_checkout(
         message = tenant.pay_now_instructions or "Vous allez être redirigé vers l'interface de paiement."
         redirect_url = tenant.payment_redirect_link
 
-    # Use shared service to build response (new orders have 0 credits used)
-    order_res = order_service.build_order_response(order, credits_used=0)
+    # Get global balance
+    account_res = await db.execute(
+        select(CreditAccount).where(CreditAccount.user_id == order.user_id, CreditAccount.tenant_id == order.tenant_id)
+    )
+    account = account_res.scalar_one_or_none()
+    global_balance = float(account.balance) if account else 0.0
+    global_used = int(account.total_used) if account else 0
+
+    # Use shared service to build response
+    order_res = order_service.build_order_response(
+        order, 
+        credits_used=0,
+        global_balance=global_balance,
+        global_credits_used=global_used
+    )
 
     return ShopCheckoutResponse(
         order=order_res,
@@ -208,12 +221,23 @@ async def list_my_orders(
     
     orders = result.unique().scalars().all()
     
+    # Get global balance for the user
+    account_res = await db.execute(
+        select(CreditAccount).where(CreditAccount.user_id == user_id, CreditAccount.tenant_id == tenant_id)
+    )
+    account = account_res.scalar_one_or_none()
+    global_balance = float(account.balance) if account else 0.0
+    global_used = int(account.total_used) if account else 0
+
     # Mapper vers OrderResponse en utilisant le service partagé
-    res = []
-    for order in orders:
-        credits_used = await order_service.compute_credits_used(
-            db, order.user_id, order.tenant_id, order.start_date, order.end_date
+    res = [
+        order_service.build_order_response(
+            order, 
+            credits_used=0, 
+            global_balance=global_balance,
+            global_credits_used=global_used
         )
-        res.append(order_service.build_order_response(order, credits_used))
+        for order in orders
+    ]
     
     return res

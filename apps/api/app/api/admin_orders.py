@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.db.session import get_db
-from app.models.models import User, UserRole, Order, Offer, Booking, BookingStatus, OrderPaymentStatus, Installment
+from app.models.models import User, UserRole, Order, Offer, Booking, BookingStatus, OrderPaymentStatus, Installment, CreditAccount
 from app.schemas.schemas import OrderCreate, OrderUpdate, OrderResponse, InstallmentResponse
 from app.services import orders as order_service
 
@@ -96,12 +96,31 @@ async def list_orders(
     )
     orders = result.unique().scalars().all()
 
+    # Fetch all credit accounts for these users to show global balance
+    user_ids = {o.user_id for o in orders}
+    accounts_map = {}
+    if user_ids:
+        accounts_result = await db.execute(
+            select(CreditAccount).where(
+                CreditAccount.user_id.in_(user_ids), 
+                CreditAccount.tenant_id == tenant_id
+            )
+        )
+        # Use string keys to avoid UUID object comparison issues
+        accounts_map = {str(a.user_id): a for a in accounts_result.scalars().all()}
+
     responses = []
     for order in orders:
-        credits_used = await order_service.compute_credits_used(
-            db, order.user_id, order.tenant_id, order.start_date, order.end_date
-        )
-        responses.append(order_service.build_order_response(order, credits_used))
+        account = accounts_map.get(str(order.user_id))
+        global_balance = account.balance if account else None
+        global_used = int(account.total_used) if account else 0
+        
+        responses.append(order_service.build_order_response(
+            order, 
+            credits_used=0, 
+            global_balance=global_balance,
+            global_credits_used=global_used
+        ))
 
     return responses
 
@@ -215,10 +234,20 @@ async def create_order(
     )
     order = result.unique().scalar_one()
 
-    credits_used = await order_service.compute_credits_used(
-        db, order.user_id, order.tenant_id, order.start_date, order.end_date
+    # Get global balance
+    account_res = await db.execute(
+        select(CreditAccount).where(CreditAccount.user_id == order.user_id, CreditAccount.tenant_id == tenant_id)
     )
-    return order_service.build_order_response(order, credits_used)
+    account = account_res.scalar_one_or_none()
+    global_balance = float(account.balance) if account else 0.0
+    global_used = int(account.total_used) if account else 0
+
+    return order_service.build_order_response(
+        order, 
+        credits_used=0,
+        global_balance=global_balance,
+        global_credits_used=global_used
+    )
 
 
 # ---- UPDATE ----
@@ -288,10 +317,20 @@ async def update_order(
     )
     order = result.unique().scalar_one()
 
-    credits_used = await order_service.compute_credits_used(
-        db, order.user_id, order.tenant_id, order.start_date, order.end_date
+    # Get global balance
+    account_res = await db.execute(
+        select(CreditAccount).where(CreditAccount.user_id == order.user_id, CreditAccount.tenant_id == tenant_id)
     )
-    return order_service.build_order_response(order, credits_used)
+    account = account_res.scalar_one_or_none()
+    global_balance = float(account.balance) if account else 0.0
+    global_used = int(account.total_used) if account else 0
+
+    return order_service.build_order_response(
+        order, 
+        credits_used=0,
+        global_balance=global_balance,
+        global_credits_used=global_used
+    )
 
 
 # ---- DELETE ----
