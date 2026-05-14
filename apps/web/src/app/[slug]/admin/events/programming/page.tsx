@@ -23,6 +23,7 @@ interface EventItem {
     location: string | null;
     description: string | null;
     is_active: boolean;
+    payment_link?: string | null;
 }
 
 const emptyForm = {
@@ -37,6 +38,7 @@ const emptyForm = {
     location: "",
     description: "",
     allow_waitlist: true,
+    payment_link: "",
 };
 
 const formatPrice = (cents: number) => {
@@ -125,6 +127,7 @@ export default function AdminEventsProgrammingPage() {
                 location: formData.location || null,
                 description: formData.description || null,
                 allow_waitlist: formData.allow_waitlist,
+                payment_link: formData.payment_link || null,
             };
 
             if (editingId) {
@@ -158,6 +161,7 @@ export default function AdminEventsProgrammingPage() {
             location: event.location || "",
             description: event.description || "",
             allow_waitlist: event.allow_waitlist,
+            payment_link: event.payment_link || "",
         });
         setEditingId(event.id);
         setShowForm(true);
@@ -630,6 +634,31 @@ export default function AdminEventsProgrammingPage() {
                                                 placeholder="0.00"
                                             />
                                         </div>
+                                    </div>
+                                </div>
+
+                                {/* Section: Paiement Spécifique */}
+                                <div className="space-y-4">
+                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Paiement spécifique (Optionnel)</h4>
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-medium text-slate-700">Lien de paiement externe dédié</label>
+                                        <div className="relative group">
+                                            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                                </svg>
+                                            </div>
+                                            <input
+                                                type="url"
+                                                value={formData.payment_link}
+                                                onChange={e => setFormData({ ...formData, payment_link: e.target.value })}
+                                                placeholder="Ex: https://www.helloasso.com/..."
+                                                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all hover:border-gray-300"
+                                            />
+                                        </div>
+                                        <p className="text-[11px] text-slate-400 italic font-normal tracking-tight">
+                                            Si renseigné, l'utilisateur sera redirigé vers ce lien pour payer cet évènement. Laisse vide pour utiliser les paramètres par défaut de l'établissement.
+                                        </p>
                                     </div>
                                 </div>
                             </form>

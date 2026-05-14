@@ -35,8 +35,8 @@ export default function EventCheckoutPage() {
                 setTenant(tenantData);
                 setUser(userData);
                 
-                // If payment link is missing, force payLater
-                if (!tenantData.payment_redirect_link) {
+                // If both global and event-specific payment links are missing, force payLater
+                if (!tenantData.payment_redirect_link && !eventData.payment_link) {
                     setPayLater(true);
                 }
             } catch (err) {
@@ -54,6 +54,15 @@ export default function EventCheckoutPage() {
         setError(null);
         try {
             await api.checkoutEvent(eventId, tariff, payLater);
+            
+            if (!payLater) {
+                const finalLink = event?.payment_link || tenant?.payment_redirect_link;
+                if (finalLink) {
+                    window.location.href = finalLink;
+                    return;
+                }
+            }
+
             setShowSuccess(true);
         } catch (err: any) {
             setError(err.response?.data?.detail || "Une erreur est survenue lors de l'inscription.");
@@ -224,7 +233,7 @@ export default function EventCheckoutPage() {
                             {/* Confirmation Section */}
                             <div className="mt-10 md:mt-16 space-y-6">
                                 <div className="space-y-4">
-                                    {tenant?.payment_redirect_link ? (
+                                    {(tenant?.payment_redirect_link || event?.payment_link) ? (
                                         <>
                                             {tenant.allow_pay_later_events ? (
                                                 <>
@@ -307,7 +316,7 @@ export default function EventCheckoutPage() {
                             <p className="text-slate-500 text-sm leading-relaxed">
                                 Votre inscription à l'événement <span className="font-semibold" style={{ color: tenant?.primary_color || "#2563eb" }}>{event?.title}</span> est bien enregistrée.
                             </p>
-                            {!tenant?.payment_redirect_link && (
+                            {!(tenant?.payment_redirect_link || event?.payment_link) && (
                                 <p className="text-xs text-slate-400 mt-2 italic leading-relaxed">
                                     Le règlement sera à effectuer selon les modalités de l'établissement.
                                 </p>
@@ -318,7 +327,7 @@ export default function EventCheckoutPage() {
                             onClick={() => router.push(`/${params.slug}/planning`)}
                             className="w-full py-4 rounded-2xl bg-slate-900 text-white font-medium text-sm hover:bg-slate-800 transition-all duration-300 shadow-xl"
                         >
-                            {tenant?.payment_redirect_link ? "Retour au planning" : "Retour au planning"}
+                            {(tenant?.payment_redirect_link || event?.payment_link) ? "Retour au planning" : "Retour au planning"}
                         </button>
                     </div>
                 </div>

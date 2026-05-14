@@ -456,6 +456,7 @@ class EventCreate(BaseModel):
     location: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = None
     allow_waitlist: bool = True
+    payment_link: Optional[str] = None
 
 
 class EventUpdate(BaseModel):
@@ -472,6 +473,7 @@ class EventUpdate(BaseModel):
     description: Optional[str] = None
     allow_waitlist: Optional[bool] = None
     is_active: Optional[bool] = None
+    payment_link: Optional[str] = None
 
 
 class EventResponse(BaseModel):
@@ -494,6 +496,7 @@ class EventResponse(BaseModel):
     description: Optional[str] = None
     allow_waitlist: bool = True
     is_active: bool = True
+    payment_link: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

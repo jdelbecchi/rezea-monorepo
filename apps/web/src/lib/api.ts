@@ -211,6 +211,7 @@ export interface Event {
   registration_status?: string;
   location?: string;
   allow_waitlist: boolean;
+  payment_link?: string | null;
   waitlist_count?: number;
   waitlist_users?: { first_name: string; last_name: string; email: string }[];
   created_at?: string;
@@ -794,6 +795,7 @@ export const api = {
     location?: string | null;
     description?: string | null;
     allow_waitlist?: boolean;
+    payment_link?: string | null;
   }) => {
     const response = await apiClient.post('/api/admin/events', data);
     return response.data;

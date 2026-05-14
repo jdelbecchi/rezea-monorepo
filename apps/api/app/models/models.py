@@ -420,6 +420,7 @@ class Booking(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     cancelled_at = Column(DateTime)
+    reminder_sent_at = Column(DateTime, nullable=True)
     
     # Relations
     user = relationship("User", back_populates="bookings")
@@ -493,6 +494,7 @@ class Event(Base):
     description = Column(Text)
     allow_waitlist = Column(Boolean, default=True)
     is_active = Column(Boolean, default=True)
+    payment_link = Column(String(500), nullable=True) # Lien de paiement dédié à l'événement
 
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -543,6 +545,7 @@ class EventRegistration(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     cancelled_at = Column(DateTime)
+    reminder_sent_at = Column(DateTime, nullable=True)
 
     # Relations
     user = relationship("User")

@@ -193,6 +193,26 @@ async def auto_promote_event_waitlist(db: AsyncSession, tenant_id, event_id):
     if event:
         event.registrations_count = (event.registrations_count or 0) + 1
 
+    # Load user for email
+    user_res = await db.execute(
+        select(User).where(User.id == next_reg.user_id)
+    )
+    user = user_res.scalar_one_or_none()
+    
+    # Send email
+    if user:
+        try:
+            from app.models.models import Tenant
+            from app.services.email_service import EmailService
+            tenant_res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+            tenant = tenant_res.scalar_one_or_none()
+            if tenant:
+                await EmailService.send_event_promotion(user, tenant, event, next_reg)
+        except Exception as e:
+            from structlog import get_logger
+            logger = get_logger()
+            logger.error("❌ Erreur lors de l'envoi de l'email de promotion", error=str(e), reg_id=str(next_reg.id))
+
     return next_reg
 
 

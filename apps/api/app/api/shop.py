@@ -163,6 +163,14 @@ async def shop_checkout(
         .options(joinedload(Order.user), joinedload(Order.offer), selectinload(Order.installments))
     )
     order = result.unique().scalar_one()
+    
+    # 3.8 Envoi de l'email de confirmation
+    try:
+        from app.services.email_service import EmailService
+        await EmailService.send_order_receipt(order.user, tenant, order, offer.name)
+    except Exception as e:
+        # On log l'erreur mais on ne bloque pas la réponse API
+        logger.error("❌ Erreur lors de l'envoi de l'email de confirmation", error=str(e), order_id=str(order.id))
 
     # Message et URL selon le mode de paiement
     if effective_pay_later:

@@ -1,0 +1,31 @@
+{% extends "base_email.html" %}
+
+{% block content %}
+<h2 style="font-size: 20px; color: #059669; margin-bottom: 10px;">Bonne nouvelle ! Une place s'est libérée</h2>
+<p>Bonjour {{ first_name }},</p>
+<p>Vous étiez sur liste d'attente pour l'évènement suivant chez <strong>{{ tenant_name }}</strong>, et une place vient de se libérer pour vous !</p>
+
+<div style="background-color: #ecfdf5; border-radius: 12px; padding: 25px; margin: 20px 0; border-left: 4px solid #059669;">
+    <h3 style="margin: 0 0 10px 0; font-size: 18px; color: #065f46;">{{ event_title }}</h3>
+    <p style="margin: 5px 0; font-size: 14px; color: #065f46;">
+        📅 <strong>{{ event_date }}</strong> à <strong>{{ event_time }}</strong>
+    </p>
+</div>
+
+<p>Votre statut a été mis à jour et votre place est désormais réservée.</p>
+
+{% if payment_status != 'paid' and payment_link %}
+    <p><strong>Dernière étape :</strong> Pour confirmer définitivement votre participation, merci de procéder au règlement via le lien ci-dessous :</p>
+    <p style="text-align: center;">
+        <a href="{{ payment_link }}" class="button" style="color: #ffffff;">Régler mon inscription</a>
+    </p>
+{% endif %}
+
+<div style="height: 1px; background-color: #e2e8f0; margin: 25px 0;"></div>
+
+<p style="text-align: center;">
+    <a href="{{ dashboard_url }}" style="color: {{ primary_color or '#0f172a' }}; font-weight: 600; text-decoration: none; font-size: 15px;">Voir les détails dans mon espace →</a>
+</p>
+
+<p style="margin-top: 40px;">À très bientôt !<br>L'équipe {{ tenant_name }}</p>
+{% endblock %}

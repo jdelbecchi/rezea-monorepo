@@ -1,0 +1,56 @@
+{% extends "base_email.html" %}
+
+{% block content %}
+{% if is_waitlist %}
+    <h2 style="font-size: 20px; color: #0f172a; margin-bottom: 10px;">Inscription sur liste d'attente</h2>
+    <p>Bonjour {{ first_name }},</p>
+    <p>Cet évènement est actuellement complet. Nous avons bien enregistré votre inscription sur la <strong>liste d'attente</strong> pour l'évènement suivant :</p>
+{% else %}
+    <h2 style="font-size: 20px; color: #0f172a; margin-bottom: 10px;">Votre inscription est confirmée !</h2>
+    <p>Bonjour {{ first_name }},</p>
+    <p>Nous avons bien enregistré votre inscription pour l'évènement suivant chez <strong>{{ tenant_name }}</strong> :</p>
+{% endif %}
+
+<div style="background-color: #f8fafc; border-radius: 12px; padding: 25px; margin: 20px 0; border-left: 4px solid {{ primary_color or '#0f172a' }};">
+    <h3 style="margin: 0 0 10px 0; font-size: 18px; color: #0f172a;">{{ event_title }}</h3>
+    <p style="margin: 5px 0; font-size: 14px; color: #475569;">
+        📅 <strong>{{ event_date }}</strong> à <strong>{{ event_time }}</strong>
+    </p>
+    
+    <div style="height: 1px; background-color: #e2e8f0; margin: 15px 0;"></div>
+    
+    <p style="margin: 0; font-size: 13px;">
+        Statut : 
+        {% if is_waitlist %}
+            <span style="color: #d97706; font-weight: 600;">Sur liste d'attente</span>
+        {% elif payment_status == 'paid' %}
+            <span style="color: #059669; font-weight: 600;">Inscrit - Payé ({{ price }})</span>
+        {% elif payment_status == 'a_valider' %}
+            <span style="color: #d97706; font-weight: 600;">Inscrit - À valider ({{ price }})</span>
+        {% else %}
+            <span style="color: #dc2626; font-weight: 600;">Inscrit - En attente de règlement ({{ price }})</span>
+        {% endif %}
+    </p>
+</div>
+
+{% if not is_waitlist and payment_status != 'paid' and payment_link %}
+    <p>Pour finaliser votre inscription, merci de procéder au règlement via le lien ci-dessous :</p>
+    <p style="text-align: center;">
+        <a href="{{ payment_link }}" class="button" style="color: #ffffff;">Régler mon inscription</a>
+    </p>
+    <p style="font-size: 12px; color: #94a3b8; margin-top: 15px; font-style: italic; text-align: center;">
+        Note : Votre place n'est définitivement réservée qu'après réception du paiement.
+    </p>
+{% elif is_waitlist %}
+    <p>Si une place se libère, vous recevrez automatiquement un email vous invitant à confirmer votre participation et à procéder au règlement.</p>
+{% endif %}
+
+<div style="height: 1px; background-color: #e2e8f0; margin: 25px 0;"></div>
+
+<p>Vous pouvez retrouver vos évènements et gérer vos réservations depuis votre espace personnel.</p>
+<p style="text-align: center;">
+    <a href="{{ dashboard_url }}" style="color: {{ primary_color or '#0f172a' }}; font-weight: 600; text-decoration: none; font-size: 15px;">Accéder à mon espace →</a>
+</p>
+
+<p style="margin-top: 40px;">Nous avons hâte de vous y voir !<br>L'équipe {{ tenant_name }}</p>
+{% endblock %}

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: #f8fafc;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background-color: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        .header {
+            padding: 40px 20px;
+            text-align: center;
+            background-color: {{ primary_color or '#0f172a' }};
+        }
+        .header img {
+            max-width: 120px;
+            height: auto;
+        }
+        .content {
+            padding: 40px;
+            color: #1e293b;
+            line-height: 1.6;
+        }
+        .footer {
+            padding: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #64748b;
+            background-color: #f1f5f9;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: {{ primary_color or '#0f172a' }};
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            margin-top: 20px;
+        }
+        .footer-links {
+            margin-top: 15px;
+        }
+        .footer-links a {
+            color: #64748b;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+        .divider {
+            height: 1px;
+            background-color: #e2e8f0;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            {% if logo_url %}
+                <img src="{{ logo_url }}" alt="{{ tenant_name }}">
+            {% else %}
+                <h1 style="color: #ffffff; margin: 0; font-size: 24px;">{{ tenant_name }}</h1>
+            {% endif %}
+        </div>
+        
+        <div class="content">
+            {% block content %}{% endblock %}
+        </div>
+        
+        <div class="footer">
+            <p><strong>{{ tenant_name }}</strong></p>
+            {% if legal_address %}
+                <p>{{ legal_address }}</p>
+            {% endif %}
+            <div class="footer-links">
+                {% if instagram_handle %}
+                    <a href="https://instagram.com/{{ instagram_handle }}">Instagram</a>
+                {% endif %}
+                {% if facebook_handle %}
+                    <a href="https://facebook.com/{{ facebook_handle }}">Facebook</a>
+                {% endif %}
+            </div>
+            <div class="divider"></div>
+            <p style="font-size: 11px; opacity: 0.8;">
+                Vous recevez cet email car vous êtes membre de {{ tenant_name }}.<br>
+                <a href="{{ settings_url }}" style="color: #64748b;">Gérer mes préférences</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

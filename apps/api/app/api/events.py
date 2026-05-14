@@ -285,6 +285,20 @@ async def event_checkout(
     await db.commit()
     await db.refresh(registration)
     
+    # 5. Envoi de l'email de confirmation
+    try:
+        from app.models.models import User
+        from app.services.email_service import EmailService
+        user_res = await db.execute(select(User).where(User.id == user_id))
+        user = user_res.scalar_one_or_none()
+        if user:
+            await EmailService.send_event_registration(user, tenant, event, registration)
+    except Exception as e:
+        # On log l'erreur mais on ne bloque pas la réponse API
+        import structlog
+        logger = structlog.get_logger()
+        logger.error("❌ Erreur lors de l'envoi de l'email de confirmation d'évènement", error=str(e), reg_id=str(registration.id))
+    
     return {
         "registration_id": registration.id,
         "message": "Inscription initialisée avec succès",

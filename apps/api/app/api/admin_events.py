@@ -212,11 +212,39 @@ async def update_event(
         hours, minutes = map(int, update_dict["event_time"].split(":"))
         update_dict["event_time"] = time(hours, minutes)
 
+    # Check if date/time changed to notify users
+    date_changed = "event_date" in update_dict and update_dict["event_date"] != event.event_date
+    time_changed = "event_time" in update_dict and update_dict["event_time"] != event.event_time
+
     for key, value in update_dict.items():
         setattr(event, key, value)
 
     await db.commit()
     await db.refresh(event)
+
+    if date_changed or time_changed:
+        try:
+            from app.models.models import Tenant
+            from app.services.email_service import EmailService
+            
+            # Load registrations with users
+            res = await db.execute(
+                select(EventRegistration)
+                .where(EventRegistration.event_id == event.id, EventRegistration.status != EventRegistrationStatus.CANCELLED)
+                .options(joinedload(EventRegistration.user))
+            )
+            regs = res.scalars().all()
+            users = [r.user for r in regs if r.user]
+            
+            tenant_res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+            tenant = tenant_res.scalar_one_or_none()
+            
+            if users and tenant:
+                await EmailService.send_bulk_event_modification(users, tenant, event)
+        except Exception as e:
+            from structlog import get_logger
+            logger = get_logger()
+            logger.error("❌ Erreur lors de l'envoi des emails de modification", error=str(e), event_id=str(event.id))
 
     return {
         **{c.name: getattr(event, c.name) for c in event.__table__.columns},
@@ -246,12 +274,29 @@ async def cancel_event(
     event.is_active = False
     
     # Marquer les inscriptions comme annulées par l'événement
+    users_to_notify = []
     for reg in event.registrations:
         if reg.status in [EventRegistrationStatus.CONFIRMED, EventRegistrationStatus.PENDING_PAYMENT]:
             reg.status = EventRegistrationStatus.EVENT_CANCELLED
+            if reg.user:
+                users_to_notify.append(reg.user)
     
     await db.commit()
     await db.refresh(event)
+
+    # Envoi des emails d'annulation
+    if users_to_notify:
+        try:
+            from app.models.models import Tenant
+            from app.services.email_service import EmailService
+            tenant_res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+            tenant = tenant_res.scalar_one_or_none()
+            if tenant:
+                await EmailService.send_bulk_event_cancellation(users_to_notify, tenant, event)
+        except Exception as e:
+            from structlog import get_logger
+            logger = get_logger()
+            logger.error("❌ Erreur lors de l'envoi des emails d'annulation", error=str(e), event_id=str(event.id))
 
     return {
         **{c.name: getattr(event, c.name) for c in event.__table__.columns},

@@ -31,6 +31,11 @@ async def lifespan(app: FastAPI):
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
     
+    # Lancement des tâches de fond
+    import asyncio
+    from app.services.tasks import run_background_tasks
+    asyncio.create_task(run_background_tasks())
+    
     yield
     
     logger.info("🛑 Arrêt de REZEA API")

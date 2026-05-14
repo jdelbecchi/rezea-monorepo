@@ -1,0 +1,33 @@
+{% extends "base_email.html" %}
+
+{% block content %}
+<h2 style="font-size: 20px; color: #0f172a; margin-bottom: 10px;">À demain ! 🕒</h2>
+<p>Bonjour {{ first_name }},</p>
+<p>C'est déjà demain ! Nous avons hâte de vous retrouver chez <strong>{{ tenant_name }}</strong> pour votre {{ activity_type_label }} :</p>
+
+<div style="background-color: #f8fafc; border-radius: 12px; padding: 25px; margin: 20px 0; border-left: 4px solid {{ primary_color or '#0f172a' }};">
+    <h3 style="margin: 0 0 10px 0; font-size: 18px; color: #0f172a;">{{ title }}</h3>
+    <p style="margin: 5px 0; font-size: 14px; color: #475569;">
+        📅 <strong>{{ date }}</strong> à <strong>{{ time }}</strong>
+    </p>
+    {% if location %}
+        <p style="margin: 5px 0; font-size: 13px; color: #64748b;">
+            📍 {{ location }}
+        </p>
+    {% endif %}
+</div>
+
+<p>Petit rappel : si vous avez un empêchement, merci de libérer votre place dès que possible depuis votre espace client pour en faire profiter d'autres membres.</p>
+
+<div style="height: 1px; background-color: #e2e8f0; margin: 25px 0;"></div>
+
+<p style="text-align: center;">
+    <a href="{{ dashboard_url }}" style="color: {{ primary_color or '#0f172a' }}; font-weight: 600; text-decoration: none; font-size: 15px;">Accéder à mon planning →</a>
+</p>
+
+<p style="margin-top: 40px;">On se dit à demain !<br>L'équipe {{ tenant_name }}</p>
+
+<p style="font-size: 10px; color: #94a3b8; margin-top: 20px; border-top: 1px solid #f1f5f9; padding-top: 10px; font-style: italic;">
+    Note : Vous recevez ce rappel car l'option est activée dans votre profil. Vous pouvez la désactiver à tout moment dans vos réglages.
+</p>
+{% endblock %}

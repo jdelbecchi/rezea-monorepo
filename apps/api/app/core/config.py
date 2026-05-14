@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
     
+    # Frontend
+    FRONTEND_URL: str = "http://localhost:3000"
+    
     # Email (MailerSend)
     MAILERSEND_API_KEY: str = ""
     MAILERSEND_FROM_EMAIL: str = "noreply@rezea.app"

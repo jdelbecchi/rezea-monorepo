@@ -1,0 +1,45 @@
+{% extends "base_email.html" %}
+
+{% block content %}
+<h2 style="font-size: 20px; color: #0f172a; margin-bottom: 10px;">Merci pour votre commande !</h2>
+<p>Bonjour {{ first_name }},</p>
+<p>Nous vous confirmons la réception de votre commande chez <strong>{{ tenant_name }}</strong>.</p>
+
+<div style="background-color: #f8fafc; border-radius: 12px; padding: 20px; margin: 20px 0;">
+    <p style="margin: 0; font-size: 14px; color: #64748b;">Récapitulatif :</p>
+    <p style="margin: 5px 0; font-size: 16px; font-weight: 600;">{{ offer_name }}</p>
+    <p style="margin: 5px 0; font-size: 18px; font-weight: 700; color: {{ primary_color or '#0f172a' }};">
+        {{ price }}
+    </p>
+    
+    <div style="height: 1px; background-color: #e2e8f0; margin: 15px 0;"></div>
+    
+    <p style="margin: 0; font-size: 13px;">
+        Statut du paiement : 
+        {% if payment_status == 'paid' %}
+            <span style="color: #059669; font-weight: 600;">Payé</span>
+        {% elif payment_status == 'a_valider' %}
+            <span style="color: #d97706; font-weight: 600;">À valider</span>
+        {% else %}
+            <span style="color: #dc2626; font-weight: 600;">En attente</span>
+        {% endif %}
+    </p>
+</div>
+
+{% if payment_status != 'paid' and payment_link %}
+    <p>Pour finaliser votre règlement, vous pouvez utiliser le lien suivant :</p>
+    <a href="{{ payment_link }}" class="button" style="color: #ffffff;">Régler ma commande</a>
+    <p style="font-size: 12px; color: #94a3b8; margin-top: 15px; font-style: italic;">
+        Si vous avez déjà effectué le règlement par un autre moyen (chèque, espèces, virement), ignorez ce lien.
+    </p>
+{% endif %}
+
+<div style="height: 1px; background-color: #e2e8f0; margin: 25px 0;"></div>
+
+<p>Vous pouvez retrouver tous les détails de votre commande et vos crédits dans votre espace personnel.</p>
+<p style="text-align: center;">
+    <a href="{{ dashboard_url }}" style="color: {{ primary_color or '#0f172a' }}; font-weight: 600; text-decoration: none; font-size: 15px;">Accéder à mon espace →</a>
+</p>
+
+<p style="margin-top: 40px;">À très vite,<br>L'équipe {{ tenant_name }}</p>
+{% endblock %}
