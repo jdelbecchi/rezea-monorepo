@@ -72,7 +72,7 @@ export default function TenantPortal() {
       style={{ "--primary-color": primaryColor } as React.CSSProperties}
     >
       {/* 1. BRANDING PANEL: White background on both Mobile and Desktop */}
-      <div className="relative flex-shrink-0 md:flex-1 flex flex-col justify-center px-6 pt-10 pb-4 md:px-16 md:py-24 z-20 bg-white">
+      <div className="relative flex-shrink-0 md:w-[35%] flex flex-col justify-center px-6 pt-6 pb-4 md:px-16 md:py-24 z-20 bg-white">
         
         {/* Decorative elements for when THERE IS NO image (to avoid empty white space) */}
         {!tenant.login_background_url && (
@@ -107,7 +107,7 @@ export default function TenantPortal() {
                 </div>
             )}
             
-            <h1 className="text-3xl md:text-5xl lg:text-7xl font-bold tracking-tight leading-none text-slate-900">
+            <h1 className="text-3xl md:text-5xl lg:text-7xl font-medium tracking-tight leading-none text-slate-900">
               {tenant.name}
             </h1>
           </div>
@@ -129,7 +129,7 @@ export default function TenantPortal() {
       </div>
 
       {/* 2. IMAGE & LOGIN PANEL: Cinematic Backdrop for the Form */}
-      <div className="relative flex-1 md:w-[60%] flex flex-col items-center justify-center px-6 pb-6 pt-2 md:p-12 overflow-hidden bg-[#fbfcfd] md:bg-white md:border-l md:border-slate-100 min-h-[500px] md:min-h-screen">
+      <div className="relative flex-1 md:w-[65%] flex flex-col items-center justify-center px-6 pb-6 pt-2 md:p-12 overflow-hidden bg-white min-h-[500px] md:min-h-screen">
         
         {/* Background Image Layer (Mobile: Bottom half / Desktop: Right half) */}
         {tenant.login_background_url && (
@@ -140,11 +140,11 @@ export default function TenantPortal() {
                 alt="Club Visual" 
               />
               {/* Fade/Overlay Logic */}
-              {/* Fade from top on mobile / Fade from left on desktop */}
-              <div className="absolute top-0 left-0 w-full h-80 md:h-full md:w-[400px] bg-gradient-to-b from-white via-white/50 to-transparent md:bg-gradient-to-r md:from-white md:via-white/50 md:to-transparent z-10 pointer-events-none"></div>
+              {/* Precise 20% Seamless Fade - Optimized for width and vibrant image visibility */}
+              <div className="absolute top-0 left-0 w-full h-32 md:h-full md:w-[20%] bg-gradient-to-b from-white via-white via-20% to-transparent md:bg-gradient-to-r md:from-white md:via-white md:via-10% md:to-transparent z-10 pointer-events-none"></div>
               
-              {/* Subtle Darkening: Lightened for mobile visibility (20%) / Soft blur on Desktop */}
-              <div className="absolute inset-0 bg-slate-950/[0.15] md:bg-slate-950/20 backdrop-blur-[1px] md:backdrop-blur-[2px]"></div>
+              {/* Soft Darkening: Subtle overlay to keep form readable without washing out the colors */}
+              <div className="absolute inset-0 bg-slate-900/20 z-0"></div>
             </div>
         )}
 

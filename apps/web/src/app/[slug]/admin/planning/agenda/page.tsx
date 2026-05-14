@@ -470,10 +470,9 @@ export default function AdminAgendaPage() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                 </button>
-                            </div>
-                        )}
                         </div>
-                    </div>
+                    )}
+
 
                     {/* Integrated Navigation and Filter Bar */}
                     <div className="bg-white rounded-2xl border border-slate-100 p-3 shadow-[0_10px_30px_rgba(0,0,0,0.02)] flex flex-col md:flex-row md:items-center justify-between gap-4">
