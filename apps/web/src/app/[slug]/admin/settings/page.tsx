@@ -274,14 +274,14 @@ export default function AdminSettingsPage() {
                     )}
 
                     {/* Tabs Navigation */}
-                    <div className="flex items-center bg-slate-100/50 p-1 rounded-2xl border border-slate-200/60 mb-10 shadow-sm overflow-x-auto no-scrollbar w-full max-w-fit mx-auto md:mx-0">
+                    <div className="flex items-center border-b border-slate-200 mb-10 overflow-x-auto no-scrollbar">
                         {TABS.map(tab => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`flex items-center gap-2.5 px-6 py-2 rounded-[14px] text-sm font-semibold transition-all whitespace-nowrap ${activeTab === tab.id
-                                    ? "bg-white text-slate-900 shadow-sm border border-slate-200"
-                                    : "text-slate-500 hover:text-slate-700"
+                                className={`flex items-center gap-2 px-8 py-4 text-sm font-semibold transition-all border-b-2 whitespace-nowrap ${activeTab === tab.id
+                                    ? "border-blue-600 text-blue-600"
+                                    : "border-transparent text-slate-500 hover:text-slate-700"
                                     }`}
                             >
                                 <span className="text-base">{tab.icon}</span>

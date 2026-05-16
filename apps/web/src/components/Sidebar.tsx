@@ -111,6 +111,7 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
         { path: `${basePath}/admin`, label: "Tableau de bord", icon: "📊" },
         { path: `${basePath}/admin/shop/offers`, label: "Catalogue d'offres", icon: "🏷️" },
         { path: `${basePath}/admin/shop/orders`, label: "Gestion des commandes", icon: "📦" },
+        { path: `${basePath}/admin/finance`, label: "Portefeuille", icon: "💰" },
         { path: `${basePath}/admin/planning/agenda`, label: "Agenda", icon: "📅" },
         {
             label: "Programmation du planning",
