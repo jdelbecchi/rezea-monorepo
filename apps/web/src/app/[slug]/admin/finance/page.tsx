@@ -20,9 +20,18 @@ export default function TreasuryPage() {
     const [transactions, setTransactions] = useState<FinanceTransaction[]>([]);
     const [activeTab, setActiveTab] = useState<"dashboard" | "journal" | "categories" | "accounts">("dashboard");
     const [searchTerm, setSearchTerm] = useState("");
+    const [selectedMonthStr, setSelectedMonthStr] = useState<string>(format(new Date(), "yyyy-MM"));
+    const [trendPage, setTrendPage] = useState(0);
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean,
+        title: string,
+        message: string,
+        onConfirm: () => void
+    }>({ isOpen: false, title: "", message: "", onConfirm: () => {} });
 
     // Modals
     const [isTransModalOpen, setIsTransModalOpen] = useState(false);
+    const [editingTrans, setEditingTrans] = useState<FinanceTransaction | null>(null);
     const [isCatModalOpen, setIsCatModalOpen] = useState(false);
     const [editingCat, setEditingCat] = useState<FinanceCategory | null>(null);
     const [isAccModalOpen, setIsAccModalOpen] = useState(false);
@@ -87,10 +96,16 @@ export default function TreasuryPage() {
         return () => clearTimeout(timer);
     }, [searchTerm, user]);
 
+    useEffect(() => {
+        if (user) {
+            api.getFinanceDashboard(selectedMonthStr, 30).then(setDashboard);
+        }
+    }, [selectedMonthStr, user]);
+
     const refreshData = async () => {
         try {
             const [db, cats, accs, trans] = await Promise.all([
-                api.getFinanceDashboard(30),
+                api.getFinanceDashboard(selectedMonthStr, 30),
                 api.getFinanceCategories(),
                 api.getFinanceAccounts(),
                 api.getFinanceTransactions({ search: searchTerm })
@@ -104,6 +119,40 @@ export default function TreasuryPage() {
         }
     };
 
+    const openTransModal = (trans: FinanceTransaction | null = null) => {
+        setEditingTrans(trans);
+        if (trans) {
+            setNewTrans({
+                date: trans.date,
+                type: trans.type,
+                category_id: trans.category_id || "",
+                amount_cents: trans.amount_cents / 100, // newTrans.amount_cents is in EUR, we parse it
+                vat_rate: trans.vat_rate,
+                description: trans.description,
+                payment_method: trans.payment_method,
+                account_id: trans.account_id || "",
+                is_recurring: false,
+                frequency: "monthly",
+                recurring_count: 12
+            });
+        } else {
+            setNewTrans({
+                date: format(new Date(), "yyyy-MM-dd"),
+                type: "expense",
+                category_id: "",
+                amount_cents: 0,
+                vat_rate: 20,
+                description: "",
+                payment_method: "other",
+                account_id: "",
+                is_recurring: false,
+                frequency: "monthly",
+                recurring_count: 12
+            });
+        }
+        setIsTransModalOpen(true);
+    };
+
     const handleCreateTrans = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
@@ -112,17 +161,34 @@ export default function TreasuryPage() {
             const vat_rate = Number(newTrans.vat_rate);
             const vat_amount_cents = vat_rate > 0 ? Math.round(amount_cents * (vat_rate / (100 + vat_rate))) : 0;
 
-            await api.createFinanceTransaction({
-                ...newTrans,
-                amount_cents,
-                vat_amount_cents,
-                vat_rate
-            });
+            if (editingTrans) {
+                await api.updateFinanceTransaction(editingTrans.id, {
+                    date: newTrans.date,
+                    type: newTrans.type,
+                    category_id: newTrans.category_id || null,
+                    amount_cents,
+                    vat_amount_cents,
+                    vat_rate,
+                    description: newTrans.description,
+                    payment_method: newTrans.payment_method,
+                    account_id: newTrans.account_id || null,
+                });
+            } else {
+                await api.createFinanceTransaction({
+                    ...newTrans,
+                    amount_cents,
+                    vat_amount_cents,
+                    vat_rate,
+                    category_id: newTrans.category_id || null,
+                    account_id: newTrans.account_id || null,
+                });
+            }
             setIsTransModalOpen(false);
             refreshData();
             setNewTrans({ ...newTrans, amount_cents: 0, description: "" });
+            setEditingTrans(null);
         } catch (error) {
-            alert("Erreur lors de la création de l'opération");
+            alert("Erreur lors de l'enregistrement de l'opération");
         }
     };
 
@@ -190,7 +256,24 @@ export default function TreasuryPage() {
     };
 
     const formatCurrency = (cents: number) => {
-        return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(cents / 100);
+        const options: Intl.NumberFormatOptions = { style: 'currency', currency: 'EUR' };
+        if (cents % 100 === 0) {
+            options.minimumFractionDigits = 0;
+            options.maximumFractionDigits = 0;
+        }
+        return new Intl.NumberFormat('fr-FR', options).format(cents / 100);
+    };
+
+    const formatNumberShort = (cents: number) => {
+        const options: Intl.NumberFormatOptions = { style: 'decimal' };
+        if (cents % 100 === 0) {
+            options.minimumFractionDigits = 0;
+            options.maximumFractionDigits = 0;
+        } else {
+            options.minimumFractionDigits = 2;
+            options.maximumFractionDigits = 2;
+        }
+        return new Intl.NumberFormat('fr-FR', options).format(cents / 100);
     };
 
     if (loading) {
@@ -212,7 +295,7 @@ export default function TreasuryPage() {
                         </div>
                         <div className="flex items-center gap-3">
                             <button 
-                                onClick={() => setIsTransModalOpen(true)}
+                                onClick={() => openTransModal()}
                                 className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-medium shadow-sm text-sm active:scale-95"
                             >
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -260,114 +343,276 @@ export default function TreasuryPage() {
                     {/* Tab Content */}
                     <div className="animate-in fade-in slide-in-from-top-4 duration-500">
                         {activeTab === "dashboard" ? (
-                            <div className="space-y-8">
-                                {/* Stats Summary */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                    <div className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm transition-all hover:shadow-md">
-                                        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Recettes (30j)</p>
-                                        <p className="text-3xl font-semibold text-emerald-600">{formatCurrency(dashboard?.total_income_cents || 0)}</p>
-                                        <div className="mt-4 flex items-center gap-2 text-[10px] text-emerald-600 font-bold bg-emerald-50 w-fit px-2 py-0.5 rounded-full uppercase tracking-tight">
-                                            ↑ Encaissé
+                            <div className="space-y-6">
+                                {/* Synthèse et Graphs dans le même cadre */}
+                                <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden p-8">
+                                    {/* Navigation Mois */}
+                                    <div className="flex items-center justify-between mb-8">
+                                        <h2 className="text-lg font-medium text-slate-700 flex items-center gap-2">
+                                            <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                            </svg>
+                                            Synthèse mensuelle
+                                        </h2>
+                                        <div className="flex items-center gap-4 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm">
+                                            <button 
+                                                onClick={() => {
+                                                    const [y, m] = selectedMonthStr.split('-').map(Number);
+                                                    setSelectedMonthStr(format(new Date(y, m - 2, 1), "yyyy-MM"));
+                                                }}
+                                                className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-lg transition-all"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                                </svg>
+                                            </button>
+                                            <span className="text-sm font-bold text-slate-700 min-w-[120px] text-center capitalize">
+                                                {format(new Date(selectedMonthStr + "-01"), "MMMM yyyy", { locale: fr })}
+                                            </span>
+                                            <button 
+                                                onClick={() => {
+                                                    const [y, m] = selectedMonthStr.split('-').map(Number);
+                                                    setSelectedMonthStr(format(new Date(y, m, 1), "yyyy-MM"));
+                                                }}
+                                                className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-lg transition-all"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                </svg>
+                                            </button>
                                         </div>
                                     </div>
-                                    <div className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm transition-all hover:shadow-md">
-                                        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Dépenses (30j)</p>
-                                        <p className="text-3xl font-semibold text-rose-600">{formatCurrency(dashboard?.total_expense_cents || 0)}</p>
-                                        <div className="mt-4 flex items-center gap-2 text-[10px] text-rose-600 font-bold bg-rose-50 w-fit px-2 py-0.5 rounded-full uppercase tracking-tight">
-                                            ↓ Sorties
-                                        </div>
-                                    </div>
-                                    <div className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm transition-all hover:shadow-md">
-                                        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Prévu (Échéancier)</p>
-                                        <p className="text-3xl font-semibold text-blue-600">{formatCurrency(dashboard?.projected_income_cents || 0)}</p>
-                                        <div className="mt-4 flex items-center gap-2 text-[10px] text-blue-600 font-bold bg-blue-50 w-fit px-2 py-0.5 rounded-full uppercase tracking-tight">
-                                            📅 À venir
-                                        </div>
-                                    </div>
-                                    <div className="bg-white p-6 rounded-[24px] border border-rose-100 shadow-md bg-rose-50/20 transition-all hover:bg-rose-50/40">
-                                        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Impayés / Erreurs</p>
-                                        <p className="text-3xl font-semibold text-rose-700">{formatCurrency(dashboard?.overdue_income_cents || 0)}</p>
-                                        <div className="mt-4 flex items-center gap-2 text-[10px] text-rose-700 font-bold bg-rose-100 w-fit px-2 py-0.5 rounded-full uppercase tracking-tight">
-                                            ⚠️ À régulariser
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Charts Preview */}
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                    <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
-                                        <h3 className="text-lg font-semibold text-slate-900 mb-6">Répartition des dépenses</h3>
-                                        {dashboard?.expense_by_category.length === 0 ? (
-                                            <div className="h-40 flex items-center justify-center text-slate-400 italic">Aucune donnée</div>
-                                        ) : (
-                                            <div className="space-y-4">
-                                                {dashboard?.expense_by_category.map(item => (
-                                                    <div key={item.category} className="space-y-1">
-                                                        <div className="flex justify-between text-sm font-medium">
-                                                            <span className="text-slate-700">{item.category}</span>
-                                                            <span className="text-slate-500">{formatCurrency(item.amount)}</span>
-                                                        </div>
-                                                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                                                            <div 
-                                                                className="h-full rounded-full" 
-                                                                style={{ 
-                                                                    width: `${(item.amount / dashboard.total_expense_cents) * 100}%`,
-                                                                    backgroundColor: item.color || '#3b82f6'
-                                                                }}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                ))}
+                                    {/* Indicateurs du mois */}
+                                    <div className="flex flex-col lg:flex-row gap-16 mb-8">
+                                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                            <div className="bg-white p-5 rounded-2xl border border-emerald-200">
+                                                <p className="text-[13px] font-semibold text-slate-600 mb-1">
+                                                    Recettes encaissées
+                                                </p>
+                                                <p className="text-2xl text-emerald-700">{formatCurrency(dashboard?.total_income_cents || 0)}</p>
                                             </div>
-                                        )}
-                                    </div>
-                                    <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
-                                        <h3 className="text-lg font-semibold text-slate-900 mb-6">Sources de revenus</h3>
-                                        {dashboard?.income_by_category.length === 0 ? (
-                                            <div className="h-40 flex items-center justify-center text-slate-400 italic">Aucune donnée</div>
-                                        ) : (
-                                            <div className="space-y-4">
-                                                {dashboard?.income_by_category.map(item => (
-                                                    <div key={item.category} className="space-y-1">
-                                                        <div className="flex justify-between text-sm font-medium">
-                                                            <span className="text-slate-700">{item.category}</span>
-                                                            <span className="text-slate-500">{formatCurrency(item.amount)}</span>
-                                                        </div>
-                                                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                                                            <div 
-                                                                className="h-full rounded-full" 
-                                                                style={{ 
-                                                                    width: `${(item.amount / dashboard.total_income_cents) * 100}%`,
-                                                                    backgroundColor: item.color || '#10b981'
-                                                                }}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                ))}
+                                            
+                                            <div className="bg-white p-5 rounded-2xl border border-blue-200">
+                                                <p className="text-[13px] font-semibold text-slate-600 mb-1">
+                                                    Recettes attendues
+                                                </p>
+                                                <p className="text-2xl text-blue-700">{formatCurrency(dashboard?.month_pending_cents || 0)}</p>
                                             </div>
-                                        )}
+                                            
+                                            <div className="bg-white p-5 rounded-2xl border border-rose-200">
+                                                <p className="text-[13px] font-semibold text-slate-600 mb-1">
+                                                    Impayés
+                                                </p>
+                                                <p className="text-2xl text-rose-700">{formatCurrency(dashboard?.month_error_cents || 0)}</p>
+                                            </div>
+                                            
+                                            <div className="bg-white p-5 rounded-2xl border border-slate-300">
+                                                <p className="text-[13px] font-semibold text-slate-600 mb-1">
+                                                    Remboursés
+                                                </p>
+                                                <p className="text-2xl text-slate-700">{formatCurrency(dashboard?.month_refund_cents || 0)}</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="hidden lg:block w-px bg-slate-200 my-2"></div>
+                                        <div className="lg:hidden h-px bg-slate-200 w-full"></div>
+                                        
+                                        <div className="lg:w-[22%] min-w-[200px]">
+                                            <div className="bg-orange-50/50 p-5 rounded-2xl border border-orange-200 h-full flex flex-col justify-center">
+                                                <p className="text-[13px] font-semibold text-slate-600 mb-1">
+                                                    Dépenses
+                                                </p>
+                                                <p className="text-2xl text-orange-700">{formatCurrency(dashboard?.total_expense_cents || 0)}</p>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
 
-                                {/* Projected Trend Section */}
-                                {dashboard?.projected_trend && dashboard.projected_trend.length > 0 && (
-                                    <div className="bg-white p-8 rounded-[32px] border border-blue-50 shadow-sm">
-                                        <h3 className="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
-                                            <span className="text-blue-500">📈</span> 
-                                            Prévisions de recettes (6 prochains mois)
-                                        </h3>
-                                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                                            {dashboard.projected_trend.map((item) => (
-                                                <div key={item.month} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col items-center transition-all hover:bg-white hover:shadow-md group">
-                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-1 group-hover:text-blue-500 transition-colors">
-                                                        {format(new Date(item.month + "-01"), "MMM yyyy", { locale: fr })}
-                                                    </p>
-                                                    <p className="text-lg font-bold text-slate-900">{formatCurrency(item.amount)}</p>
+                                    {/* Charts Preview */}
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-4">
+                                        <div className="bg-white p-6 rounded-2xl border border-slate-200">
+                                            <h3 className="text-sm font-semibold text-slate-900 mb-6 uppercase tracking-wider">Répartition des revenus</h3>
+                                            {dashboard?.income_by_category.length === 0 ? (
+                                                <div className="h-32 flex items-center justify-center text-slate-400 italic text-sm">Aucune donnée</div>
+                                            ) : (
+                                                <div className="space-y-4">
+                                                    {dashboard?.income_by_category.map(item => (
+                                                        <div key={item.category} className="space-y-1">
+                                                            <div className="flex justify-between text-[13px] font-medium">
+                                                                <span className="text-slate-700">{item.category}</span>
+                                                                <span className="text-slate-500">{formatCurrency(item.amount)}</span>
+                                                            </div>
+                                                            <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                                                                <div 
+                                                                    className="h-full rounded-full" 
+                                                                    style={{ 
+                                                                        width: `${(item.amount / dashboard.total_income_cents) * 100}%`,
+                                                                        backgroundColor: item.color || '#10b981'
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    ))}
                                                 </div>
-                                            ))}
+                                            )}
+                                        </div>
+                                        <div className="bg-white p-6 rounded-2xl border border-slate-200">
+                                            <h3 className="text-sm font-semibold text-slate-900 mb-6 uppercase tracking-wider">Répartition des dépenses</h3>
+                                            {dashboard?.expense_by_category.length === 0 ? (
+                                                <div className="h-32 flex items-center justify-center text-slate-400 italic text-sm">Aucune donnée</div>
+                                            ) : (
+                                                <div className="space-y-4">
+                                                    {dashboard?.expense_by_category.map(item => (
+                                                        <div key={item.category} className="space-y-1">
+                                                            <div className="flex justify-between text-[13px] font-medium">
+                                                                <span className="text-slate-700">{item.category}</span>
+                                                                <span className="text-slate-500">{formatCurrency(item.amount)}</span>
+                                                            </div>
+                                                            <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                                                                <div 
+                                                                    className="h-full rounded-full" 
+                                                                    style={{ 
+                                                                        width: `${(item.amount / dashboard.total_expense_cents) * 100}%`,
+                                                                        backgroundColor: item.color || '#3b82f6'
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-                                )}
+                                </div>
+
+                                {/* Previsions (Projected Trend) & A Venir */}
+                                <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm flex flex-col gap-8">
+                                    <div className="flex items-center justify-between">
+                                        <h2 className="text-lg font-medium text-slate-700 flex items-center gap-2">
+                                            <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                            </svg>
+                                            Prévisions de recettes
+                                        </h2>
+                                    </div>
+                                    <div className="flex flex-col lg:flex-row gap-8">
+                                        {/* A Venir */}
+                                        <div className="lg:w-1/4 bg-blue-50/50 rounded-2xl p-6 border border-blue-100 flex flex-col justify-center">
+                                            <p className="text-[13px] font-semibold text-blue-800 mb-2">Montant total à venir</p>
+                                            <p className="text-4xl font-semibold text-blue-600">{formatCurrency(dashboard?.projected_income_cents || 0)}</p>
+                                        </div>
+                                        
+                                        {/* Prévisions 6 mois */}
+                                        <div className="lg:w-3/4">
+                                            <h3 className="text-sm font-semibold text-slate-900 mb-6 uppercase tracking-wider">
+                                                Vue à 12 mois
+                                            </h3>
+                                            {dashboard?.projected_trend && dashboard.projected_trend.length > 0 ? (
+                                                <div className="flex items-end justify-between gap-2 h-48 mt-4 pt-6">
+                                                    {(() => {
+                                                        const maxAmount = Math.max(...dashboard.projected_trend.map(t => t.amount), 1);
+                                                        return dashboard.projected_trend.map((item) => (
+                                                            <div key={item.month} className="flex flex-col items-center gap-3 flex-1 h-full">
+                                                                <div className="flex items-end justify-center w-full h-full pb-2 relative group">
+                                                                    <span className="absolute bottom-3 text-[11px] text-white whitespace-nowrap z-10 [text-shadow:_0_1px_2px_rgb(0_0_0_/_40%)] font-medium">{formatNumberShort(item.amount)}</span>
+                                                                    <div 
+                                                                        className="w-[40%] max-w-[40px] bg-blue-400 rounded-t-sm transition-all hover:bg-blue-500" 
+                                                                        style={{ height: `${Math.max(2, (item.amount / maxAmount) * 100)}%` }} 
+                                                                    />
+                                                                </div>
+                                                                <span className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">{format(new Date(item.month + "-01"), "MMM yy", { locale: fr })}</span>
+                                                            </div>
+                                                        ));
+                                                    })()}
+                                                </div>
+                                            ) : (
+                                                <div className="h-48 flex items-center justify-center text-slate-400 italic text-sm">
+                                                    Aucune prévision disponible.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Historique Comparatif */}
+                                <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
+                                    <div className="flex items-center justify-between mb-8">
+                                        <h2 className="text-lg font-medium text-slate-700 flex items-center gap-2">
+                                            <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                                            </svg>
+                                            Évolution recettes/dépenses
+                                        </h2>
+                                        <div className="flex items-center gap-2">
+                                            <button 
+                                                onClick={() => setTrendPage(p => p + 1)}
+                                                disabled={!dashboard?.monthly_trend || (trendPage + 1) * 6 >= dashboard.monthly_trend.length}
+                                                className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-lg transition-all disabled:opacity-30"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                                </svg>
+                                            </button>
+                                            <span className="text-xs font-semibold text-slate-500 px-2 uppercase">Historique</span>
+                                            <button 
+                                                onClick={() => setTrendPage(p => Math.max(0, p - 1))}
+                                                disabled={trendPage === 0}
+                                                className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-lg transition-all disabled:opacity-30"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {dashboard?.monthly_trend && dashboard.monthly_trend.length > 0 ? (
+                                        <div className="flex items-end justify-between gap-2 h-48 mt-4 pt-6">
+                                            {(() => {
+                                                const allTrend = dashboard.monthly_trend;
+                                                const startIndex = Math.max(0, allTrend.length - (trendPage + 1) * 6);
+                                                const endIndex = allTrend.length - trendPage * 6;
+                                                const visibleTrend = allTrend.slice(startIndex, endIndex);
+                                                const maxAmount = Math.max(...visibleTrend.map(t => Math.max(t.income, t.expense)), 1);
+                                                
+                                                return visibleTrend.map(t => (
+                                                    <div key={t.month} className="flex flex-col items-center gap-3 flex-1 h-full">
+                                                        <div className="flex items-end justify-center gap-3 w-full h-full pb-2">
+                                                            <div className="w-[40%] max-w-[56px] flex flex-col justify-end items-center h-full relative group">
+                                                                <span className="absolute bottom-1 text-[11px] text-white whitespace-nowrap z-10 [text-shadow:_0_1px_2px_rgb(0_0_0_/_40%)] font-medium">{formatNumberShort(t.income)}</span>
+                                                                <div 
+                                                                    className="w-full bg-emerald-400 rounded-t-sm transition-all hover:bg-emerald-500" 
+                                                                    style={{ height: `${Math.max(2, (t.income / maxAmount) * 100)}%` }} 
+                                                                />
+                                                            </div>
+                                                            <div className="w-[40%] max-w-[56px] flex flex-col justify-end items-center h-full relative group">
+                                                                <span className="absolute bottom-1 text-[11px] text-white whitespace-nowrap z-10 [text-shadow:_0_1px_2px_rgb(0_0_0_/_40%)] font-medium">{formatNumberShort(t.expense)}</span>
+                                                                <div 
+                                                                    className="w-full bg-rose-400 rounded-t-sm transition-all hover:bg-rose-500" 
+                                                                    style={{ height: `${Math.max(2, (t.expense / maxAmount) * 100)}%` }} 
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <span className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">{format(new Date(t.month + "-01"), "MMM yy", { locale: fr })}</span>
+                                                    </div>
+                                                ));
+                                            })()}
+                                        </div>
+                                    ) : (
+                                        <div className="h-48 flex items-center justify-center text-slate-400 italic text-sm">
+                                            Aucune donnée historique.
+                                        </div>
+                                    )}
+                                    <div className="flex items-center justify-center gap-8 mt-6">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-3 h-3 rounded-sm bg-emerald-400"></div>
+                                            <span className="text-xs text-slate-600 font-medium">Revenus</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-3 h-3 rounded-sm bg-rose-400"></div>
+                                            <span className="text-xs text-slate-600 font-medium">Dépenses</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         ) : activeTab === "journal" ? (
                             <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
@@ -410,39 +655,53 @@ export default function TreasuryPage() {
                                             ) : (
                                                 transactions.map((t) => (
                                                     <tr key={t.id} className="group hover:bg-slate-50/50 transition-colors">
-                                                        <td className="py-4 px-4 text-sm text-slate-600">
+                                                        <td className="py-2.5 px-4 text-sm text-slate-600">
                                                             {format(new Date(t.date), "dd/MM/yy")}
                                                         </td>
-                                                        <td className="py-4 px-4">
+                                                        <td className="py-2.5 px-4">
                                                             <div className="text-sm font-medium text-slate-900">{t.description}</div>
                                                             {t.vat_amount_cents > 0 && (
                                                                 <div className="text-[10px] text-slate-400">TVA {t.vat_rate}%: {formatCurrency(t.vat_amount_cents)}</div>
                                                             )}
                                                         </td>
-                                                        <td className="py-4 px-4">
+                                                        <td className="py-2.5 px-4">
                                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">
                                                                 {t.category_name || "Non catégorisé"}
                                                             </span>
                                                         </td>
-                                                        <td className="py-4 px-4">
+                                                        <td className="py-2.5 px-4">
                                                             <span className="text-[11px] text-slate-500 font-medium">
                                                                 {t.account_name || t.payment_method || "Autre"}
                                                             </span>
                                                         </td>
-                                                        <td className={`py-4 px-4 text-sm font-bold text-right ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                        <td className={`py-2.5 px-4 text-sm font-bold text-right ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
                                                             {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount_cents)}
                                                         </td>
-                                                        <td className="py-4 px-4 text-right">
-                                                            <button 
-                                                                onClick={() => {
-                                                                    if(confirm("Supprimer cette opération ?")) {
-                                                                        api.deleteFinanceTransaction(t.id).then(refreshData);
-                                                                    }
-                                                                }}
-                                                                className="p-2 text-slate-300 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-all"
-                                                            >
-                                                                🗑️
-                                                            </button>
+                                                        <td className="py-2.5 px-4 text-right">
+                                                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                                <button 
+                                                                    onClick={() => openTransModal(t)}
+                                                                    className="p-2 text-slate-300 hover:text-blue-600 transition-all rounded-lg"
+                                                                >
+                                                                    ✏️
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        setConfirmModal({
+                                                                            isOpen: true,
+                                                                            title: "Confirmer la suppression",
+                                                                            message: "Êtes-vous sûr de vouloir supprimer cette opération ? Cette action est irréversible.",
+                                                                            onConfirm: () => {
+                                                                                api.deleteFinanceTransaction(t.id).then(refreshData);
+                                                                                setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                                                                            }
+                                                                        });
+                                                                    }}
+                                                                    className="p-2 text-slate-300 hover:text-rose-600 transition-all rounded-lg"
+                                                                >
+                                                                    🗑️
+                                                                </button>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 ))
@@ -485,7 +744,6 @@ export default function TreasuryPage() {
                                                         {/* Dépenses */}
                                                         <div className="space-y-4">
                                                             <div className="flex items-center gap-2 px-1">
-                                                                <div className="w-2 h-2 rounded-full bg-rose-500" />
                                                                 <h4 className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Dépenses (Sorties)</h4>
                                                             </div>
                                                             <div className="grid grid-cols-1 gap-3">
@@ -502,9 +760,20 @@ export default function TreasuryPage() {
                                                                         <button 
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
-                                                                                if(confirm("Supprimer cette catégorie ?")) {
-                                                                                    api.deleteFinanceCategory(cat.id).then(refreshData);
-                                                                                }
+                                                                                setConfirmModal({
+                                                                                    isOpen: true,
+                                                                                    title: "Confirmer la suppression",
+                                                                                    message: `Voulez-vous vraiment supprimer la catégorie "${cat.name}" ?`,
+                                                                                    onConfirm: async () => {
+                                                                                        try {
+                                                                                            await api.deleteFinanceCategory(cat.id);
+                                                                                            refreshData();
+                                                                                        } catch (err: any) {
+                                                                                            alert(err.response?.data?.detail || "Erreur lors de la suppression");
+                                                                                        }
+                                                                                        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                                                                                    }
+                                                                                });
                                                                             }}
                                                                             className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                                                                         >
@@ -529,7 +798,6 @@ export default function TreasuryPage() {
                                                         {/* Recettes */}
                                                         <div className="space-y-4">
                                                             <div className="flex items-center gap-2 px-1">
-                                                                <div className="w-2 h-2 rounded-full bg-emerald-500" />
                                                                 <h4 className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Recettes (Entrées)</h4>
                                                             </div>
                                                             <div className="grid grid-cols-1 gap-3">
@@ -546,9 +814,20 @@ export default function TreasuryPage() {
                                                                         <button 
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
-                                                                                if(confirm("Supprimer cette catégorie ?")) {
-                                                                                    api.deleteFinanceCategory(cat.id).then(refreshData);
-                                                                                }
+                                                                                setConfirmModal({
+                                                                                    isOpen: true,
+                                                                                    title: "Confirmer la suppression",
+                                                                                    message: `Voulez-vous vraiment supprimer la catégorie "${cat.name}" ?`,
+                                                                                    onConfirm: async () => {
+                                                                                        try {
+                                                                                            await api.deleteFinanceCategory(cat.id);
+                                                                                            refreshData();
+                                                                                        } catch (err: any) {
+                                                                                            alert(err.response?.data?.detail || "Erreur lors de la suppression");
+                                                                                        }
+                                                                                        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                                                                                    }
+                                                                                });
                                                                             }}
                                                                             className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                                                                         >
@@ -580,7 +859,7 @@ export default function TreasuryPage() {
                                             <div className="space-y-8">
                                                 <div className="flex justify-between items-center px-1">
                                                     <div>
-                                                        <h3 className="text-xl font-bold text-slate-900">Comptes et Moyens de Paiement</h3>
+                                                        <h3 className="text-[17px] font-semibold text-slate-900">Comptes et moyens de paiement</h3>
                                                         <p className="text-sm text-slate-500">Gérez vos banques, caisses espèces et comptes de paiement.</p>
                                                     </div>
                                                     <button 
@@ -626,9 +905,20 @@ export default function TreasuryPage() {
                                                                         <button 
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
-                                                                                if(confirm("Supprimer ce compte ?")) {
-                                                                                    api.deleteFinanceAccount(acc.id).then(refreshData);
-                                                                                }
+                                                                                setConfirmModal({
+                                                                                    isOpen: true,
+                                                                                    title: "Confirmer la suppression",
+                                                                                    message: `Voulez-vous vraiment supprimer le compte "${acc.name}" ?`,
+                                                                                    onConfirm: async () => {
+                                                                                        try {
+                                                                                            await api.deleteFinanceAccount(acc.id);
+                                                                                            refreshData();
+                                                                                        } catch (err: any) {
+                                                                                            alert(err.response?.data?.detail || "Erreur lors de la suppression");
+                                                                                        }
+                                                                                        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                                                                                    }
+                                                                                });
                                                                             }}
                                                                             className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
                                                                         >
@@ -661,7 +951,9 @@ export default function TreasuryPage() {
                                 <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
-                                <h2 className="text-[17px] font-semibold text-slate-900 tracking-tight">Nouvelle opération</h2>
+                                <h2 className="text-[17px] font-semibold text-slate-900 tracking-tight">
+                                    {editingTrans ? "Modifier l'opération" : "Nouvelle opération"}
+                                </h2>
                             </div>
                             <button onClick={() => setIsTransModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -788,45 +1080,47 @@ export default function TreasuryPage() {
                                 </div>
 
                                 {/* Récurrence */}
-                                <div className="pt-2">
-                                    <label className="flex items-center gap-3 cursor-pointer group">
-                                        <div className={`w-10 h-6 rounded-full p-1 transition-all ${newTrans.is_recurring ? 'bg-blue-600' : 'bg-slate-200'}`}>
-                                            <div className={`w-4 h-4 bg-white rounded-full transition-all ${newTrans.is_recurring ? 'translate-x-4' : 'translate-x-0'}`} />
-                                        </div>
-                                        <input 
-                                            type="checkbox"
-                                            className="hidden"
-                                            checked={newTrans.is_recurring}
-                                            onChange={e => setNewTrans({...newTrans, is_recurring: e.target.checked})}
-                                        />
-                                        <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">Opération récurrente (loyer, assurance...)</span>
-                                    </label>
-                                    
-                                    {newTrans.is_recurring && (
-                                        <div className="mt-4 p-4 bg-blue-50/50 rounded-2xl border border-blue-100 grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-blue-600 uppercase mb-1">Fréquence</label>
-                                                <select 
-                                                    className="w-full px-3 py-1.5 bg-white border border-blue-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                                                    value={newTrans.frequency}
-                                                    onChange={e => setNewTrans({...newTrans, frequency: e.target.value})}
-                                                >
-                                                    <option value="monthly">Mensuel</option>
-                                                    <option value="weekly">Hebdomadaire</option>
-                                                </select>
+                                {!editingTrans && (
+                                    <div className="pt-2">
+                                        <label className="flex items-center gap-3 cursor-pointer group">
+                                            <div className={`w-10 h-6 rounded-full p-1 transition-all ${newTrans.is_recurring ? 'bg-blue-600' : 'bg-slate-200'}`}>
+                                                <div className={`w-4 h-4 bg-white rounded-full transition-all ${newTrans.is_recurring ? 'translate-x-4' : 'translate-x-0'}`} />
                                             </div>
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-blue-600 uppercase mb-1">Nb échéances</label>
-                                                <input 
-                                                    type="number"
-                                                    className="w-full px-3 py-1.5 bg-white border border-blue-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                                                    value={newTrans.recurring_count}
-                                                    onChange={e => setNewTrans({...newTrans, recurring_count: parseInt(e.target.value)})}
-                                                />
+                                            <input 
+                                                type="checkbox"
+                                                className="hidden"
+                                                checked={newTrans.is_recurring}
+                                                onChange={e => setNewTrans({...newTrans, is_recurring: e.target.checked})}
+                                            />
+                                            <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">Opération récurrente (loyer, assurance...)</span>
+                                        </label>
+                                        
+                                        {newTrans.is_recurring && (
+                                            <div className="mt-4 p-4 bg-blue-50/50 rounded-2xl border border-blue-100 grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-blue-600 uppercase mb-1">Fréquence</label>
+                                                    <select 
+                                                        className="w-full px-3 py-1.5 bg-white border border-blue-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                                                        value={newTrans.frequency}
+                                                        onChange={e => setNewTrans({...newTrans, frequency: e.target.value})}
+                                                    >
+                                                        <option value="monthly">Mensuel</option>
+                                                        <option value="weekly">Hebdomadaire</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-blue-600 uppercase mb-1">Nb échéances</label>
+                                                    <input 
+                                                        type="number"
+                                                        className="w-full px-3 py-1.5 bg-white border border-blue-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                                                        value={newTrans.recurring_count}
+                                                        onChange={e => setNewTrans({...newTrans, recurring_count: parseInt(e.target.value)})}
+                                                    />
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
-                                </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Footer */}
@@ -842,7 +1136,7 @@ export default function TreasuryPage() {
                                     type="submit"
                                     className="px-6 py-2 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all text-sm shadow-sm active:scale-95"
                                 >
-                                    Valider l'opération
+                                    {editingTrans ? "Enregistrer" : "Valider l'opération"}
                                 </button>
                             </div>
                         </form>
@@ -1029,6 +1323,33 @@ export default function TreasuryPage() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+            {/* Confirmation Modal */}
+            {confirmModal.isOpen && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-[200] animate-in fade-in duration-300">
+                    <div className="bg-white rounded-[28px] shadow-2xl w-full max-w-[400px] overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-100">
+                        <div className="p-10 pb-6">
+                            <h3 className="text-xl font-semibold text-slate-900 mb-4">{confirmModal.title}</h3>
+                            <p className="text-slate-500 text-[14px] leading-relaxed">
+                                {confirmModal.message}
+                            </p>
+                        </div>
+                        <div className="p-8 pt-0 flex justify-end gap-3">
+                            <button 
+                                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                                className="px-6 py-2.5 bg-white text-slate-600 border border-slate-200 rounded-[14px] font-medium hover:bg-slate-50 transition-all text-sm shadow-sm active:scale-95"
+                            >
+                                Annuler
+                            </button>
+                            <button 
+                                onClick={confirmModal.onConfirm}
+                                className="px-6 py-2.5 bg-[#e11d48] text-white rounded-[14px] font-medium hover:bg-rose-700 transition-all text-sm shadow-md active:scale-95"
+                            >
+                                Supprimer
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

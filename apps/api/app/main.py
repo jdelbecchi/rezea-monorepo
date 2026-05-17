@@ -263,6 +263,10 @@ app.include_router(admin_event_registrations.router, prefix="/api/admin/event-re
 from app.api import admin_emails
 app.include_router(admin_emails.router, prefix="/api/admin/emails", tags=["Admin Emails"])
 
+# Admin Finance / Treasury
+from app.api import finance
+app.include_router(finance.router, prefix="/api/admin/finance", tags=["Admin Finance"])
+
 # Servir les fichiers uploadés
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)

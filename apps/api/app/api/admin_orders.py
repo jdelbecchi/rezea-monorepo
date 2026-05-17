@@ -11,7 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.db.session import get_db
-from app.models.models import User, UserRole, Order, Offer, Booking, BookingStatus, OrderPaymentStatus, Installment, CreditAccount
+from app.models.models import (
+    User, UserRole, Order, Offer, Booking, BookingStatus, OrderPaymentStatus, 
+    Installment, CreditAccount, FinanceTransaction, FinanceTransactionType, 
+    FinanceCategory, FinancePaymentMethod
+)
 from app.schemas.schemas import OrderCreate, OrderUpdate, OrderResponse, InstallmentResponse
 from app.services import orders as order_service
 
@@ -78,6 +82,45 @@ def generate_installments(order: Order, tenant_id) -> List[Installment]:
         ))
 
     return installments
+
+
+async def _record_finance_income(db: AsyncSession, tenant_id: str, amount_cents: int, description: str, order_id: Optional[str] = None):
+    """Enregistre une recette dans la trésorerie"""
+    cat_query = select(FinanceCategory).where(
+        FinanceCategory.tenant_id == tenant_id,
+        FinanceCategory.name == "Ventes Offres"
+    )
+    cat_res = await db.execute(cat_query)
+    cat = cat_res.scalar_one_or_none()
+    
+    # Tenter d'enrichir la description si on a un order_id
+    full_description = description
+    if order_id:
+        try:
+            # On importe ici pour éviter les imports circulaires
+            from app.models.models import Order, User, Offer
+            order_res = await db.execute(
+                select(Order)
+                .options(joinedload(Order.user), joinedload(Order.offer))
+                .where(Order.id == order_id)
+            )
+            order = order_res.scalar_one_or_none()
+            if order and order.user and order.offer:
+                full_description = f"Paiement commande {order.offer.name} - {order.user.first_name} {order.user.last_name}"
+        except Exception:
+            pass # Fallback à la description de base si erreur
+
+    tx = FinanceTransaction(
+        tenant_id=tenant_id,
+        date=date.today(),
+        type=FinanceTransactionType.INCOME,
+        category_id=cat.id if cat else None,
+        amount_cents=amount_cents,
+        description=full_description,
+        order_id=order_id,
+        is_reconciled=True
+    )
+    db.add(tx)
 
 
 # ---- LIST ----
@@ -273,6 +316,14 @@ async def update_order(
     if "status" in update_data:
         update_data["status"] = order_service.normalize_status(update_data["status"])
         
+    # Logic for treasury: if we just moved to PAID, record income
+    if "payment_status" in update_data and update_data["payment_status"] == OrderPaymentStatus.PAID and order.payment_status != OrderPaymentStatus.PAID:
+        await _record_finance_income(
+            db, tenant_id, order.price_cents, 
+            f"Paiement Commande #{str(order.id)[:8]}", 
+            order_id=order.id
+        )
+
     for field, value in update_data.items():
         setattr(order, field, value)
 
@@ -442,6 +493,13 @@ async def resolve_installment(
     inst.is_error = False
     inst.is_paid = True # Regulated = manually paid
     inst.resolved_at = datetime.utcnow()
+    
+    # Enregistrer la recette en trésorerie
+    await _record_finance_income(
+        db, tenant_id, inst.amount_cents, 
+        f"Échéance Commande #{str(order_id)[:8]} (Régularisation)", 
+        order_id=order_id
+    )
     
     await db.flush()
     

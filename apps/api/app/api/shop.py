@@ -172,6 +172,13 @@ async def shop_checkout(
         # On log l'erreur mais on ne bloque pas la réponse API
         logger.error("❌ Erreur lors de l'envoi de l'email de confirmation", error=str(e), order_id=str(order.id))
 
+    # 3.9 Synchronisation trésorerie
+    try:
+        from app.services.finance_service import FinanceService
+        await FinanceService.sync_order_to_finance(db, order)
+    except Exception as e:
+        logger.error("❌ Erreur synchronisation trésorerie", error=str(e), order_id=str(order.id))
+
     # Message et URL selon le mode de paiement
     if effective_pay_later:
         message = tenant.confirmation_email_body or "Le réglement de votre commande sera à effectuer selon les modalités de l'établissement"

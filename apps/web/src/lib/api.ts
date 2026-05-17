@@ -177,14 +177,70 @@ export interface EventRegistration {
   status: string;
   price_paid_cents: number;
   payment_status: string;
-  created_by_admin: boolean;
-  notes?: string;
   created_at: string;
-  cancelled_at?: string;
-  event_title: string;
-  event_date: string;
-  event_time: string;
-  instructor_name?: string;
+  event_title?: string;
+  event_date?: string;
+  event_time?: string;
+  user_name?: string;
+  has_pending_order?: boolean;
+}
+
+// Finance
+export interface FinanceCategory {
+  id: string;
+  tenant_id: string;
+  name: string;
+  type?: "income" | "expense";
+  color?: string;
+  default_vat_rate: number;
+  is_default: boolean;
+}
+
+export interface FinanceTransaction {
+  id: string;
+  tenant_id: string;
+  date: string;
+  type: "income" | "expense";
+  category_id?: string;
+  category_name?: string;
+  amount_cents: number;
+  vat_amount_cents: number;
+  vat_rate: number;
+  description: string;
+  payment_method: string;
+  order_id?: string;
+  registration_id?: string;
+  is_reconciled: boolean;
+  receipt_url?: string;
+  account_id?: string;
+  account_name?: string;
+  created_at: string;
+}
+
+export interface FinanceAccount {
+  id: string;
+  tenant_id: string;
+  name: string;
+  type?: string;
+  color?: string;
+  is_default: boolean;
+  created_at: string;
+}
+
+export interface FinanceDashboard {
+  total_income_cents: number;
+  total_expense_cents: number;
+  net_balance_cents: number;
+  month_pending_cents: number;
+  month_error_cents: number;
+  month_refund_cents: number;
+  income_by_category: Array<{category: string, amount: number, color: string}>;
+  expense_by_category: Array<{category: string, amount: number, color: string}>;
+  recent_transactions: FinanceTransaction[];
+  monthly_trend: Array<{month: string, income: number, expense: number}>;
+  projected_income_cents: number;
+  overdue_income_cents: number;
+  projected_trend: Array<{month: string, amount: number}>;
 }
 
 export interface EmailTemplate {
@@ -808,6 +864,65 @@ export const api = {
 
   deleteAdminEvent: async (eventId: string) => {
     const response = await apiClient.delete(`/api/admin/events/${eventId}`);
+    return response.data;
+  },
+
+  // Finance / Treasury
+  getFinanceCategories: async (): Promise<FinanceCategory[]> => {
+    const response = await apiClient.get('/api/admin/finance/categories');
+    return response.data;
+  },
+  createFinanceCategory: async (data: any): Promise<FinanceCategory> => {
+    const response = await apiClient.post('/api/admin/finance/categories', data);
+    return response.data;
+  },
+  updateFinanceCategory: async (id: string, data: any): Promise<FinanceCategory> => {
+    const response = await apiClient.patch(`/api/admin/finance/categories/${id}`, data);
+    return response.data;
+  },
+  deleteFinanceCategory: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/admin/finance/categories/${id}`);
+  },
+  seedFinanceCategories: async (): Promise<void> => {
+    await apiClient.post('/api/admin/finance/categories/seed');
+  },
+
+  // Finance Accounts
+  getFinanceAccounts: async (): Promise<FinanceAccount[]> => {
+    const response = await apiClient.get('/api/admin/finance/accounts');
+    return response.data;
+  },
+  createFinanceAccount: async (data: any): Promise<FinanceAccount> => {
+    const response = await apiClient.post('/api/admin/finance/accounts', data);
+    return response.data;
+  },
+  updateFinanceAccount: async (id: string, data: any): Promise<FinanceAccount> => {
+    const response = await apiClient.patch(`/api/admin/finance/accounts/${id}`, data);
+    return response.data;
+  },
+  deleteFinanceAccount: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/admin/finance/accounts/${id}`);
+  },
+
+  getFinanceTransactions: async (params?: { start_date?: string, end_date?: string, type?: string, category_id?: string, search?: string, show_future?: boolean }): Promise<FinanceTransaction[]> => {
+    const response = await apiClient.get('/api/admin/finance/transactions', { params });
+    return response.data;
+  },
+  createFinanceTransaction: async (data: any): Promise<FinanceTransaction> => {
+    const response = await apiClient.post('/api/admin/finance/transactions', data);
+    return response.data;
+  },
+  updateFinanceTransaction: async (id: string, data: any): Promise<FinanceTransaction> => {
+    const response = await apiClient.patch(`/api/admin/finance/transactions/${id}`, data);
+    return response.data;
+  },
+  deleteFinanceTransaction: async (id: string): Promise<void> => {
+    await apiClient.delete(`/api/admin/finance/transactions/${id}`);
+  },
+  getFinanceDashboard: async (month?: string, days: number = 30): Promise<FinanceDashboard> => {
+    const params: any = { days };
+    if (month) params.month = month;
+    const response = await apiClient.get('/api/admin/finance/dashboard', { params });
     return response.data;
   },
 

@@ -1,13 +1,13 @@
 """
 Schémas Pydantic pour validation des requêtes/réponses
 """
-from datetime import datetime, date
+from datetime import datetime, date as py_date
 from typing import Optional, List
 from decimal import Decimal
 from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 from uuid import UUID
 
-from app.models.models import UserRole, BookingStatus, CreditTransactionType, WaitlistStatus, OrderPaymentStatus
+from app.models.models import UserRole, BookingStatus, CreditTransactionType, WaitlistStatus, OrderPaymentStatus, FinanceTransactionType, FinancePaymentMethod
 
 
 # ==================== Auth ====================
@@ -49,7 +49,7 @@ class UserBase(BaseModel):
     street: Optional[str] = Field(None, max_length=255)
     zip_code: Optional[str] = Field(None, max_length=20)
     city: Optional[str] = Field(None, max_length=100)
-    birth_date: Optional[date] = None
+    birth_date: Optional[py_date] = None
     instagram_handle: Optional[str] = Field(None, max_length=100)
     facebook_handle: Optional[str] = Field(None, max_length=100)
 
@@ -73,7 +73,7 @@ class UserUpdate(BaseModel):
     street: Optional[str] = None
     zip_code: Optional[str] = None
     city: Optional[str] = None
-    birth_date: Optional[date] = None
+    birth_date: Optional[py_date] = None
     instagram_handle: Optional[str] = None
     facebook_handle: Optional[str] = None
     role: Optional[UserRole] = None
@@ -353,7 +353,7 @@ class OfferBase(BaseModel):
     is_unlimited: bool = False
     validity_days: Optional[int] = Field(None, ge=0)
     validity_unit: str = "days"
-    deadline_date: Optional[date] = None
+    deadline_date: Optional[py_date] = None
     is_validity_unlimited: Optional[bool] = False
     is_unique: bool = False
     is_active: bool = True
@@ -381,7 +381,7 @@ class OfferUpdate(BaseModel):
     is_unlimited: Optional[bool] = None
     validity_days: Optional[int] = None
     validity_unit: Optional[str] = None
-    deadline_date: Optional[date] = None
+    deadline_date: Optional[py_date] = None
     is_validity_unlimited: Optional[bool] = None
     is_unique: Optional[bool] = None
     is_active: Optional[bool] = None
@@ -445,7 +445,7 @@ class SessionDuplicateRequest(BaseModel):
 # ==================== Events ====================
 class EventCreate(BaseModel):
     """Création d'événement"""
-    event_date: date
+    event_date: py_date
     event_time: str = Field(..., pattern=r"^\d{2}:\d{2}$")
     title: str = Field(..., min_length=1, max_length=255)
     duration_minutes: int = Field(..., gt=0)
@@ -461,7 +461,7 @@ class EventCreate(BaseModel):
 
 class EventUpdate(BaseModel):
     """Mise à jour d'événement"""
-    event_date: Optional[date] = None
+    event_date: Optional[py_date] = None
     event_time: Optional[str] = Field(None, pattern=r"^\d{2}:\d{2}$")
     title: Optional[str] = Field(None, min_length=1, max_length=255)
     duration_minutes: Optional[int] = Field(None, gt=0)
@@ -480,7 +480,7 @@ class EventResponse(BaseModel):
     """Réponse événement"""
     id: UUID
     tenant_id: UUID
-    event_date: date
+    event_date: py_date
     event_time: str
     title: str
     duration_minutes: int
@@ -508,15 +508,15 @@ class OrderCreate(BaseModel):
     """Création de commande par admin"""
     user_id: UUID
     offer_id: UUID
-    start_date: date
+    start_date: py_date
     comment: Optional[str] = None
     user_note: Optional[str] = None
 
 
 class OrderUpdate(BaseModel):
     """Mise à jour de commande"""
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
+    start_date: Optional[py_date] = None
+    end_date: Optional[py_date] = None
     price_cents: Optional[int] = None
     price_recurring_cents: Optional[int] = None
     recurring_count: Optional[int] = None
@@ -536,7 +536,7 @@ class InstallmentResponse(BaseModel):
     """Réponse échéance pour la modale échéancier"""
     id: UUID
     order_id: UUID
-    due_date: date
+    due_date: py_date
     amount_cents: int
     is_paid: bool = False
     is_error: bool = False
@@ -554,8 +554,8 @@ class OrderResponse(BaseModel):
     user_id: UUID
     offer_id: UUID
     # Champs directs
-    start_date: date
-    end_date: Optional[date] = None
+    start_date: py_date
+    end_date: Optional[py_date] = None
     is_validity_unlimited: bool = False
     credits_total: Optional[Decimal] = None
     is_unlimited: bool = False
@@ -731,7 +731,7 @@ class ShopCheckoutRequest(BaseModel):
     """Requête de checkout boutique"""
     offer_id: UUID
     pay_later: bool = False
-    start_date: Optional[date] = None
+    start_date: Optional[py_date] = None
     pricing_type: str = "lump_sum" # 'lump_sum' or 'recurring'
 
 
@@ -741,3 +741,115 @@ class ShopCheckoutResponse(BaseModel):
     message: str
     redirect_url: Optional[str] = None
 
+
+
+class FinanceAccountBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    type: Optional[FinancePaymentMethod] = None
+    color: Optional[str] = Field(None, max_length=20)
+    is_default: bool = False
+
+class FinanceAccountCreate(FinanceAccountBase):
+    pass
+
+class FinanceAccountUpdate(BaseModel):
+    name: Optional[str] = None
+    type: Optional[FinancePaymentMethod] = None
+    color: Optional[str] = None
+
+class FinanceAccountResponse(FinanceAccountBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    tenant_id: UUID
+    created_at: datetime
+
+
+class FinanceCategoryBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    type: Optional[FinanceTransactionType] = None
+    color: Optional[str] = Field(None, max_length=20)
+    default_vat_rate: Decimal = Decimal("0")
+    is_default: bool = False
+
+class FinanceCategoryCreate(FinanceCategoryBase):
+    pass
+
+class FinanceCategoryUpdate(BaseModel):
+    name: Optional[str] = None
+    type: Optional[FinanceTransactionType] = None
+    color: Optional[str] = None
+    default_vat_rate: Optional[Decimal] = None
+
+class FinanceCategoryResponse(FinanceCategoryBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    tenant_id: UUID
+    created_at: datetime
+
+class FinanceTransactionBase(BaseModel):
+    date: py_date
+    type: FinanceTransactionType
+    category_id: Optional[UUID] = None
+    account_id: Optional[UUID] = None
+    amount_cents: int
+    vat_amount_cents: int = 0
+    vat_rate: Decimal = Decimal("0")
+    description: str = Field(..., min_length=1, max_length=255)
+    payment_method: FinancePaymentMethod = FinancePaymentMethod.OTHER
+    order_id: Optional[UUID] = None
+    registration_id: Optional[UUID] = None
+    is_reconciled: bool = True
+    receipt_url: Optional[str] = None
+
+class FinanceTransactionCreate(FinanceTransactionBase):
+    # Options pour la récurrence
+    is_recurring: bool = False
+    frequency: Optional[str] = "monthly" # 'monthly', 'weekly'
+    recurring_count: Optional[int] = 1
+
+class FinanceTransactionUpdate(BaseModel):
+    date: Optional[py_date] = None
+    type: Optional[FinanceTransactionType] = None
+    category_id: Optional[UUID] = None
+    account_id: Optional[UUID] = None
+    amount_cents: Optional[int] = None
+    vat_amount_cents: Optional[int] = None
+    vat_rate: Optional[Decimal] = None
+    description: Optional[str] = None
+    payment_method: Optional[FinancePaymentMethod] = None
+    is_reconciled: Optional[bool] = None
+    receipt_url: Optional[str] = None
+
+class FinanceTransactionResponse(FinanceTransactionBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    tenant_id: UUID
+    created_by_id: Optional[UUID] = None
+    created_at: datetime
+    updated_at: datetime
+    category_name: Optional[str] = None
+    account_name: Optional[str] = None
+
+class FinanceDashboardResponse(BaseModel):
+    """Résumé pour le tableau de bord de trésorerie"""
+    total_income_cents: int
+    total_expense_cents: int
+    net_balance_cents: int
+    
+    # Nouveaux indicateurs pour la synthèse mensuelle
+    month_pending_cents: int = 0
+    month_error_cents: int = 0
+    month_refund_cents: int = 0
+    
+    income_by_category: List[dict] # {category: str, amount: int, color: str}
+    expense_by_category: List[dict]
+    
+    recent_transactions: List[FinanceTransactionResponse]
+    
+    # Évolution sur les derniers mois
+    monthly_trend: List[dict] # {month: str, income: int, expense: int}
+    
+    # Prévisions (basées sur l'échéancier)
+    projected_income_cents: int = 0
+    overdue_income_cents: int = 0
+    projected_trend: List[dict] = [] # {month: str, amount: int}

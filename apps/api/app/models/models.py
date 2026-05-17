@@ -58,11 +58,25 @@ class WaitlistStatus(str, enum.Enum):
 
 class OrderPaymentStatus(str, enum.Enum):
     PENDING = "a_valider"
-    PAID = "paye"
-    REFUNDED = "rembourse"
     WAITING = "en_attente"
-    INSTALLMENT = "echelonne"
+    PAID = "paye"
     ISSUE = "a_regulariser"
+    REFUNDED = "rembourse"
+    INSTALLMENT = "echelonne"
+
+
+class FinanceTransactionType(str, enum.Enum):
+    INCOME = "income"
+    EXPENSE = "expense"
+
+
+class FinancePaymentMethod(str, enum.Enum):
+    CASH = "cash"
+    CARD = "card"
+    TRANSFER = "transfer"
+    STRIPE = "stripe"
+    CHECK = "check"
+    OTHER = "other"
 
 
 # Modèles
@@ -653,4 +667,90 @@ class Installment(Base):
     __table_args__ = (
         Index("idx_installments_order", "order_id"),
         Index("idx_installments_tenant", "tenant_id"),
+    )
+
+
+class FinanceAccount(Base):
+    """Compte financier / Moyen de paiement (Banque A, Banque B, Caisse...)"""
+    __tablename__ = "finance_accounts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+
+    name = Column(String(100), nullable=False)
+    type = Column(SQLEnum(FinancePaymentMethod, values_callable=lambda e: [x.value for x in e]), nullable=True)
+    color = Column(String(20))
+    is_default = Column(Boolean, default=False)
+    
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("idx_fin_acc_tenant", "tenant_id"),
+    )
+
+
+class FinanceCategory(Base):
+    """Catégorie de flux de trésorerie (Loyer, Marketing, Stock, etc.)"""
+    __tablename__ = "finance_categories"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+
+    name = Column(String(100), nullable=False)
+    type = Column(SQLEnum(FinanceTransactionType, values_callable=lambda e: [x.value for x in e]), nullable=True) # None = Both
+    color = Column(String(20)) # Code couleur pour les graphiques
+    default_vat_rate = Column(Numeric(5, 2), default=0) # Taux de TVA par défaut (ex: 20.00)
+    
+    is_default = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("idx_fin_cat_tenant", "tenant_id"),
+    )
+
+
+class FinanceTransaction(Base):
+    """Journal de caisse / Trésorerie"""
+    __tablename__ = "finance_transactions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    
+    date = Column(Date, default=datetime.utcnow, nullable=False)
+    type = Column(SQLEnum(FinanceTransactionType, values_callable=lambda e: [x.value for x in e]), nullable=False)
+    category_id = Column(UUID(as_uuid=True), ForeignKey("finance_categories.id"), nullable=True)
+    account_id = Column(UUID(as_uuid=True), ForeignKey("finance_accounts.id"), nullable=True)
+    
+    # Montants
+    amount_cents = Column(Integer, nullable=False) # Montant Total (TTC)
+    vat_amount_cents = Column(Integer, default=0) # Montant de la TVA inclus
+    vat_rate = Column(Numeric(5, 2), default=0) # Taux de TVA appliqué
+    
+    # Détails
+    description = Column(String(255), nullable=False)
+    payment_method = Column(SQLEnum(FinancePaymentMethod, values_callable=lambda e: [x.value for x in e]), default=FinancePaymentMethod.OTHER)
+    
+    # Liens optionnels vers le reste du système
+    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=True)
+    registration_id = Column(UUID(as_uuid=True), ForeignKey("event_registrations.id"), nullable=True)
+    installment_id = Column(UUID(as_uuid=True), ForeignKey("installments.id"), nullable=True)
+    
+    # Statut & Justificatif
+    is_reconciled = Column(Boolean, default=True) # Pointé / Réconcilié
+    receipt_url = Column(String(500)) # URL du justificatif (photo/pdf)
+    
+    # Metadata
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relations
+    category = relationship("FinanceCategory")
+    account = relationship("FinanceAccount")
+    created_by = relationship("User")
+
+    __table_args__ = (
+        Index("idx_fin_trans_tenant_date", "tenant_id", "date"),
+        Index("idx_fin_trans_type", "tenant_id", "type"),
     )

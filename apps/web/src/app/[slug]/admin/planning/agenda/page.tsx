@@ -416,10 +416,10 @@ export default function AdminAgendaPage() {
     if (loading) return <div className="p-8 text-center text-slate-500 font-medium">Chargement...</div>;
 
     return (
-        <div className="flex min-h-screen bg-white text-slate-900 overflow-hidden">
+        <div className="flex min-h-screen bg-slate-50 text-slate-900 overflow-hidden">
             <Sidebar user={user} tenant={tenant} />
 
-            <main className="flex-1 p-4 md:p-6 overflow-auto bg-[#fafafa]">
+            <main className="flex-1 p-4 md:p-6 overflow-auto">
                 <div className="max-w-full mx-auto space-y-6 animate-in fade-in duration-500 px-2">
 
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

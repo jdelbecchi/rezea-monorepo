@@ -299,6 +299,15 @@ async def event_checkout(
         logger = structlog.get_logger()
         logger.error("❌ Erreur lors de l'envoi de l'email de confirmation d'évènement", error=str(e), reg_id=str(registration.id))
     
+    # 6. Synchronisation trésorerie
+    try:
+        from app.services.finance_service import FinanceService
+        await FinanceService.sync_event_registration_to_finance(db, registration)
+    except Exception as e:
+        import structlog
+        logger = structlog.get_logger()
+        logger.error("❌ Erreur synchronisation trésorerie évènement", error=str(e), reg_id=str(registration.id))
+    
     return {
         "registration_id": registration.id,
         "message": "Inscription initialisée avec succès",
