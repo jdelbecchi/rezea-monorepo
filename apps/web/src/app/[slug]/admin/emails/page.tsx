@@ -15,11 +15,63 @@ const ReactQuill = dynamic(() => import("react-quill"), {
     loading: () => <div className="h-64 bg-slate-50 border border-slate-200 rounded-xl animate-pulse flex items-center justify-center text-slate-400">Chargement de l'éditeur...</div>
 });
 
+const marketingCampaignTips: Record<string, { segmentLabel: string; tips: string[] }> = {
+    convert_prospects: {
+        segmentLabel: "Prospects (Comptes créés sans offre ni commande)",
+        tips: [
+            "Offrez une réduction temporaire (ex: -10%) ou proposez un premier cours d'essai à tarif préférentiel.",
+            "Proposez une visite personnalisée de votre établissement ou une séance d'accueil pour lever les freins.",
+            "Créez un sentiment d'urgence en limitant la validité du code de bienvenue (ex: valable 7 jours)."
+        ]
+    },
+    fid_discovery: {
+        segmentLabel: "Nouveaux venus (Une seule commande effectuée)",
+        tips: [
+            "Envoyez une enquête de satisfaction rapide pour recueillir leur ressenti sur leur première séance.",
+            "Suggerez-leur une formule de découverte ou une carte de 5/10 séances pour pérenniser leur pratique.",
+            "Mettez en avant vos services d'accompagnement ou des activités complémentaires pour créer une habitude."
+        ]
+    },
+    reactivate_distant: {
+        segmentLabel: "Membres distants (Offre en cours mais absents depuis 21 jours)",
+        tips: [
+            "Prenez simplement des nouvelles avec bienveillance pour savoir s'ils rencontrent des difficultés.",
+            "Rappelez-leur que la régularité est la clé de leur progression et proposez un accompagnement sur-mesure.",
+            "Suggerez un changement de créneau ou une formule plus souple si leur emploi du temps a changé."
+        ]
+    },
+    reward_actives: {
+        segmentLabel: "Membres actifs (Fidèles et réguliers)",
+        tips: [
+            "Offrez un privilège exclusif (ex: invitation gratuite pour un proche, accès prioritaire aux nouveaux cours).",
+            "Mettez en place un programme de parrainage pour les inciter à faire découvrir votre club à leurs proches.",
+            "Invitez-les à partager leur avis positif sur vos réseaux sociaux ou fiche Google pour accroître votre visibilité."
+        ]
+    },
+    engage_visitors: {
+        segmentLabel: "Visiteurs ponctuels (Passages sporadiques)",
+        tips: [
+            "Démontrez l'intérêt financier de passer à une formule mensuelle ou une carte de 10/20 séances.",
+            "Proposez des offres groupées ou des ateliers thématiques le week-end adaptés aux pratiquants flexibles.",
+            "Valorisez l'appartenance à la communauté du club pour les inciter à s'investir plus régulièrement."
+        ]
+    },
+    winback_inactives: {
+        segmentLabel: "Anciens membres (Inactifs depuis plus de 60 jours)",
+        tips: [
+            "Proposez une offre irrésistible de réengagement (ex: séance offerte, pas de frais d'inscription).",
+            "Présentez vos nouveautés : nouveaux professeurs, équipements ou activités ajoutés récemment.",
+            "Rassurez-les sur la reprise en douceur de leur routine sportive ou bien-être, sans pression."
+        ]
+    }
+};
+
 function AdminEmailsContent() {
     const router = useRouter();
     const params = useParams();
     const searchParams = useSearchParams();
     const [user, setUser] = useState<User | null>(null);
+    const [tenant, setTenant] = useState<any | null>(null);
     const [activeTab, setActiveTab] = useState<"newsletter" | "operational" | "marketing" | "surveys">("newsletter");
     
     // Destinataires & Segments
@@ -85,36 +137,36 @@ function AdminEmailsContent() {
 
     const marketingCards = useMemo(() => [
         {
+            id: "convert_prospects",
+            title: "Convertir vos prospects",
+            description: "Cible les personnes qui ont créé un compte mais n'ont pas encore passé de commande.",
+            segment: "explorateur",
+            icon: "✨",
+            defaultSubject: "Bienvenue chez {establishment} ! Bénéficiez de -10% sur votre première séance",
+            defaultContent: `<p>Bonjour {first_name},</p><p>Votre compte a été créé avec succès, mais vous n'avez pas encore planifié votre première activité.</p><p>Pour vous souhaiter la bienvenue, voici un code promo exclusif de 10% sur votre première réservation : <b>BIENVENUE10</b></p><p>À très bientôt dans notre studio !</p>`
+        },
+        {
+            id: "fid_discovery",
+            title: "Fidéliser les nouveaux venus",
+            description: "Cible les personnes avec une seule commande passée et aucune réservation future programmée.",
+            segment: "decouverte",
+            icon: "⭐",
+            defaultSubject: "Comment s'est passée votre première séance ?",
+            defaultContent: `<p>Bonjour {first_name},</p><p>Vous avez récemment effectué votre première séance chez nous et nous espérons que vous avez adoré l'expérience !</p><p>Pour continuer sur votre lancée, découvrez nos offres et formules régulières.</p><p>À bientôt !</p>`
+        },
+        {
             id: "reactivate_distant",
             title: "Réactiver vos membres distants",
-            description: "Cible les clients avec une commande en cours mais absents depuis plus de 21 jours.",
+            description: "Cible les personnes avec une offre en cours mais absentes depuis plus de 21 jours.",
             segment: "endormi",
             icon: "🚀",
             defaultSubject: "Nous pensons à vous !",
             defaultContent: `<p>Bonjour {first_name},</p><p>Nous avons remarqué que nous ne vous avions pas vu au studio ces derniers temps. Nous espérons que tout va bien de votre côté !</p><p>N'hésitez pas à nous faire un petit signe si vous avez besoin d'adapter vos séances...</p><p>À très bientôt,</p><p>L'équipe</p>`
         },
         {
-            id: "convert_prospects",
-            title: "Convertir vos prospects",
-            description: "Cible les personnes qui ont créé un compte mais n'ont pas encore passé de commande.",
-            segment: "explorateur",
-            icon: "✨",
-            defaultSubject: "Bienvenue chez Rezea ! Bénéficiez de -10% sur votre première séance",
-            defaultContent: `<p>Bonjour {first_name},</p><p>Votre compte a été créé avec succès, mais vous n'avez pas encore planifié votre première activité.</p><p>Pour vous souhaiter la bienvenue, voici un code promo exclusif de 10% sur votre première réservation : <b>BIENVENUE10</b></p><p>À très bientôt dans notre studio !</p>`
-        },
-        {
-            id: "fid_discovery",
-            title: "Fidéliser les nouveaux venus (Découverte)",
-            description: "Cible les personnes avec une seule commande passée et aucune réservation future programmée.",
-            segment: "decouverte",
-            icon: "⭐",
-            defaultSubject: "Comment s'est passée votre première séance ?",
-            defaultContent: `<p>Bonjour {first_name},</p><p>Vous avez récemment effectué votre première séance chez nous et nous espérons que vous avez adoré l'expérience !</p><p>Pour continuer sur votre lancée, découvrez nos abonnements et offres régulières.</p><p>À bientôt !</p>`
-        },
-        {
             id: "reward_actives",
             title: "Remercier vos membres actifs",
-            description: "Cible les clients les plus fidèles avec une commande active et des réservations régulières.",
+            description: "Cible les personnes les plus fidèles avec une offre active et des réservations régulières.",
             segment: "regulier",
             icon: "💖",
             defaultSubject: "Merci pour votre fidélité ! Un petit cadeau pour vous 🎁",
@@ -123,16 +175,16 @@ function AdminEmailsContent() {
         {
             id: "engage_visitors",
             title: "Engager vos visiteurs ponctuels",
-            description: "Cible les clients de passage qui viennent ponctuellement sans abonnement régulier.",
+            description: "Cible les personnes de passage qui viennent ponctuellement sans offre régulière.",
             segment: "flexible",
             icon: "⚡",
-            defaultSubject: "Passez à la vitesse supérieure chez Rezea",
-            defaultContent: `<p>Bonjour {first_name},</p><p>Vous venez nous voir de temps en temps et nous adorons votre présence ponctuelle au studio !</p><p>Saviez-vous que vous pourriez économiser sur vos séances en optant pour l'une de nos formules régulières ou cartes multi-séances ? Découvrez nos formules adaptées à votre rythme de vie.</p><p>À bientôt pour votre prochaine séance !</p>`
+            defaultSubject: "Passez à la vitesse supérieure chez {establishment}",
+            defaultContent: `<p>Bonjour {first_name},</p><p>Vous venez nous voir de temps en temps et nous adorons votre présence ponctuelle au studio !</p><p>Saviez-vous que vous pourriez économiser sur vos séances en optant pour l'une de nos formules régulières ou cartes multi-séances ? Découvrez nos offres adaptées à votre rythme de vie.</p><p>À bientôt pour votre prochaine séance !</p>`
         },
         {
             id: "winback_inactives",
             title: "Reconquérir vos anciens membres",
-            description: "Cible les clients inactifs qui n'ont pas passé de commande depuis plus de 60 jours.",
+            description: "Cible les personnes inactives qui n'ont pas passé de commande depuis plus de 60 jours.",
             segment: "ancien",
             icon: "👋",
             defaultSubject: "Vous nous manquez... Venez tester nos nouveautés !",
@@ -144,8 +196,14 @@ function AdminEmailsContent() {
         setSelectedMarketingCard(card);
         const segmentUsers = allUsers.filter(u => u.segment === card.segment);
         setSelectedMarketingUserIds(segmentUsers.map(u => u.id));
-        setMarketingSubject(card.defaultSubject);
-        setMarketingContent(card.defaultContent);
+        
+        // Dynamically replace establishment/tenant name
+        const estName = tenant?.name || "votre établissement";
+        const subject = card.defaultSubject.replace(/{establishment}/g, estName).replace(/Rezea/g, estName).replace(/rezea/g, estName);
+        const content = card.defaultContent.replace(/{establishment}/g, estName).replace(/Rezea/g, estName).replace(/rezea/g, estName);
+        
+        setMarketingSubject(subject);
+        setMarketingContent(content);
     };
 
     const handleSendMarketing = async () => {
@@ -259,12 +317,13 @@ function AdminEmailsContent() {
             setUser(userData);
 
             // 2. Récupérer les données annexes
-            const [users, templatesData, stats, eventsData, sessionsData] = await Promise.all([
+            const [users, templatesData, stats, eventsData, sessionsData, tenantData] = await Promise.all([
                 api.getAdminUsers(),
                 api.getEmailTemplates(),
                 api.getSegmentsStats().catch(() => null),
                 api.getAdminEvents().catch(() => []),
                 api.getAdminSessions().catch(() => []),
+                api.getTenantSettings().catch(() => null),
             ]);
             
             setAllUsers(users);
@@ -272,6 +331,7 @@ function AdminEmailsContent() {
             setSegmentStats(stats);
             setEvents(eventsData);
             setSessions(sessionsData);
+            setTenant(tenantData);
             
             // Pré-sélection des destinataires via query params
             const recipientIds = searchParams.get("recipientIds");
@@ -887,17 +947,20 @@ function AdminEmailsContent() {
                     {/* ==================== TAB 3 : MARKETING ACTIONS ==================== */}
                     {activeTab === "marketing" && (
                         <div className="space-y-8 animate-in fade-in duration-300">
-                            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-8 rounded-3xl text-white shadow-xl shadow-indigo-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                                <div className="space-y-2">
-                                    <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-                                        <span>🚀</span> Stratégies de Marketing Intelligentes
+                            {/* Pale Blue Premium Banner */}
+                            <div className="bg-blue-50/60 border border-blue-100/80 p-4 px-6 rounded-2xl text-blue-900 shadow-sm flex items-center justify-center">
+                                <div className="flex flex-col md:flex-row md:items-center md:justify-center gap-2 md:gap-4 w-full text-center">
+                                    <h2 className="text-base font-semibold text-blue-950 tracking-tight flex items-center justify-center gap-2 shrink-0">
+                                        <span>🎯</span> Stratégies de marketing intelligentes
                                     </h2>
-                                    <p className="text-indigo-100 text-sm max-w-2xl font-normal leading-relaxed">
-                                        Activez l'une de nos campagnes de relance pré-configurées. Ciblez les segments clés en un clic et personnalisez le message avant l'envoi.
+                                    <span className="hidden md:inline text-blue-200">|</span>
+                                    <p className="text-blue-800 text-xs font-normal leading-relaxed truncate">
+                                        Activez l&apos;une de nos campagnes de relance pré-configurées. Ciblez les segments clés en un clic et personnalisez le message.
                                     </p>
                                 </div>
                             </div>
 
+                            {/* Campaign Cards Grid */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 {marketingCards.map(card => {
                                     const count = segmentStats ? (segmentStats as any)[card.segment] || 0 : 0;
@@ -905,27 +968,25 @@ function AdminEmailsContent() {
                                         <div 
                                             key={card.id}
                                             onClick={() => handleSelectMarketingCard(card)}
-                                            className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer flex flex-col justify-between group h-full relative overflow-hidden"
+                                            className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer flex flex-col justify-between group h-full relative overflow-hidden"
                                         >
                                             <div className="space-y-4">
-                                                <div className="w-12 h-12 rounded-2xl bg-indigo-50/50 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-300">
-                                                    {card.icon}
-                                                </div>
-                                                <div>
-                                                    <h3 className="text-base font-bold text-slate-900 leading-snug group-hover:text-indigo-600 transition-colors">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-2xl shrink-0 group-hover:scale-110 transition-transform duration-300 select-none">{card.icon}</span>
+                                                    <h3 className="text-base font-semibold text-slate-900 leading-snug group-hover:text-blue-600 transition-colors">
                                                         {card.title}
                                                     </h3>
-                                                    <p className="text-xs text-slate-500 font-medium leading-relaxed mt-2">
-                                                        {card.description}
-                                                    </p>
                                                 </div>
+                                                <p className="text-xs text-slate-500 font-medium leading-relaxed mt-2 pl-9">
+                                                    {card.description}
+                                                </p>
                                             </div>
 
-                                            <div className="mt-8 pt-4 border-t border-slate-100 flex items-center justify-between">
-                                                <span className="text-xs font-bold px-3 py-1 bg-slate-100 text-slate-600 rounded-full">
+                                            <div className="mt-8 pt-4 border-t border-slate-100 flex items-center justify-between pl-9">
+                                                <span className="text-xs font-medium px-3 py-1 bg-slate-100 text-slate-600 rounded-full">
                                                     {count} {count > 1 ? "personnes" : "personne"}
                                                 </span>
-                                                <span className="text-xs font-bold text-indigo-600 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                                                <span className="text-xs font-bold text-blue-600 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
                                                     Configurer ➔
                                                 </span>
                                             </div>
@@ -933,157 +994,6 @@ function AdminEmailsContent() {
                                     );
                                 })}
                             </div>
-
-                            {/* Modal / Drawer de configuration de la campagne de relance marketing */}
-                            {selectedMarketingCard && (
-                                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                                    <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                                        {/* Modal Header */}
-                                        <div className="p-6 md:p-8 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-2xl">{selectedMarketingCard.icon}</span>
-                                                <div>
-                                                    <h3 className="text-lg font-bold text-slate-900 leading-tight">
-                                                        {selectedMarketingCard.title}
-                                                    </h3>
-                                                    <p className="text-xs text-slate-400 mt-0.5">
-                                                        Segment cible : <span className="font-bold text-slate-500">{segmentLabels[selectedMarketingCard.segment] || selectedMarketingCard.segment}</span>
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <button 
-                                                onClick={() => setSelectedMarketingCard(null)} 
-                                                className="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-50 rounded-xl transition-colors"
-                                            >
-                                                ✕
-                                            </button>
-                                        </div>
-
-                                        {/* Modal Content */}
-                                        <div className="flex-1 overflow-y-auto p-6 md:p-8 grid grid-cols-1 lg:grid-cols-5 gap-8">
-                                            {/* Left Panel: Destinataires (L'Ajustement) */}
-                                            <div className="lg:col-span-2 flex flex-col space-y-4 max-h-[50vh] lg:max-h-none">
-                                                <div className="flex items-center justify-between">
-                                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                                        Destinataires ({allUsers.filter(u => u.segment === selectedMarketingCard.segment).length})
-                                                    </h4>
-                                                    <button 
-                                                        onClick={() => {
-                                                            const users = allUsers.filter(u => u.segment === selectedMarketingCard.segment);
-                                                            if (selectedMarketingUserIds.length === users.length) {
-                                                                setSelectedMarketingUserIds([]);
-                                                            } else {
-                                                                setSelectedMarketingUserIds(users.map(u => u.id));
-                                                            }
-                                                        }}
-                                                        className="text-xs font-bold text-indigo-600 hover:underline"
-                                                    >
-                                                        {selectedMarketingUserIds.length === allUsers.filter(u => u.segment === selectedMarketingCard.segment).length ? "Tout décocher" : "Tout cocher"}
-                                                    </button>
-                                                </div>
-
-                                                <div className="flex-1 overflow-y-auto border border-slate-100 rounded-2xl p-4 bg-slate-50/50 space-y-2 max-h-[300px] lg:max-h-none">
-                                                    {allUsers.filter(u => u.segment === selectedMarketingCard.segment).length === 0 ? (
-                                                        <div className="text-center text-xs text-slate-400 py-12">
-                                                            Aucun membre dans ce segment actuellement.
-                                                        </div>
-                                                    ) : (
-                                                        allUsers.filter(u => u.segment === selectedMarketingCard.segment).map(u => (
-                                                            <label 
-                                                                key={u.id}
-                                                                className="flex items-center justify-between p-3 rounded-xl bg-white border border-slate-100 hover:border-slate-200 transition-all cursor-pointer"
-                                                            >
-                                                                <div className="flex items-center gap-3">
-                                                                    <input 
-                                                                        type="checkbox"
-                                                                        checked={selectedMarketingUserIds.includes(u.id)}
-                                                                        onChange={() => {
-                                                                            setSelectedMarketingUserIds(prev => 
-                                                                                prev.includes(u.id) ? prev.filter(uid => uid !== u.id) : [...prev, u.id]
-                                                                            );
-                                                                        }}
-                                                                        className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
-                                                                    />
-                                                                    <div className="flex flex-col text-left">
-                                                                        <span className="font-bold text-slate-800 text-xs">{u.first_name} {u.last_name}</span>
-                                                                        <span className="text-[10px] text-slate-400 font-normal mt-0.5">{u.email}</span>
-                                                                    </div>
-                                                                </div>
-                                                            </label>
-                                                        ))
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            {/* Right Panel: Personnalisation */}
-                                            <div className="lg:col-span-3 space-y-5">
-                                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                                    Personnalisation du message
-                                                </h4>
-
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Objet du message</label>
-                                                    <input 
-                                                        type="text"
-                                                        value={marketingSubject}
-                                                        onChange={(e) => setMarketingSubject(e.target.value)}
-                                                        placeholder="Saisissez l'objet du message..."
-                                                        className="w-full p-3.5 border border-slate-200 bg-slate-55 rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-outfit"
-                                                    />
-                                                </div>
-
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Corps du message</label>
-                                                    <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-inner">
-                                                        <QuillNode 
-                                                            theme="snow"
-                                                            value={marketingContent}
-                                                            onChange={setMarketingContent}
-                                                            modules={{
-                                                                toolbar: [
-                                                                    ['bold', 'italic', 'underline', 'strike'],
-                                                                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                                                                    [{ 'align': [] }],
-                                                                    ['clean']
-                                                                ]
-                                                            }}
-                                                            className="bg-white min-h-[160px] text-sm"
-                                                        />
-                                                    </div>
-                                                    <div className="mt-2 p-3 bg-amber-50 rounded-xl border border-amber-150 flex items-start gap-2 text-[11px] text-amber-800">
-                                                        <span className="text-sm">💡</span>
-                                                        <p className="leading-relaxed">
-                                                            Utilisez le tag <b>&#123;first_name&#125;</b> dans votre message : il sera remplacé dynamiquement par le prénom de chaque destinataire (ex: Marie, Pierre).
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Modal Footer */}
-                                        <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
-                                            <span className="text-sm font-semibold text-slate-500">
-                                                {selectedMarketingUserIds.length} destinataire(s) sélectionné(s) sur {allUsers.filter(u => u.segment === selectedMarketingCard.segment).length}
-                                            </span>
-                                            <div className="flex items-center gap-3 w-full md:w-auto">
-                                                <button
-                                                    onClick={() => setSelectedMarketingCard(null)}
-                                                    className="w-full md:w-auto px-5 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl font-semibold hover:bg-slate-50 transition-all text-sm active:scale-95"
-                                                >
-                                                    Annuler
-                                                </button>
-                                                <button
-                                                    onClick={handleSendMarketing}
-                                                    disabled={isSendingMarketing || selectedMarketingUserIds.length === 0}
-                                                    className="w-full md:w-auto px-8 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-xl font-bold transition-all text-sm shadow-md active:scale-95 flex items-center justify-center gap-2"
-                                                >
-                                                    {isSendingMarketing ? "Envoi en cours..." : "Diffuser la campagne 🚀"}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     )}
 
@@ -1289,9 +1199,181 @@ function AdminEmailsContent() {
 
             {/* ==================== MODALS ==================== */}
 
+            {/* Modal / Drawer de configuration de la campagne de relance marketing */}
+            {selectedMarketingCard && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        {/* Modal Header */}
+                        <div className="p-6 md:p-8 pb-3 flex items-center justify-between bg-white sticky top-0 z-10">
+                            <div className="flex items-center gap-3">
+                                <span className="text-2xl select-none">{selectedMarketingCard.icon}</span>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-900 tracking-tight leading-snug">{selectedMarketingCard.title}</h3>
+                                </div>
+                            </div>
+                            <button onClick={() => setSelectedMarketingCard(null)} className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-50 rounded-xl">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Modal Content */}
+                        <div className="flex-1 overflow-y-auto p-6 md:p-8 pt-2 space-y-6">
+                            
+                            {/* Premium Encart de ciblage & conseils marketing */}
+                            {(() => {
+                                const info = marketingCampaignTips[selectedMarketingCard.id] || {
+                                    segmentLabel: segmentLabels[selectedMarketingCard.segment] || selectedMarketingCard.segment,
+                                    tips: ["Définissez des objectifs de campagne clairs.", "Rédigez un contenu direct et chaleureux."]
+                                };
+                                return (
+                                    <div className="bg-gradient-to-r from-blue-50/70 to-indigo-50/50 border border-blue-100/80 rounded-2xl p-5 shadow-sm text-sm">
+                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-blue-100/40 pb-3 mb-4">
+                                            <h4 className="text-xs font-bold text-slate-700 flex items-center gap-1.5 uppercase tracking-wide">
+                                                💡 Idées d&apos;actions recommandées :
+                                            </h4>
+                                            <div className="inline-flex items-center px-3 py-1 bg-blue-100/60 text-blue-800 text-xs font-medium rounded-lg border border-blue-200/50">
+                                                🎯 Segment cible : {info.segmentLabel}
+                                            </div>
+                                        </div>
+                                        
+                                        <ul className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            {info.tips.map((tip, idx) => (
+                                                <li key={idx} className="flex gap-2.5 items-start bg-white/65 p-3 rounded-xl border border-white shadow-[0_2px_4px_rgba(30,41,59,0.02)]">
+                                                    <span className="text-blue-500 font-bold select-none text-xs">{idx + 1}.</span>
+                                                    <span className="text-xs text-slate-600 font-medium leading-relaxed">{tip}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                );
+                            })()}
+
+                            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                                {/* Colonne Gauche : Liste des Destinataires */}
+                                <div className="lg:col-span-2 flex flex-col gap-4">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+                                            Destinataires ({selectedMarketingUserIds.length})
+                                        </h4>
+                                        <button
+                                            onClick={() => {
+                                                const targetedUsers = allUsers.filter(u => u.segment === selectedMarketingCard.segment);
+                                                if (selectedMarketingUserIds.length === targetedUsers.length) {
+                                                    setSelectedMarketingUserIds([]);
+                                                } else {
+                                                    setSelectedMarketingUserIds(targetedUsers.map(u => u.id));
+                                                }
+                                            }}
+                                            className="text-xs font-semibold text-blue-600 hover:underline"
+                                        >
+                                            {selectedMarketingUserIds.length === allUsers.filter(u => u.segment === selectedMarketingCard.segment).length ? "Tout décocher" : "Tout cocher"}
+                                        </button>
+                                    </div>
+
+                                    <div className="flex-1 overflow-y-auto max-h-[360px] pr-2 border border-slate-100 rounded-2xl p-4 bg-slate-50/30 flex flex-col gap-2">
+                                        {allUsers.filter(u => u.segment === selectedMarketingCard.segment).length === 0 ? (
+                                            <div className="text-center text-xs text-slate-400 py-12">
+                                                Aucun membre dans ce segment actuellement.
+                                            </div>
+                                        ) : (
+                                            allUsers.filter(u => u.segment === selectedMarketingCard.segment).map(u => (
+                                                <label
+                                                    key={u.id}
+                                                    className="flex items-center justify-between p-3.5 rounded-2xl bg-white border border-slate-100 hover:border-slate-200 transition-all cursor-pointer hover:shadow-sm"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedMarketingUserIds.includes(u.id)}
+                                                            onChange={() => {
+                                                                setSelectedMarketingUserIds(prev =>
+                                                                    prev.includes(u.id) ? prev.filter(uid => uid !== u.id) : [...prev, u.id]
+                                                                );
+                                                            }}
+                                                            className="w-4 h-4 text-blue-600 border-slate-200 rounded focus:ring-blue-500"
+                                                        />
+                                                        <div className="flex flex-col text-left">
+                                                            <span className="font-semibold text-slate-700 text-xs">{u.first_name} {u.last_name}</span>
+                                                            <span className="text-[10px] text-slate-400 font-normal mt-0.5">{u.email}</span>
+                                                        </div>
+                                                    </div>
+                                                </label>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Colonne Droite : Message */}
+                                <div className="lg:col-span-3 flex flex-col gap-5">
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">objet du message</label>
+                                        <input
+                                            type="text"
+                                            value={marketingSubject}
+                                            onChange={(e) => setMarketingSubject(e.target.value)}
+                                            className="w-full p-4 border border-slate-200/80 rounded-2xl text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500 bg-slate-55"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">corps du message</label>
+                                        <div className="border border-slate-200/80 rounded-2xl overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 bg-white">
+                                             <QuillNode
+                                                 theme="snow"
+                                                 value={marketingContent}
+                                                 onChange={setMarketingContent}
+                                                 modules={{
+                                                     toolbar: [
+                                                         ['bold', 'italic', 'underline', 'strike'],
+                                                         [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                                         [{ 'align': [] }],
+                                                         ['clean']
+                                                      ]
+                                                 }}
+                                                 className="bg-white min-h-[160px] text-sm"
+                                             />
+                                        </div>
+                                        <div className="mt-2 p-3 bg-amber-50 rounded-xl border border-amber-150 flex items-start gap-2 text-[11px] text-amber-800">
+                                            <span className="text-sm">💡</span>
+                                            <p className="leading-relaxed">
+                                                Utilisez le tag <b>&#123;first_name&#125;</b> dans votre message : il sera remplacé dynamiquement par le prénom de chaque destinataire (ex: Marie, Pierre).
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-6 bg-white border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                            <span className="text-xs font-medium text-slate-500">
+                                {selectedMarketingUserIds.length} destinataire(s) sélectionné(s) sur {allUsers.filter(u => u.segment === selectedMarketingCard.segment).length}
+                            </span>
+                            <div className="flex items-center gap-3 w-full md:w-auto">
+                                <button
+                                    onClick={() => setSelectedMarketingCard(null)}
+                                    className="w-full md:w-auto px-5 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl font-semibold hover:bg-slate-50 transition-all text-sm active:scale-95"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    onClick={handleSendMarketing}
+                                    disabled={isSendingMarketing || selectedMarketingUserIds.length === 0}
+                                    className="w-full md:w-auto px-8 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-xl font-semibold transition-all text-sm shadow-md active:scale-95 flex items-center justify-center gap-2"
+                                >
+                                    {isSendingMarketing ? "Envoi en cours..." : "Diffuser la campagne 🚀"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Modal Sélection manuelle utilisateurs */}
             {showUserSelector && (
-                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
                         <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
                             <div className="flex items-center gap-3">
@@ -1362,7 +1444,7 @@ function AdminEmailsContent() {
 
             {/* Modal de sauvegarde de modèle */}
             {showSaveModal && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-10 pb-8">
                             <h3 className="text-xl font-semibold text-slate-900 mb-2">Enregistrer le modèle</h3>
@@ -1401,7 +1483,7 @@ function AdminEmailsContent() {
 
             {/* Modal de suppression de modèle */}
             {templateToDelete && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-10 pb-8">
                             <h3 className="text-xl font-bold text-slate-900 mb-2">Supprimer le modèle ?</h3>
@@ -1428,7 +1510,7 @@ function AdminEmailsContent() {
 
             {/* Modal Inspecteur détaillé Enquêtes */}
             {showSurveyDetailsModal && selectedSurveyDetails && (
-                <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 flex items-center justify-end animate-in fade-in duration-300">
+                <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[9999] flex items-center justify-end animate-in fade-in duration-300">
                     <div className="bg-white w-full max-w-2xl h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
                         
                         {/* Header details */}
