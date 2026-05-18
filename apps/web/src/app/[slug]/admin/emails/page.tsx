@@ -20,12 +20,26 @@ function AdminEmailsContent() {
     const params = useParams();
     const searchParams = useSearchParams();
     const [user, setUser] = useState<User | null>(null);
-    const [recipientType, setRecipientType] = useState<"all" | "active" | "selected">("all");
+    const [activeTab, setActiveTab] = useState<"newsletter" | "operational" | "marketing" | "surveys">("newsletter");
+    
+    // Destinataires & Segments
+    const [recipientType, setRecipientType] = useState<"all" | "selected" | "segment">("all");
+    const [selectedSegment, setSelectedSegment] = useState<string>("");
     const [allUsers, setAllUsers] = useState<User[]>([]);
-    const QuillNode = ReactQuill as any;
-
     const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
-
+    const [selectedTargets, setSelectedTargets] = useState<string[]>(["all"]);
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    const [segmentStats, setSegmentStats] = useState<{
+        explorateur: number;
+        decouverte: number;
+        regulier: number;
+        endormi: number;
+        flexible: number;
+        ancien: number;
+    } | null>(null);
+    
+    // Editor State
     const [subject, setSubject] = useState("");
     const [content, setContent] = useState("");
     const [isSending, setIsSending] = useState(false);
@@ -34,19 +48,149 @@ function AdminEmailsContent() {
     const [showUserSelector, setShowUserSelector] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     
+    // Switch Urgence Opérationnelle
+    const [forceOperational, setForceOperational] = useState(false);
+
     // Templates state
     const [templates, setTemplates] = useState<EmailTemplate[]>([]);
     const [showSaveModal, setShowSaveModal] = useState(false);
     const [templateName, setTemplateName] = useState("");
     const [isSavingTemplate, setIsSavingTemplate] = useState(false);
-    
     const [templateToDelete, setTemplateToDelete] = useState<EmailTemplate | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+
+    // Enquêtes (Surveys) State
+    const [surveys, setSurveys] = useState<any[]>([]);
+    const [events, setEvents] = useState<any[]>([]);
+    const [sessions, setSessions] = useState<any[]>([]);
+    const [selectedSurveyDetails, setSelectedSurveyDetails] = useState<any | null>(null);
+    const [showSurveyDetailsModal, setShowSurveyDetailsModal] = useState(false);
     
+    // Form Enquêtes
+    const [surveyTitle, setSurveyTitle] = useState("");
+    const [surveyType, setSurveyType] = useState<"general" | "event">("general");
+    const [surveyTargetType, setSurveyTargetType] = useState<"event" | "session">("event");
+    const [surveyTargetSegment, setSurveyTargetSegment] = useState("");
+    const [surveyEventId, setSurveyEventId] = useState("");
+    const [surveySessionId, setSurveySessionId] = useState("");
+    const [isCreatingSurvey, setIsCreatingSurvey] = useState(false);
+    const [isSendingSurvey, setIsSendingSurvey] = useState<string | null>(null);
+
+    // Marketing State
+    const [selectedMarketingCard, setSelectedMarketingCard] = useState<any | null>(null);
+    const [selectedMarketingUserIds, setSelectedMarketingUserIds] = useState<string[]>([]);
+    const [marketingSubject, setMarketingSubject] = useState("");
+    const [marketingContent, setMarketingContent] = useState("");
+    const [isSendingMarketing, setIsSendingMarketing] = useState(false);
+
+    const marketingCards = useMemo(() => [
+        {
+            id: "reactivate_distant",
+            title: "Réactiver vos membres distants",
+            description: "Cible les clients avec une commande en cours mais absents depuis plus de 21 jours.",
+            segment: "endormi",
+            icon: "🚀",
+            defaultSubject: "Nous pensons à vous !",
+            defaultContent: `<p>Bonjour {first_name},</p><p>Nous avons remarqué que nous ne vous avions pas vu au studio ces derniers temps. Nous espérons que tout va bien de votre côté !</p><p>N'hésitez pas à nous faire un petit signe si vous avez besoin d'adapter vos séances...</p><p>À très bientôt,</p><p>L'équipe</p>`
+        },
+        {
+            id: "convert_prospects",
+            title: "Convertir vos prospects",
+            description: "Cible les personnes qui ont créé un compte mais n'ont pas encore passé de commande.",
+            segment: "explorateur",
+            icon: "✨",
+            defaultSubject: "Bienvenue chez Rezea ! Bénéficiez de -10% sur votre première séance",
+            defaultContent: `<p>Bonjour {first_name},</p><p>Votre compte a été créé avec succès, mais vous n'avez pas encore planifié votre première activité.</p><p>Pour vous souhaiter la bienvenue, voici un code promo exclusif de 10% sur votre première réservation : <b>BIENVENUE10</b></p><p>À très bientôt dans notre studio !</p>`
+        },
+        {
+            id: "fid_discovery",
+            title: "Fidéliser les nouveaux venus (Découverte)",
+            description: "Cible les personnes avec une seule commande passée et aucune réservation future programmée.",
+            segment: "decouverte",
+            icon: "⭐",
+            defaultSubject: "Comment s'est passée votre première séance ?",
+            defaultContent: `<p>Bonjour {first_name},</p><p>Vous avez récemment effectué votre première séance chez nous et nous espérons que vous avez adoré l'expérience !</p><p>Pour continuer sur votre lancée, découvrez nos abonnements et offres régulières.</p><p>À bientôt !</p>`
+        },
+        {
+            id: "reward_actives",
+            title: "Remercier vos membres actifs",
+            description: "Cible les clients les plus fidèles avec une commande active et des réservations régulières.",
+            segment: "regulier",
+            icon: "💖",
+            defaultSubject: "Merci pour votre fidélité ! Un petit cadeau pour vous 🎁",
+            defaultContent: `<p>Bonjour {first_name},</p><p>Nous tenions tout particulièrement à vous remercier pour votre fidélité et votre énergie positive au studio ! C'est un réel plaisir de vous accompagner dans vos séances.</p><p>Pour vous remercier, voici un code cadeau offrant une invitation gratuite pour le proche de votre choix lors de votre prochain cours : <b>MERCIAMIS</b></p><p>À très bientôt sur les tapis !</p>`
+        },
+        {
+            id: "engage_visitors",
+            title: "Engager vos visiteurs ponctuels",
+            description: "Cible les clients de passage qui viennent ponctuellement sans abonnement régulier.",
+            segment: "flexible",
+            icon: "⚡",
+            defaultSubject: "Passez à la vitesse supérieure chez Rezea",
+            defaultContent: `<p>Bonjour {first_name},</p><p>Vous venez nous voir de temps en temps et nous adorons votre présence ponctuelle au studio !</p><p>Saviez-vous que vous pourriez économiser sur vos séances en optant pour l'une de nos formules régulières ou cartes multi-séances ? Découvrez nos formules adaptées à votre rythme de vie.</p><p>À bientôt pour votre prochaine séance !</p>`
+        },
+        {
+            id: "winback_inactives",
+            title: "Reconquérir vos anciens membres",
+            description: "Cible les clients inactifs qui n'ont pas passé de commande depuis plus de 60 jours.",
+            segment: "ancien",
+            icon: "👋",
+            defaultSubject: "Vous nous manquez... Venez tester nos nouveautés !",
+            defaultContent: `<p>Bonjour {first_name},</p><p>Cela fait plus de deux mois que nous ne vous avons pas vu au studio, et vous nous manquez beaucoup !</p><p>De nouveaux créneaux et de nouvelles activités viennent d'ouvrir. Pour vous encourager à revenir, nous serions ravis de vous offrir une séance d'essai gratuite avec le code : <b>RETOUR2026</b></p><p>À très vite,</p><p>L'équipe</p>`
+        }
+    ], []);
+
+    const handleSelectMarketingCard = (card: any) => {
+        setSelectedMarketingCard(card);
+        const segmentUsers = allUsers.filter(u => u.segment === card.segment);
+        setSelectedMarketingUserIds(segmentUsers.map(u => u.id));
+        setMarketingSubject(card.defaultSubject);
+        setMarketingContent(card.defaultContent);
+    };
+
+    const handleSendMarketing = async () => {
+        if (selectedMarketingUserIds.length === 0) {
+            setMessage({ type: "error", text: "Veuillez sélectionner au moins un destinataire." });
+            return;
+        }
+        if (!marketingSubject.trim()) {
+            setMessage({ type: "error", text: "Veuillez saisir un objet pour l'e-mail." });
+            return;
+        }
+        if (!marketingContent.trim()) {
+            setMessage({ type: "error", text: "Veuillez rédiger le contenu de l'e-mail." });
+            return;
+        }
+
+        setIsSendingMarketing(true);
+        setMessage(null);
+        try {
+            const result = await api.sendAdminEmail({
+                subject: marketingSubject,
+                content: marketingContent,
+                recipient_type: "selected",
+                selected_user_ids: selectedMarketingUserIds,
+                segment: selectedMarketingCard.segment
+            });
+            setMessage({
+                type: "success",
+                text: `Campagne de marketing envoyée avec succès à ${result.count} personne(s) !`
+            });
+            setSelectedMarketingCard(null);
+        } catch (err: any) {
+            console.error(err);
+            const errorMsg = err.response?.data?.detail || "Une erreur est survenue lors de l'envoi de la campagne.";
+            setMessage({ type: "error", text: errorMsg });
+        } finally {
+            setIsSendingMarketing(false);
+        }
+    };
+
+    const QuillNode = ReactQuill as any;
     const quillRef = useRef<any>(null);
 
+    // Configurer le support du texte centré / alignements dans Quill
     useEffect(() => {
-        // Configure Quill for inline styles (alignment)
         const configureQuill = async () => {
             try {
                 const { default: Quill } = await import('quill');
@@ -59,42 +203,98 @@ function AdminEmailsContent() {
         configureQuill();
     }, []);
 
+    // Gestion fermeture clic extérieur pour le dropdown de ciblage
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                // 1. Get user and check permissions BEFORE other data
-                const userData = await api.getCurrentUser();
-                if (userData.role !== "owner" && userData.role !== "manager") {
-                    router.push(`/${params.slug}/home`);
-                    return;
-                }
-                setUser(userData);
-
-                // 2. Fetch other data
-                const [users, templatesData] = await Promise.all([
-                    api.getAdminUsers(),
-                    api.getEmailTemplates(),
-                ]);
-                setAllUsers(users);
-                setTemplates(templatesData);
-                
-                // Handle pre-filled recipients from query params
-                const recipientIds = searchParams.get("recipientIds");
-                if (recipientIds) {
-                    const ids = recipientIds.split(",");
-                    setSelectedUserIds(ids);
-                    setRecipientType("selected");
-                }
-            } catch (err: any) {
-                console.error(err);
-                if (err.response?.status === 401) {
-                    router.push(`/${params.slug}`);
-                }
+        function handleClickOutside(event: MouseEvent) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setDropdownOpen(false);
             }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
         };
-        fetchData();
-    }, [searchParams, router]);
+    }, []);
 
+    const toggleTarget = (target: string) => {
+        setSelectedTargets(prev => {
+            if (target === "all") {
+                return ["all"];
+            }
+            if (target === "selected") {
+                return ["selected"];
+            }
+            // Si on coche un segment
+            let next = prev.filter(t => t !== "all" && t !== "selected");
+            if (next.includes(target)) {
+                next = next.filter(t => t !== target);
+            } else {
+                next.push(target);
+            }
+            if (next.length === 0) {
+                return ["all"];
+            }
+            return next;
+        });
+    };
+
+    // Chargement initial des données
+    const loadSurveys = useCallback(async () => {
+        try {
+            const data = await api.getSurveyCampaigns();
+            setSurveys(data);
+        } catch (err) {
+            console.error("Failed to load satisfaction surveys", err);
+        }
+    }, []);
+
+    const fetchAllData = useCallback(async () => {
+        try {
+            // 1. Authentification & rôle
+            const userData = await api.getCurrentUser();
+            if (userData.role !== "owner" && userData.role !== "manager") {
+                router.push(`/${params.slug}/home`);
+                return;
+            }
+            setUser(userData);
+
+            // 2. Récupérer les données annexes
+            const [users, templatesData, stats, eventsData, sessionsData] = await Promise.all([
+                api.getAdminUsers(),
+                api.getEmailTemplates(),
+                api.getSegmentsStats().catch(() => null),
+                api.getAdminEvents().catch(() => []),
+                api.getAdminSessions().catch(() => []),
+            ]);
+            
+            setAllUsers(users);
+            setTemplates(templatesData);
+            setSegmentStats(stats);
+            setEvents(eventsData);
+            setSessions(sessionsData);
+            
+            // Pré-sélection des destinataires via query params
+            const recipientIds = searchParams.get("recipientIds");
+            if (recipientIds) {
+                const ids = recipientIds.split(",");
+                setSelectedUserIds(ids);
+                setRecipientType("selected");
+                setSelectedTargets(["selected"]);
+            }
+        } catch (err: any) {
+            console.error(err);
+            if (err.response?.status === 401) {
+                router.push(`/${params.slug}`);
+            }
+        }
+    }, [searchParams, router, params.slug]);
+
+    useEffect(() => {
+        fetchAllData();
+        loadSurveys();
+    }, [fetchAllData, loadSurveys]);
+
+    // Uploader une image dans Quill
     const imageHandler = useCallback(() => {
         const input = document.createElement('input');
         input.setAttribute('type', 'file');
@@ -134,6 +334,7 @@ function AdminEmailsContent() {
         },
     }), [imageHandler]);
 
+    // Envoi des e-mails
     const handleSend = async () => {
         setShowValidation(true);
         if (!subject || !content || content === "<p><br></p>") {
@@ -141,7 +342,35 @@ function AdminEmailsContent() {
             return;
         }
 
-        if (recipientType === "selected" && selectedUserIds.length === 0) {
+        let resolvedRecipientType = "all";
+        let resolvedSegment: string | undefined = undefined;
+        let resolvedUserIds: string[] | undefined = undefined;
+
+        if (selectedTargets.includes("all")) {
+            resolvedRecipientType = "all";
+        } else if (selectedTargets.includes("selected")) {
+            resolvedRecipientType = "selected";
+            resolvedUserIds = selectedUserIds;
+            if (resolvedUserIds.length === 0) {
+                setMessage({ type: "error", text: "Veuillez sélectionner au moins un destinataire." });
+                return;
+            }
+        } else if (selectedTargets.length === 1) {
+            resolvedRecipientType = "segment";
+            resolvedSegment = selectedTargets[0];
+        } else if (selectedTargets.length > 1) {
+            resolvedRecipientType = "selected";
+            // Filter users belonging to any of the selected segments
+            const targetedUsers = allUsers.filter(u => 
+                u.segment && selectedTargets.map(t => t.toLowerCase()).includes(u.segment.toLowerCase())
+            );
+            resolvedUserIds = targetedUsers.map(u => u.id);
+            
+            if (resolvedUserIds.length === 0) {
+                setMessage({ type: "error", text: "Aucun utilisateur ne correspond aux statuts sélectionnés." });
+                return;
+            }
+        } else {
             setMessage({ type: "error", text: "Veuillez sélectionner au moins un destinataire." });
             return;
         }
@@ -153,25 +382,30 @@ function AdminEmailsContent() {
             const result = await api.sendAdminEmail({
                 subject,
                 content: content, 
-                recipient_type: recipientType,
-                selected_user_ids: recipientType === "selected" ? selectedUserIds : undefined
+                recipient_type: resolvedRecipientType,
+                selected_user_ids: resolvedUserIds,
+                segment: resolvedSegment,
+                force_operational: activeTab === "operational" ? forceOperational : false
             });
             setMessage({ type: "success", text: result.message });
             setSubject("");
             setContent("");
-            setSelectedUserIds([]);
+            setSelectedTargets(["all"]);
+            setForceOperational(false);
             setShowValidation(false);
-        } catch (error) {
-            setMessage({ type: "error", text: "Une erreur est survenue lors de l'envoi de l'email." });
+        } catch (error: any) {
+            const errorMsg = error.response?.data?.detail || "Une erreur est survenue lors de l'envoi de l'email.";
+            setMessage({ type: "error", text: errorMsg });
         } finally {
             setIsSending(false);
         }
     };
 
+    // Gestion des modèles
     const handleSaveTemplate = async () => {
         if (!templateName.trim()) return;
         if (!subject || !content || content === "<p><br></p>") {
-            setMessage({ type: "error", text: "Veuillez remplir l'objet et le contenu avant de sauvegarder." });
+            setMessage({ type: "error", text: "Veuillez remplir l'objet et le contenu avant d'enregistrer." });
             return;
         }
 
@@ -185,7 +419,7 @@ function AdminEmailsContent() {
             setTemplates(prev => [newTemplate, ...prev]);
             setShowSaveModal(false);
             setTemplateName("");
-            setMessage({ type: "success", text: "Modèle enregistré avec succès." });
+            setMessage({ type: "success", text: "Modèle enregistré dans votre bibliothèque." });
         } catch (error) {
             setMessage({ type: "error", text: "Erreur lors de la sauvegarde du modèle." });
         } finally {
@@ -204,7 +438,7 @@ function AdminEmailsContent() {
             setMessage({ type: "success", text: "Modèle supprimé avec succès." });
         } catch (error) {
             console.error("Delete failed", error);
-            setMessage({ type: "error", text: "Erreur lors de la suppression du modèle." });
+            setMessage({ type: "error", text: "Erreur lors de la suppression." });
         } finally {
             setIsDeleting(false);
         }
@@ -213,10 +447,85 @@ function AdminEmailsContent() {
     const loadTemplate = (template: EmailTemplate) => {
         setSubject(template.subject);
         setContent(template.content);
-        // Scroll to subject input or editor
-        window.scrollTo({ top: 400, behavior: 'smooth' });
+        window.scrollTo({ top: 350, behavior: 'smooth' });
     };
 
+    // Enquêtes : Créer une nouvelle campagne
+    const handleCreateSurvey = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!surveyTitle.trim()) {
+            setMessage({ type: "error", text: "Veuillez attribuer un titre à votre enquête." });
+            return;
+        }
+
+        if (surveyType === "general" && !surveyTargetSegment) {
+            setMessage({ type: "error", text: "Veuillez sélectionner un segment cible." });
+            return;
+        }
+
+        if (surveyType === "event" && surveyTargetType === "event" && !surveyEventId) {
+            setMessage({ type: "error", text: "Veuillez sélectionner un événement." });
+            return;
+        }
+
+        if (surveyType === "event" && surveyTargetType === "session" && !surveySessionId) {
+            setMessage({ type: "error", text: "Veuillez sélectionner une séance." });
+            return;
+        }
+
+        setIsCreatingSurvey(true);
+        setMessage(null);
+        try {
+            await api.createSurveyCampaign({
+                title: surveyTitle,
+                survey_type: surveyType,
+                event_id: surveyType === "event" && surveyTargetType === "event" ? surveyEventId : undefined,
+                session_id: surveyType === "event" && surveyTargetType === "session" ? surveySessionId : undefined,
+                target_segment: surveyType === "general" ? surveyTargetSegment : undefined
+            });
+            setMessage({ type: "success", text: "Enquête de satisfaction créée et jetons individuels sécurisés générés." });
+            setSurveyTitle("");
+            setSurveyTargetSegment("");
+            setSurveyEventId("");
+            setSurveySessionId("");
+            loadSurveys();
+        } catch (error: any) {
+            const errorMsg = error.response?.data?.detail || "Erreur de création de l'enquête.";
+            setMessage({ type: "error", text: errorMsg });
+        } finally {
+            setIsCreatingSurvey(false);
+        }
+    };
+
+    // Enquêtes : Diffuser par mail aux cibles
+    const handleSendSurvey = async (campaignId: string) => {
+        setIsSendingSurvey(campaignId);
+        setMessage(null);
+        try {
+            const res = await api.sendSurveyCampaignEmails(campaignId);
+            setMessage({ type: "success", text: res.message });
+            loadSurveys();
+        } catch (error: any) {
+            const errorMsg = error.response?.data?.detail || "Erreur lors de l'envoi de l'enquête.";
+            setMessage({ type: "error", text: errorMsg });
+        } finally {
+            setIsSendingSurvey(null);
+        }
+    };
+
+    // Enquêtes : Inspecter les retours clients
+    const handleViewSurveyDetails = async (campaignId: string) => {
+        try {
+            const details = await api.getSurveyCampaignDetails(campaignId);
+            setSelectedSurveyDetails(details);
+            setShowSurveyDetailsModal(true);
+        } catch (err) {
+            console.error(err);
+            setMessage({ type: "error", text: "Impossible de récupérer les retours de l'enquête." });
+        }
+    };
+
+    // Filtres sélection utilisateurs manuelle
     const filteredUsers = allUsers.filter(u => 
         u.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -229,204 +538,758 @@ function AdminEmailsContent() {
         );
     };
 
+    // Noms des segments en Français
+    const segmentLabels: Record<string, string> = {
+        explorateur: "Prospect (Compte créé - aucune commande)",
+        decouverte: "Découverte (Une commande passée - aucune réservation à venir)",
+        regulier: "Actif (Commande en cours - inscriptions régulières)",
+        endormi: "Distant (Commande en cours - absence prolongée (+21 jrs))",
+        flexible: "Visiteur (Aucune commande en cours - vient de temps en temps)",
+        ancien: "Inactif (N'a pas repris de commande depuis + de 60jrs)",
+    };
+
+    const renderSmileys = (rating: number | null) => {
+        if (rating === null) return <span className="text-slate-300">Non répondu</span>;
+        const smileys = ["😠", "🙁", "😐", "🙂", "😍"];
+        return <span className="text-xl" title={`Note: ${rating}/5`}>{smileys[rating - 1] || "⭐"}</span>;
+    };
+
     return (
-        <div className="flex min-h-screen bg-slate-50">
+        <div className="flex min-h-screen bg-slate-50 font-outfit">
             <Sidebar user={user} />
             <main className="flex-1 p-8">
                 <div className="max-w-7xl mx-auto">
-                    <div className="flex items-center justify-between mb-8">
+                    
+                    {/* Header */}
+                    <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
                         <div>
-                            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight">📧 Diffusion d&apos;emails</h1>
-                            <p className="text-base font-normal text-slate-500 mt-1">Envoyez des informations ou une newsletter à vos utilisateurs.</p>
+                            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight flex items-center gap-3">
+                                📧 Communication & Marketing
+                            </h1>
+                            <p className="text-base font-normal text-slate-500 mt-1">
+                                Segmentez votre base client, diffusez vos actualités et pilotez la satisfaction de votre club.
+                            </p>
                         </div>
                     </div>
 
+                    {/* Navigation Onglets Style Portefeuille / Paramètres */}
+                    <div className="flex items-center border-b border-slate-200 mb-8 overflow-x-auto no-scrollbar">
+                        <button
+                            onClick={() => { setActiveTab("newsletter"); setMessage(null); }}
+                            className={`flex items-center gap-2 px-8 py-4 text-sm font-semibold transition-all border-b-2 whitespace-nowrap ${activeTab === "newsletter"
+                                ? "border-blue-600 text-blue-600"
+                                : "border-transparent text-slate-500 hover:text-slate-700"
+                                }`}
+                        >
+                            <span className="text-base">📧</span> Newsletter & Communication
+                        </button>
+                        <button
+                            onClick={() => { setActiveTab("operational"); setMessage(null); }}
+                            className={`flex items-center gap-2 px-8 py-4 text-sm font-semibold transition-all border-b-2 whitespace-nowrap ${activeTab === "operational"
+                                ? "border-blue-600 text-blue-600"
+                                : "border-transparent text-slate-500 hover:text-slate-700"
+                                }`}
+                        >
+                            <span className="text-base">📢</span> Infos pratiques
+                        </button>
+                        <button
+                            onClick={() => { setActiveTab("marketing"); setMessage(null); }}
+                            className={`flex items-center gap-2 px-8 py-4 text-sm font-semibold transition-all border-b-2 whitespace-nowrap ${activeTab === "marketing"
+                                ? "border-blue-600 text-blue-600"
+                                : "border-transparent text-slate-500 hover:text-slate-700"
+                                }`}
+                        >
+                            <span className="text-base">🚀</span> Marketing
+                        </button>
+                        <button
+                            onClick={() => { setActiveTab("surveys"); setMessage(null); }}
+                            className={`flex items-center gap-2 px-8 py-4 text-sm font-semibold transition-all border-b-2 whitespace-nowrap ${activeTab === "surveys"
+                                ? "border-blue-600 text-blue-600"
+                                : "border-transparent text-slate-500 hover:text-slate-700"
+                                }`}
+                        >
+                            <span className="text-base">📊</span> Enquêtes
+                        </button>
+                    </div>
+
+                    {/* Alertes de retour */}
                     {message && (
-                        <div className={`mb-6 p-4 rounded-xl border ${message.type === "success" ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"}`}>
-                            {message.type === "success" ? "✅ " : "❌ "} {message.text}
+                        <div className={`mb-6 p-4 rounded-2xl border flex items-center gap-3 animate-in fade-in duration-200 ${message.type === "success" ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"}`}>
+                            <span className="text-lg">{message.type === "success" ? "✅" : "❌"}</span>
+                            <p className="text-sm font-medium">{message.text}</p>
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 gap-8">
-                        {/* Configuration de l'envoi */}
-                        <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                            <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center">
-                                <span className="bg-blue-100 text-blue-600 w-8 h-8 rounded-lg flex items-center justify-center mr-3 text-sm">1</span>
-                                Destinataires
-                            </h2>
+                    {/* ==================== TABS 1 & 2 : EMAIL CREATION ==================== */}
+                    {(activeTab === "newsletter" || activeTab === "operational") && (
+                        <div className="grid grid-cols-1 gap-8">
                             
-                            <div className="flex flex-wrap gap-4 mb-6">
+                            {/* Section Modèles de bibliothèque */}
+                            {templates.length > 0 && (
+                                <section className="animate-in fade-in duration-300">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Modèles enregistrés</h2>
+                                        <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-bold">{templates.length} modèles</span>
+                                    </div>
+                                    <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">
+                                        {templates.map(t => (
+                                            <div 
+                                                key={t.id}
+                                                onClick={() => loadTemplate(t)}
+                                                className="min-w-[220px] max-w-[220px] bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group relative"
+                                            >
+                                                <button 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setTemplateToDelete(t);
+                                                    }}
+                                                    className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-white text-slate-400 hover:bg-rose-50 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all text-xs z-20"
+                                                    title="Supprimer le modèle"
+                                                >
+                                                    ✕
+                                                </button>
+                                                <div className="w-10 h-10 bg-indigo-50/50 rounded-xl flex items-center justify-center text-indigo-600 transition-colors mb-4 font-bold text-lg">
+                                                    📄
+                                                </div>
+                                                <h3 className="font-bold text-slate-900 text-sm truncate mb-1">{t.name}</h3>
+                                                <p className="text-xs text-slate-500 truncate">{t.subject || "Pas d'objet"}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
+
+                            {/* Cadre Unique de Composition */}
+                            <section className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 z-30 relative space-y-6">
+                                
+                                {/* 1. Destinataires */}
+                                <div className="relative mb-2" ref={dropdownRef}>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                                        Définir les destinataires
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDropdownOpen(!dropdownOpen)}
+                                        className="w-full p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all outline-none flex items-center justify-between text-sm font-semibold text-slate-800 shadow-sm"
+                                    >
+                                        <span className="flex items-center gap-2">
+                                            {selectedTargets.includes("all") ? (
+                                                <>
+                                                    <span className="text-base">🌍</span> Tous les utilisateurs ({allUsers.filter(u => u.role === "user").length} personnes)
+                                                </>
+                                            ) : selectedTargets.includes("selected") ? (
+                                                <>
+                                                    <span className="text-base">✏️</span> Sélection manuelle ({selectedUserIds.length} personnes)
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span className="text-base">🎯</span> Statuts : {selectedTargets.map(t => {
+                                                        const label = segmentLabels[t];
+                                                        return label ? label.split(" (")[0] : t;
+                                                    }).join(", ")}
+                                                </>
+                                            )}
+                                        </span>
+                                        <svg className={`w-5 h-5 text-slate-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+
+                                    {dropdownOpen && (
+                                        <div className="absolute left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                            <div className="p-4 max-h-[350px] overflow-y-auto space-y-2">
+                                                
+                                                {/* Tous les utilisateurs */}
+                                                <label className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-all cursor-pointer border border-slate-100">
+                                                    <div className="flex items-center gap-3">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedTargets.includes("all")}
+                                                            onChange={() => toggleTarget("all")}
+                                                            className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                                                        />
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm font-semibold text-slate-800">🌍 Tous les utilisateurs</span>
+                                                            <span className="text-xs text-slate-400 font-normal">Envoyer à toute la base</span>
+                                                        </div>
+                                                    </div>
+                                                    <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-normal">
+                                                        {allUsers.filter(u => u.role === "user").length} personnes
+                                                    </span>
+                                                </label>
+
+                                                {selectedUserIds.length > 0 && (
+                                                    <label className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-all cursor-pointer border border-slate-100 bg-amber-50/20 border-amber-100">
+                                                        <div className="flex items-center gap-3">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedTargets.includes("selected")}
+                                                                onChange={() => toggleTarget("selected")}
+                                                                className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                                                            />
+                                                            <div className="flex flex-col">
+                                                                <span className="text-sm font-semibold text-slate-800">✏️ Sélection manuelle</span>
+                                                                <span className="text-xs text-slate-400 font-normal">Membres pré-sélectionnés dans la liste</span>
+                                                            </div>
+                                                        </div>
+                                                        <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-normal">
+                                                            {selectedUserIds.length} personnes
+                                                        </span>
+                                                    </label>
+                                                )}
+
+                                                <div className="border-t border-slate-100 my-2 pt-2">
+                                                    <p className="text-[10px] font-normal text-slate-400 uppercase tracking-wider px-3 mb-2">Filtrer par statut comportemental</p>
+                                                </div>
+
+                                                {/* Statuts / segments */}
+                                                {Object.entries(segmentLabels).map(([key, label]) => {
+                                                    const count = segmentStats ? (segmentStats as any)[key] || 0 : 0;
+                                                    const cleanLabel = label.split(" (")[0];
+                                                    const subLabel = label.includes(" (") ? label.substring(label.indexOf(" (") + 2, label.lastIndexOf(")")) : "";
+                                                    
+                                                    return (
+                                                        <label key={key} className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-all cursor-pointer border border-slate-100">
+                                                            <div className="flex items-center gap-3">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selectedTargets.includes(key)}
+                                                                    onChange={() => toggleTarget(key)}
+                                                                    className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                                                                />
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-sm font-semibold text-slate-800">{cleanLabel}</span>
+                                                                    {subLabel && <span className="text-xs text-slate-400 font-normal">{subLabel}</span>}
+                                                                </div>
+                                                            </div>
+                                                            <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-normal">
+                                                                {count} personnes
+                                                            </span>
+                                                        </label>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {activeTab === "newsletter" && (
+                                        <div className="text-slate-400 text-xs font-normal leading-relaxed mt-2.5 flex items-start gap-1.5">
+                                            <span>ℹ️</span>
+                                            <span>
+                                                Ces e-mails respectent le consentement des utilisateurs. Seuls les clients ayant coché <em>&quot;Accepter les e-mails d&apos;information et marketing&quot;</em> recevront ce message.
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* switch urgent en cas d'urgence opérationnelle */}
+                                    {activeTab === "operational" && (
+                                        <div className="mt-4 flex flex-col gap-4">
+                                            <div className="flex items-center justify-end gap-4">
+                                                <span className="text-sm font-semibold text-slate-700">Forcer l&apos;envoi</span>
+                                                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={forceOperational}
+                                                        onChange={(e) => setForceOperational(e.target.checked)}
+                                                        className="sr-only peer" 
+                                                    />
+                                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                                                </label>
+                                            </div>
+
+                                            {forceOperational && (
+                                                <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 text-xs leading-relaxed animate-in slide-in-from-top-4 duration-300">
+                                                    <p className="font-bold flex items-center gap-2 mb-1 text-amber-800">
+                                                        ⚠️ AVERTISSEMENT DE CONFORMITÉ RGPD
+                                                    </p>
+                                                    L&apos;envoi forcé outrepasse le choix de non-réception des utilisateurs. Cette option doit être réservée **uniquement** à des cas majeurs (ex. fermeture exceptionnelle, panne technique, changement d&apos;horaires urgents). Tout usage commercial ou promotionnel via cette option est strictement interdit par la réglementation.
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="border-t border-slate-100 my-4" />
+
+                                {/* 2. Édition du message */}
+                                <div className="space-y-5">
+                                    <div>
+                                        <label className={`block text-sm font-semibold mb-1.5 ${showValidation && !subject ? 'text-rose-500' : 'text-slate-700'}`}>Objet de l&apos;email</label>
+                                        <input
+                                            type="text"
+                                            value={subject}
+                                            onChange={(e) => {
+                                                setSubject(e.target.value);
+                                                if (e.target.value) setShowValidation(false);
+                                            }}
+                                            placeholder="Saisissez l'objet de votre e-mail..."
+                                            className={`w-full p-3.5 border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all font-medium ${showValidation && !subject ? 'border-rose-300 bg-rose-50/30' : 'border-slate-200 bg-white'}`}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-700 mb-2">Contenu de l&apos;email</label>
+                                        <div className="bg-white rounded-xl overflow-hidden border border-slate-200 focus-within:ring-2 focus-within:ring-indigo-500 transition-all">
+                                            <QuillNode
+                                                ref={quillRef}
+                                                theme="snow"
+                                                value={content}
+                                                onChange={setContent}
+                                                modules={modules}
+                                                placeholder="Rédigez le corps de votre message..."
+                                                className="h-80 quill-editor"
+                                            />
+                                        </div>
+
+                                        <style jsx global>{`
+                                            .quill-editor .ql-toolbar {
+                                                border: none !important;
+                                                border-bottom: 1px solid #e2e8f0 !important;
+                                                background: #f8fafc;
+                                            }
+                                            .quill-editor .ql-container {
+                                                border: none !important;
+                                                font-family: inherit;
+                                            }
+                                            .quill-editor .ql-editor {
+                                                min-height: 240px;
+                                                font-size: 0.95rem;
+                                                line-height: 1.6;
+                                            }
+                                            .quill-editor .ql-editor img {
+                                                max-width: 100%;
+                                                border-radius: 12px;
+                                            }
+                                        `}</style>
+                                    </div>
+                                </div>
+                            </section>
+
+                            {/* Actions */}
+                            <div className="flex flex-col md:flex-row justify-end items-center gap-4 pt-4 pb-8">
                                 <button
-                                    onClick={() => setRecipientType("all")}
-                                    className={`flex-1 py-4 px-6 rounded-xl border-2 transition-all flex flex-col items-center text-center gap-2 ${recipientType === "all" ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm" : "border-slate-100 hover:border-slate-200 bg-white text-slate-500"}`}
+                                    onClick={() => setShowSaveModal(true)}
+                                    className="w-full md:w-auto px-6 py-4 rounded-xl font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-all flex items-center justify-center gap-2 text-sm shadow-sm"
                                 >
-                                    <span className="text-2xl">🌍</span>
-                                    <span className="font-bold">Tous</span>
-                                    <span className="text-xs opacity-70">Tous les inscrits</span>
+                                    💾 Enregistrer comme modèle
                                 </button>
                                 <button
-                                    onClick={() => setRecipientType("active")}
-                                    className={`flex-1 py-4 px-6 rounded-xl border-2 transition-all flex flex-col items-center text-center gap-2 ${recipientType === "active" ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm" : "border-slate-100 hover:border-slate-200 bg-white text-slate-500"}`}
+                                    onClick={handleSend}
+                                    disabled={isSending}
+                                    className={`w-full md:w-auto px-10 py-4 rounded-xl font-bold text-white shadow-lg shadow-indigo-200/50 transition-all text-sm ${isSending ? "bg-slate-400 cursor-not-allowed" : "bg-slate-900 hover:bg-slate-800"}`}
                                 >
-                                    <span className="text-2xl">✅</span>
-                                    <span className="font-bold">Actifs</span>
-                                    <span className="text-xs opacity-70">Statut actif uniquement</span>
-                                </button>
-                                <button
-                                    onClick={() => setRecipientType("selected")}
-                                    className={`flex-1 py-4 px-6 rounded-xl border-2 transition-all flex flex-col items-center text-center gap-2 ${recipientType === "selected" ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm" : "border-slate-100 hover:border-slate-200 bg-white text-slate-500"}`}
-                                >
-                                    <span className="text-2xl">🎯</span>
-                                    <span className="font-bold">Ciblé</span>
-                                    <span className="text-xs opacity-70">Sélection manuelle</span>
+                                    {isSending ? "Envoi en cours..." : "Diffuser le message"}
                                 </button>
                             </div>
+                        </div>
+                    )}
 
-                            {recipientType === "selected" && (
-                                <div className="mt-4 p-4 bg-white rounded-xl border border-dotted border-slate-300">
-                                    <div className="flex justify-between items-center mb-3">
-                                        <span className="text-sm font-medium text-slate-700">
-                                            {selectedUserIds.length} utilisateur(s) sélectionné(s)
-                                        </span>
-                                        <button 
-                                            onClick={() => setShowUserSelector(true)}
-                                            className="text-sm text-blue-600 font-bold hover:underline"
-                                        >
-                                            Modifier la sélection
-                                        </button>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {selectedUserIds.slice(0, 5).map(id => {
-                                            const u = allUsers.find(user => user.id === id);
-                                            return u ? (
-                                                <span key={id} className="bg-white px-2 py-1 rounded border text-xs text-slate-600">
-                                                    {u.first_name} {u.last_name}
-                                                </span>
-                                            ) : null;
-                                        })}
-                                        {selectedUserIds.length > 5 && (
-                                            <span className="text-xs text-slate-400 self-center">... et {selectedUserIds.length - 5} autres</span>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                        </section>
 
-                        {/* Section Modèles */}
-                        {templates.length > 0 && (
-                            <section className="animate-in fade-in slide-in-from-top-4 duration-500">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Modèles enregistrés</h2>
-                                    <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{templates.length} modèles</span>
+                    {/* ==================== TAB 3 : MARKETING ACTIONS ==================== */}
+                    {activeTab === "marketing" && (
+                        <div className="space-y-8 animate-in fade-in duration-300">
+                            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-8 rounded-3xl text-white shadow-xl shadow-indigo-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                                <div className="space-y-2">
+                                    <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+                                        <span>🚀</span> Stratégies de Marketing Intelligentes
+                                    </h2>
+                                    <p className="text-indigo-100 text-sm max-w-2xl font-normal leading-relaxed">
+                                        Activez l'une de nos campagnes de relance pré-configurées. Ciblez les segments clés en un clic et personnalisez le message avant l'envoi.
+                                    </p>
                                 </div>
-                                <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">
-                                    {templates.map(t => (
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {marketingCards.map(card => {
+                                    const count = segmentStats ? (segmentStats as any)[card.segment] || 0 : 0;
+                                    return (
                                         <div 
-                                            key={t.id}
-                                            onClick={() => loadTemplate(t)}
-                                            className="min-w-[220px] max-w-[220px] bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group relative"
+                                            key={card.id}
+                                            onClick={() => handleSelectMarketingCard(card)}
+                                            className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer flex flex-col justify-between group h-full relative overflow-hidden"
                                         >
+                                            <div className="space-y-4">
+                                                <div className="w-12 h-12 rounded-2xl bg-indigo-50/50 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-300">
+                                                    {card.icon}
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-base font-bold text-slate-900 leading-snug group-hover:text-indigo-600 transition-colors">
+                                                        {card.title}
+                                                    </h3>
+                                                    <p className="text-xs text-slate-500 font-medium leading-relaxed mt-2">
+                                                        {card.description}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-8 pt-4 border-t border-slate-100 flex items-center justify-between">
+                                                <span className="text-xs font-bold px-3 py-1 bg-slate-100 text-slate-600 rounded-full">
+                                                    {count} {count > 1 ? "personnes" : "personne"}
+                                                </span>
+                                                <span className="text-xs font-bold text-indigo-600 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                                                    Configurer ➔
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Modal / Drawer de configuration de la campagne de relance marketing */}
+                            {selectedMarketingCard && (
+                                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                                    <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                                        {/* Modal Header */}
+                                        <div className="p-6 md:p-8 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-2xl">{selectedMarketingCard.icon}</span>
+                                                <div>
+                                                    <h3 className="text-lg font-bold text-slate-900 leading-tight">
+                                                        {selectedMarketingCard.title}
+                                                    </h3>
+                                                    <p className="text-xs text-slate-400 mt-0.5">
+                                                        Segment cible : <span className="font-bold text-slate-500">{segmentLabels[selectedMarketingCard.segment] || selectedMarketingCard.segment}</span>
+                                                    </p>
+                                                </div>
+                                            </div>
                                             <button 
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setTemplateToDelete(t);
-                                                }}
-                                                className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-white text-slate-400 hover:bg-rose-50 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all text-xs z-20"
-                                                title="Supprimer le modèle"
+                                                onClick={() => setSelectedMarketingCard(null)} 
+                                                className="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-50 rounded-xl transition-colors"
                                             >
                                                 ✕
                                             </button>
-                                            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors mb-4">
-                                                <span className="text-xl">📄</span>
-                                            </div>
-                                            <h3 className="font-bold text-slate-900 text-sm truncate mb-1">{t.name}</h3>
-                                            <p className="text-xs text-slate-500 truncate">{t.subject || "Pas d'objet"}</p>
                                         </div>
-                                    ))}
-                                </div>
-                            </section>
-                        )}
 
-                        {/* Composition du message */}
-                        <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                            <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center">
-                                <span className="bg-blue-100 text-blue-600 w-8 h-8 rounded-lg flex items-center justify-center mr-3 text-sm">2</span>
-                                Message
-                            </h2>
+                                        {/* Modal Content */}
+                                        <div className="flex-1 overflow-y-auto p-6 md:p-8 grid grid-cols-1 lg:grid-cols-5 gap-8">
+                                            {/* Left Panel: Destinataires (L'Ajustement) */}
+                                            <div className="lg:col-span-2 flex flex-col space-y-4 max-h-[50vh] lg:max-h-none">
+                                                <div className="flex items-center justify-between">
+                                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                                        Destinataires ({allUsers.filter(u => u.segment === selectedMarketingCard.segment).length})
+                                                    </h4>
+                                                    <button 
+                                                        onClick={() => {
+                                                            const users = allUsers.filter(u => u.segment === selectedMarketingCard.segment);
+                                                            if (selectedMarketingUserIds.length === users.length) {
+                                                                setSelectedMarketingUserIds([]);
+                                                            } else {
+                                                                setSelectedMarketingUserIds(users.map(u => u.id));
+                                                            }
+                                                        }}
+                                                        className="text-xs font-bold text-indigo-600 hover:underline"
+                                                    >
+                                                        {selectedMarketingUserIds.length === allUsers.filter(u => u.segment === selectedMarketingCard.segment).length ? "Tout décocher" : "Tout cocher"}
+                                                    </button>
+                                                </div>
 
-                            <div className="space-y-4">
-                                <div>
-                                    <label className={`block text-sm font-medium mb-1 ${showValidation && !subject ? 'text-red-500' : 'text-slate-700'}`}>Objet de l'email</label>
-                                    <input
-                                        type="text"
-                                        value={subject}
-                                        onChange={(e) => {
-                                            setSubject(e.target.value);
-                                            if (e.target.value) setShowValidation(false);
-                                        }}
-                                        placeholder=""
-                                        className={`w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none placeholder:italic ${showValidation && !subject ? 'border-red-500 bg-white' : 'border-slate-200 bg-white'}`}
-                                    />
+                                                <div className="flex-1 overflow-y-auto border border-slate-100 rounded-2xl p-4 bg-slate-50/50 space-y-2 max-h-[300px] lg:max-h-none">
+                                                    {allUsers.filter(u => u.segment === selectedMarketingCard.segment).length === 0 ? (
+                                                        <div className="text-center text-xs text-slate-400 py-12">
+                                                            Aucun membre dans ce segment actuellement.
+                                                        </div>
+                                                    ) : (
+                                                        allUsers.filter(u => u.segment === selectedMarketingCard.segment).map(u => (
+                                                            <label 
+                                                                key={u.id}
+                                                                className="flex items-center justify-between p-3 rounded-xl bg-white border border-slate-100 hover:border-slate-200 transition-all cursor-pointer"
+                                                            >
+                                                                <div className="flex items-center gap-3">
+                                                                    <input 
+                                                                        type="checkbox"
+                                                                        checked={selectedMarketingUserIds.includes(u.id)}
+                                                                        onChange={() => {
+                                                                            setSelectedMarketingUserIds(prev => 
+                                                                                prev.includes(u.id) ? prev.filter(uid => uid !== u.id) : [...prev, u.id]
+                                                                            );
+                                                                        }}
+                                                                        className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                                                                    />
+                                                                    <div className="flex flex-col text-left">
+                                                                        <span className="font-bold text-slate-800 text-xs">{u.first_name} {u.last_name}</span>
+                                                                        <span className="text-[10px] text-slate-400 font-normal mt-0.5">{u.email}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </label>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Right Panel: Personnalisation */}
+                                            <div className="lg:col-span-3 space-y-5">
+                                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                                    Personnalisation du message
+                                                </h4>
+
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Objet du message</label>
+                                                    <input 
+                                                        type="text"
+                                                        value={marketingSubject}
+                                                        onChange={(e) => setMarketingSubject(e.target.value)}
+                                                        placeholder="Saisissez l'objet du message..."
+                                                        className="w-full p-3.5 border border-slate-200 bg-slate-55 rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-outfit"
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Corps du message</label>
+                                                    <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-inner">
+                                                        <QuillNode 
+                                                            theme="snow"
+                                                            value={marketingContent}
+                                                            onChange={setMarketingContent}
+                                                            modules={{
+                                                                toolbar: [
+                                                                    ['bold', 'italic', 'underline', 'strike'],
+                                                                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                                                    [{ 'align': [] }],
+                                                                    ['clean']
+                                                                ]
+                                                            }}
+                                                            className="bg-white min-h-[160px] text-sm"
+                                                        />
+                                                    </div>
+                                                    <div className="mt-2 p-3 bg-amber-50 rounded-xl border border-amber-150 flex items-start gap-2 text-[11px] text-amber-800">
+                                                        <span className="text-sm">💡</span>
+                                                        <p className="leading-relaxed">
+                                                            Utilisez le tag <b>&#123;first_name&#125;</b> dans votre message : il sera remplacé dynamiquement par le prénom de chaque destinataire (ex: Marie, Pierre).
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Modal Footer */}
+                                        <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                                            <span className="text-sm font-semibold text-slate-500">
+                                                {selectedMarketingUserIds.length} destinataire(s) sélectionné(s) sur {allUsers.filter(u => u.segment === selectedMarketingCard.segment).length}
+                                            </span>
+                                            <div className="flex items-center gap-3 w-full md:w-auto">
+                                                <button
+                                                    onClick={() => setSelectedMarketingCard(null)}
+                                                    className="w-full md:w-auto px-5 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl font-semibold hover:bg-slate-50 transition-all text-sm active:scale-95"
+                                                >
+                                                    Annuler
+                                                </button>
+                                                <button
+                                                    onClick={handleSendMarketing}
+                                                    disabled={isSendingMarketing || selectedMarketingUserIds.length === 0}
+                                                    className="w-full md:w-auto px-8 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-xl font-bold transition-all text-sm shadow-md active:scale-95 flex items-center justify-center gap-2"
+                                                >
+                                                    {isSendingMarketing ? "Envoi en cours..." : "Diffuser la campagne 🚀"}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Contenu de l'email</label>
-                                    <div className="bg-white rounded-xl overflow-hidden border border-slate-200 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all">
-                                        {/* @ts-ignore */}
-                                        <QuillNode
-                                            ref={quillRef}
-                                            theme="snow"
-                                            value={content}
-                                            onChange={setContent}
-                                            modules={modules}
-                                            placeholder="Rédigez votre message ici..."
-                                            className="h-80 quill-editor"
-                                        />
+                            )}
+                        </div>
+                    )}
+
+
+                    {/* ==================== TAB 3 : SATISFACTION SURVEYS ==================== */}
+                    {activeTab === "surveys" && (
+                        <div className="space-y-10">
+                            
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                
+                                {/* 1. Créateur d'enquêtes */}
+                                <div className="lg:col-span-1 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm self-start">
+                                    <h3 className="text-lg font-bold text-slate-950 mb-5 pb-3 border-b border-slate-100 flex items-center gap-2">
+                                        <span>📊</span> Lancer une enquête
+                                    </h3>
+                                    
+                                    <form onSubmit={handleCreateSurvey} className="space-y-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Titre de l&apos;enquête</label>
+                                            <input 
+                                                type="text" 
+                                                required
+                                                value={surveyTitle}
+                                                onChange={(e) => setSurveyTitle(e.target.value)}
+                                                placeholder="ex: Avis Stage Gymnastique Mai"
+                                                className="w-full p-3 border border-slate-200 bg-slate-55 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Nature de l&apos;enquête</label>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSurveyType("general")}
+                                                    className={`flex-1 py-2.5 rounded-lg text-xs font-bold border transition-all ${surveyType === "general" ? "bg-indigo-50 text-indigo-700 border-indigo-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+                                                >
+                                                    Enquête Générale
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSurveyType("event")}
+                                                    className={`flex-1 py-2.5 rounded-lg text-xs font-bold border transition-all ${surveyType === "event" ? "bg-indigo-50 text-indigo-700 border-indigo-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+                                                >
+                                                    Post-Activité
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {surveyType === "general" ? (
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Cibler un segment</label>
+                                                <select
+                                                    value={surveyTargetSegment}
+                                                    onChange={(e) => setSurveyTargetSegment(e.target.value)}
+                                                    required
+                                                    className="w-full p-3 border border-slate-200 bg-white rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                                                >
+                                                    <option value="">-- Choisir le segment --</option>
+                                                    {segmentStats && Object.entries(segmentStats).map(([key, val]) => (
+                                                        <option key={key} value={key}>
+                                                            {segmentLabels[key] || key} ({val} membres)
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-100 animate-in slide-in-from-top-2 duration-200">
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-500 mb-1">Cible</label>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setSurveyTargetType("event")}
+                                                            className={`flex-1 py-1.5 rounded-md text-[11px] font-bold transition-all ${surveyTargetType === "event" ? "bg-white text-indigo-700 border border-indigo-150 shadow-sm" : "text-slate-500"}`}
+                                                        >
+                                                            Événement
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setSurveyTargetType("session")}
+                                                            className={`flex-1 py-1.5 rounded-md text-[11px] font-bold transition-all ${surveyTargetType === "session" ? "bg-white text-indigo-700 border border-indigo-150 shadow-sm" : "text-slate-500"}`}
+                                                        >
+                                                            Séance Agenda
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {surveyTargetType === "event" ? (
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold text-slate-400 mb-1">Sélectionner l&apos;Événement</label>
+                                                        <select
+                                                            value={surveyEventId}
+                                                            onChange={(e) => setSurveyEventId(e.target.value)}
+                                                            required
+                                                            className="w-full p-2.5 border border-slate-200 bg-white rounded-lg text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                                                        >
+                                                            <option value="">-- Choisir un événement --</option>
+                                                            {events.map(ev => (
+                                                                <option key={ev.id} value={ev.id}>{ev.title} ({ev.event_date})</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                ) : (
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold text-slate-400 mb-1">Sélectionner la Séance</label>
+                                                        <select
+                                                            value={surveySessionId}
+                                                            onChange={(e) => setSurveySessionId(e.target.value)}
+                                                            required
+                                                            className="w-full p-2.5 border border-slate-200 bg-white rounded-lg text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                                                        >
+                                                            <option value="">-- Choisir une séance --</option>
+                                                            {sessions.map(sess => (
+                                                                <option key={sess.id} value={sess.id}>{sess.title} ({new Date(sess.start_time).toLocaleDateString()})</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <button
+                                            type="submit"
+                                            disabled={isCreatingSurvey}
+                                            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-md shadow-indigo-100 transition-all disabled:opacity-50 mt-4 active:scale-95"
+                                        >
+                                            {isCreatingSurvey ? "Génération des jetons..." : "Générer la campagne"}
+                                        </button>
+                                    </form>
+                                </div>
+
+                                {/* 2. Liste des enquêtes existantes */}
+                                <div className="lg:col-span-2 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Campagnes d&apos;enquêtes actives</h3>
+                                        <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">{surveys.length} enquêtes</span>
                                     </div>
 
-                                    <style jsx global>{`
-                                        .quill-editor .ql-toolbar {
-                                            border: none !important;
-                                            border-bottom: 1px solid #e2e8f0 !important;
-                                            background: #ffffff;
-                                        }
-                                        .quill-editor .ql-container {
-                                            border: none !important;
-                                            font-family: inherit;
-                                        }
-                                        .quill-editor .ql-editor {
-                                            min-height: 200px;
-                                            font-size: 0.95rem;
-                                            line-height: 1.6;
-                                        }
-                                        .quill-editor .ql-editor img {
-                                            max-width: 100%;
-                                            border-radius: 8px;
-                                        }
-                                    `}</style>
+                                    {surveys.length === 0 ? (
+                                        <div className="bg-white p-12 text-center rounded-2xl border border-slate-200/80">
+                                            <span className="text-4xl block mb-3">🗳️</span>
+                                            <h4 className="font-bold text-slate-800 text-base">Aucune enquête lancée</h4>
+                                            <p className="text-slate-400 text-xs mt-1">Utilisez le formulaire pour générer des questionnaires 1-Click sécurisés.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 gap-4">
+                                            {surveys.map(c => (
+                                                <div 
+                                                    key={c.id}
+                                                    className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-5 relative group"
+                                                >
+                                                    <div className="space-y-1.5 max-w-sm">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`px-2 py-0.5 rounded-md text-[9px] uppercase font-bold border ${c.survey_type === 'event' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                                                                {c.survey_type === 'event' ? 'Post-Activité' : 'Général'}
+                                                            </span>
+                                                            <span className="text-[10px] text-slate-400">{new Date(c.created_at).toLocaleDateString()}</span>
+                                                        </div>
+                                                        <h4 className="font-bold text-slate-900 text-base">{c.title}</h4>
+                                                    </div>
+
+                                                    {/* Statistiques à l'état premium */}
+                                                    <div className="flex gap-6 items-center">
+                                                        <div className="text-center bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
+                                                            <span className="text-xs text-slate-400 font-bold block uppercase tracking-wider">Note</span>
+                                                            <span className="font-extrabold text-base text-slate-800 flex items-center justify-center gap-1">
+                                                                ⭐ {c.average_rating ? Number(c.average_rating).toFixed(1) : "-"}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-center bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
+                                                            <span className="text-xs text-slate-400 font-bold block uppercase tracking-wider">Envois</span>
+                                                            <span className="font-extrabold text-base text-slate-800">{c.responses_count}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Actions d'enquête */}
+                                                    <div className="flex md:flex-col gap-2 self-stretch justify-center md:items-end">
+                                                        <button
+                                                            onClick={() => handleViewSurveyDetails(c.id)}
+                                                            className="flex-1 md:flex-initial px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold transition-all"
+                                                        >
+                                                            🔍 Inspecter les retours
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleSendSurvey(c.id)}
+                                                            disabled={isSendingSurvey === c.id}
+                                                            className="flex-1 md:flex-initial px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition-all active:scale-95"
+                                                        >
+                                                            {isSendingSurvey === c.id ? "Envoi..." : "✉️ Diffuser par e-mail"}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-                        </section>
-
-                        <div className="flex flex-col md:flex-row justify-end items-center gap-4 pt-4 pb-8">
-                            <button
-                                onClick={() => setShowSaveModal(true)}
-                                className="w-full md:w-auto px-6 py-4 rounded-xl font-medium text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
-                            >
-                                💾 Enregistrer comme modèle
-                            </button>
-                            <button
-                                onClick={handleSend}
-                                disabled={isSending}
-                                className={`w-full md:w-auto px-10 py-4 rounded-xl font-medium text-white shadow-lg transition-all ${isSending ? "bg-slate-400 cursor-not-allowed" : "bg-slate-900 hover:bg-slate-800"}`}
-                            >
-                                {isSending ? "Envoi en cours..." : "Envoyer l'email"}
-                            </button>
                         </div>
-                    </div>
+                    )}
                 </div>
             </main>
 
-            {/* Modal de sélection d'utilisateurs */}
+            {/* ==================== MODALS ==================== */}
+
+            {/* Modal Sélection manuelle utilisateurs */}
             {showUserSelector && (
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
@@ -435,7 +1298,7 @@ function AdminEmailsContent() {
                                 <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                                 </svg>
-                                <h3 className="text-[17px] font-semibold text-slate-900 tracking-tight">Sélectionner les destinataires</h3>
+                                <h3 className="text-[17px] font-bold text-slate-900 tracking-tight">Sélectionner les destinataires</h3>
                             </div>
                             <button onClick={() => setShowUserSelector(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-50 rounded-lg">
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -456,7 +1319,7 @@ function AdminEmailsContent() {
                                     placeholder="Rechercher un membre..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all"
+                                    className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all"
                                 />
                             </div>
                         </div>
@@ -466,9 +1329,9 @@ function AdminEmailsContent() {
                                 <button
                                     key={u.id}
                                     onClick={() => toggleUserSelection(u.id)}
-                                    className={`w-full flex items-center p-3 rounded-xl transition-all border ${selectedUserIds.includes(u.id) ? "bg-blue-50 border-blue-200" : "bg-white border-slate-100 hover:border-slate-200"}`}
+                                    className={`w-full flex items-center p-3 rounded-xl transition-all border ${selectedUserIds.includes(u.id) ? "bg-indigo-50 border-indigo-200" : "bg-white border-slate-100 hover:border-slate-200"}`}
                                 >
-                                    <div className={`w-5 h-5 rounded-md border flex items-center justify-center mr-4 ${selectedUserIds.includes(u.id) ? "bg-blue-600 border-blue-600 text-white" : "border-slate-300"}`}>
+                                    <div className={`w-5 h-5 rounded-md border flex items-center justify-center mr-4 ${selectedUserIds.includes(u.id) ? "bg-indigo-600 border-indigo-600 text-white" : "border-slate-300"}`}>
                                         {selectedUserIds.includes(u.id) && "✓"}
                                     </div>
                                     <div className="text-left">
@@ -476,7 +1339,7 @@ function AdminEmailsContent() {
                                         <p className="text-xs text-slate-500">{u.email}</p>
                                     </div>
                                     <div className="ml-auto">
-                                        <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-normal border ${u.is_active ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-50 text-slate-500 border-slate-200"}`}>
+                                        <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold border ${u.is_active ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-50 text-slate-500 border-slate-200"}`}>
                                             {u.is_active ? "Actif" : "Inactif"}
                                         </span>
                                     </div>
@@ -485,10 +1348,10 @@ function AdminEmailsContent() {
                         </div>
 
                         <div className="p-6 bg-gray-50 border-t border-slate-100 flex justify-between items-center">
-                            <span className="text-sm font-medium text-slate-600">{selectedUserIds.length} sélectionné(s)</span>
+                            <span className="text-sm font-semibold text-slate-600">{selectedUserIds.length} sélectionné(s)</span>
                             <button
                                 onClick={() => setShowUserSelector(false)}
-                                className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-medium hover:bg-slate-800 transition-all text-sm active:scale-95"
+                                className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-slate-800 transition-all text-sm active:scale-95"
                             >
                                 Terminer
                             </button>
@@ -511,8 +1374,8 @@ function AdminEmailsContent() {
                                     autoFocus
                                     value={templateName}
                                     onChange={(e) => setTemplateName(e.target.value)}
-                                    placeholder="ex: Newsletter Annonce Stage"
-                                    className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-slate-50/50 font-medium"
+                                    placeholder="ex: Annonce Stage Printemps"
+                                    className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all bg-slate-50/50 font-bold"
                                     onKeyDown={(e) => e.key === 'Enter' && handleSaveTemplate()}
                                 />
                             </div>
@@ -520,14 +1383,14 @@ function AdminEmailsContent() {
                         <div className="p-6 bg-gray-50 border-t border-slate-100 flex gap-3 justify-end items-center">
                             <button 
                                 onClick={() => setShowSaveModal(false)}
-                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm active:scale-95"
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-semibold hover:bg-gray-50 transition-all text-sm active:scale-95"
                             >
                                 Annuler
                             </button>
                             <button
                                 onClick={handleSaveTemplate}
                                 disabled={isSavingTemplate || !templateName.trim()}
-                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 disabled:opacity-50 transition-all text-sm shadow-sm active:scale-95"
+                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 disabled:opacity-50 transition-all text-sm shadow-sm active:scale-95"
                             >
                                 {isSavingTemplate ? "..." : "Enregistrer"}
                             </button>
@@ -535,25 +1398,26 @@ function AdminEmailsContent() {
                     </div>
                 </div>
             )}
+
             {/* Modal de suppression de modèle */}
             {templateToDelete && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-10 pb-8">
-                            <h3 className="text-xl font-semibold text-slate-900 mb-2">Supprimer le modèle ?</h3>
-                            <p className="text-sm text-slate-500 leading-relaxed">Cette action est irréversible. Le modèle <b>"{templateToDelete.name}"</b> sera définitivement supprimé.</p>
+                            <h3 className="text-xl font-bold text-slate-900 mb-2">Supprimer le modèle ?</h3>
+                            <p className="text-sm text-slate-500 leading-relaxed font-medium">Cette action est définitive. Le modèle <b>&quot;{templateToDelete.name}&quot;</b> sera supprimé.</p>
                         </div>
                         <div className="p-6 bg-gray-50 border-t border-slate-100 flex gap-3 justify-end items-center">
                             <button 
                                 onClick={() => setTemplateToDelete(null)}
-                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm active:scale-95"
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-semibold hover:bg-gray-50 transition-all text-sm active:scale-95"
                             >
                                 Annuler
                             </button>
                             <button
                                 onClick={handleDeleteTemplate}
                                 disabled={isDeleting}
-                                className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm active:scale-95"
+                                className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-bold hover:bg-rose-700 transition-all text-sm shadow-sm active:scale-95"
                             >
                                 {isDeleting ? "..." : "Supprimer"}
                             </button>
@@ -561,13 +1425,124 @@ function AdminEmailsContent() {
                     </div>
                 </div>
             )}
+
+            {/* Modal Inspecteur détaillé Enquêtes */}
+            {showSurveyDetailsModal && selectedSurveyDetails && (
+                <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 flex items-center justify-end animate-in fade-in duration-300">
+                    <div className="bg-white w-full max-w-2xl h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+                        
+                        {/* Header details */}
+                        <div className="p-8 border-b border-slate-100 flex items-center justify-between">
+                            <div>
+                                <span className="px-2.5 py-0.5 bg-indigo-50 border border-indigo-100 rounded-md text-[9px] uppercase font-bold text-indigo-700">
+                                    Enquête : {selectedSurveyDetails.survey_type === 'event' ? 'Post-Activité' : 'Général'}
+                                </span>
+                                <h3 className="text-xl font-bold text-slate-900 mt-1">{selectedSurveyDetails.title}</h3>
+                                {selectedSurveyDetails.context_title && (
+                                    <p className="text-xs text-slate-400 mt-0.5">Contexte : {selectedSurveyDetails.context_title}</p>
+                                )}
+                            </div>
+                            <button 
+                                onClick={() => setShowSurveyDetailsModal(false)}
+                                className="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-50 rounded-xl transition-colors"
+                            >
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Breakdown Panel */}
+                        <div className="p-6 bg-slate-50 border-b border-slate-100 grid grid-cols-3 gap-4 text-center">
+                            <div className="bg-white p-4 rounded-xl border border-slate-200/50 shadow-sm">
+                                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Note Moyenne</span>
+                                <span className="block font-extrabold text-2xl text-slate-900 mt-1">
+                                    ⭐ {selectedSurveyDetails.stats.average_rating ? Number(selectedSurveyDetails.stats.average_rating).toFixed(1) : "-"}
+                                </span>
+                            </div>
+                            <div className="bg-white p-4 rounded-xl border border-slate-200/50 shadow-sm">
+                                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Participation</span>
+                                <span className="block font-extrabold text-2xl text-indigo-700 mt-1">
+                                    {Number(selectedSurveyDetails.stats.response_rate).toFixed(0)}%
+                                </span>
+                            </div>
+                            <div className="bg-white p-4 rounded-xl border border-slate-200/50 shadow-sm">
+                                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total Réponses</span>
+                                <span className="block font-extrabold text-2xl text-slate-900 mt-1">
+                                    {selectedSurveyDetails.stats.total_responses} / {selectedSurveyDetails.stats.total_sent}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Responses list */}
+                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Retours Individuels</h4>
+                            
+                            {selectedSurveyDetails.responses.length === 0 ? (
+                                <div className="text-center text-slate-400 text-sm py-12">Aucun retour enregistré pour le moment.</div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {selectedSurveyDetails.responses.map((r: any) => (
+                                        <div key={r.id} className="bg-white p-4 rounded-xl border border-slate-200/60 shadow-sm space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <div>
+                                                    <p className="font-bold text-sm text-slate-800">{r.user_name}</p>
+                                                    <p className="text-[10px] text-slate-400">{r.user_email}</p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    {r.submitted_at ? (
+                                                        <span className="bg-emerald-50 border border-emerald-150 text-[10px] font-bold text-emerald-700 px-2 py-0.5 rounded-full">
+                                                            Répondu
+                                                        </span>
+                                                    ) : r.clicked_at ? (
+                                                        <span className="bg-amber-50 border border-amber-150 text-[10px] font-bold text-amber-700 px-2 py-0.5 rounded-full animate-pulse">
+                                                            Cliqué
+                                                        </span>
+                                                    ) : (
+                                                        <span className="bg-slate-100 text-[10px] font-bold text-slate-400 px-2 py-0.5 rounded-full">
+                                                            Envoyé
+                                                        </span>
+                                                    )}
+                                                    {renderSmileys(r.rating)}
+                                                </div>
+                                            </div>
+
+                                            {r.comment && (
+                                                <div className="p-3 bg-slate-50 border border-slate-100 rounded-lg text-xs font-medium text-slate-700 italic">
+                                                    &ldquo;{r.comment}&rdquo;
+                                                </div>
+                                            )}
+
+                                            <div className="text-[10px] text-slate-400 flex justify-between pt-1 border-t border-slate-50">
+                                                {r.clicked_at && <span>Premier clic : {new Date(r.clicked_at).toLocaleString()}</span>}
+                                                {r.submitted_at && <span>Soumis : {new Date(r.submitted_at).toLocaleString()}</span>}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer details */}
+                        <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end">
+                            <button
+                                onClick={() => setShowSurveyDetailsModal(false)}
+                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-all shadow-sm active:scale-95"
+                            >
+                                Fermer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }
 
 export default function AdminEmailsPage() {
     return (
-        <Suspense fallback={<div className="flex min-h-screen bg-slate-50 items-center justify-center">Chargement...</div>}>
+        <Suspense fallback={<div className="flex min-h-screen bg-slate-50 items-center justify-center font-outfit">Chargement...</div>}>
             <AdminEmailsContent />
         </Suspense>
     );

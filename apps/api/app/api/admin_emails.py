@@ -48,15 +48,18 @@ async def send_admin_emails(
         )
 
     # 1) Sélectionner les destinataires
-    query = select(User).where(User.tenant_id == current_user.tenant_id)
+    query = select(User).where(
+        User.tenant_id == current_user.tenant_id,
+        User.role == UserRole.MEMBER
+    )
     
     if request_data.recipient_type == "active":
         query = query.where(User.is_active == True)
-        # Filter by marketing consent
-        query = query.where(User.receive_marketing_emails == True)
+        if not request_data.force_operational:
+            query = query.where(User.receive_marketing_emails == True)
     elif request_data.recipient_type == "all":
-        # Filter by marketing consent
-        query = query.where(User.receive_marketing_emails == True)
+        if not request_data.force_operational:
+            query = query.where(User.receive_marketing_emails == True)
     elif request_data.recipient_type == "selected":
         if not request_data.selected_user_ids:
             raise HTTPException(
@@ -64,6 +67,19 @@ async def send_admin_emails(
                 detail="Liste d'utilisateurs vide pour le type 'selected'"
             )
         query = query.where(User.id.in_(request_data.selected_user_ids))
+        if not request_data.force_operational:
+            query = query.where(User.receive_marketing_emails == True)
+    elif request_data.recipient_type == "segment":
+        if not request_data.segment:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Segment non spécifié"
+            )
+        from app.api.admin_users import get_segment_user_ids
+        segment_uids = await get_segment_user_ids(db, current_user.tenant_id, request_data.segment.lower())
+        query = query.where(User.id.in_(segment_uids))
+        if not request_data.force_operational:
+            query = query.where(User.receive_marketing_emails == True)
     
     result = await db.execute(query)
     users = result.scalars().all()

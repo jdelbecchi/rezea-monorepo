@@ -139,6 +139,7 @@ class Tenant(Base):
     users = relationship("User", back_populates="tenant", cascade="all, delete-orphan")
     sessions = relationship("Session", back_populates="tenant", cascade="all, delete-orphan")
     email_templates = relationship("EmailTemplate", back_populates="tenant", cascade="all, delete-orphan")
+    survey_campaigns = relationship("SurveyCampaign", back_populates="tenant", cascade="all, delete-orphan")
 
 
 class EmailTemplate(Base):
@@ -745,7 +746,6 @@ class FinanceTransaction(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relations
     category = relationship("FinanceCategory")
     account = relationship("FinanceAccount")
     created_by = relationship("User")
@@ -753,4 +753,63 @@ class FinanceTransaction(Base):
     __table_args__ = (
         Index("idx_fin_trans_tenant_date", "tenant_id", "date"),
         Index("idx_fin_trans_type", "tenant_id", "type"),
+    )
+
+
+class SurveyCampaign(Base):
+    """Campagne d'enquête de satisfaction lancée par un club"""
+    __tablename__ = "survey_campaigns"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    
+    title = Column(String(255), nullable=False) # Ex: "Enquête de satisfaction - Stage Yoga"
+    survey_type = Column(String(50), nullable=False) # 'general' ou 'event'
+    
+    # Liens contextuels optionnels
+    event_id = Column(UUID(as_uuid=True), ForeignKey("events.id"), nullable=True)
+    session_id = Column(UUID(as_uuid=True), ForeignKey("sessions.id"), nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relations
+    tenant = relationship("Tenant", back_populates="survey_campaigns")
+    event = relationship("Event")
+    session = relationship("Session")
+    responses = relationship("SurveyResponse", back_populates="campaign", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("idx_survey_campaign_tenant", "tenant_id"),
+        Index("idx_survey_campaign_event", "event_id"),
+    )
+
+
+class SurveyResponse(Base):
+    """Réponse individuelle de satisfaction d'un membre"""
+    __tablename__ = "survey_responses"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    campaign_id = Column(UUID(as_uuid=True), ForeignKey("survey_campaigns.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    
+    # Sécurité et validation
+    token = Column(String(255), unique=True, nullable=False) # Token à usage unique présent dans le lien
+    
+    # Données récoltées
+    rating = Column(Integer, nullable=True) # 1 à 5 (enregistré dès le premier clic)
+    comment = Column(Text, nullable=True) # Ajouté lors de la soumission du formulaire
+    
+    # Métadonnées
+    clicked_at = Column(DateTime) # Date du premier clic
+    submitted_at = Column(DateTime) # Date de soumission du commentaire
+    
+    # Relations
+    campaign = relationship("SurveyCampaign", back_populates="responses")
+    user = relationship("User")
+
+    __table_args__ = (
+        Index("idx_survey_response_tenant", "tenant_id"),
+        Index("idx_survey_response_campaign", "campaign_id"),
+        Index("idx_survey_response_token", "token", unique=True),
     )

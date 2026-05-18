@@ -97,6 +97,7 @@ class UserResponse(UserBase):
     created_by_admin: bool = False
     is_active_member: bool = False
     balance: Optional[Decimal] = None
+    segment: Optional[str] = None
     email_verified: bool
     docs_accepted_at: Optional[datetime] = None
     created_at: datetime
@@ -702,8 +703,10 @@ class EmailSendRequest(BaseModel):
     """Requête d'envoi d'email groupé"""
     subject: str = Field(..., min_length=1, max_length=255)
     content: str = Field(..., min_length=1)
-    recipient_type: str = Field(..., pattern="^(all|active|selected)$")
+    recipient_type: str = Field(..., pattern="^(all|active|selected|segment)$")
     selected_user_ids: Optional[List[UUID]] = None
+    segment: Optional[str] = None
+    force_operational: bool = False
 
 
 class EmailTemplateBase(BaseModel):
@@ -853,3 +856,45 @@ class FinanceDashboardResponse(BaseModel):
     projected_income_cents: int = 0
     overdue_income_cents: int = 0
     projected_trend: List[dict] = [] # {month: str, amount: int}
+
+
+# ==================== Surveys ====================
+class SurveyCampaignCreate(BaseModel):
+    """Création d'une campagne d'enquête"""
+    title: str = Field(..., min_length=1, max_length=255)
+    survey_type: str = Field("general", pattern="^(general|event)$")
+    event_id: Optional[UUID] = None
+    session_id: Optional[UUID] = None
+    target_segment: Optional[str] = None
+
+
+class SurveyCampaignResponse(BaseModel):
+    """Réponse pour les détails d'une campagne d'enquête"""
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: UUID
+    tenant_id: UUID
+    title: str
+    survey_type: str
+    event_id: Optional[UUID] = None
+    session_id: Optional[UUID] = None
+    created_at: datetime
+    responses_count: int = 0
+    average_rating: Optional[float] = None
+
+
+class SurveyResponseSubmit(BaseModel):
+    """Soumission d'une réponse à une enquête (publique)"""
+    rating: int = Field(..., ge=1, le=5)
+    comment: Optional[str] = None
+
+
+class SurveyResponsePublic(BaseModel):
+    """Données publiques d'une réponse d'enquête pour la page feedback"""
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: UUID
+    campaign_title: str
+    rating: Optional[int] = None
+    comment: Optional[str] = None
+

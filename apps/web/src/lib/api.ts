@@ -147,6 +147,7 @@ export interface User {
   blacklist_reason?: string;
   remind_before_session?: boolean;
   receive_marketing_emails?: boolean;
+  segment?: string;
 }
 
 export interface Session {
@@ -1081,7 +1082,14 @@ export const api = {
   },
 
   // ==================== Admin Emails ====================
-  sendAdminEmail: async (data: { subject: string; content: string; recipient_type: string; selected_user_ids?: string[] }): Promise<{ message: string; count: number }> => {
+  sendAdminEmail: async (data: { 
+    subject: string; 
+    content: string; 
+    recipient_type: string; 
+    selected_user_ids?: string[]; 
+    segment?: string; 
+    force_operational?: boolean; 
+  }): Promise<{ message: string; count: number }> => {
     const response = await apiClient.post('/api/admin/emails/send', data);
     return response.data;
   },
@@ -1133,5 +1141,59 @@ export const api = {
 
   deleteEmailTemplate: async (templateId: string): Promise<void> => {
     await apiClient.delete(`/api/admin/emails/templates/${templateId}`);
+  },
+
+  // ==================== Satisfaction Surveys & Segmentation ====================
+  getSegmentsStats: async (): Promise<{
+    explorateur: number;
+    decouverte: number;
+    regulier: number;
+    endormi: number;
+    flexible: number;
+    ancien: number;
+  }> => {
+    const response = await apiClient.get('/api/admin/users/segments/stats');
+    return response.data;
+  },
+
+  getSurveyCampaigns: async (): Promise<any[]> => {
+    const response = await apiClient.get('/api/admin/surveys/campaigns');
+    return response.data;
+  },
+
+  createSurveyCampaign: async (data: {
+    title: string;
+    survey_type: 'general' | 'event';
+    event_id?: string;
+    session_id?: string;
+    target_segment?: string;
+  }): Promise<any> => {
+    const response = await apiClient.post('/api/admin/surveys/campaigns', data);
+    return response.data;
+  },
+
+  getSurveyCampaignDetails: async (campaignId: string): Promise<any> => {
+    const response = await apiClient.get(`/api/admin/surveys/campaigns/${campaignId}`);
+    return response.data;
+  },
+
+  sendSurveyCampaignEmails: async (campaignId: string): Promise<{ message: string; count: number }> => {
+    const response = await apiClient.post(`/api/admin/surveys/campaigns/${campaignId}/send`);
+    return response.data;
+  },
+
+  getPublicFeedback: async (token: string): Promise<{
+    id: string;
+    campaign_title: string;
+    rating: number | null;
+    comment: string | null;
+  }> => {
+    const response = await apiClient.get(`/api/public/feedback/${token}`);
+    return response.data;
+  },
+
+  submitPublicFeedback: async (token: string, data: { rating: number; comment?: string }): Promise<{ detail: string }> => {
+    const response = await apiClient.post(`/api/public/feedback/${token}`, data);
+    return response.data;
   },
 };

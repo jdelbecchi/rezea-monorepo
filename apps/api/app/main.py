@@ -131,6 +131,7 @@ async def inject_tenant_context(request: Request, call_next):
         path.startswith("/api/webhooks") or 
         path.startswith("/uploads") or
         path.startswith("/api/tenants/by-slug/") or
+        path.startswith("/api/public/feedback") or
         path == "/api/tenants/search" or
         path == "/api/offers" or # List is public
         path == "/api/auth/login"
@@ -266,6 +267,10 @@ app.include_router(admin_emails.router, prefix="/api/admin/emails", tags=["Admin
 # Admin Finance / Treasury
 from app.api import finance
 app.include_router(finance.router, prefix="/api/admin/finance", tags=["Admin Finance"])
+
+# Admin & Public Surveys
+from app.api import admin_surveys
+app.include_router(admin_surveys.router, prefix="/api", tags=["Surveys"])
 
 # Servir les fichiers uploadés
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads")
