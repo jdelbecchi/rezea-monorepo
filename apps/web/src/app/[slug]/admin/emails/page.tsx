@@ -524,6 +524,11 @@ function AdminEmailsContent() {
             return;
         }
 
+        if (surveyType === "event" && !surveyTargetSegment) {
+            setMessage({ type: "error", text: "Veuillez sélectionner un ciblage." });
+            return;
+        }
+
         if (surveyType === "event" && surveyTargetType === "event" && !surveyEventId) {
             setMessage({ type: "error", text: "Veuillez sélectionner un événement." });
             return;
@@ -542,11 +547,11 @@ function AdminEmailsContent() {
                 survey_type: surveyType,
                 event_id: surveyType === "event" && surveyTargetType === "event" ? surveyEventId : undefined,
                 session_id: surveyType === "event" && surveyTargetType === "session" ? surveySessionId : undefined,
-                target_segment: surveyType === "general" ? surveyTargetSegment : undefined
+                target_segment: surveyTargetSegment || undefined
             });
             setMessage({ type: "success", text: "Enquête de satisfaction créée et jetons individuels sécurisés générés." });
             setSurveyTitle("");
-            setSurveyTargetSegment("");
+            setSurveyTargetSegment(surveyType === "event" ? "participants" : "");
             setSurveyEventId("");
             setSurveySessionId("");
             loadSurveys();
@@ -607,6 +612,7 @@ function AdminEmailsContent() {
         endormi: "Distant (Commande en cours - absence prolongée (+21 jrs))",
         flexible: "Visiteur (Aucune commande en cours - vient de temps en temps)",
         ancien: "Inactif (N'a pas repris de commande depuis + de 60jrs)",
+        participants: "Uniquement les participants"
     };
 
     const renderSmileys = (rating: number | null) => {
@@ -725,7 +731,7 @@ function AdminEmailsContent() {
                                 
                                 {/* 1. Destinataires */}
                                 <div className="relative mb-2" ref={dropdownRef}>
-                                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
                                         Définir les destinataires
                                     </label>
                                     <button
@@ -875,7 +881,7 @@ function AdminEmailsContent() {
                                 {/* 2. Édition du message */}
                                 <div className="space-y-5">
                                     <div>
-                                        <label className={`block text-sm font-semibold mb-1.5 ${showValidation && !subject ? 'text-rose-500' : 'text-slate-700'}`}>Objet de l&apos;email</label>
+                                        <label className={`block text-sm font-medium mb-1.5 ${showValidation && !subject ? 'text-rose-500' : 'text-slate-700'}`}>Objet de l&apos;email</label>
                                         <input
                                             type="text"
                                             value={subject}
@@ -884,11 +890,11 @@ function AdminEmailsContent() {
                                                 if (e.target.value) setShowValidation(false);
                                             }}
                                             placeholder="Saisissez l'objet de votre e-mail..."
-                                            className={`w-full p-3.5 border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all font-medium ${showValidation && !subject ? 'border-rose-300 bg-rose-50/30' : 'border-slate-200 bg-white'}`}
+                                            className={`w-full p-3.5 border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all font-light ${showValidation && !subject ? 'border-rose-300 bg-rose-50/30' : 'border-slate-200 bg-white'}`}
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-semibold text-slate-700 mb-2">Contenu de l&apos;email</label>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">Contenu de l&apos;email</label>
                                         <div className="bg-white rounded-xl overflow-hidden border border-slate-200 focus-within:ring-2 focus-within:ring-indigo-500 transition-all">
                                             <QuillNode
                                                 ref={quillRef}
@@ -909,12 +915,21 @@ function AdminEmailsContent() {
                                             }
                                             .quill-editor .ql-container {
                                                 border: none !important;
-                                                font-family: inherit;
+                                                font-family: 'Livvic', sans-serif !important;
                                             }
                                             .quill-editor .ql-editor {
                                                 min-height: 240px;
-                                                font-size: 0.95rem;
+                                                font-family: 'Livvic', sans-serif !important;
+                                                font-size: 0.875rem !important;
+                                                font-weight: 300 !important;
                                                 line-height: 1.6;
+                                            }
+                                            .quill-editor .ql-editor.ql-blank::before {
+                                                font-family: 'Livvic', sans-serif !important;
+                                                font-size: 0.875rem !important;
+                                                font-weight: 300 !important;
+                                                font-style: normal !important;
+                                                color: #94a3b8 !important;
                                             }
                                             .quill-editor .ql-editor img {
                                                 max-width: 100%;
@@ -1029,14 +1044,14 @@ function AdminEmailsContent() {
                                             <div className="flex gap-2">
                                                 <button
                                                     type="button"
-                                                    onClick={() => setSurveyType("general")}
+                                                    onClick={() => { setSurveyType("general"); setSurveyTargetSegment(""); }}
                                                     className={`flex-1 py-2.5 rounded-lg text-xs font-medium border transition-all ${surveyType === "general" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
                                                 >
                                                     Enquête générale
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    onClick={() => setSurveyType("event")}
+                                                    onClick={() => { setSurveyType("event"); setSurveyTargetSegment("participants"); }}
                                                     className={`flex-1 py-2.5 rounded-lg text-xs font-medium border transition-all ${surveyType === "event" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
                                                 >
                                                     Post-activité
@@ -1044,151 +1059,188 @@ function AdminEmailsContent() {
                                             </div>
                                         </div>
 
-                                        {surveyType === "general" ? (
-                                            <div>
-                                                <label className="block text-xs font-medium text-slate-700 mb-1.5 uppercase tracking-wider">Ciblage</label>
-                                                <div className="relative">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                                        className="w-full p-3 border border-slate-200 bg-white rounded-xl outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between shadow-[0_2px_4px_rgba(30,41,59,0.02)] transition-all"
-                                                    >
-                                                        <span className="truncate">
-                                                            {surveyTargetSegment === "tous" || !surveyTargetSegment ? (
-                                                                <span className="text-sm font-normal text-slate-400">
-                                                                    {surveyTargetSegment === "tous" ? "Toute la base utilisateur" : "Choisir un ou plusieurs segments"}
-                                                                </span>
-                                                            ) : (
-                                                                <span className="text-sm font-medium text-slate-700">
-                                                                    {surveyTargetSegment.split(",").map(k => segmentLabels[k] || k).join(", ")}
-                                                                </span>
-                                                            )}
-                                                        </span>
-                                                        <span className="text-slate-400 text-[10px]">▼</span>
-                                                    </button>
-                                                    
-                                                    {isDropdownOpen && (
-                                                        <>
-                                                            <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
-                                                            <div className="absolute left-0 right-0 z-50 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg p-1.5 space-y-0.5 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150">
-                                                                {/* Option Tous */}
-                                                                <label className="flex items-center gap-2.5 p-2 rounded-lg cursor-pointer hover:bg-slate-50 transition-all select-none text-xs font-semibold text-slate-700">
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={surveyTargetSegment === "tous" || (segmentStats && surveyTargetSegment.split(",").filter(x => x && x !== "tous").length === Object.keys(segmentStats).length)}
-                                                                        onChange={(e) => {
-                                                                            if (e.target.checked) {
-                                                                                setSurveyTargetSegment("tous");
-                                                                            } else {
-                                                                                setSurveyTargetSegment("");
-                                                                            }
-                                                                        }}
-                                                                        className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300"
-                                                                    />
-                                                                    Toute la base utilisateur
-                                                                </label>
-                                                                
-                                                                <div className="border-t border-slate-100 my-1" />
-                                                                
-                                                                {/* Options individuelles */}
-                                                                {segmentStats && Object.entries(segmentStats).map(([key, val]) => {
-                                                                    const isChecked = surveyTargetSegment.split(",").includes(key) || surveyTargetSegment.split(",").includes("tous");
-                                                                    return (
-                                                                        <label 
-                                                                            key={key} 
-                                                                            className={`flex items-center gap-2.5 p-2 rounded-lg cursor-pointer transition-all select-none hover:bg-slate-50 ${isChecked ? 'bg-blue-50/20' : ''}`}
-                                                                        >
-                                                                            <input
-                                                                                type="checkbox"
-                                                                                checked={isChecked}
-                                                                                onChange={(e) => {
-                                                                                    let current = surveyTargetSegment.split(",").filter(x => x && x !== "tous");
-                                                                                    if (surveyTargetSegment.split(",").includes("tous") && segmentStats) {
-                                                                                        current = Object.keys(segmentStats);
-                                                                                    }
-                                                                                    
-                                                                                    if (e.target.checked) {
-                                                                                        if (!current.includes(key)) {
-                                                                                            current.push(key);
-                                                                                        }
-                                                                                        if (segmentStats && current.length === Object.keys(segmentStats).length) {
-                                                                                            setSurveyTargetSegment("tous");
-                                                                                        } else {
-                                                                                            setSurveyTargetSegment(current.join(","));
-                                                                                        }
-                                                                                    } else {
-                                                                                        current = current.filter(x => x !== key);
-                                                                                        setSurveyTargetSegment(current.join(","));
-                                                                                    }
-                                                                                }}
-                                                                                className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300"
-                                                                            />
-                                                                            <span className={`text-xs ${isChecked ? 'text-blue-900 font-medium' : 'text-slate-700'}`}>
-                                                                                {segmentLabels[key] || key} <span className="text-slate-400 font-normal text-[10px]">({val})</span>
-                                                                            </span>
-                                                                        </label>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <>
+                                        {surveyType === "event" && (
+                                            <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-4 space-y-4 shadow-[inset_0_1px_2px_rgba(0,0,0,0.015)]">
                                                 <div>
-                                                    <label className="block text-xs font-medium text-slate-700 mb-1.5 uppercase tracking-wider">Type d&apos;activité</label>
+                                                    <label className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">Type d&apos;activité</label>
                                                     <div className="flex gap-2">
                                                         <button
                                                             type="button"
                                                             onClick={() => setSurveyTargetType("event")}
-                                                            className={`flex-1 py-2.5 rounded-lg text-xs font-medium border transition-all ${surveyTargetType === "event" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+                                                            className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-all ${surveyTargetType === "event" ? "bg-white text-blue-700 border-slate-200 shadow-sm" : "bg-transparent text-slate-500 border-transparent hover:bg-white/40"}`}
                                                         >
                                                             Événement
                                                         </button>
                                                         <button
                                                             type="button"
                                                             onClick={() => setSurveyTargetType("session")}
-                                                            className={`flex-1 py-2.5 rounded-lg text-xs font-medium border transition-all ${surveyTargetType === "session" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+                                                            className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-all ${surveyTargetType === "session" ? "bg-white text-blue-700 border-slate-200 shadow-sm" : "bg-transparent text-slate-500 border-transparent hover:bg-white/40"}`}
                                                         >
-                                                            Séance Agenda
+                                                            Séance
                                                         </button>
                                                     </div>
                                                 </div>
 
                                                 {surveyTargetType === "event" ? (
                                                     <div>
-                                                        <label className="block text-xs font-medium text-slate-700 mb-1.5 uppercase tracking-wider">Sélectionner l&apos;Événement</label>
+                                                        <label className="block text-[11px] font-medium text-slate-900 mb-1">Sélectionner l&apos;événement</label>
                                                         <select
                                                             value={surveyEventId}
                                                             onChange={(e) => setSurveyEventId(e.target.value)}
                                                             required
-                                                            className="w-full p-3 border border-slate-200 bg-white rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500 shadow-[0_2px_4px_rgba(30,41,59,0.02)] transition-all"
+                                                            className={`w-full p-3 border border-slate-200 bg-white rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-all ${!surveyEventId ? 'text-slate-400 font-normal' : 'text-slate-700 font-medium'}`}
                                                         >
-                                                            <option value="">Choisir un événement</option>
+                                                            <option value="" className="text-slate-400">Choisir un événement</option>
                                                             {events.map(ev => (
-                                                                <option key={ev.id} value={ev.id}>{ev.title} ({ev.event_date})</option>
+                                                                <option key={ev.id} value={ev.id} className="text-slate-700 font-medium">{ev.title} ({ev.event_date})</option>
                                                             ))}
                                                         </select>
                                                     </div>
                                                 ) : (
                                                     <div>
-                                                        <label className="block text-xs font-medium text-slate-700 mb-1.5 uppercase tracking-wider">Sélectionner la Séance</label>
+                                                        <label className="block text-[11px] font-medium text-slate-900 mb-1">Sélectionner la séance</label>
                                                         <select
                                                             value={surveySessionId}
                                                             onChange={(e) => setSurveySessionId(e.target.value)}
                                                             required
-                                                            className="w-full p-3 border border-slate-200 bg-white rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500 shadow-[0_2px_4px_rgba(30,41,59,0.02)] transition-all"
+                                                            className={`w-full p-3 border border-slate-200 bg-white rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-all ${!surveySessionId ? 'text-slate-400 font-normal' : 'text-slate-700 font-medium'}`}
                                                         >
-                                                            <option value="">Choisir une séance</option>
+                                                            <option value="" className="text-slate-400">Choisir une séance</option>
                                                             {sessions.map(sess => (
-                                                                <option key={sess.id} value={sess.id}>{sess.title} ({new Date(sess.start_time).toLocaleDateString()})</option>
+                                                                <option key={sess.id} value={sess.id} className="text-slate-700 font-medium">{sess.title} ({new Date(sess.start_time).toLocaleDateString()})</option>
                                                             ))}
                                                         </select>
                                                     </div>
                                                 )}
                                             </div>
                                         )}
+
+                                        <div>
+                                            <label className="block text-xs font-medium text-slate-700 mb-1.5 uppercase tracking-wider">Ciblage</label>
+                                            <div className="relative">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                                    className={`w-full p-3 border border-slate-200 bg-white rounded-xl outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between shadow-[0_2px_4px_rgba(30,41,59,0.02)] transition-all text-sm ${
+                                                        surveyType === "event"
+                                                            ? "text-black font-light"
+                                                            : (!surveyTargetSegment || surveyTargetSegment === "tous")
+                                                                ? "text-slate-400 font-normal"
+                                                                : "text-black font-light"
+                                                    }`}
+                                                >
+                                                    <span className="truncate">
+                                                        {surveyType === "event"
+                                                            ? (!surveyTargetSegment || surveyTargetSegment === "participants"
+                                                                ? "Uniquement les participants"
+                                                                : surveyTargetSegment === "tous"
+                                                                    ? "Toute la base utilisateur"
+                                                                    : surveyTargetSegment.split(",").map(k => segmentLabels[k] || k).join(", "))
+                                                            : (!surveyTargetSegment
+                                                                ? "Choisir un ou plusieurs segments"
+                                                                : surveyTargetSegment === "tous"
+                                                                    ? "Toute la base utilisateur"
+                                                                    : surveyTargetSegment.split(",").map(k => segmentLabels[k] || k).join(", "))
+                                                        }
+                                                    </span>
+                                                    <span className="text-slate-400 text-[10px]">▼</span>
+                                                </button>
+                                                
+                                                {isDropdownOpen && (
+                                                    <>
+                                                        <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
+                                                        <div className="absolute left-0 right-0 z-50 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg p-1.5 space-y-0.5 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150">
+                                                            {/* Option Uniquement les participants (seulement pour type event) */}
+                                                            {surveyType === "event" && (
+                                                                <>
+                                                                    <label className="flex items-center gap-2.5 p-2 rounded-lg cursor-pointer hover:bg-slate-50 transition-all select-none text-xs font-semibold text-slate-700">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={surveyTargetSegment.split(",").includes("participants")}
+                                                                            onChange={(e) => {
+                                                                                let current = surveyTargetSegment.split(",").filter(x => x && x !== "tous");
+                                                                                if (e.target.checked) {
+                                                                                    if (!current.includes("participants")) {
+                                                                                        current.push("participants");
+                                                                                    }
+                                                                                    setSurveyTargetSegment(current.join(","));
+                                                                                } else {
+                                                                                    current = current.filter(x => x !== "participants");
+                                                                                    setSurveyTargetSegment(current.join(","));
+                                                                                }
+                                                                            }}
+                                                                            className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300"
+                                                                        />
+                                                                        Uniquement les participants
+                                                                    </label>
+                                                                    <div className="border-t border-slate-100 my-1" />
+                                                                </>
+                                                            )}
+
+                                                            {/* Option Tous */}
+                                                            <label className="flex items-center gap-2.5 p-2 rounded-lg cursor-pointer hover:bg-slate-50 transition-all select-none text-xs font-semibold text-slate-700">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={surveyTargetSegment === "tous" || !!(segmentStats && surveyTargetSegment.split(",").filter(x => x && x !== "tous" && x !== "participants").length === Object.keys(segmentStats).length)}
+                                                                    onChange={(e) => {
+                                                                        if (e.target.checked) {
+                                                                            setSurveyTargetSegment("tous");
+                                                                        } else {
+                                                                            setSurveyTargetSegment("");
+                                                                        }
+                                                                    }}
+                                                                    className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300"
+                                                                />
+                                                                Toute la base utilisateur
+                                                            </label>
+                                                            
+                                                            <div className="border-t border-slate-100 my-1" />
+                                                            
+                                                            {/* Options individuelles */}
+                                                            {segmentStats && Object.entries(segmentStats).map(([key, val]) => {
+                                                                if (key === "participants") return null;
+                                                                const isChecked = surveyTargetSegment.split(",").includes(key) || surveyTargetSegment.split(",").includes("tous");
+                                                                return (
+                                                                    <label 
+                                                                        key={key} 
+                                                                        className={`flex items-center gap-2.5 p-2 rounded-lg cursor-pointer transition-all select-none hover:bg-slate-50 ${isChecked ? 'bg-blue-50/20' : ''}`}
+                                                                    >
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={isChecked}
+                                                                            onChange={(e) => {
+                                                                                let current = surveyTargetSegment.split(",").filter(x => x && x !== "tous");
+                                                                                if (surveyTargetSegment.split(",").includes("tous") && segmentStats) {
+                                                                                    current = Object.keys(segmentStats).filter(k => k !== "participants");
+                                                                                }
+                                                                                
+                                                                                if (e.target.checked) {
+                                                                                    if (!current.includes(key)) {
+                                                                                        current.push(key);
+                                                                                    }
+                                                                                    if (segmentStats && current.filter(k => k !== "participants").length === Object.keys(segmentStats).filter(k => k !== "participants").length) {
+                                                                                        setSurveyTargetSegment("tous");
+                                                                                    } else {
+                                                                                        setSurveyTargetSegment(current.join(","));
+                                                                                    }
+                                                                                } else {
+                                                                                    current = current.filter(x => x !== key);
+                                                                                    setSurveyTargetSegment(current.join(","));
+                                                                                }
+                                                                            }}
+                                                                            className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300"
+                                                                        />
+                                                                        <span className={`text-xs ${isChecked ? 'text-blue-900 font-medium' : 'text-slate-700'}`}>
+                                                                            {segmentLabels[key] || key} <span className="text-slate-400 font-normal text-[10px]">({val})</span>
+                                                                        </span>
+                                                                    </label>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
 
                                         <button
                                             type="submit"

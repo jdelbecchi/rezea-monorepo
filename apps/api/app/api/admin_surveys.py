@@ -50,27 +50,71 @@ async def create_survey_campaign(
     target_user_ids = []
 
     if data.survey_type == "event":
-        if data.event_id:
-            # Récupérer les inscrits confirmés ou présents à l'événement
-            stmt = select(EventRegistration.user_id).where(
-                EventRegistration.tenant_id == tenant_id,
-                EventRegistration.event_id == data.event_id,
-                EventRegistration.status.in_([
-                    EventRegistrationStatus.CONFIRMED,
-                    EventRegistrationStatus.PENDING_PAYMENT
-                ])
-            )
-            res = await db.execute(stmt)
-            target_user_ids = [row[0] for row in res.all()]
-        elif data.session_id:
-            # Récupérer les réservations confirmées de la séance
-            stmt = select(Booking.user_id).where(
-                Booking.tenant_id == tenant_id,
-                Booking.session_id == data.session_id,
-                Booking.status == BookingStatus.CONFIRMED
-            )
-            res = await db.execute(stmt)
-            target_user_ids = [row[0] for row in res.all()]
+        is_participants_only = True
+        if data.target_segment:
+            segments = [s.strip().lower() for s in data.target_segment.split(",") if s.strip()]
+            if segments and segments != ["participants"]:
+                is_participants_only = False
+        
+        if is_participants_only:
+            if data.event_id:
+                # Récupérer les inscrits confirmés ou présents à l'événement
+                stmt = select(EventRegistration.user_id).where(
+                    EventRegistration.tenant_id == tenant_id,
+                    EventRegistration.event_id == data.event_id,
+                    EventRegistration.status.in_([
+                        EventRegistrationStatus.CONFIRMED,
+                        EventRegistrationStatus.PENDING_PAYMENT
+                    ])
+                )
+                res = await db.execute(stmt)
+                target_user_ids = [row[0] for row in res.all()]
+            elif data.session_id:
+                # Récupérer les réservations confirmées de la séance
+                stmt = select(Booking.user_id).where(
+                    Booking.tenant_id == tenant_id,
+                    Booking.session_id == data.session_id,
+                    Booking.status == BookingStatus.CONFIRMED
+                )
+                res = await db.execute(stmt)
+                target_user_ids = [row[0] for row in res.all()]
+        else:
+            segments = [s.strip().lower() for s in data.target_segment.split(",") if s.strip()]
+            if "tous" in segments or "all" in segments:
+                stmt = select(User.id).where(
+                    User.tenant_id == tenant_id,
+                    User.role == UserRole.MEMBER,
+                    User.receive_marketing_emails == True
+                )
+                res = await db.execute(stmt)
+                target_user_ids = [row[0] for row in res.all()]
+            else:
+                segment_uids = set()
+                for seg in segments:
+                    if seg == "participants":
+                        if data.event_id:
+                            stmt = select(EventRegistration.user_id).where(
+                                EventRegistration.tenant_id == tenant_id,
+                                EventRegistration.event_id == data.event_id,
+                                EventRegistration.status.in_([
+                                    EventRegistrationStatus.CONFIRMED,
+                                    EventRegistrationStatus.PENDING_PAYMENT
+                                ])
+                            )
+                            res = await db.execute(stmt)
+                            segment_uids.update([row[0] for row in res.all()])
+                        elif data.session_id:
+                            stmt = select(Booking.user_id).where(
+                                Booking.tenant_id == tenant_id,
+                                Booking.session_id == data.session_id,
+                                Booking.status == BookingStatus.CONFIRMED
+                            )
+                            res = await db.execute(stmt)
+                            segment_uids.update([row[0] for row in res.all()])
+                    else:
+                        uids = await get_segment_user_ids(db, tenant_id, seg)
+                        segment_uids.update(uids)
+                target_user_ids = list(segment_uids)
     else:  # general
         if data.target_segment:
             segments = [s.strip().lower() for s in data.target_segment.split(",") if s.strip()]
