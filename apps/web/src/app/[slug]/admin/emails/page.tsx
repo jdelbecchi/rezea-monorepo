@@ -1020,7 +1020,7 @@ function AdminEmailsContent() {
                                                 value={surveyTitle}
                                                 onChange={(e) => setSurveyTitle(e.target.value)}
                                                 placeholder="ex : avis stage gymnastique mai"
-                                                className="w-full p-3 border border-slate-200 bg-slate-55 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-xs placeholder:font-normal placeholder:text-slate-400"
+                                                className="w-full p-3 border border-slate-200 bg-slate-55 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-sm placeholder:font-normal placeholder:text-slate-400 placeholder:opacity-100"
                                             />
                                         </div>
 
@@ -1055,11 +1055,11 @@ function AdminEmailsContent() {
                                                     >
                                                         <span className="truncate">
                                                             {surveyTargetSegment === "tous" || !surveyTargetSegment ? (
-                                                                <span className="text-xs font-normal text-slate-400">
+                                                                <span className="text-sm font-normal text-slate-400">
                                                                     {surveyTargetSegment === "tous" ? "Toute la base utilisateur" : "Choisir un ou plusieurs segments"}
                                                                 </span>
                                                             ) : (
-                                                                <span className="text-xs font-medium text-slate-700">
+                                                                <span className="text-sm font-medium text-slate-700">
                                                                     {surveyTargetSegment.split(",").map(k => segmentLabels[k] || k).join(", ")}
                                                                 </span>
                                                             )}
@@ -1096,37 +1096,36 @@ function AdminEmailsContent() {
                                                                     return (
                                                                         <label 
                                                                             key={key} 
-                                                                            className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all select-none hover:bg-slate-50 ${isChecked ? 'text-blue-900 font-medium bg-blue-50/20' : 'text-slate-700'}`}
+                                                                            className={`flex items-center gap-2.5 p-2 rounded-lg cursor-pointer transition-all select-none hover:bg-slate-50 ${isChecked ? 'bg-blue-50/20' : ''}`}
                                                                         >
-                                                                            <div className="flex items-center gap-2.5">
-                                                                                <input
-                                                                                    type="checkbox"
-                                                                                    checked={isChecked}
-                                                                                    onChange={(e) => {
-                                                                                        let current = surveyTargetSegment.split(",").filter(x => x && x !== "tous");
-                                                                                        if (surveyTargetSegment.split(",").includes("tous") && segmentStats) {
-                                                                                            current = Object.keys(segmentStats);
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={isChecked}
+                                                                                onChange={(e) => {
+                                                                                    let current = surveyTargetSegment.split(",").filter(x => x && x !== "tous");
+                                                                                    if (surveyTargetSegment.split(",").includes("tous") && segmentStats) {
+                                                                                        current = Object.keys(segmentStats);
+                                                                                    }
+                                                                                    
+                                                                                    if (e.target.checked) {
+                                                                                        if (!current.includes(key)) {
+                                                                                            current.push(key);
                                                                                         }
-                                                                                        
-                                                                                        if (e.target.checked) {
-                                                                                            if (!current.includes(key)) {
-                                                                                                current.push(key);
-                                                                                            }
-                                                                                            if (segmentStats && current.length === Object.keys(segmentStats).length) {
-                                                                                                setSurveyTargetSegment("tous");
-                                                                                            } else {
-                                                                                                setSurveyTargetSegment(current.join(","));
-                                                                                            }
+                                                                                        if (segmentStats && current.length === Object.keys(segmentStats).length) {
+                                                                                            setSurveyTargetSegment("tous");
                                                                                         } else {
-                                                                                            current = current.filter(x => x !== key);
                                                                                             setSurveyTargetSegment(current.join(","));
                                                                                         }
-                                                                                    }}
-                                                                                    className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300"
-                                                                                />
-                                                                                <span className="text-xs">{segmentLabels[key] || key}</span>
-                                                                            </div>
-                                                                            <span className="text-[10px] text-slate-400 font-medium">{val} pers.</span>
+                                                                                    } else {
+                                                                                        current = current.filter(x => x !== key);
+                                                                                        setSurveyTargetSegment(current.join(","));
+                                                                                    }
+                                                                                }}
+                                                                                className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300"
+                                                                            />
+                                                                            <span className={`text-xs ${isChecked ? 'text-blue-900 font-medium' : 'text-slate-700'}`}>
+                                                                                {segmentLabels[key] || key} <span className="text-slate-400 font-normal text-[10px]">({val})</span>
+                                                                            </span>
                                                                         </label>
                                                                     );
                                                                 })}
