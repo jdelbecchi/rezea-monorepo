@@ -419,6 +419,35 @@ async def send_survey_campaign_emails(
     }
 
 
+
+@router.delete("/admin/surveys/campaigns/{campaign_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_survey_campaign(
+    campaign_id: UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_manager)
+):
+    """Supprime une campagne d'enquête et ses réponses associées"""
+    tenant_id = request.state.tenant_id
+
+    stmt = select(SurveyCampaign).where(
+        SurveyCampaign.id == campaign_id,
+        SurveyCampaign.tenant_id == tenant_id
+    )
+    res = await db.execute(stmt)
+    campaign = res.scalar_one_or_none()
+
+    if not campaign:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Campagne d'enquête non trouvée"
+        )
+
+    await db.delete(campaign)
+    await db.commit()
+    return None
+
+
 # ==================== PUBLIC FEEDBACK (1-CLICK NATIVE) ====================
 
 @router.get("/public/feedback/{token}", response_model=SurveyResponsePublic)

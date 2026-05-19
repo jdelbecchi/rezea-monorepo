@@ -1182,6 +1182,10 @@ export const api = {
     return response.data;
   },
 
+  deleteSurveyCampaign: async (campaignId: string): Promise<void> => {
+    await apiClient.delete(`/api/admin/surveys/campaigns/${campaignId}`);
+  },
+
   getPublicFeedback: async (token: string): Promise<{
     id: string;
     campaign_title: string;

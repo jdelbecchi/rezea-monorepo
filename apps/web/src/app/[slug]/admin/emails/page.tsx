@@ -591,6 +591,21 @@ function AdminEmailsContent() {
         }
     };
 
+    // Enquêtes : Supprimer une enquête
+    const handleDeleteSurvey = async (campaignId: string) => {
+        if (!window.confirm("Voulez-vous vraiment supprimer cette campagne d'enquête et tous les avis associés ? Cette action est irréversible.")) {
+            return;
+        }
+        try {
+            await api.deleteSurveyCampaign(campaignId);
+            setMessage({ type: "success", text: "Campagne d'enquête supprimée avec succès." });
+            loadSurveys();
+        } catch (error: any) {
+            const errorMsg = error.response?.data?.detail || "Erreur lors de la suppression de l'enquête.";
+            setMessage({ type: "error", text: errorMsg });
+        }
+    };
+
     // Filtres sélection utilisateurs manuelle
     const filteredUsers = allUsers.filter(u => 
         u.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -681,9 +696,20 @@ function AdminEmailsContent() {
 
                     {/* Alertes de retour */}
                     {message && (
-                        <div className={`mb-6 p-4 rounded-2xl border flex items-center gap-3 animate-in fade-in duration-200 ${message.type === "success" ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"}`}>
-                            <span className="text-lg">{message.type === "success" ? "✅" : "❌"}</span>
-                            <p className="text-sm font-medium">{message.text}</p>
+                        <div className={`mb-6 p-4 rounded-2xl border flex items-center justify-between gap-3 animate-in fade-in duration-200 ${message.type === "success" ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"}`}>
+                            <div className="flex items-center gap-3">
+                                <span className="text-lg">{message.type === "success" ? "✅" : "❌"}</span>
+                                <p className="text-sm font-medium">{message.text}</p>
+                            </div>
+                            <button 
+                                onClick={() => setMessage(null)} 
+                                className="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-white/40 rounded-lg ml-auto shrink-0"
+                                title="Fermer"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
                     )}
 
@@ -1034,7 +1060,7 @@ function AdminEmailsContent() {
                                                 required
                                                 value={surveyTitle}
                                                 onChange={(e) => setSurveyTitle(e.target.value)}
-                                                placeholder="ex : avis stage gymnastique mai"
+                                                placeholder="Ex : Qu'avez-vous pensé de notre stage de mai ?"
                                                 className="w-full p-3 border border-slate-200 bg-slate-55 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-sm placeholder:font-normal placeholder:text-slate-400 placeholder:opacity-100"
                                             />
                                         </div>
@@ -1272,6 +1298,17 @@ function AdminEmailsContent() {
                                                     key={c.id}
                                                     className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-5 relative group"
                                                 >
+                                                    {/* Bouton de suppression absolute, visible au survol */}
+                                                    <button
+                                                        onClick={() => handleDeleteSurvey(c.id)}
+                                                        className="absolute top-4 right-4 text-slate-300 hover:text-rose-600 transition-colors p-1.5 hover:bg-rose-50 rounded-lg opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all"
+                                                        title="Supprimer la campagne d'enquête"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
+                                                    </button>
+
                                                     <div className="space-y-1.5 max-w-sm">
                                                         <div className="flex items-center gap-2">
                                                             <span className={`px-2 py-0.5 rounded-md text-[9px] uppercase font-semibold border ${c.survey_type === 'event' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
@@ -1279,37 +1316,37 @@ function AdminEmailsContent() {
                                                             </span>
                                                             <span className="text-[10px] text-slate-400">{new Date(c.created_at).toLocaleDateString()}</span>
                                                         </div>
-                                                        <h4 className="font-semibold text-slate-900 text-base">{c.title}</h4>
+                                                        <h4 className="font-medium text-slate-900 text-base">{c.title}</h4>
                                                     </div>
 
                                                     {/* Statistiques à l'état premium */}
                                                     <div className="flex gap-6 items-center">
                                                         <div className="text-center bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
-                                                            <span className="text-xs text-slate-400 font-semibold block uppercase tracking-wider">Note</span>
+                                                            <span className="text-xs text-slate-400 font-semibold block">Note</span>
                                                             <span className="font-bold text-base text-slate-800 flex items-center justify-center gap-1">
                                                                 ⭐ {c.average_rating ? Number(c.average_rating).toFixed(1) : "-"}
                                                             </span>
                                                         </div>
                                                         <div className="text-center bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
-                                                            <span className="text-xs text-slate-400 font-semibold block uppercase tracking-wider">Envois</span>
-                                                            <span className="font-bold text-base text-slate-800">{c.responses_count}</span>
+                                                            <span className="text-xs text-slate-400 font-semibold block">Envoi</span>
+                                                            <span className="font-medium text-sm text-slate-800">{c.responses_count}</span>
                                                         </div>
                                                     </div>
 
                                                     {/* Actions d'enquête */}
-                                                    <div className="flex md:flex-col gap-2 self-stretch justify-center md:items-end">
-                                                        <button
-                                                            onClick={() => handleViewSurveyDetails(c.id)}
-                                                            className="flex-1 md:flex-initial px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold transition-all"
-                                                        >
-                                                            🔍 Inspecter les retours
-                                                        </button>
+                                                    <div className="flex md:flex-col gap-2 self-stretch justify-center md:items-end pr-6">
                                                         <button
                                                             onClick={() => handleSendSurvey(c.id)}
                                                             disabled={isSendingSurvey === c.id}
                                                             className="flex-1 md:flex-initial px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-lg text-xs font-semibold transition-all active:scale-95"
                                                         >
                                                             {isSendingSurvey === c.id ? "Envoi..." : "✉️ Diffuser par e-mail"}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleViewSurveyDetails(c.id)}
+                                                            className="flex-1 md:flex-initial px-4 py-2 bg-blue-50 hover:bg-blue-100 text-black rounded-lg text-xs font-medium transition-all"
+                                                        >
+                                                            🔍 Inspecter les retours
                                                         </button>
                                                     </div>
                                                 </div>
