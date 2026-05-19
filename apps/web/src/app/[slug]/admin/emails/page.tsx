@@ -123,6 +123,7 @@ function AdminEmailsContent() {
     const [surveyType, setSurveyType] = useState<"general" | "event">("general");
     const [surveyTargetType, setSurveyTargetType] = useState<"event" | "session">("event");
     const [surveyTargetSegment, setSurveyTargetSegment] = useState("");
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [surveyEventId, setSurveyEventId] = useState("");
     const [surveySessionId, setSurveySessionId] = useState("");
     const [isCreatingSurvey, setIsCreatingSurvey] = useState(false);
@@ -1006,76 +1007,150 @@ function AdminEmailsContent() {
                                 
                                 {/* 1. Créateur d'enquêtes */}
                                 <div className="lg:col-span-1 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm self-start">
-                                    <h3 className="text-lg font-bold text-slate-950 mb-5 pb-3 border-b border-slate-100 flex items-center gap-2">
+                                    <h3 className="text-lg font-semibold text-slate-950 mb-5 pb-3 border-b border-slate-100 flex items-center gap-2">
                                         <span>📊</span> Lancer une enquête
                                     </h3>
                                     
                                     <form onSubmit={handleCreateSurvey} className="space-y-4">
                                         <div>
-                                            <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Titre de l&apos;enquête</label>
+                                            <label className="block text-xs font-medium text-slate-700 mb-1.5 uppercase tracking-wider">Titre de l&apos;enquête</label>
                                             <input 
                                                 type="text" 
                                                 required
                                                 value={surveyTitle}
                                                 onChange={(e) => setSurveyTitle(e.target.value)}
-                                                placeholder="ex: Avis Stage Gymnastique Mai"
-                                                className="w-full p-3 border border-slate-200 bg-slate-55 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                                                placeholder="ex : avis stage gymnastique mai"
+                                                className="w-full p-3 border border-slate-200 bg-slate-55 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-xs placeholder:font-normal placeholder:text-slate-400"
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Nature de l&apos;enquête</label>
+                                            <label className="block text-xs font-medium text-slate-700 mb-1.5 uppercase tracking-wider">Nature de l&apos;enquête</label>
                                             <div className="flex gap-2">
                                                 <button
                                                     type="button"
                                                     onClick={() => setSurveyType("general")}
-                                                    className={`flex-1 py-2.5 rounded-lg text-xs font-bold border transition-all ${surveyType === "general" ? "bg-indigo-50 text-indigo-700 border-indigo-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+                                                    className={`flex-1 py-2.5 rounded-lg text-xs font-medium border transition-all ${surveyType === "general" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
                                                 >
-                                                    Enquête Générale
+                                                    Enquête générale
                                                 </button>
                                                 <button
                                                     type="button"
                                                     onClick={() => setSurveyType("event")}
-                                                    className={`flex-1 py-2.5 rounded-lg text-xs font-bold border transition-all ${surveyType === "event" ? "bg-indigo-50 text-indigo-700 border-indigo-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+                                                    className={`flex-1 py-2.5 rounded-lg text-xs font-medium border transition-all ${surveyType === "event" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
                                                 >
-                                                    Post-Activité
+                                                    Post-activité
                                                 </button>
                                             </div>
                                         </div>
 
                                         {surveyType === "general" ? (
                                             <div>
-                                                <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Cibler un segment</label>
-                                                <select
-                                                    value={surveyTargetSegment}
-                                                    onChange={(e) => setSurveyTargetSegment(e.target.value)}
-                                                    required
-                                                    className="w-full p-3 border border-slate-200 bg-white rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500"
-                                                >
-                                                    <option value="">-- Choisir le segment --</option>
-                                                    {segmentStats && Object.entries(segmentStats).map(([key, val]) => (
-                                                        <option key={key} value={key}>
-                                                            {segmentLabels[key] || key} ({val} membres)
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                                <label className="block text-xs font-medium text-slate-700 mb-1.5 uppercase tracking-wider">Ciblage</label>
+                                                <div className="relative">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                                        className="w-full p-3 border border-slate-200 bg-white rounded-xl outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between shadow-[0_2px_4px_rgba(30,41,59,0.02)] transition-all"
+                                                    >
+                                                        <span className="truncate">
+                                                            {surveyTargetSegment === "tous" || !surveyTargetSegment ? (
+                                                                <span className="text-xs font-normal text-slate-400">
+                                                                    {surveyTargetSegment === "tous" ? "Toute la base utilisateur" : "Choisir un ou plusieurs segments"}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-xs font-medium text-slate-700">
+                                                                    {surveyTargetSegment.split(",").map(k => segmentLabels[k] || k).join(", ")}
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                        <span className="text-slate-400 text-[10px]">▼</span>
+                                                    </button>
+                                                    
+                                                    {isDropdownOpen && (
+                                                        <>
+                                                            <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
+                                                            <div className="absolute left-0 right-0 z-50 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg p-1.5 space-y-0.5 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150">
+                                                                {/* Option Tous */}
+                                                                <label className="flex items-center gap-2.5 p-2 rounded-lg cursor-pointer hover:bg-slate-50 transition-all select-none text-xs font-semibold text-slate-700">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={surveyTargetSegment === "tous" || (segmentStats && surveyTargetSegment.split(",").filter(x => x && x !== "tous").length === Object.keys(segmentStats).length)}
+                                                                        onChange={(e) => {
+                                                                            if (e.target.checked) {
+                                                                                setSurveyTargetSegment("tous");
+                                                                            } else {
+                                                                                setSurveyTargetSegment("");
+                                                                            }
+                                                                        }}
+                                                                        className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300"
+                                                                    />
+                                                                    Toute la base utilisateur
+                                                                </label>
+                                                                
+                                                                <div className="border-t border-slate-100 my-1" />
+                                                                
+                                                                {/* Options individuelles */}
+                                                                {segmentStats && Object.entries(segmentStats).map(([key, val]) => {
+                                                                    const isChecked = surveyTargetSegment.split(",").includes(key) || surveyTargetSegment.split(",").includes("tous");
+                                                                    return (
+                                                                        <label 
+                                                                            key={key} 
+                                                                            className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all select-none hover:bg-slate-50 ${isChecked ? 'text-blue-900 font-medium bg-blue-50/20' : 'text-slate-700'}`}
+                                                                        >
+                                                                            <div className="flex items-center gap-2.5">
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    checked={isChecked}
+                                                                                    onChange={(e) => {
+                                                                                        let current = surveyTargetSegment.split(",").filter(x => x && x !== "tous");
+                                                                                        if (surveyTargetSegment.split(",").includes("tous") && segmentStats) {
+                                                                                            current = Object.keys(segmentStats);
+                                                                                        }
+                                                                                        
+                                                                                        if (e.target.checked) {
+                                                                                            if (!current.includes(key)) {
+                                                                                                current.push(key);
+                                                                                            }
+                                                                                            if (segmentStats && current.length === Object.keys(segmentStats).length) {
+                                                                                                setSurveyTargetSegment("tous");
+                                                                                            } else {
+                                                                                                setSurveyTargetSegment(current.join(","));
+                                                                                            }
+                                                                                        } else {
+                                                                                            current = current.filter(x => x !== key);
+                                                                                            setSurveyTargetSegment(current.join(","));
+                                                                                        }
+                                                                                    }}
+                                                                                    className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300"
+                                                                                />
+                                                                                <span className="text-xs">{segmentLabels[key] || key}</span>
+                                                                            </div>
+                                                                            <span className="text-[10px] text-slate-400 font-medium">{val} pers.</span>
+                                                                        </label>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
                                         ) : (
                                             <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-100 animate-in slide-in-from-top-2 duration-200">
                                                 <div>
-                                                    <label className="block text-xs font-bold text-slate-500 mb-1">Cible</label>
+                                                    <label className="block text-xs font-medium text-slate-500 mb-1">Cible</label>
                                                     <div className="flex gap-2">
                                                         <button
                                                             type="button"
                                                             onClick={() => setSurveyTargetType("event")}
-                                                            className={`flex-1 py-1.5 rounded-md text-[11px] font-bold transition-all ${surveyTargetType === "event" ? "bg-white text-indigo-700 border border-indigo-150 shadow-sm" : "text-slate-500"}`}
+                                                            className={`flex-1 py-1.5 rounded-md text-[11px] font-medium transition-all ${surveyTargetType === "event" ? "bg-white text-blue-700 border border-blue-150 shadow-sm" : "text-slate-500"}`}
                                                         >
                                                             Événement
                                                         </button>
                                                         <button
                                                             type="button"
                                                             onClick={() => setSurveyTargetType("session")}
-                                                            className={`flex-1 py-1.5 rounded-md text-[11px] font-bold transition-all ${surveyTargetType === "session" ? "bg-white text-indigo-700 border border-indigo-150 shadow-sm" : "text-slate-500"}`}
+                                                            className={`flex-1 py-1.5 rounded-md text-[11px] font-medium transition-all ${surveyTargetType === "session" ? "bg-white text-blue-700 border border-blue-150 shadow-sm" : "text-slate-500"}`}
                                                         >
                                                             Séance Agenda
                                                         </button>
@@ -1084,12 +1159,12 @@ function AdminEmailsContent() {
 
                                                 {surveyTargetType === "event" ? (
                                                     <div>
-                                                        <label className="block text-[10px] font-bold text-slate-400 mb-1">Sélectionner l&apos;Événement</label>
+                                                        <label className="block text-[10px] font-medium text-slate-400 mb-1">Sélectionner l&apos;Événement</label>
                                                         <select
                                                             value={surveyEventId}
                                                             onChange={(e) => setSurveyEventId(e.target.value)}
                                                             required
-                                                            className="w-full p-2.5 border border-slate-200 bg-white rounded-lg text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                                                            className="w-full p-2.5 border border-slate-200 bg-white rounded-lg text-xs font-medium outline-none focus:ring-2 focus:ring-blue-500"
                                                         >
                                                             <option value="">-- Choisir un événement --</option>
                                                             {events.map(ev => (
@@ -1099,12 +1174,12 @@ function AdminEmailsContent() {
                                                     </div>
                                                 ) : (
                                                     <div>
-                                                        <label className="block text-[10px] font-bold text-slate-400 mb-1">Sélectionner la Séance</label>
+                                                        <label className="block text-[10px] font-medium text-slate-400 mb-1">Sélectionner la Séance</label>
                                                         <select
                                                             value={surveySessionId}
                                                             onChange={(e) => setSurveySessionId(e.target.value)}
                                                             required
-                                                            className="w-full p-2.5 border border-slate-200 bg-white rounded-lg text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                                                            className="w-full p-2.5 border border-slate-200 bg-white rounded-lg text-xs font-medium outline-none focus:ring-2 focus:ring-blue-500"
                                                         >
                                                             <option value="">-- Choisir une séance --</option>
                                                             {sessions.map(sess => (
@@ -1119,7 +1194,7 @@ function AdminEmailsContent() {
                                         <button
                                             type="submit"
                                             disabled={isCreatingSurvey}
-                                            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-md shadow-indigo-100 transition-all disabled:opacity-50 mt-4 active:scale-95"
+                                            className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-medium transition-all disabled:opacity-50 mt-4 active:scale-95"
                                         >
                                             {isCreatingSurvey ? "Génération des jetons..." : "Générer la campagne"}
                                         </button>
@@ -1129,14 +1204,14 @@ function AdminEmailsContent() {
                                 {/* 2. Liste des enquêtes existantes */}
                                 <div className="lg:col-span-2 space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Campagnes d&apos;enquêtes actives</h3>
-                                        <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">{surveys.length} enquêtes</span>
+                                        <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Campagnes d&apos;enquêtes actives</h3>
+                                        <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium">{surveys.length} enquêtes</span>
                                     </div>
 
                                     {surveys.length === 0 ? (
                                         <div className="bg-white p-12 text-center rounded-2xl border border-slate-200/80">
                                             <span className="text-4xl block mb-3">🗳️</span>
-                                            <h4 className="font-bold text-slate-800 text-base">Aucune enquête lancée</h4>
+                                            <h4 className="font-semibold text-slate-800 text-base">Aucune enquête lancée</h4>
                                             <p className="text-slate-400 text-xs mt-1">Utilisez le formulaire pour générer des questionnaires 1-Click sécurisés.</p>
                                         </div>
                                     ) : (
@@ -1148,25 +1223,25 @@ function AdminEmailsContent() {
                                                 >
                                                     <div className="space-y-1.5 max-w-sm">
                                                         <div className="flex items-center gap-2">
-                                                            <span className={`px-2 py-0.5 rounded-md text-[9px] uppercase font-bold border ${c.survey_type === 'event' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                                                            <span className={`px-2 py-0.5 rounded-md text-[9px] uppercase font-semibold border ${c.survey_type === 'event' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
                                                                 {c.survey_type === 'event' ? 'Post-Activité' : 'Général'}
                                                             </span>
                                                             <span className="text-[10px] text-slate-400">{new Date(c.created_at).toLocaleDateString()}</span>
                                                         </div>
-                                                        <h4 className="font-bold text-slate-900 text-base">{c.title}</h4>
+                                                        <h4 className="font-semibold text-slate-900 text-base">{c.title}</h4>
                                                     </div>
 
                                                     {/* Statistiques à l'état premium */}
                                                     <div className="flex gap-6 items-center">
                                                         <div className="text-center bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
-                                                            <span className="text-xs text-slate-400 font-bold block uppercase tracking-wider">Note</span>
-                                                            <span className="font-extrabold text-base text-slate-800 flex items-center justify-center gap-1">
+                                                            <span className="text-xs text-slate-400 font-semibold block uppercase tracking-wider">Note</span>
+                                                            <span className="font-bold text-base text-slate-800 flex items-center justify-center gap-1">
                                                                 ⭐ {c.average_rating ? Number(c.average_rating).toFixed(1) : "-"}
                                                             </span>
                                                         </div>
                                                         <div className="text-center bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
-                                                            <span className="text-xs text-slate-400 font-bold block uppercase tracking-wider">Envois</span>
-                                                            <span className="font-extrabold text-base text-slate-800">{c.responses_count}</span>
+                                                            <span className="text-xs text-slate-400 font-semibold block uppercase tracking-wider">Envois</span>
+                                                            <span className="font-bold text-base text-slate-800">{c.responses_count}</span>
                                                         </div>
                                                     </div>
 
@@ -1174,14 +1249,14 @@ function AdminEmailsContent() {
                                                     <div className="flex md:flex-col gap-2 self-stretch justify-center md:items-end">
                                                         <button
                                                             onClick={() => handleViewSurveyDetails(c.id)}
-                                                            className="flex-1 md:flex-initial px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold transition-all"
+                                                            className="flex-1 md:flex-initial px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold transition-all"
                                                         >
                                                             🔍 Inspecter les retours
                                                         </button>
                                                         <button
                                                             onClick={() => handleSendSurvey(c.id)}
                                                             disabled={isSendingSurvey === c.id}
-                                                            className="flex-1 md:flex-initial px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition-all active:scale-95"
+                                                            className="flex-1 md:flex-initial px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-lg text-xs font-semibold transition-all active:scale-95"
                                                         >
                                                             {isSendingSurvey === c.id ? "Envoi..." : "✉️ Diffuser par e-mail"}
                                                         </button>

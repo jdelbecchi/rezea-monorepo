@@ -73,8 +73,21 @@ async def create_survey_campaign(
             target_user_ids = [row[0] for row in res.all()]
     else:  # general
         if data.target_segment:
-            # Utiliser notre sélecteur de segments comportementaux
-            target_user_ids = await get_segment_user_ids(db, tenant_id, data.target_segment.lower())
+            segments = [s.strip().lower() for s in data.target_segment.split(",") if s.strip()]
+            if "tous" in segments or "all" in segments:
+                stmt = select(User.id).where(
+                    User.tenant_id == tenant_id,
+                    User.role == UserRole.MEMBER,
+                    User.receive_marketing_emails == True
+                )
+                res = await db.execute(stmt)
+                target_user_ids = [row[0] for row in res.all()]
+            else:
+                segment_uids = set()
+                for seg in segments:
+                    uids = await get_segment_user_ids(db, tenant_id, seg)
+                    segment_uids.update(uids)
+                target_user_ids = list(segment_uids)
         else:
             # Par défaut, cibler tous les membres ayant accepté le marketing
             stmt = select(User.id).where(
