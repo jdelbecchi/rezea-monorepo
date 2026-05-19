@@ -1135,21 +1135,21 @@ function AdminEmailsContent() {
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-100 animate-in slide-in-from-top-2 duration-200">
+                                            <>
                                                 <div>
-                                                    <label className="block text-xs font-medium text-slate-500 mb-1">Cible</label>
+                                                    <label className="block text-xs font-medium text-slate-700 mb-1.5 uppercase tracking-wider">Type d&apos;activité</label>
                                                     <div className="flex gap-2">
                                                         <button
                                                             type="button"
                                                             onClick={() => setSurveyTargetType("event")}
-                                                            className={`flex-1 py-1.5 rounded-md text-[11px] font-medium transition-all ${surveyTargetType === "event" ? "bg-white text-blue-700 border border-blue-150 shadow-sm" : "text-slate-500"}`}
+                                                            className={`flex-1 py-2.5 rounded-lg text-xs font-medium border transition-all ${surveyTargetType === "event" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
                                                         >
                                                             Événement
                                                         </button>
                                                         <button
                                                             type="button"
                                                             onClick={() => setSurveyTargetType("session")}
-                                                            className={`flex-1 py-1.5 rounded-md text-[11px] font-medium transition-all ${surveyTargetType === "session" ? "bg-white text-blue-700 border border-blue-150 shadow-sm" : "text-slate-500"}`}
+                                                            className={`flex-1 py-2.5 rounded-lg text-xs font-medium border transition-all ${surveyTargetType === "session" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
                                                         >
                                                             Séance Agenda
                                                         </button>
@@ -1158,14 +1158,14 @@ function AdminEmailsContent() {
 
                                                 {surveyTargetType === "event" ? (
                                                     <div>
-                                                        <label className="block text-[10px] font-medium text-slate-400 mb-1">Sélectionner l&apos;Événement</label>
+                                                        <label className="block text-xs font-medium text-slate-700 mb-1.5 uppercase tracking-wider">Sélectionner l&apos;Événement</label>
                                                         <select
                                                             value={surveyEventId}
                                                             onChange={(e) => setSurveyEventId(e.target.value)}
                                                             required
-                                                            className="w-full p-2.5 border border-slate-200 bg-white rounded-lg text-xs font-medium outline-none focus:ring-2 focus:ring-blue-500"
+                                                            className="w-full p-3 border border-slate-200 bg-white rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500 shadow-[0_2px_4px_rgba(30,41,59,0.02)] transition-all"
                                                         >
-                                                            <option value="">-- Choisir un événement --</option>
+                                                            <option value="">Choisir un événement</option>
                                                             {events.map(ev => (
                                                                 <option key={ev.id} value={ev.id}>{ev.title} ({ev.event_date})</option>
                                                             ))}
@@ -1173,14 +1173,14 @@ function AdminEmailsContent() {
                                                     </div>
                                                 ) : (
                                                     <div>
-                                                        <label className="block text-[10px] font-medium text-slate-400 mb-1">Sélectionner la Séance</label>
+                                                        <label className="block text-xs font-medium text-slate-700 mb-1.5 uppercase tracking-wider">Sélectionner la Séance</label>
                                                         <select
                                                             value={surveySessionId}
                                                             onChange={(e) => setSurveySessionId(e.target.value)}
                                                             required
-                                                            className="w-full p-2.5 border border-slate-200 bg-white rounded-lg text-xs font-medium outline-none focus:ring-2 focus:ring-blue-500"
+                                                            className="w-full p-3 border border-slate-200 bg-white rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500 shadow-[0_2px_4px_rgba(30,41,59,0.02)] transition-all"
                                                         >
-                                                            <option value="">-- Choisir une séance --</option>
+                                                            <option value="">Choisir une séance</option>
                                                             {sessions.map(sess => (
                                                                 <option key={sess.id} value={sess.id}>{sess.title} ({new Date(sess.start_time).toLocaleDateString()})</option>
                                                             ))}
