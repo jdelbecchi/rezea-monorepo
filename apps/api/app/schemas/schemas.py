@@ -138,6 +138,9 @@ class TenantSettingsUpdate(BaseModel):
     login_background_url: Optional[str] = None
     login_description: Optional[str] = None
     welcome_message: Optional[str] = Field(None, max_length=2000)
+    website_url: Optional[str] = None
+    facebook_url: Optional[str] = None
+    instagram_url: Optional[str] = None
     cgv_url: Optional[str] = None
     rules_url: Optional[str] = None
     legal_name: Optional[str] = Field(None, max_length=255)
@@ -171,6 +174,9 @@ class TenantResponse(TenantBase):
     login_background_url: Optional[str] = None
     login_description: Optional[str] = None
     welcome_message: Optional[str] = None
+    website_url: Optional[str] = None
+    facebook_url: Optional[str] = None
+    instagram_url: Optional[str] = None
     cgv_url: Optional[str] = None
     rules_url: Optional[str] = None
     legal_name: Optional[str] = None

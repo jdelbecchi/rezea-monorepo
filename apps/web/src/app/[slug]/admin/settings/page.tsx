@@ -354,6 +354,60 @@ export default function AdminSettingsPage() {
                                                     className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal resize-none"
                                                 />
                                             </div>
+
+                                            <div className="pt-4 border-t border-slate-100/50 space-y-4">
+                                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Réseaux sociaux & Site Web</h4>
+                                                
+                                                <div>
+                                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                                        Site internet de l&apos;établissement
+                                                    </label>
+                                                    <div className="relative">
+                                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-semibold select-none">🌐</span>
+                                                        <input
+                                                            type="url"
+                                                            value={formData.website_url || ""}
+                                                            onChange={e => setFormData({ ...formData, website_url: e.target.value })}
+                                                            placeholder="https://www.votresite.com"
+                                                            className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-sm"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                                                            Lien Facebook
+                                                        </label>
+                                                        <div className="relative">
+                                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-semibold select-none">🔵</span>
+                                                            <input
+                                                                type="url"
+                                                                value={formData.facebook_url || ""}
+                                                                onChange={e => setFormData({ ...formData, facebook_url: e.target.value })}
+                                                                placeholder="https://facebook.com/page"
+                                                                className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-sm"
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                                                            Lien Instagram
+                                                        </label>
+                                                        <div className="relative">
+                                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-semibold select-none">📸</span>
+                                                            <input
+                                                                type="url"
+                                                                value={formData.instagram_url || ""}
+                                                                onChange={e => setFormData({ ...formData, instagram_url: e.target.value })}
+                                                                placeholder="https://instagram.com/compte"
+                                                                className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-sm"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

@@ -355,6 +355,26 @@ async def send_survey_campaign_emails(
     base_url = f"http://localhost:3000/{tenant.slug}/feedback"
 
     for resp, usr in rows:
+        # Construire les liens sociaux s'ils sont renseignés dans les paramètres de l'établissement
+        links = []
+        if tenant.website_url:
+            links.append(f'<a href="{tenant.website_url}" style="text-decoration: none; color: #64748b; font-size: 13px; margin: 0 10px; font-weight: 500;">Notre Site</a>')
+        if tenant.instagram_url:
+            links.append(f'<a href="{tenant.instagram_url}" style="text-decoration: none; color: #64748b; font-size: 13px; margin: 0 10px; font-weight: 500;">Instagram</a>')
+        if tenant.facebook_url:
+            links.append(f'<a href="{tenant.facebook_url}" style="text-decoration: none; color: #64748b; font-size: 13px; margin: 0 10px; font-weight: 500;">Facebook</a>')
+        
+        # Toujours ajouter le lien de désabonnement sécurisé
+        links.append(f'<a href="http://localhost:3000/{tenant.slug}/unsubscribe" style="text-decoration: none; color: #64748b; font-size: 13px; margin: 0 10px; font-weight: 500;">Se désabonner</a>')
+        
+        socials_html = f'<div style="margin-bottom: 15px; text-align: center;">{" ".join(links)}</div>'
+
+        description_html = ""
+        if campaign.description:
+            description_html = f'<div align="center" style="text-align: center;"><p style="font-family: \'Livvic\', sans-serif; color: #64748b; font-size: 12px; font-weight: 400; margin: 8px 0 20px 0; line-height: 1.5; max-width: 440px; text-align: center; display: inline-block;">{campaign.description}</p></div>'
+        else:
+            description_html = '<div style="height: 20px;"></div>'
+
         # Template HTML premium avec smileys cliquables et style Zen
         html_body = f"""
         <!DOCTYPE html>
@@ -386,7 +406,7 @@ async def send_survey_campaign_emails(
                     <p style="font-family: 'Livvic', sans-serif; color: #1e293b; font-size: 15px; font-weight: 500; margin: 0; line-height: 1.4;">
                         {campaign.title}
                     </p>
-                    {f'<div align="center" style="text-align: center;"><p style="font-family: \'Livvic\', sans-serif; color: #64748b; font-size: 12px; font-weight: 400; margin: 8px 0 20px 0; line-height: 1.5; max-width: 440px; text-align: center; display: inline-block;">{campaign.description}</p></div>' if campaign.description else '<div style="height: 20px;"></div>'}
+                    {description_html}
                     
                     <table align="center" style="margin: 0 auto; border-collapse: collapse;">
                         <tr>
@@ -419,8 +439,9 @@ async def send_survey_campaign_emails(
                 </p>
                 
                 <div style="border-top: 1px solid #f1f5f9; margin-top: 30px; padding-top: 20px; text-align: center;">
-                    <p style="font-family: 'Livvic', sans-serif; color: #64748b; font-size: 13px; font-weight: 500; margin: 0;">
-                        {tenant.name}
+                    {socials_html}
+                    <p style="font-family: 'Livvic', sans-serif; color: #94a3b8; font-size: 12px; font-weight: 500; margin: 0;">
+                        © {tenant.name}
                     </p>
                 </div>
             </div>

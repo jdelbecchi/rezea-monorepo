@@ -7,7 +7,7 @@ from typing import List
 import uuid
 
 from app.db.session import get_db
-from app.models.models import User, UserRole, EmailTemplate
+from app.models.models import User, UserRole, EmailTemplate, Tenant
 from app.schemas import schemas
 from app.core import mailer
 
@@ -96,11 +96,102 @@ async def send_admin_emails(
         for u in users
     ]
     
+    # Charger les infos de l'établissement (tenant) pour la personnalisation
+    tenant_stmt = select(Tenant).where(Tenant.id == current_user.tenant_id)
+    tenant_res = await db.execute(tenant_stmt)
+    tenant = tenant_res.scalar_one()
+
+    # Logo personnalisé ou nom par défaut
+    logo_html = ""
+    if tenant.logo_url:
+        logo_html = f'<img src="http://localhost:8000{tenant.logo_url}" alt="{tenant.name}" style="max-height: 60px; margin-bottom: 15px; display: inline-block;">'
+    else:
+        logo_html = f'<span style="font-size: 24px; font-weight: 700; color: #0f172a; font-family: \'Livvic\', sans-serif;">{tenant.name}</span>'
+
+    # Liens sociaux du footer (sans adresse physique)
+    links = []
+    if tenant.website_url:
+        links.append(f'<a href="{tenant.website_url}" style="text-decoration: none; color: #64748b; font-size: 13px; margin: 0 10px; font-weight: 500;">Notre Site</a>')
+    if tenant.instagram_url:
+        links.append(f'<a href="{tenant.instagram_url}" style="text-decoration: none; color: #64748b; font-size: 13px; margin: 0 10px; font-weight: 500;">Instagram</a>')
+    if tenant.facebook_url:
+        links.append(f'<a href="{tenant.facebook_url}" style="text-decoration: none; color: #64748b; font-size: 13px; margin: 0 10px; font-weight: 500;">Facebook</a>')
+    links.append(f'<a href="http://localhost:3000/{tenant.slug}/unsubscribe" style="text-decoration: none; color: #64748b; font-size: 13px; margin: 0 10px; font-weight: 500;">Se désabonner</a>')
+    socials_html = f'<div style="margin-bottom: 15px; text-align: center;">{" ".join(links)}</div>'
+
+    # Post-traitement automatique du texte de l'éditeur riche
+    import re
+    processed_content = request_data.content
+
+    # A. Détecter et envelopper les codes promos (ex: MERCIAMIS) dans un cadre double filet pastel
+    def replace_promo(match):
+        code = match.group(2)
+        return f"""
+        <div align="center" style="margin: 25px auto; max-width: 280px; border: 2px double #e2e8f0; background-color: #fbf9f7; padding: 15px 20px; border-radius: 14px; text-align: center;">
+            <span style="font-family: 'Livvic', sans-serif; font-size: 18px; font-weight: 700; color: #1e293b; letter-spacing: 0.12em;">{code}</span>
+        </div>
+        """
+    processed_content = re.sub(r'<(strong|b)>([A-Z0-9_-]{4,15})</\1>', replace_promo, processed_content)
+
+    # B. Détecter les liens isolés dans des paragraphes et les transformer en magnifiques boutons d'action
+    def replace_button(match):
+        attrs = match.group(1) or ""
+        url = match.group(2)
+        text = match.group(3)
+        
+        align = "center"
+        if "align-left" in attrs or "text-align: left" in attrs:
+            align = "left"
+        elif "align-right" in attrs or "text-align: right" in attrs:
+            align = "right"
+            
+        btn_color = tenant.primary_color or "#7c3aed"
+        return f"""
+        <div align="{align}" style="margin: 25px 0; text-align: {align};">
+            <a href="{url}" style="display: inline-block; background-color: {btn_color}; color: #ffffff; font-family: 'Livvic', sans-serif; font-size: 14px; font-weight: 700; text-decoration: none; padding: 12px 30px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); text-align: center;">{text}</a>
+        </div>
+        """
+    processed_content = re.sub(r'<p([^>]*)>\s*<a href="([^"]+)"[^>]*>\s*([^<]+?)\s*</a>\s*</p>', replace_button, processed_content)
+
+    # Envelopper dans l'enveloppe HTML master
+    html_envelope = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+            body, table, td, p, a, h2, div {{
+                font-family: 'Livvic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+            }}
+        </style>
+    </head>
+    <body style="margin: 0; padding: 20px; background-color: #f8fafc;">
+        <div style="font-family: 'Livvic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 550px; margin: 0 auto; padding: 40px 30px; border: 1px solid #e2e8f0; border-radius: 24px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+            <div style="text-align: center; margin-bottom: 30px;">
+                {logo_html}
+            </div>
+            
+            <div style="color: #334155; font-size: 15px; line-height: 1.6; font-weight: 300;">
+                {processed_content}
+            </div>
+            
+            <div style="border-top: 1px solid #f1f5f9; margin-top: 40px; padding-top: 20px; text-align: center;">
+                {socials_html}
+                <p style="font-family: 'Livvic', sans-serif; color: #94a3b8; font-size: 12px; font-weight: 500; margin: 0;">
+                    © {tenant.name}
+                </p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
     # 3) Envoi (asynchrone)
     success = await mailer.send_bulk_email(
         recipients=recipients,
         subject=request_data.subject,
-        html_content=request_data.content
+        html_content=html_envelope
     )
     
     if not success:

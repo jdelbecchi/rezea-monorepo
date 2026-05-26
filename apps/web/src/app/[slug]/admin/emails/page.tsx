@@ -1543,6 +1543,7 @@ function AdminEmailsContent() {
                                                  modules={{
                                                      toolbar: [
                                                          ['bold', 'italic', 'underline', 'strike'],
+                                                         ['link'],
                                                          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
                                                          [{ 'align': [] }],
                                                          ['clean']

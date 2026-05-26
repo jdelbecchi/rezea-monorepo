@@ -287,6 +287,9 @@ export interface Tenant {
   login_background_url?: string;
   login_description?: string;
   welcome_message?: string;
+  website_url?: string;
+  facebook_url?: string;
+  instagram_url?: string;
   cgv_url?: string;
   rules_url?: string;
   legal_name?: string;

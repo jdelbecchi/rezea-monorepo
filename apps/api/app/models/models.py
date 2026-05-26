@@ -103,6 +103,11 @@ class Tenant(Base):
     login_description = Column(Text, nullable=True)
     welcome_message = Column(Text, nullable=True)
     
+    # Réseaux sociaux & Site Web
+    website_url = Column(String(500), nullable=True)
+    facebook_url = Column(String(500), nullable=True)
+    instagram_url = Column(String(500), nullable=True)
+    
     # Documents légaux
     cgv_url = Column(String(500), nullable=True)
     rules_url = Column(String(500), nullable=True)
