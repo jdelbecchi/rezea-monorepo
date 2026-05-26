@@ -130,7 +130,7 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
             ],
         },
         { path: `${basePath}/admin/users`, label: "Utilisateurs", icon: "👥" },
-        { path: `${basePath}/admin/emails`, label: "Emails", icon: "📧" },
+        { path: `${basePath}/admin/emails`, label: "Communication & Marketing", icon: "📧" },
         { path: `${basePath}/admin/settings`, label: "Paramètres", icon: "⚙️" },
     ];
 
@@ -239,7 +239,7 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
                                 );
                             })}
                         </nav>
-                        <div className="border-t border-slate-800 my-6"></div>
+                        <div className="border-t border-slate-800 my-4"></div>
                     </>
                 )}
 
@@ -283,10 +283,10 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
                 )}
             </div>
 
-            <div className="border-t border-slate-800 pt-6">
+            <div className="border-t border-slate-800 pt-4">
                 <button
                     onClick={handleLogout}
-                    className="w-full py-4 px-4 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 hover:text-rose-300 rounded-2xl font-medium text-sm transition-all border border-rose-600/20 shadow-lg shadow-rose-900/10 active:scale-[0.98]"
+                    className="w-full py-2.5 px-4 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 hover:text-rose-300 rounded-2xl font-medium text-sm transition-all border border-rose-600/20 shadow-lg shadow-rose-900/10 active:scale-[0.98]"
                 >
                     Déconnexion
                 </button>
@@ -330,12 +330,12 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
             )}
 
             {/* Sidebar Desktop */}
-            <aside className="hidden md:flex w-80 bg-slate-900 text-white p-6 flex-col min-h-screen sticky top-0 border-r border-slate-800/50">
+            <aside className="hidden md:flex w-80 bg-slate-900 text-white px-4 py-6 flex-col min-h-screen sticky top-0 border-r border-slate-800/50">
                 <SidebarContent />
             </aside>
 
             {/* Sidebar Mobile (Drawer) */}
-            <aside className={`md:hidden fixed top-0 bottom-0 left-0 w-[300px] bg-slate-900 border-r border-slate-800 p-6 z-[70] transition-transform duration-300 ease-out flex flex-col ${isMobileMenuOpen ? "translate-x-0 shadow-2xl shadow-black/50" : "-translate-x-full"}`}>
+            <aside className={`md:hidden fixed top-0 bottom-0 left-0 w-[300px] bg-slate-900 border-r border-slate-800 px-4 py-6 z-[70] transition-transform duration-300 ease-out flex flex-col ${isMobileMenuOpen ? "translate-x-0 shadow-2xl shadow-black/50" : "-translate-x-full"}`}>
                 <SidebarContent />
             </aside>
             

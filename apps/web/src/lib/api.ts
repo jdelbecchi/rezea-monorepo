@@ -1163,6 +1163,7 @@ export const api = {
 
   createSurveyCampaign: async (data: {
     title: string;
+    description?: string;
     survey_type: 'general' | 'event';
     event_id?: string;
     session_id?: string;

@@ -117,9 +117,12 @@ function AdminEmailsContent() {
     const [sessions, setSessions] = useState<any[]>([]);
     const [selectedSurveyDetails, setSelectedSurveyDetails] = useState<any | null>(null);
     const [showSurveyDetailsModal, setShowSurveyDetailsModal] = useState(false);
+    const [surveyToDelete, setSurveyToDelete] = useState<any | null>(null);
+    const [isDeletingSurvey, setIsDeletingSurvey] = useState(false);
     
     // Form Enquêtes
     const [surveyTitle, setSurveyTitle] = useState("");
+    const [surveyDescription, setSurveyDescription] = useState("");
     const [surveyType, setSurveyType] = useState<"general" | "event">("general");
     const [surveyTargetType, setSurveyTargetType] = useState<"event" | "session">("event");
     const [surveyTargetSegment, setSurveyTargetSegment] = useState("");
@@ -331,7 +334,14 @@ function AdminEmailsContent() {
             setTemplates(templatesData);
             setSegmentStats(stats);
             setEvents(eventsData);
-            setSessions(sessionsData);
+            // Filtrer pour ne garder que les séances passées jusqu'à J-15
+            const filteredSessions = (sessionsData || []).filter((sess: any) => {
+                const startTime = new Date(sess.start_time).getTime();
+                const now = new Date().getTime();
+                const fifteenDaysAgo = now - 15 * 24 * 60 * 60 * 1000;
+                return startTime < now && startTime >= fifteenDaysAgo;
+            });
+            setSessions(filteredSessions);
             setTenant(tenantData);
             
             // Pré-sélection des destinataires via query params
@@ -544,6 +554,7 @@ function AdminEmailsContent() {
         try {
             await api.createSurveyCampaign({
                 title: surveyTitle,
+                description: surveyDescription || undefined,
                 survey_type: surveyType,
                 event_id: surveyType === "event" && surveyTargetType === "event" ? surveyEventId : undefined,
                 session_id: surveyType === "event" && surveyTargetType === "session" ? surveySessionId : undefined,
@@ -551,6 +562,7 @@ function AdminEmailsContent() {
             });
             setMessage({ type: "success", text: "Enquête de satisfaction créée et jetons individuels sécurisés générés." });
             setSurveyTitle("");
+            setSurveyDescription("");
             setSurveyTargetSegment(surveyType === "event" ? "participants" : "");
             setSurveyEventId("");
             setSurveySessionId("");
@@ -591,18 +603,25 @@ function AdminEmailsContent() {
         }
     };
 
-    // Enquêtes : Supprimer une enquête
-    const handleDeleteSurvey = async (campaignId: string) => {
-        if (!window.confirm("Voulez-vous vraiment supprimer cette campagne d'enquête et tous les avis associés ? Cette action est irréversible.")) {
-            return;
-        }
+    // Enquêtes : Ouvrir la confirmation de suppression
+    const handleDeleteSurvey = (campaign: any) => {
+        setSurveyToDelete(campaign);
+    };
+
+    // Enquêtes : Confirmer la suppression d'une enquête depuis la modale
+    const confirmDeleteSurvey = async () => {
+        if (!surveyToDelete) return;
+        setIsDeletingSurvey(true);
         try {
-            await api.deleteSurveyCampaign(campaignId);
+            await api.deleteSurveyCampaign(surveyToDelete.id);
             setMessage({ type: "success", text: "Campagne d'enquête supprimée avec succès." });
+            setSurveyToDelete(null);
             loadSurveys();
         } catch (error: any) {
             const errorMsg = error.response?.data?.detail || "Erreur lors de la suppression de l'enquête.";
             setMessage({ type: "error", text: errorMsg });
+        } finally {
+            setIsDeletingSurvey(false);
         }
     };
 
@@ -631,13 +650,17 @@ function AdminEmailsContent() {
     };
 
     const renderSmileys = (rating: number | null) => {
-        if (rating === null) return <span className="text-slate-300">Non répondu</span>;
+        if (rating === null) return (
+            <span className="bg-slate-50 border border-slate-200/60 text-[10px] font-medium text-slate-400 px-2 py-0.5 rounded-full">
+                Non répondu
+            </span>
+        );
         const smileys = ["😠", "🙁", "😐", "🙂", "😍"];
         return <span className="text-xl" title={`Note: ${rating}/5`}>{smileys[rating - 1] || "⭐"}</span>;
     };
 
     return (
-        <div className="flex min-h-screen bg-slate-50 font-outfit">
+        <div className="flex min-h-screen bg-slate-50">
             <Sidebar user={user} />
             <main className="flex-1 p-8">
                 <div className="max-w-7xl mx-auto">
@@ -1048,25 +1071,36 @@ function AdminEmailsContent() {
                                 
                                 {/* 1. Créateur d'enquêtes */}
                                 <div className="lg:col-span-1 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm self-start">
-                                    <h3 className="text-lg font-semibold text-slate-950 mb-5 pb-3 border-b border-slate-100 flex items-center gap-2">
-                                        <span>📊</span> Lancer une enquête
+                                    <h3 className="text-lg font-semibold text-slate-950 mb-5 pb-3 border-b border-slate-100 flex items-center gap-2 tracking-tight">
+                                        <span>📊</span> Créer une enquête
                                     </h3>
                                     
                                     <form onSubmit={handleCreateSurvey} className="space-y-4">
                                         <div>
-                                            <label className="block text-xs font-medium text-slate-700 mb-1.5 uppercase tracking-wider">Titre de l&apos;enquête</label>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Titre</label>
                                             <input 
                                                 type="text" 
                                                 required
                                                 value={surveyTitle}
                                                 onChange={(e) => setSurveyTitle(e.target.value)}
                                                 placeholder="Ex : Qu'avez-vous pensé de notre stage de mai ?"
-                                                className="w-full p-3 border border-slate-200 bg-slate-55 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-sm placeholder:font-normal placeholder:text-slate-400 placeholder:opacity-100"
+                                                className="w-full p-3 border border-slate-200 bg-white hover:border-slate-300 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-sm placeholder:font-normal placeholder:text-slate-400 placeholder:opacity-100"
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-xs font-medium text-slate-700 mb-1.5 uppercase tracking-wider">Nature de l&apos;enquête</label>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Description <span className="text-[10px] text-slate-400 font-normal ml-1 lowercase">(optionnel)</span></label>
+                                            <textarea 
+                                                value={surveyDescription}
+                                                onChange={(e) => setSurveyDescription(e.target.value)}
+                                                placeholder="Ex : Vos retours nous permettent d'améliorer la qualité de nos séances."
+                                                rows={2}
+                                                className="w-full p-3 border border-slate-200 bg-white hover:border-slate-300 rounded-xl text-sm font-normal outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-sm placeholder:font-normal placeholder:text-slate-400 placeholder:opacity-100 resize-none"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Nature</label>
                                             <div className="flex gap-2">
                                                 <button
                                                     type="button"
@@ -1088,7 +1122,7 @@ function AdminEmailsContent() {
                                         {surveyType === "event" && (
                                             <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-4 space-y-4 shadow-[inset_0_1px_2px_rgba(0,0,0,0.015)]">
                                                 <div>
-                                                    <label className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider">Type d&apos;activité</label>
+                                                    <label className="block text-sm font-medium text-slate-500 mb-1.5">Type d&apos;activité</label>
                                                     <div className="flex gap-2">
                                                         <button
                                                             type="button"
@@ -1109,7 +1143,6 @@ function AdminEmailsContent() {
 
                                                 {surveyTargetType === "event" ? (
                                                     <div>
-                                                        <label className="block text-[11px] font-medium text-slate-900 mb-1">Sélectionner l&apos;événement</label>
                                                         <select
                                                             value={surveyEventId}
                                                             onChange={(e) => setSurveyEventId(e.target.value)}
@@ -1118,13 +1151,12 @@ function AdminEmailsContent() {
                                                         >
                                                             <option value="" className="text-slate-400">Choisir un événement</option>
                                                             {events.map(ev => (
-                                                                <option key={ev.id} value={ev.id} className="text-slate-700 font-medium">{ev.title} ({ev.event_date})</option>
+                                                                <option key={ev.id} value={ev.id} className="text-slate-700 font-medium">{ev.title} ({ev.event_date ? ev.event_date.split('-').reverse().join('/') : ''})</option>
                                                             ))}
                                                         </select>
                                                     </div>
                                                 ) : (
                                                     <div>
-                                                        <label className="block text-[11px] font-medium text-slate-900 mb-1">Sélectionner la séance</label>
                                                         <select
                                                             value={surveySessionId}
                                                             onChange={(e) => setSurveySessionId(e.target.value)}
@@ -1142,7 +1174,7 @@ function AdminEmailsContent() {
                                         )}
 
                                         <div>
-                                            <label className="block text-xs font-medium text-slate-700 mb-1.5 uppercase tracking-wider">Ciblage</label>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Ciblage</label>
                                             <div className="relative">
                                                 <button
                                                     type="button"
@@ -1175,93 +1207,112 @@ function AdminEmailsContent() {
                                                 {isDropdownOpen && (
                                                     <>
                                                         <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
-                                                        <div className="absolute left-0 right-0 z-50 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg p-1.5 space-y-0.5 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150">
-                                                            {/* Option Uniquement les participants (seulement pour type event) */}
-                                                            {surveyType === "event" && (
-                                                                <>
-                                                                    <label className="flex items-center gap-2.5 p-2 rounded-lg cursor-pointer hover:bg-slate-50 transition-all select-none text-xs font-semibold text-slate-700">
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={surveyTargetSegment.split(",").includes("participants")}
-                                                                            onChange={(e) => {
-                                                                                let current = surveyTargetSegment.split(",").filter(x => x && x !== "tous");
-                                                                                if (e.target.checked) {
-                                                                                    if (!current.includes("participants")) {
-                                                                                        current.push("participants");
-                                                                                    }
-                                                                                    setSurveyTargetSegment(current.join(","));
-                                                                                } else {
-                                                                                    current = current.filter(x => x !== "participants");
-                                                                                    setSurveyTargetSegment(current.join(","));
-                                                                                }
-                                                                            }}
-                                                                            className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300"
-                                                                        />
-                                                                        Uniquement les participants
-                                                                    </label>
-                                                                    <div className="border-t border-slate-100 my-1" />
-                                                                </>
-                                                            )}
-
-                                                            {/* Option Tous */}
-                                                            <label className="flex items-center gap-2.5 p-2 rounded-lg cursor-pointer hover:bg-slate-50 transition-all select-none text-xs font-semibold text-slate-700">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={surveyTargetSegment === "tous" || !!(segmentStats && surveyTargetSegment.split(",").filter(x => x && x !== "tous" && x !== "participants").length === Object.keys(segmentStats).length)}
-                                                                    onChange={(e) => {
-                                                                        if (e.target.checked) {
-                                                                            setSurveyTargetSegment("tous");
-                                                                        } else {
-                                                                            setSurveyTargetSegment("");
-                                                                        }
-                                                                    }}
-                                                                    className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300"
-                                                                />
-                                                                Toute la base utilisateur
-                                                            </label>
-                                                            
-                                                            <div className="border-t border-slate-100 my-1" />
-                                                            
-                                                            {/* Options individuelles */}
-                                                            {segmentStats && Object.entries(segmentStats).map(([key, val]) => {
-                                                                if (key === "participants") return null;
-                                                                const isChecked = surveyTargetSegment.split(",").includes(key) || surveyTargetSegment.split(",").includes("tous");
-                                                                return (
-                                                                    <label 
-                                                                        key={key} 
-                                                                        className={`flex items-center gap-2.5 p-2 rounded-lg cursor-pointer transition-all select-none hover:bg-slate-50 ${isChecked ? 'bg-blue-50/20' : ''}`}
-                                                                    >
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={isChecked}
-                                                                            onChange={(e) => {
-                                                                                let current = surveyTargetSegment.split(",").filter(x => x && x !== "tous");
-                                                                                if (surveyTargetSegment.split(",").includes("tous") && segmentStats) {
-                                                                                    current = Object.keys(segmentStats).filter(k => k !== "participants");
-                                                                                }
-                                                                                
-                                                                                if (e.target.checked) {
-                                                                                    if (!current.includes(key)) {
-                                                                                        current.push(key);
-                                                                                    }
-                                                                                    if (segmentStats && current.filter(k => k !== "participants").length === Object.keys(segmentStats).filter(k => k !== "participants").length) {
-                                                                                        setSurveyTargetSegment("tous");
+                                                        <div className="absolute left-0 right-0 z-50 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg flex flex-col max-h-64 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+                                                            {/* Zone défilante des options */}
+                                                            <div className="p-1.5 space-y-0.5 overflow-y-auto max-h-52 flex-1">
+                                                                {/* Option Uniquement les participants (seulement pour type event) */}
+                                                                {surveyType === "event" && (
+                                                                    <>
+                                                                        <label className="flex items-center gap-2.5 p-2 rounded-lg cursor-pointer hover:bg-slate-50 transition-all select-none text-xs font-semibold text-slate-700">
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={surveyTargetSegment.split(",").includes("participants")}
+                                                                                onChange={(e) => {
+                                                                                    let current = surveyTargetSegment.split(",").filter(x => x && x !== "tous");
+                                                                                    if (e.target.checked) {
+                                                                                        if (!current.includes("participants")) {
+                                                                                            current.push("participants");
+                                                                                        }
+                                                                                        setSurveyTargetSegment(current.join(","));
                                                                                     } else {
+                                                                                        current = current.filter(x => x !== "participants");
                                                                                         setSurveyTargetSegment(current.join(","));
                                                                                     }
-                                                                                } else {
-                                                                                    current = current.filter(x => x !== key);
-                                                                                    setSurveyTargetSegment(current.join(","));
-                                                                                }
-                                                                            }}
-                                                                            className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300"
-                                                                        />
-                                                                        <span className={`text-xs ${isChecked ? 'text-blue-900 font-medium' : 'text-slate-700'}`}>
-                                                                            {segmentLabels[key] || key} <span className="text-slate-400 font-normal text-[10px]">({val})</span>
-                                                                        </span>
-                                                                    </label>
-                                                                );
-                                                            })}
+                                                                                }}
+                                                                                className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300"
+                                                                            />
+                                                                            Uniquement les participants
+                                                                        </label>
+                                                                        <div className="border-t border-slate-100 my-1" />
+                                                                    </>
+                                                                )}
+
+                                                                {/* Option Tous */}
+                                                                <label className="flex items-center gap-2.5 p-2 rounded-lg cursor-pointer hover:bg-slate-50 transition-all select-none text-xs font-semibold text-slate-700">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={surveyTargetSegment === "tous" || !!(segmentStats && surveyTargetSegment.split(",").filter(x => x && x !== "tous" && x !== "participants").length === Object.keys(segmentStats).length)}
+                                                                        onChange={(e) => {
+                                                                            if (e.target.checked) {
+                                                                                setSurveyTargetSegment("tous");
+                                                                            } else {
+                                                                                setSurveyTargetSegment("");
+                                                                            }
+                                                                        }}
+                                                                        className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300"
+                                                                    />
+                                                                    Toute la base utilisateur
+                                                                </label>
+                                                                
+                                                                <div className="border-t border-slate-100 my-1" />
+                                                                
+                                                                {/* Options individuelles */}
+                                                                {segmentStats && Object.entries(segmentStats).map(([key, val]) => {
+                                                                    if (key === "participants") return null;
+                                                                    const isChecked = surveyTargetSegment.split(",").includes(key) || surveyTargetSegment.split(",").includes("tous");
+                                                                    return (
+                                                                        <label 
+                                                                            key={key} 
+                                                                            className={`flex items-center gap-2.5 p-2 rounded-lg cursor-pointer transition-all select-none hover:bg-slate-50 ${isChecked ? 'bg-blue-50/20' : ''}`}
+                                                                        >
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={isChecked}
+                                                                                onChange={(e) => {
+                                                                                    let current = surveyTargetSegment.split(",").filter(x => x && x !== "tous");
+                                                                                    if (surveyTargetSegment.split(",").includes("tous") && segmentStats) {
+                                                                                        current = Object.keys(segmentStats).filter(k => k !== "participants");
+                                                                                    }
+                                                                                    
+                                                                                    if (e.target.checked) {
+                                                                                        if (!current.includes(key)) {
+                                                                                            current.push(key);
+                                                                                        }
+                                                                                        if (segmentStats && current.filter(k => k !== "participants").length === Object.keys(segmentStats).filter(k => k !== "participants").length) {
+                                                                                            setSurveyTargetSegment("tous");
+                                                                                        } else {
+                                                                                            setSurveyTargetSegment(current.join(","));
+                                                                                        }
+                                                                                    } else {
+                                                                                        current = current.filter(x => x !== key);
+                                                                                        setSurveyTargetSegment(current.join(","));
+                                                                                    }
+                                                                                }}
+                                                                                className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300"
+                                                                            />
+                                                                            <span className={`text-xs ${isChecked ? 'text-blue-900 font-medium' : 'text-slate-700'}`}>
+                                                                                {segmentLabels[key] || key} <span className="text-slate-400 font-normal text-[10px]">({val})</span>
+                                                                            </span>
+                                                                        </label>
+                                                                    );
+                                                                })}
+                                                            </div>
+
+                                                            {/* Sticky Footer de validation */}
+                                                            <div className="bg-slate-50 border-t border-slate-100 px-3 py-2 flex items-center justify-between z-10 text-[10px]">
+                                                                <span className="text-slate-500 font-medium truncate max-w-[160px]">
+                                                                    {surveyTargetSegment ? (
+                                                                        surveyTargetSegment === "tous" ? "Toute la base" : `${surveyTargetSegment.split(',').filter(Boolean).length} segment(s) sélec.`
+                                                                    ) : "Aucun segment"}
+                                                                </span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setIsDropdownOpen(false)}
+                                                                    className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-lg transition-all"
+                                                                >
+                                                                    Valider
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     </>
                                                 )}
@@ -1288,7 +1339,7 @@ function AdminEmailsContent() {
                                     {surveys.length === 0 ? (
                                         <div className="bg-white p-12 text-center rounded-2xl border border-slate-200/80">
                                             <span className="text-4xl block mb-3">🗳️</span>
-                                            <h4 className="font-semibold text-slate-800 text-base">Aucune enquête lancée</h4>
+                                            <h4 className="font-semibold text-slate-800 text-base">Aucune enquête créée</h4>
                                             <p className="text-slate-400 text-xs mt-1">Utilisez le formulaire pour générer des questionnaires 1-Click sécurisés.</p>
                                         </div>
                                     ) : (
@@ -1296,57 +1347,59 @@ function AdminEmailsContent() {
                                             {surveys.map(c => (
                                                 <div 
                                                     key={c.id}
-                                                    className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-5 relative group"
+                                                    className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all space-y-4"
                                                 >
-                                                    {/* Bouton de suppression absolute, visible au survol */}
-                                                    <button
-                                                        onClick={() => handleDeleteSurvey(c.id)}
-                                                        className="absolute top-4 right-4 text-slate-300 hover:text-rose-600 transition-colors p-1.5 hover:bg-rose-50 rounded-lg opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all"
-                                                        title="Supprimer la campagne d'enquête"
-                                                    >
-                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                        </svg>
-                                                    </button>
-
-                                                    <div className="space-y-1.5 max-w-sm">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className={`px-2 py-0.5 rounded-md text-[9px] uppercase font-semibold border ${c.survey_type === 'event' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
-                                                                {c.survey_type === 'event' ? 'Post-Activité' : 'Général'}
-                                                            </span>
-                                                            <span className="text-[10px] text-slate-400">{new Date(c.created_at).toLocaleDateString()}</span>
+                                                    {/* Ligne 1 : Badge + Titre à gauche, Stats à droite */}
+                                                    <div className="flex items-start justify-between gap-4">
+                                                        <div className="flex-1 space-y-1.5">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className={`px-2 py-0.5 rounded-md text-[9px] uppercase font-semibold border ${c.survey_type === 'event' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                                                                    {c.survey_type === 'event' ? (c.event_id ? 'Événement' : 'Séance') : 'Général'}
+                                                                </span>
+                                                                <span className="text-[10px] text-slate-400">{new Date(c.created_at).toLocaleDateString()}</span>
+                                                            </div>
+                                                            <h4 className="font-medium text-slate-900 text-base">{c.title}</h4>
+                                                            {c.description && (
+                                                                <p className="text-xs text-slate-400 mt-0.5 font-normal leading-relaxed">{c.description}</p>
+                                                            )}
                                                         </div>
-                                                        <h4 className="font-medium text-slate-900 text-base">{c.title}</h4>
-                                                    </div>
-
-                                                    {/* Statistiques à l'état premium */}
-                                                    <div className="flex gap-6 items-center">
-                                                        <div className="text-center bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
-                                                            <span className="text-xs text-slate-400 font-semibold block">Note</span>
-                                                            <span className="font-bold text-base text-slate-800 flex items-center justify-center gap-1">
-                                                                ⭐ {c.average_rating ? Number(c.average_rating).toFixed(1) : "-"}
-                                                            </span>
-                                                        </div>
-                                                        <div className="text-center bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
-                                                            <span className="text-xs text-slate-400 font-semibold block">Envoi</span>
-                                                            <span className="font-medium text-sm text-slate-800">{c.responses_count}</span>
+                                                        <div className="flex gap-3 items-center shrink-0">
+                                                            <div className="text-center bg-white px-3 py-1.5 rounded-lg border border-slate-100">
+                                                                <span className="text-[10px] text-slate-400 font-normal block">Note</span>
+                                                                <span className="font-medium text-sm text-slate-800 flex items-center justify-center gap-0.5">
+                                                                    ⭐ {c.average_rating ? Number(c.average_rating).toFixed(1) : "-"}
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-center bg-white px-3 py-1.5 rounded-lg border border-slate-100">
+                                                                <span className="text-[10px] text-slate-400 font-normal block">Envoi</span>
+                                                                <span className="font-medium text-sm text-slate-800">{c.responses_count}</span>
+                                                            </div>
                                                         </div>
                                                     </div>
 
-                                                    {/* Actions d'enquête */}
-                                                    <div className="flex md:flex-col gap-2 self-stretch justify-center md:items-end pr-6">
+                                                    {/* Ligne 2 : Actions horizontales */}
+                                                    <div className="flex gap-2 pt-1 justify-end">
+                                                        {!c.is_sent ? (
+                                                            <button
+                                                                onClick={() => handleSendSurvey(c.id)}
+                                                                disabled={isSendingSurvey === c.id}
+                                                                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-lg text-xs font-normal transition-all active:scale-95 text-center min-w-[180px]"
+                                                            >
+                                                                {isSendingSurvey === c.id ? "Envoi..." : "✉️ Lancer l'enquête par mail"}
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => handleViewSurveyDetails(c.id)}
+                                                                className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-black rounded-lg text-xs font-normal transition-all text-center min-w-[180px]"
+                                                            >
+                                                                🔍 Voir les retours détaillés
+                                                            </button>
+                                                        )}
                                                         <button
-                                                            onClick={() => handleSendSurvey(c.id)}
-                                                            disabled={isSendingSurvey === c.id}
-                                                            className="flex-1 md:flex-initial px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-lg text-xs font-semibold transition-all active:scale-95"
+                                                            onClick={() => handleDeleteSurvey(c)}
+                                                            className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-normal transition-all text-center"
                                                         >
-                                                            {isSendingSurvey === c.id ? "Envoi..." : "✉️ Diffuser par e-mail"}
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleViewSurveyDetails(c.id)}
-                                                            className="flex-1 md:flex-initial px-4 py-2 bg-blue-50 hover:bg-blue-100 text-black rounded-lg text-xs font-medium transition-all"
-                                                        >
-                                                            🔍 Inspecter les retours
+                                                            🗑️ Supprimer
                                                         </button>
                                                     </div>
                                                 </div>
@@ -1671,6 +1724,35 @@ function AdminEmailsContent() {
                 </div>
             )}
 
+            {/* Modal de suppression d'enquête */}
+            {surveyToDelete && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-10 pb-8">
+                            <h3 className="text-xl font-semibold text-slate-900 mb-2">Confirmer la suppression</h3>
+                            <p className="text-[15px] text-slate-500 leading-relaxed font-normal">
+                                Cette action est définitive. L&apos;enquête <b>&quot;{surveyToDelete.title}&quot;</b> ainsi que tous les avis associés seront définitivement supprimés.
+                            </p>
+                        </div>
+                        <div className="p-6 bg-white border-t border-slate-100 flex gap-3 justify-end items-center">
+                            <button 
+                                onClick={() => setSurveyToDelete(null)}
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm active:scale-95"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                onClick={confirmDeleteSurvey}
+                                disabled={isDeletingSurvey}
+                                className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm active:scale-95"
+                            >
+                                {isDeletingSurvey ? "..." : "Supprimer"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Modal Inspecteur détaillé Enquêtes */}
             {showSurveyDetailsModal && selectedSurveyDetails && (
                 <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[9999] flex items-center justify-end animate-in fade-in duration-300">
@@ -1679,10 +1761,10 @@ function AdminEmailsContent() {
                         {/* Header details */}
                         <div className="p-8 border-b border-slate-100 flex items-center justify-between">
                             <div>
-                                <span className="px-2.5 py-0.5 bg-indigo-50 border border-indigo-100 rounded-md text-[9px] uppercase font-bold text-indigo-700">
-                                    Enquête : {selectedSurveyDetails.survey_type === 'event' ? 'Post-Activité' : 'Général'}
+                                <span className={`px-2 py-0.5 rounded-md text-[9px] uppercase font-semibold border ${selectedSurveyDetails.survey_type === 'event' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                                    {selectedSurveyDetails.survey_type === 'event' ? (selectedSurveyDetails.event_id ? 'Événement' : 'Séance') : 'Général'}
                                 </span>
-                                <h3 className="text-xl font-bold text-slate-900 mt-1">{selectedSurveyDetails.title}</h3>
+                                <h3 className="font-medium text-slate-900 text-base mt-1">{selectedSurveyDetails.title}</h3>
                                 {selectedSurveyDetails.context_title && (
                                     <p className="text-xs text-slate-400 mt-0.5">Contexte : {selectedSurveyDetails.context_title}</p>
                                 )}
@@ -1700,28 +1782,28 @@ function AdminEmailsContent() {
                         {/* Breakdown Panel */}
                         <div className="p-6 bg-slate-50 border-b border-slate-100 grid grid-cols-3 gap-4 text-center">
                             <div className="bg-white p-4 rounded-xl border border-slate-200/50 shadow-sm">
-                                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Note Moyenne</span>
-                                <span className="block font-extrabold text-2xl text-slate-900 mt-1">
+                                <span className="text-[10px] uppercase font-medium text-slate-400 tracking-wider">Note Moyenne</span>
+                                <span className="block font-medium text-2xl text-slate-900 mt-1">
                                     ⭐ {selectedSurveyDetails.stats.average_rating ? Number(selectedSurveyDetails.stats.average_rating).toFixed(1) : "-"}
                                 </span>
                             </div>
                             <div className="bg-white p-4 rounded-xl border border-slate-200/50 shadow-sm">
-                                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Participation</span>
-                                <span className="block font-extrabold text-2xl text-indigo-700 mt-1">
+                                <span className="text-[10px] uppercase font-medium text-slate-400 tracking-wider">Participation</span>
+                                <span className="block font-medium text-2xl text-slate-900 mt-1">
                                     {Number(selectedSurveyDetails.stats.response_rate).toFixed(0)}%
                                 </span>
                             </div>
                             <div className="bg-white p-4 rounded-xl border border-slate-200/50 shadow-sm">
-                                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total Réponses</span>
-                                <span className="block font-extrabold text-2xl text-slate-900 mt-1">
-                                    {selectedSurveyDetails.stats.total_responses} / {selectedSurveyDetails.stats.total_sent}
+                                <span className="text-[10px] uppercase font-medium text-slate-400 tracking-wider">Total Réponses</span>
+                                <span className="block font-medium text-2xl text-slate-900 mt-1">
+                                    {selectedSurveyDetails.stats.total_responses}/{selectedSurveyDetails.stats.total_sent}
                                 </span>
                             </div>
                         </div>
 
                         {/* Responses list */}
                         <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Retours Individuels</h4>
+                            <h4 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Retours Individuels</h4>
                             
                             {selectedSurveyDetails.responses.length === 0 ? (
                                 <div className="text-center text-slate-400 text-sm py-12">Aucun retour enregistré pour le moment.</div>
@@ -1731,20 +1813,20 @@ function AdminEmailsContent() {
                                         <div key={r.id} className="bg-white p-4 rounded-xl border border-slate-200/60 shadow-sm space-y-2">
                                             <div className="flex justify-between items-center">
                                                 <div>
-                                                    <p className="font-bold text-sm text-slate-800">{r.user_name}</p>
+                                                    <p className="font-medium text-sm text-slate-800">{r.user_name}</p>
                                                     <p className="text-[10px] text-slate-400">{r.user_email}</p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     {r.submitted_at ? (
-                                                        <span className="bg-emerald-50 border border-emerald-150 text-[10px] font-bold text-emerald-700 px-2 py-0.5 rounded-full">
+                                                        <span className="bg-emerald-50 border border-emerald-150 text-[10px] font-medium text-emerald-700 px-2 py-0.5 rounded-full">
                                                             Répondu
                                                         </span>
                                                     ) : r.clicked_at ? (
-                                                        <span className="bg-amber-50 border border-amber-150 text-[10px] font-bold text-amber-700 px-2 py-0.5 rounded-full animate-pulse">
+                                                        <span className="bg-amber-50 border border-amber-150 text-[10px] font-medium text-amber-700 px-2 py-0.5 rounded-full animate-pulse">
                                                             Cliqué
                                                         </span>
                                                     ) : (
-                                                        <span className="bg-slate-100 text-[10px] font-bold text-slate-400 px-2 py-0.5 rounded-full">
+                                                        <span className="bg-slate-100 text-[10px] font-medium text-slate-400 px-2 py-0.5 rounded-full">
                                                             Envoyé
                                                         </span>
                                                     )}
@@ -1772,7 +1854,7 @@ function AdminEmailsContent() {
                         <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end">
                             <button
                                 onClick={() => setShowSurveyDetailsModal(false)}
-                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-all shadow-sm active:scale-95"
+                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-medium hover:bg-slate-800 transition-all shadow-sm active:scale-95"
                             >
                                 Fermer
                             </button>
@@ -1787,7 +1869,7 @@ function AdminEmailsContent() {
 
 export default function AdminEmailsPage() {
     return (
-        <Suspense fallback={<div className="flex min-h-screen bg-slate-50 items-center justify-center font-outfit">Chargement...</div>}>
+        <Suspense fallback={<div className="flex min-h-screen bg-slate-50 items-center justify-center">Chargement...</div>}>
             <AdminEmailsContent />
         </Suspense>
     );

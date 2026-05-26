@@ -862,6 +862,7 @@ class FinanceDashboardResponse(BaseModel):
 class SurveyCampaignCreate(BaseModel):
     """Création d'une campagne d'enquête"""
     title: str = Field(..., min_length=1, max_length=255)
+    description: Optional[str] = None
     survey_type: str = Field("general", pattern="^(general|event)$")
     event_id: Optional[UUID] = None
     session_id: Optional[UUID] = None
@@ -875,12 +876,14 @@ class SurveyCampaignResponse(BaseModel):
     id: UUID
     tenant_id: UUID
     title: str
+    description: Optional[str] = None
     survey_type: str
     event_id: Optional[UUID] = None
     session_id: Optional[UUID] = None
     created_at: datetime
     responses_count: int = 0
     average_rating: Optional[float] = None
+    is_sent: bool = False
 
 
 class SurveyResponseSubmit(BaseModel):
@@ -895,6 +898,8 @@ class SurveyResponsePublic(BaseModel):
     
     id: UUID
     campaign_title: str
+    campaign_description: Optional[str] = None
     rating: Optional[int] = None
     comment: Optional[str] = None
+    tenant_name: str = ""
 

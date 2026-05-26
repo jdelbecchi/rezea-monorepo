@@ -39,6 +39,7 @@ async def create_survey_campaign(
     campaign = SurveyCampaign(
         tenant_id=tenant_id,
         title=data.title,
+        description=data.description,
         survey_type=data.survey_type,
         event_id=data.event_id,
         session_id=data.session_id
@@ -284,7 +285,10 @@ async def get_survey_campaign_details(
     return {
         "id": str(campaign.id),
         "title": campaign.title,
+        "description": campaign.description,
         "survey_type": campaign.survey_type,
+        "event_id": str(campaign.event_id) if campaign.event_id else None,
+        "session_id": str(campaign.session_id) if campaign.session_id else None,
         "created_at": campaign.created_at.isoformat(),
         "context_title": context_title,
         "stats": {
@@ -353,55 +357,75 @@ async def send_survey_campaign_emails(
     for resp, usr in rows:
         # Template HTML premium avec smileys cliquables et style Zen
         html_body = f"""
-        <div style="font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif; max-width: 550px; margin: 0 auto; padding: 40px 30px; border: 1px solid #e2e8f0; border-radius: 24px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
-            <div style="text-align: center; margin-bottom: 30px;">
-                <span style="font-size: 40px; display: inline-block; margin-bottom: 10px;">✨</span>
-                <h2 style="color: #0f172a; font-size: 22px; font-weight: 600; margin: 0; tracking: -0.02em;">Votre avis nous intéresse !</h2>
-            </div>
-            
-            <p style="color: #475569; font-size: 15px; line-height: 1.6; text-align: center; margin-bottom: 30px;">
-                Bonjour {usr.first_name},<br><br>
-                Nous aimerions beaucoup avoir votre retour concernant :<br>
-                <strong style="color: #0f172a; font-size: 16px;">"{campaign.title}"</strong>.
-            </p>
-            
-            <div style="background-color: #f8fafc; border-radius: 20px; padding: 30px 20px; margin-bottom: 30px; text-align: center;">
-                <p style="color: #334155; font-size: 14px; font-weight: 600; margin: 0 0 20px 0; text-transform: uppercase; letter-spacing: 0.05em;">
-                    Comment évaluez-vous votre expérience ?
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+                body, table, td, p, a, h2 {{
+                    font-family: 'Livvic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+                }}
+            </style>
+        </head>
+        <body style="margin: 0; padding: 20px; background-color: #f8fafc;">
+            <div style="font-family: 'Livvic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 550px; margin: 0 auto; padding: 40px 30px; border: 1px solid #e2e8f0; border-radius: 24px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <span style="font-size: 36px; display: inline-block; margin-bottom: 10px;">✨</span>
+                    <h2 style="font-family: 'Livvic', sans-serif; color: #0f172a; font-size: 20px; font-weight: 600; margin: 0; tracking: -0.02em;">Votre avis nous intéresse !</h2>
+                </div>
+                
+                <div align="center" style="text-align: center;">
+                    <p style="font-family: 'Livvic', sans-serif; color: #475569; font-size: 15px; line-height: 1.6; text-align: center; margin: 0 0 30px 0; display: inline-block;">
+                        Bonjour {usr.first_name},<br><br>
+                        Votre avis est précieux ! Partagez-le avec nous en 2 clics 😊
+                    </p>
+                </div>
+                
+                <div style="background-color: #ffffff; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; padding: 25px 0; margin: 30px 0; text-align: center;">
+                    <p style="font-family: 'Livvic', sans-serif; color: #1e293b; font-size: 15px; font-weight: 500; margin: 0; line-height: 1.4;">
+                        {campaign.title}
+                    </p>
+                    {f'<div align="center" style="text-align: center;"><p style="font-family: \'Livvic\', sans-serif; color: #64748b; font-size: 12px; font-weight: 400; margin: 8px 0 20px 0; line-height: 1.5; max-width: 440px; text-align: center; display: inline-block;">{campaign.description}</p></div>' if campaign.description else '<div style="height: 20px;"></div>'}
+                    
+                    <table align="center" style="margin: 0 auto; border-collapse: collapse;">
+                        <tr>
+                            <td align="center" style="padding: 0 6px; width: 75px; vertical-align: top;">
+                                <a href="{base_url}?t={resp.token}&r=1" style="text-decoration: none; font-size: 24px; display: inline-block; line-height: 1;" title="Pas du tout satisfait">😔</a>
+                                <div style="font-family: 'Livvic', sans-serif; font-size: 9px; color: #64748b; margin-top: 6px; line-height: 1.2; font-weight: 500;">Pas du tout satisfait</div>
+                            </td>
+                            <td align="center" style="padding: 0 6px; width: 75px; vertical-align: top;">
+                                <a href="{base_url}?t={resp.token}&r=2" style="text-decoration: none; font-size: 24px; display: inline-block; line-height: 1;" title="Peu satisfait">🙁</a>
+                                <div style="font-family: 'Livvic', sans-serif; font-size: 9px; color: #64748b; margin-top: 6px; line-height: 1.2; font-weight: 500;">Peu satisfait</div>
+                            </td>
+                            <td align="center" style="padding: 0 6px; width: 75px; vertical-align: top;">
+                                <a href="{base_url}?t={resp.token}&r=3" style="text-decoration: none; font-size: 24px; display: inline-block; line-height: 1;" title="Moyen">😐</a>
+                                <div style="font-family: 'Livvic', sans-serif; font-size: 9px; color: #64748b; margin-top: 6px; line-height: 1.2; font-weight: 500;">Moyen</div>
+                            </td>
+                            <td align="center" style="padding: 0 6px; width: 75px; vertical-align: top;">
+                                <a href="{base_url}?t={resp.token}&r=4" style="text-decoration: none; font-size: 24px; display: inline-block; line-height: 1;" title="Satisfait">🙂</a>
+                                <div style="font-family: 'Livvic', sans-serif; font-size: 9px; color: #64748b; margin-top: 6px; line-height: 1.2; font-weight: 500;">Satisfait</div>
+                            </td>
+                            <td align="center" style="padding: 0 6px; width: 75px; vertical-align: top;">
+                                <a href="{base_url}?t={resp.token}&r=5" style="text-decoration: none; font-size: 24px; display: inline-block; line-height: 1;" title="Très satisfait">😍</a>
+                                <div style="font-family: 'Livvic', sans-serif; font-size: 9px; color: #64748b; margin-top: 6px; line-height: 1.2; font-weight: 500;">Très satisfait</div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                <p style="font-family: 'Livvic', sans-serif; color: #64748b; font-size: 13px; text-align: center; margin: 0; line-height: 1.5; font-style: italic;">
+                    Merci de nous aider à nous améliorer.
                 </p>
                 
-                <table align="center" style="margin: 0 auto;">
-                    <tr>
-                        <td style="padding: 0 8px;">
-                            <a href="{base_url}?t={resp.token}&r=1" style="text-decoration: none; font-size: 38px; display: inline-block; transition: transform 0.2s;" title="Pas du tout satisfait">😠</a>
-                        </td>
-                        <td style="padding: 0 8px;">
-                            <a href="{base_url}?t={resp.token}&r=2" style="text-decoration: none; font-size: 38px; display: inline-block; transition: transform 0.2s;" title="Peu satisfait">🙁</a>
-                        </td>
-                        <td style="padding: 0 8px;">
-                            <a href="{base_url}?t={resp.token}&r=3" style="text-decoration: none; font-size: 38px; display: inline-block; transition: transform 0.2s;" title="Moyen">😐</a>
-                        </td>
-                        <td style="padding: 0 8px;">
-                            <a href="{base_url}?t={resp.token}&r=4" style="text-decoration: none; font-size: 38px; display: inline-block; transition: transform 0.2s;" title="Satisfait">🙂</a>
-                        </td>
-                        <td style="padding: 0 8px;">
-                            <a href="{base_url}?t={resp.token}&r=5" style="text-decoration: none; font-size: 38px; display: inline-block; transition: transform 0.2s;" title="Très satisfait">😍</a>
-                        </td>
-                    </tr>
-                </table>
+                <div style="border-top: 1px solid #f1f5f9; margin-top: 30px; padding-top: 20px; text-align: center;">
+                    <p style="font-family: 'Livvic', sans-serif; color: #64748b; font-size: 13px; font-weight: 500; margin: 0;">
+                        {tenant.name}
+                    </p>
+                </div>
             </div>
-
-            <p style="color: #94a3b8; font-size: 12px; text-align: center; margin: 0; line-height: 1.5;">
-                Un clic sur un smiley valide automatiquement votre avis. Vous pourrez ensuite ajouter un commentaire libre si vous le souhaitez.<br>
-                Cet e-mail automatique respecte votre vie privée et est sécurisé.
-            </p>
-            
-            <div style="border-top: 1px solid #f1f5f9; margin-top: 30px; padding-top: 20px; text-align: center;">
-                <p style="color: #64748b; font-size: 13px; font-weight: 500; margin: 0;">
-                    {tenant.name}
-                </p>
-            </div>
-        </div>
+        </body>
+        </html>
         """
 
         success = await mailer.send_email(
@@ -412,6 +436,11 @@ async def send_survey_campaign_emails(
         )
         if success:
             sent_count += 1
+
+    if sent_count > 0:
+        campaign.is_sent = True
+        db.add(campaign)
+        await db.commit()
 
     return {
         "message": f"Campagne d'enquête diffusée avec succès à {sent_count} destinataires.",
@@ -478,11 +507,19 @@ async def get_public_feedback(
         await db.commit()
         await db.refresh(response)
 
+    # Charger les infos du tenant pour obtenir son nom
+    from app.models.models import Tenant
+    tenant_stmt = select(Tenant).where(Tenant.id == response.tenant_id)
+    tenant_res = await db.execute(tenant_stmt)
+    tenant = tenant_res.scalar_one()
+
     return SurveyResponsePublic(
         id=response.id,
         campaign_title=campaign.title,
+        campaign_description=campaign.description,
         rating=response.rating,
-        comment=response.comment
+        comment=response.comment,
+        tenant_name=tenant.name
     )
 
 

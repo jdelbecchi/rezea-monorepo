@@ -764,6 +764,7 @@ class SurveyCampaign(Base):
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     
     title = Column(String(255), nullable=False) # Ex: "Enquête de satisfaction - Stage Yoga"
+    description = Column(Text, nullable=True)
     survey_type = Column(String(50), nullable=False) # 'general' ou 'event'
     
     # Liens contextuels optionnels
@@ -771,6 +772,7 @@ class SurveyCampaign(Base):
     session_id = Column(UUID(as_uuid=True), ForeignKey("sessions.id"), nullable=True)
     
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    is_sent = Column(Boolean, default=False, nullable=False)
 
     # Relations
     tenant = relationship("Tenant", back_populates="survey_campaigns")
