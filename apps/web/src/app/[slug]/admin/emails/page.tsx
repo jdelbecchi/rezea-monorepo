@@ -1,2013 +1,2086 @@
-"use client";
-
-import Sidebar from "@/components/Sidebar";
-import { useEffect, useState, useMemo, useCallback, useRef, Suspense } from "react";
-import { useRouter, useSearchParams, useParams } from "next/navigation";
-import { api, User, EmailTemplate } from "@/lib/api";
-import dynamic from "next/dynamic";
-
-// Import CSS for ReactQuill
-import "react-quill/dist/quill.snow.css";
-
-// Dynamic import of ReactQuill to avoid SSR issues
-const ReactQuill = dynamic(() => import("react-quill"), { 
-    ssr: false,
-    loading: () => <div className="h-64 bg-slate-50 border border-slate-200 rounded-xl animate-pulse flex items-center justify-center text-slate-400">Chargement de l'éditeur...</div>
-});
-
-const marketingCampaignTips: Record<string, { segmentLabel: string; tips: string[] }> = {
-    convert_prospects: {
-        segmentLabel: "Prospects (Comptes créés sans offre ni commande)",
-        tips: [
-            "Offrez une réduction temporaire (ex: -10%) ou proposez un premier cours d'essai à tarif préférentiel.",
-            "Proposez une visite personnalisée de votre établissement ou une séance d'accueil pour lever les freins.",
-            "Créez un sentiment d'urgence en limitant la validité du code de bienvenue (ex: valable 7 jours)."
-        ]
-    },
-    fid_discovery: {
-        segmentLabel: "Nouveaux venus (Une seule commande effectuée)",
-        tips: [
-            "Envoyez une enquête de satisfaction rapide pour recueillir leur ressenti sur leur première séance.",
-            "Suggerez-leur une formule de découverte ou une carte de 5/10 séances pour pérenniser leur pratique.",
-            "Mettez en avant vos services d'accompagnement ou des activités complémentaires pour créer une habitude."
-        ]
-    },
-    reactivate_distant: {
-        segmentLabel: "Membres distants (Offre en cours mais absents depuis 21 jours)",
-        tips: [
-            "Prenez simplement des nouvelles avec bienveillance pour savoir s'ils rencontrent des difficultés.",
-            "Rappelez-leur que la régularité est la clé de leur progression et proposez un accompagnement sur-mesure.",
-            "Suggerez un changement de créneau ou une formule plus souple si leur emploi du temps a changé."
-        ]
-    },
-    reward_actives: {
-        segmentLabel: "Membres actifs (Fidèles et réguliers)",
-        tips: [
-            "Offrez un privilège exclusif (ex: invitation gratuite pour un proche, accès prioritaire aux nouveaux cours).",
-            "Mettez en place un programme de parrainage pour les inciter à faire découvrir votre club à leurs proches.",
-            "Invitez-les à partager leur avis positif sur vos réseaux sociaux ou fiche Google pour accroître votre visibilité."
-        ]
-    },
-    engage_visitors: {
-        segmentLabel: "Visiteurs ponctuels (Passages sporadiques)",
-        tips: [
-            "Démontrez l'intérêt financier de passer à une formule mensuelle ou une carte de 10/20 séances.",
-            "Proposez des offres groupées ou des ateliers thématiques le week-end adaptés aux pratiquants flexibles.",
-            "Valorisez l'appartenance à la communauté du club pour les inciter à s'investir plus régulièrement."
-        ]
-    },
-    winback_inactives: {
-        segmentLabel: "Anciens membres (Inactifs depuis plus de 60 jours)",
-        tips: [
-            "Proposez une offre irrésistible de réengagement (ex: séance offerte, pas de frais d'inscription).",
-            "Présentez vos nouveautés : nouveaux professeurs, équipements ou activités ajoutés récemment.",
-            "Rassurez-les sur la reprise en douceur de leur routine sportive ou bien-être, sans pression."
-        ]
-    }
-};
-
-function AdminEmailsContent() {
-    const router = useRouter();
-    const params = useParams();
-    const searchParams = useSearchParams();
-    const [user, setUser] = useState<User | null>(null);
-    const [tenant, setTenant] = useState<any | null>(null);
-    const [activeTab, setActiveTab] = useState<"newsletter" | "operational" | "marketing" | "surveys">("newsletter");
-    
-    // Destinataires & Segments
-    const [recipientType, setRecipientType] = useState<"all" | "selected" | "segment">("all");
-    const [selectedSegment, setSelectedSegment] = useState<string>("");
-    const [allUsers, setAllUsers] = useState<User[]>([]);
-    const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
-    const [selectedTargets, setSelectedTargets] = useState<string[]>(["all"]);
-    const [dropdownOpen, setDropdownOpen] = useState(false);
-    const dropdownRef = useRef<HTMLDivElement>(null);
-    const [segmentStats, setSegmentStats] = useState<{
-        explorateur: number;
-        decouverte: number;
-        regulier: number;
-        endormi: number;
-        flexible: number;
-        ancien: number;
-    } | null>(null);
-    
-    // Editor State
-    const [subject, setSubject] = useState("");
-    const [content, setContent] = useState("");
-    const [isSending, setIsSending] = useState(false);
-    const [showValidation, setShowValidation] = useState(false);
-    const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-    const [showUserSelector, setShowUserSelector] = useState(false);
-    const [searchTerm, setSearchTerm] = useState("");
-    
-    // Switch Urgence Opérationnelle
-    const [forceOperational, setForceOperational] = useState(false);
-
-    // Templates state
-    const [templates, setTemplates] = useState<EmailTemplate[]>([]);
-    const [showSaveModal, setShowSaveModal] = useState(false);
-    const [templateName, setTemplateName] = useState("");
-    const [isSavingTemplate, setIsSavingTemplate] = useState(false);
-    const [templateToDelete, setTemplateToDelete] = useState<EmailTemplate | null>(null);
-    const [isDeleting, setIsDeleting] = useState(false);
-
-    // Enquêtes (Surveys) State
-    const [surveys, setSurveys] = useState<any[]>([]);
-    const [events, setEvents] = useState<any[]>([]);
-    const [sessions, setSessions] = useState<any[]>([]);
-    const [selectedSurveyDetails, setSelectedSurveyDetails] = useState<any | null>(null);
-    const [showSurveyDetailsModal, setShowSurveyDetailsModal] = useState(false);
-    const [surveyToDelete, setSurveyToDelete] = useState<any | null>(null);
-    const [isDeletingSurvey, setIsDeletingSurvey] = useState(false);
-    
-    // Form Enquêtes
-    const [surveyTitle, setSurveyTitle] = useState("");
-    const [surveyDescription, setSurveyDescription] = useState("");
-    const [surveyType, setSurveyType] = useState<"general" | "event">("general");
-    const [surveyTargetType, setSurveyTargetType] = useState<"event" | "session">("event");
-    const [surveyTargetSegment, setSurveyTargetSegment] = useState("");
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const [surveyEventId, setSurveyEventId] = useState("");
-    const [surveySessionId, setSurveySessionId] = useState("");
-    const [isCreatingSurvey, setIsCreatingSurvey] = useState(false);
-    const [isSendingSurvey, setIsSendingSurvey] = useState<string | null>(null);
-
-    // Marketing State
-    const [selectedMarketingCard, setSelectedMarketingCard] = useState<any | null>(null);
-    const [selectedMarketingUserIds, setSelectedMarketingUserIds] = useState<string[]>([]);
-    const [marketingSubject, setMarketingSubject] = useState("");
-    const [marketingContent, setMarketingContent] = useState("");
-    const [isSendingMarketing, setIsSendingMarketing] = useState(false);
-    const [showTips, setShowTips] = useState(false);
-
-    const marketingCards = useMemo(() => [
-        {
-            id: "convert_prospects",
-            title: "Convertir vos prospects",
-            description: "Cible les personnes qui ont créé un compte mais n'ont pas encore passé de commande.",
-            segment: "explorateur",
-            icon: "✨",
-            defaultSubject: "Bienvenue chez {establishment} ! Bénéficiez de -10% sur votre première séance",
-            defaultContent: `<p>Bonjour {first_name},</p><p>Votre compte a été créé avec succès, mais vous n'avez pas encore planifié votre première activité.</p><p>Pour vous souhaiter la bienvenue, voici un code promo exclusif de 10% sur votre première réservation : <b>BIENVENUE10</b></p><p>À très bientôt dans notre studio !</p>`
-        },
-        {
-            id: "fid_discovery",
-            title: "Fidéliser les nouveaux venus",
-            description: "Cible les personnes avec une seule commande passée et aucune réservation future programmée.",
-            segment: "decouverte",
-            icon: "⭐",
-            defaultSubject: "Comment s'est passée votre première séance ?",
-            defaultContent: `<p>Bonjour {first_name},</p><p>Vous avez récemment effectué votre première séance chez nous et nous espérons que vous avez adoré l'expérience !</p><p>Pour continuer sur votre lancée, découvrez nos offres et formules régulières.</p><p>À bientôt !</p>`
-        },
-        {
-            id: "reactivate_distant",
-            title: "Réactiver vos membres distants",
-            description: "Cible les personnes avec une offre en cours mais absentes depuis plus de 21 jours.",
-            segment: "endormi",
-            icon: "🚀",
-            defaultSubject: "Nous pensons à vous !",
-            defaultContent: `<p>Bonjour {first_name},</p><p>Nous avons remarqué que nous ne vous avions pas vu au studio ces derniers temps. Nous espérons que tout va bien de votre côté !</p><p>N'hésitez pas à nous faire un petit signe si vous avez besoin d'adapter vos séances...</p><p>À très bientôt,</p><p>L'équipe</p>`
-        },
-        {
-            id: "reward_actives",
-            title: "Remercier vos membres actifs",
-            description: "Cible les personnes les plus fidèles avec une offre active et des réservations régulières.",
-            segment: "regulier",
-            icon: "💖",
-            defaultSubject: "Merci pour votre fidélité ! Un petit cadeau pour vous 🎁",
-            defaultContent: `<p>Bonjour {first_name},</p><p>Nous tenions tout particulièrement à vous remercier pour votre fidélité et votre énergie positive au studio ! C'est un réel plaisir de vous accompagner dans vos séances.</p><p>Pour vous remercier, voici un code cadeau offrant une invitation gratuite pour le proche de votre choix lors de votre prochain cours : <b>MERCIAMIS</b></p><p>À très bientôt sur les tapis !</p>`
-        },
-        {
-            id: "engage_visitors",
-            title: "Engager vos visiteurs ponctuels",
-            description: "Cible les personnes de passage qui viennent ponctuellement sans offre régulière.",
-            segment: "flexible",
-            icon: "⚡",
-            defaultSubject: "Passez à la vitesse supérieure chez {establishment}",
-            defaultContent: `<p>Bonjour {first_name},</p><p>Vous venez nous voir de temps en temps et nous adorons votre présence ponctuelle au studio !</p><p>Saviez-vous que vous pourriez économiser sur vos séances en optant pour l'une de nos formules régulières ou cartes multi-séances ? Découvrez nos offres adaptées à votre rythme de vie.</p><p>À bientôt pour votre prochaine séance !</p>`
-        },
-        {
-            id: "winback_inactives",
-            title: "Reconquérir vos anciens membres",
-            description: "Cible les personnes inactives qui n'ont pas passé de commande depuis plus de 60 jours.",
-            segment: "ancien",
-            icon: "👋",
-            defaultSubject: "Vous nous manquez... Venez tester nos nouveautés !",
-            defaultContent: `<p>Bonjour {first_name},</p><p>Cela fait plus de deux mois que nous ne vous avons pas vu au studio, et vous nous manquez beaucoup !</p><p>De nouveaux créneaux et de nouvelles activités viennent d'ouvrir. Pour vous encourager à revenir, nous serions ravis de vous offrir une séance d'essai gratuite avec le code : <b>RETOUR2026</b></p><p>À très vite,</p><p>L'équipe</p>`
-        }
-    ], []);
-
-    const handleSelectMarketingCard = (card: any) => {
-        setSelectedMarketingCard(card);
-        const segmentUsers = allUsers.filter(u => u.segment === card.segment);
-        setSelectedMarketingUserIds(segmentUsers.map(u => u.id));
-        
-        // Dynamically replace establishment/tenant name
-        const estName = tenant?.name || "votre établissement";
-        const subject = card.defaultSubject.replace(/{establishment}/g, estName).replace(/Rezea/g, estName).replace(/rezea/g, estName);
-        const content = card.defaultContent.replace(/{establishment}/g, estName).replace(/Rezea/g, estName).replace(/rezea/g, estName);
-        
-        setMarketingSubject(subject);
-        setMarketingContent(content);
-    };
-
-    const handleSendMarketing = async () => {
-        if (selectedMarketingUserIds.length === 0) {
-            setMessage({ type: "error", text: "Veuillez sélectionner au moins un destinataire." });
-            return;
-        }
-        if (!marketingSubject.trim()) {
-            setMessage({ type: "error", text: "Veuillez saisir un objet pour l'e-mail." });
-            return;
-        }
-        if (!marketingContent.trim()) {
-            setMessage({ type: "error", text: "Veuillez rédiger le contenu de l'e-mail." });
-            return;
-        }
-
-        setIsSendingMarketing(true);
-        setMessage(null);
-        try {
-            const result = await api.sendAdminEmail({
-                subject: marketingSubject,
-                content: marketingContent,
-                recipient_type: "selected",
-                selected_user_ids: selectedMarketingUserIds,
-                segment: selectedMarketingCard.segment
-            });
-            setMessage({
-                type: "success",
-                text: `Campagne de marketing envoyée avec succès à ${result.count} personne(s) !`
-            });
-            setSelectedMarketingCard(null);
-        } catch (err: any) {
-            console.error(err);
-            const errorMsg = err.response?.data?.detail || "Une erreur est survenue lors de l'envoi de la campagne.";
-            setMessage({ type: "error", text: errorMsg });
-        } finally {
-            setIsSendingMarketing(false);
-        }
-    };
-
-    const QuillNode = ReactQuill as any;
-    const quillRef = useRef<any>(null);
-
-    // Configurer le support du texte centré / alignements dans Quill
-    useEffect(() => {
-        const configureQuill = async () => {
-            try {
-                const { default: Quill } = await import('quill');
-                const Align = Quill.import('attributors/style/align');
-                Quill.register(Align, true);
-            } catch (err) {
-                console.warn("Quill could not be configured for inline styles", err);
-            }
-        };
-        configureQuill();
-    }, []);
-
-    // Gestion fermeture clic extérieur pour le dropdown de ciblage
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setDropdownOpen(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
-    }, []);
-
-    const toggleTarget = (target: string) => {
-        setSelectedTargets(prev => {
-            if (target === "all") {
-                return ["all"];
-            }
-            if (target === "selected") {
-                return ["selected"];
-            }
-            // Si on coche un segment
-            let next = prev.filter(t => t !== "all" && t !== "selected");
-            if (next.includes(target)) {
-                next = next.filter(t => t !== target);
-            } else {
-                next.push(target);
-            }
-            if (next.length === 0) {
-                return ["all"];
-            }
-            return next;
-        });
-    };
-
-    // Chargement initial des données
-    const loadSurveys = useCallback(async () => {
-        try {
-            const data = await api.getSurveyCampaigns();
-            setSurveys(data);
-        } catch (err) {
-            console.error("Failed to load satisfaction surveys", err);
-        }
-    }, []);
-
-    const fetchAllData = useCallback(async () => {
-        try {
-            // 1. Authentification & rôle
-            const userData = await api.getCurrentUser();
-            if (userData.role !== "owner" && userData.role !== "manager") {
-                router.push(`/${params.slug}/home`);
-                return;
-            }
-            setUser(userData);
-
-            // 2. Récupérer les données annexes
-            const [users, templatesData, stats, eventsData, sessionsData, tenantData] = await Promise.all([
-                api.getAdminUsers(),
-                api.getEmailTemplates(),
-                api.getSegmentsStats().catch(() => null),
-                api.getAdminEvents().catch(() => []),
-                api.getAdminSessions().catch(() => []),
-                api.getTenantSettings().catch(() => null),
-            ]);
-            
-            setAllUsers(users);
-            setTemplates(templatesData);
-            setSegmentStats(stats);
-            setEvents(eventsData);
-            // Filtrer pour ne garder que les séances passées jusqu'à J-15
-            const filteredSessions = (sessionsData || []).filter((sess: any) => {
-                const startTime = new Date(sess.start_time).getTime();
-                const now = new Date().getTime();
-                const fifteenDaysAgo = now - 15 * 24 * 60 * 60 * 1000;
-                return startTime < now && startTime >= fifteenDaysAgo;
-            });
-            setSessions(filteredSessions);
-            setTenant(tenantData);
-            
-            // Pré-sélection des destinataires via query params
-            const recipientIds = searchParams.get("recipientIds");
-            if (recipientIds) {
-                const ids = recipientIds.split(",");
-                setSelectedUserIds(ids);
-                setRecipientType("selected");
-                setSelectedTargets(["selected"]);
-            }
-        } catch (err: any) {
-            console.error(err);
-            if (err.response?.status === 401) {
-                router.push(`/${params.slug}`);
-            }
-        }
-    }, [searchParams, router, params.slug]);
-
-    useEffect(() => {
-        fetchAllData();
-        loadSurveys();
-    }, [fetchAllData, loadSurveys]);
-
-    // Uploader une image dans Quill
-    const imageHandler = useCallback(() => {
-        const input = document.createElement('input');
-        input.setAttribute('type', 'file');
-        input.setAttribute('accept', 'image/*');
-        input.click();
-
-        input.onchange = async () => {
-            if (input.files && input.files[0]) {
-                const file = input.files[0];
-                try {
-                    const res = await api.uploadImage(file);
-                    const editor = quillRef.current.getEditor();
-                    const range = editor.getSelection();
-                    editor.insertEmbed(range.index, 'image', res.url);
-                } catch (error) {
-                    console.error("Image upload failed:", error);
-                    setMessage({ type: "error", text: "L'upload de l'image a échoué." });
-                }
-            }
-        };
-    }, []);
-
-    const modules = useMemo(() => ({
-        toolbar: {
-            container: [
-                [{ 'header': [1, 2, 3, false] }],
-                ['bold', 'italic', 'underline', 'strike'],
-                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-                [{ 'align': [] }],
-                [{ 'color': [] }, { 'background': [] }],
-                ['link', 'image'],
-                ['clean']
-            ],
-            handlers: {
-                image: imageHandler
-            }
-        },
-    }), [imageHandler]);
-
-    // Envoi des e-mails
-    const handleSend = async () => {
-        setShowValidation(true);
-        if (!subject || !content || content === "<p><br></p>") {
-            setMessage({ type: "error", text: "Veuillez remplir l'objet et le contenu de l'email." });
-            return;
-        }
-
-        let resolvedRecipientType = "all";
-        let resolvedSegment: string | undefined = undefined;
-        let resolvedUserIds: string[] | undefined = undefined;
-
-        if (selectedTargets.includes("all")) {
-            resolvedRecipientType = "all";
-        } else if (selectedTargets.includes("selected")) {
-            resolvedRecipientType = "selected";
-            resolvedUserIds = selectedUserIds;
-            if (resolvedUserIds.length === 0) {
-                setMessage({ type: "error", text: "Veuillez sélectionner au moins un destinataire." });
-                return;
-            }
-        } else if (selectedTargets.length === 1) {
-            resolvedRecipientType = "segment";
-            resolvedSegment = selectedTargets[0];
-        } else if (selectedTargets.length > 1) {
-            resolvedRecipientType = "selected";
-            // Filter users belonging to any of the selected segments
-            const targetedUsers = allUsers.filter(u => 
-                u.segment && selectedTargets.map(t => t.toLowerCase()).includes(u.segment.toLowerCase())
-            );
-            resolvedUserIds = targetedUsers.map(u => u.id);
-            
-            if (resolvedUserIds.length === 0) {
-                setMessage({ type: "error", text: "Aucun utilisateur ne correspond aux statuts sélectionnés." });
-                return;
-            }
-        } else {
-            setMessage({ type: "error", text: "Veuillez sélectionner au moins un destinataire." });
-            return;
-        }
-
-        setIsSending(true);
-        setMessage(null);
-
-        try {
-            const result = await api.sendAdminEmail({
-                subject,
-                content: content, 
-                recipient_type: resolvedRecipientType,
-                selected_user_ids: resolvedUserIds,
-                segment: resolvedSegment,
-                force_operational: activeTab === "operational" ? forceOperational : false
-            });
-            setMessage({ type: "success", text: result.message });
-            setSubject("");
-            setContent("");
-            setSelectedTargets(["all"]);
-            setForceOperational(false);
-            setShowValidation(false);
-        } catch (error: any) {
-            const errorMsg = error.response?.data?.detail || "Une erreur est survenue lors de l'envoi de l'email.";
-            setMessage({ type: "error", text: errorMsg });
-        } finally {
-            setIsSending(false);
-        }
-    };
-
-    // Gestion des modèles
-    const handleSaveTemplate = async () => {
-        if (!templateName.trim()) return;
-        if (!subject || !content || content === "<p><br></p>") {
-            setMessage({ type: "error", text: "Veuillez remplir l'objet et le contenu avant d'enregistrer." });
-            return;
-        }
-
-        setIsSavingTemplate(true);
-        try {
-            const newTemplate = await api.saveEmailTemplate({
-                name: templateName,
-                subject,
-                content
-            });
-            setTemplates(prev => [newTemplate, ...prev]);
-            setShowSaveModal(false);
-            setTemplateName("");
-            setMessage({ type: "success", text: "Modèle enregistré dans votre bibliothèque." });
-        } catch (error) {
-            setMessage({ type: "error", text: "Erreur lors de la sauvegarde du modèle." });
-        } finally {
-            setIsSavingTemplate(false);
-        }
-    };
-
-    const handleDeleteTemplate = async () => {
-        if (!templateToDelete) return;
-        
-        setIsDeleting(true);
-        try {
-            await api.deleteEmailTemplate(templateToDelete.id);
-            setTemplates(prev => prev.filter(t => t.id !== templateToDelete.id));
-            setTemplateToDelete(null);
-            setMessage({ type: "success", text: "Modèle supprimé avec succès." });
-        } catch (error) {
-            console.error("Delete failed", error);
-            setMessage({ type: "error", text: "Erreur lors de la suppression." });
-        } finally {
-            setIsDeleting(false);
-        }
-    };
-
-    const loadTemplate = (template: EmailTemplate) => {
-        setSubject(template.subject);
-        setContent(template.content);
-        window.scrollTo({ top: 350, behavior: 'smooth' });
-    };
-
-    // Enquêtes : Créer une nouvelle campagne
-    const handleCreateSurvey = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!surveyTitle.trim()) {
-            setMessage({ type: "error", text: "Veuillez attribuer un titre à votre enquête." });
-            return;
-        }
-
-        if (surveyType === "general" && !surveyTargetSegment) {
-            setMessage({ type: "error", text: "Veuillez sélectionner un segment cible." });
-            return;
-        }
-
-        if (surveyType === "event" && !surveyTargetSegment) {
-            setMessage({ type: "error", text: "Veuillez sélectionner un ciblage." });
-            return;
-        }
-
-        if (surveyType === "event" && surveyTargetType === "event" && !surveyEventId) {
-            setMessage({ type: "error", text: "Veuillez sélectionner un événement." });
-            return;
-        }
-
-        if (surveyType === "event" && surveyTargetType === "session" && !surveySessionId) {
-            setMessage({ type: "error", text: "Veuillez sélectionner une séance." });
-            return;
-        }
-
-        setIsCreatingSurvey(true);
-        setMessage(null);
-        try {
-            await api.createSurveyCampaign({
-                title: surveyTitle,
-                description: surveyDescription || undefined,
-                survey_type: surveyType,
-                event_id: surveyType === "event" && surveyTargetType === "event" ? surveyEventId : undefined,
-                session_id: surveyType === "event" && surveyTargetType === "session" ? surveySessionId : undefined,
-                target_segment: surveyTargetSegment || undefined
-            });
-            setMessage({ type: "success", text: "Enquête de satisfaction créée et jetons individuels sécurisés générés." });
-            setSurveyTitle("");
-            setSurveyDescription("");
-            setSurveyTargetSegment(surveyType === "event" ? "participants" : "");
-            setSurveyEventId("");
-            setSurveySessionId("");
-            loadSurveys();
-        } catch (error: any) {
-            const errorMsg = error.response?.data?.detail || "Erreur de création de l'enquête.";
-            setMessage({ type: "error", text: errorMsg });
-        } finally {
-            setIsCreatingSurvey(false);
-        }
-    };
-
-    // Enquêtes : Diffuser par mail aux cibles
-    const handleSendSurvey = async (campaignId: string) => {
-        setIsSendingSurvey(campaignId);
-        setMessage(null);
-        try {
-            const res = await api.sendSurveyCampaignEmails(campaignId);
-            setMessage({ type: "success", text: res.message });
-            loadSurveys();
-        } catch (error: any) {
-            const errorMsg = error.response?.data?.detail || "Erreur lors de l'envoi de l'enquête.";
-            setMessage({ type: "error", text: errorMsg });
-        } finally {
-            setIsSendingSurvey(null);
-        }
-    };
-
-    // Enquêtes : Inspecter les retours clients
-    const handleViewSurveyDetails = async (campaignId: string) => {
-        try {
-            const details = await api.getSurveyCampaignDetails(campaignId);
-            setSelectedSurveyDetails(details);
-            setShowSurveyDetailsModal(true);
-        } catch (err) {
-            console.error(err);
-            setMessage({ type: "error", text: "Impossible de récupérer les retours de l'enquête." });
-        }
-    };
-
-    // Enquêtes : Ouvrir la confirmation de suppression
-    const handleDeleteSurvey = (campaign: any) => {
-        setSurveyToDelete(campaign);
-    };
-
-    // Enquêtes : Confirmer la suppression d'une enquête depuis la modale
-    const confirmDeleteSurvey = async () => {
-        if (!surveyToDelete) return;
-        setIsDeletingSurvey(true);
-        try {
-            await api.deleteSurveyCampaign(surveyToDelete.id);
-            setMessage({ type: "success", text: "Campagne d'enquête supprimée avec succès." });
-            setSurveyToDelete(null);
-            loadSurveys();
-        } catch (error: any) {
-            const errorMsg = error.response?.data?.detail || "Erreur lors de la suppression de l'enquête.";
-            setMessage({ type: "error", text: errorMsg });
-        } finally {
-            setIsDeletingSurvey(false);
-        }
-    };
-
-    // Filtres sélection utilisateurs manuelle
-    const filteredUsers = allUsers.filter(u => 
-        u.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    const toggleUserSelection = (id: string) => {
-        setSelectedUserIds(prev => 
-            prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]
-        );
-    };
-
-    // Noms des segments en Français
-    const segmentLabels: Record<string, string> = {
-        explorateur: "Prospect (Compte créé - aucune commande)",
-        decouverte: "Découverte (Une commande passée - aucune réservation à venir)",
-        regulier: "Actif (Commande en cours - inscriptions régulières)",
-        endormi: "Distant (Commande en cours - absence prolongée (+21 jrs))",
-        flexible: "Visiteur (Aucune commande en cours - vient de temps en temps)",
-        ancien: "Inactif (N'a pas repris de commande depuis + de 60jrs)",
-        participants: "Uniquement les participants"
-    };
-
-    const renderSmileys = (rating: number | null) => {
-        if (rating === null) return (
-            <span className="bg-slate-50 border border-slate-200/60 text-[10px] font-medium text-slate-400 px-2 py-0.5 rounded-full">
-                Non répondu
-            </span>
-        );
-        const smileys = ["😠", "🙁", "😐", "🙂", "😍"];
-        return <span className="text-xl" title={`Note: ${rating}/5`}>{smileys[rating - 1] || "⭐"}</span>;
-    };
-
-    return (
-        <div className="flex min-h-screen bg-slate-50">
-            <Sidebar user={user} />
-            <main className="flex-1 p-8">
-                <div className="max-w-7xl mx-auto">
-                    
-                    {/* Header */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-                        <div>
-                            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight flex items-center gap-3">
-                                📧 Communication & Marketing
-                            </h1>
-                            <p className="text-base font-normal text-slate-500 mt-1">
-                                Segmentez votre base client, diffusez vos actualités et pilotez la satisfaction de votre club.
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Navigation Onglets Style Portefeuille / Paramètres */}
-                    <div className="flex items-center border-b border-slate-200 mb-8 overflow-x-auto no-scrollbar">
-                        <button
-                            onClick={() => { setActiveTab("newsletter"); setMessage(null); }}
-                            className={`flex items-center gap-2 px-8 py-4 text-sm font-semibold transition-all border-b-2 whitespace-nowrap ${activeTab === "newsletter"
-                                ? "border-blue-600 text-blue-600"
-                                : "border-transparent text-slate-500 hover:text-slate-700"
-                                }`}
-                        >
-                            <span className="text-base">📧</span> Newsletter & Communication
-                        </button>
-                        <button
-                            onClick={() => { setActiveTab("operational"); setMessage(null); }}
-                            className={`flex items-center gap-2 px-8 py-4 text-sm font-semibold transition-all border-b-2 whitespace-nowrap ${activeTab === "operational"
-                                ? "border-blue-600 text-blue-600"
-                                : "border-transparent text-slate-500 hover:text-slate-700"
-                                }`}
-                        >
-                            <span className="text-base">📢</span> Infos pratiques
-                        </button>
-                        <button
-                            onClick={() => { setActiveTab("marketing"); setMessage(null); }}
-                            className={`flex items-center gap-2 px-8 py-4 text-sm font-semibold transition-all border-b-2 whitespace-nowrap ${activeTab === "marketing"
-                                ? "border-blue-600 text-blue-600"
-                                : "border-transparent text-slate-500 hover:text-slate-700"
-                                }`}
-                        >
-                            <span className="text-base">🚀</span> Marketing
-                        </button>
-                        <button
-                            onClick={() => { setActiveTab("surveys"); setMessage(null); }}
-                            className={`flex items-center gap-2 px-8 py-4 text-sm font-semibold transition-all border-b-2 whitespace-nowrap ${activeTab === "surveys"
-                                ? "border-blue-600 text-blue-600"
-                                : "border-transparent text-slate-500 hover:text-slate-700"
-                                }`}
-                        >
-                            <span className="text-base">📊</span> Enquêtes
-                        </button>
-                    </div>
-
-                    {/* Alertes de retour */}
-                    {message && (
-                        <div className={`mb-6 p-4 rounded-2xl border flex items-center justify-between gap-3 animate-in fade-in duration-200 ${message.type === "success" ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"}`}>
-                            <div className="flex items-center gap-3">
-                                <span className="text-lg">{message.type === "success" ? "✅" : "❌"}</span>
-                                <p className="text-sm font-medium">{message.text}</p>
-                            </div>
-                            <button 
-                                onClick={() => setMessage(null)} 
-                                className="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-white/40 rounded-lg ml-auto shrink-0"
-                                title="Fermer"
-                            >
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-                    )}
-
-                    {/* ==================== TABS 1 & 2 : EMAIL CREATION ==================== */}
-                    {(activeTab === "newsletter" || activeTab === "operational") && (
-                        <div className="grid grid-cols-1 gap-8">
-                            
-                            {/* Section Modèles de bibliothèque */}
-                            {templates.length > 0 && (
-                                <section className="animate-in fade-in duration-300">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Modèles enregistrés</h2>
-                                        <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-bold">{templates.length} modèles</span>
-                                    </div>
-                                    <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">
-                                        {templates.map(t => (
-                                            <div 
-                                                key={t.id}
-                                                onClick={() => loadTemplate(t)}
-                                                className="min-w-[220px] max-w-[220px] bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group relative"
-                                            >
-                                                <button 
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setTemplateToDelete(t);
-                                                    }}
-                                                    className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-white text-slate-400 hover:bg-rose-50 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all text-xs z-20"
-                                                    title="Supprimer le modèle"
-                                                >
-                                                    ✕
-                                                </button>
-                                                <div className="w-10 h-10 bg-indigo-50/50 rounded-xl flex items-center justify-center text-indigo-600 transition-colors mb-4 font-bold text-lg">
-                                                    📄
-                                                </div>
-                                                <h3 className="font-bold text-slate-900 text-sm truncate mb-1">{t.name}</h3>
-                                                <p className="text-xs text-slate-500 truncate">{t.subject || "Pas d'objet"}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </section>
-                            )}
-
-                            {/* Cadre Unique de Composition */}
-                            <section className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 z-30 relative space-y-6">
-                                
-                                {/* 1. Destinataires */}
-                                <div className="relative mb-2" ref={dropdownRef}>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                                        Définir les destinataires
-                                    </label>
-                                    <button
-                                        type="button"
-                                        onClick={() => setDropdownOpen(!dropdownOpen)}
-                                        className="w-full p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all outline-none flex items-center justify-between text-sm font-semibold text-slate-800 shadow-sm"
-                                    >
-                                        <span className="flex items-center gap-2">
-                                            {selectedTargets.includes("all") ? (
-                                                <>
-                                                    <span className="text-base">🌍</span> Tous les utilisateurs ({allUsers.filter(u => u.role === "user").length} personnes)
-                                                </>
-                                            ) : selectedTargets.includes("selected") ? (
-                                                <>
-                                                    <span className="text-base">✏️</span> Sélection manuelle ({selectedUserIds.length} personnes)
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <span className="text-base">🎯</span> Statuts : {selectedTargets.map(t => {
-                                                        const label = segmentLabels[t];
-                                                        return label ? label.split(" (")[0] : t;
-                                                    }).join(", ")}
-                                                </>
-                                            )}
-                                        </span>
-                                        <svg className={`w-5 h-5 text-slate-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                    </button>
-
-                                    {dropdownOpen && (
-                                        <div className="absolute left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                            <div className="p-4 max-h-[350px] overflow-y-auto space-y-2">
-                                                
-                                                {/* Tous les utilisateurs */}
-                                                <label className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-all cursor-pointer border border-slate-100">
-                                                    <div className="flex items-center gap-3">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selectedTargets.includes("all")}
-                                                            onChange={() => toggleTarget("all")}
-                                                            className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
-                                                        />
-                                                        <div className="flex flex-col">
-                                                            <span className="text-sm font-semibold text-slate-800">🌍 Tous les utilisateurs</span>
-                                                            <span className="text-xs text-slate-400 font-normal">Envoyer à toute la base</span>
-                                                        </div>
-                                                    </div>
-                                                    <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-normal">
-                                                        {allUsers.filter(u => u.role === "user").length} personnes
-                                                    </span>
-                                                </label>
-
-                                                {selectedUserIds.length > 0 && (
-                                                    <label className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-all cursor-pointer border border-slate-100 bg-amber-50/20 border-amber-100">
-                                                        <div className="flex items-center gap-3">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={selectedTargets.includes("selected")}
-                                                                onChange={() => toggleTarget("selected")}
-                                                                className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
-                                                            />
-                                                            <div className="flex flex-col">
-                                                                <span className="text-sm font-semibold text-slate-800">✏️ Sélection manuelle</span>
-                                                                <span className="text-xs text-slate-400 font-normal">Membres pré-sélectionnés dans la liste</span>
-                                                            </div>
-                                                        </div>
-                                                        <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-normal">
-                                                            {selectedUserIds.length} personnes
-                                                        </span>
-                                                    </label>
-                                                )}
-
-                                                <div className="border-t border-slate-100 my-2 pt-2">
-                                                    <p className="text-[10px] font-normal text-slate-400 uppercase tracking-wider px-3 mb-2">Filtrer par statut comportemental</p>
-                                                </div>
-
-                                                {/* Statuts / segments */}
-                                                {Object.entries(segmentLabels).map(([key, label]) => {
-                                                    const count = segmentStats ? (segmentStats as any)[key] || 0 : 0;
-                                                    const cleanLabel = label.split(" (")[0];
-                                                    const subLabel = label.includes(" (") ? label.substring(label.indexOf(" (") + 2, label.lastIndexOf(")")) : "";
-                                                    
-                                                    return (
-                                                        <label key={key} className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-all cursor-pointer border border-slate-100">
-                                                            <div className="flex items-center gap-3">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={selectedTargets.includes(key)}
-                                                                    onChange={() => toggleTarget(key)}
-                                                                    className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
-                                                                />
-                                                                <div className="flex flex-col">
-                                                                    <span className="text-sm font-semibold text-slate-800">{cleanLabel}</span>
-                                                                    {subLabel && <span className="text-xs text-slate-400 font-normal">{subLabel}</span>}
-                                                                </div>
-                                                            </div>
-                                                            <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-normal">
-                                                                {count} personnes
-                                                            </span>
-                                                        </label>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {activeTab === "newsletter" && (
-                                        <div className="text-slate-400 text-xs font-normal leading-relaxed mt-2.5 flex items-start gap-1.5">
-                                            <span>ℹ️</span>
-                                            <span>
-                                                Ces e-mails respectent le consentement des utilisateurs. Seuls les clients ayant coché <em>&quot;Accepter les e-mails d&apos;information et marketing&quot;</em> recevront ce message.
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    {/* switch urgent en cas d'urgence opérationnelle */}
-                                    {activeTab === "operational" && (
-                                        <div className="mt-4 flex flex-col gap-4">
-                                            <div className="flex items-center justify-end gap-4">
-                                                <span className="text-sm font-semibold text-slate-700">Forcer l&apos;envoi</span>
-                                                <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                                                    <input 
-                                                        type="checkbox" 
-                                                        checked={forceOperational}
-                                                        onChange={(e) => setForceOperational(e.target.checked)}
-                                                        className="sr-only peer" 
-                                                    />
-                                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
-                                                </label>
-                                            </div>
-
-                                            {forceOperational && (
-                                                <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 text-xs leading-relaxed animate-in slide-in-from-top-4 duration-300">
-                                                    <p className="font-bold flex items-center gap-2 mb-1 text-amber-800">
-                                                        ⚠️ AVERTISSEMENT DE CONFORMITÉ RGPD
-                                                    </p>
-                                                    L&apos;envoi forcé outrepasse le choix de non-réception des utilisateurs. Cette option doit être réservée **uniquement** à des cas majeurs (ex. fermeture exceptionnelle, panne technique, changement d&apos;horaires urgents). Tout usage commercial ou promotionnel via cette option est strictement interdit par la réglementation.
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="border-t border-slate-100 my-4" />
-
-                                {/* 2. Édition du message */}
-                                <div className="space-y-5">
-                                    <div>
-                                        <label className={`block text-sm font-medium mb-1.5 ${showValidation && !subject ? 'text-rose-500' : 'text-slate-700'}`}>Objet de l&apos;email</label>
-                                        <input
-                                            type="text"
-                                            value={subject}
-                                            onChange={(e) => {
-                                                setSubject(e.target.value);
-                                                if (e.target.value) setShowValidation(false);
-                                            }}
-                                            placeholder="Saisissez l'objet de votre e-mail..."
-                                            className={`w-full p-3.5 border rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 outline-none text-sm transition-all font-light ${showValidation && !subject ? 'border-rose-300 bg-rose-50/30' : 'border-slate-200 bg-white'}`}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">Contenu de l&apos;email</label>
-                                        <div className="bg-white rounded-xl overflow-hidden border border-slate-200 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all">
-                                            <QuillNode
-                                                ref={quillRef}
-                                                theme="snow"
-                                                value={content}
-                                                onChange={setContent}
-                                                modules={modules}
-                                                placeholder="Rédigez le corps de votre message..."
-                                                className="h-80 quill-editor"
-                                            />
-                                        </div>
-
-                                        <style jsx global>{`
-                                            .quill-editor .ql-toolbar {
-                                                border: none !important;
-                                                border-bottom: 1px solid #e2e8f0 !important;
-                                                background: #f8fafc;
-                                            }
-                                            .quill-editor .ql-container {
-                                                border: none !important;
-                                                font-family: 'Livvic', sans-serif !important;
-                                            }
-                                            .quill-editor .ql-editor {
-                                                min-height: 240px;
-                                                font-family: 'Livvic', sans-serif !important;
-                                                font-size: 0.875rem !important;
-                                                font-weight: 300 !important;
-                                                line-height: 1.6;
-                                            }
-                                            .quill-editor .ql-editor.ql-blank::before {
-                                                font-family: 'Livvic', sans-serif !important;
-                                                font-size: 0.875rem !important;
-                                                font-weight: 300 !important;
-                                                font-style: normal !important;
-                                                color: #94a3b8 !important;
-                                            }
-                                            .quill-editor .ql-editor img {
-                                                max-width: 100%;
-                                                border-radius: 12px;
-                                            }
-                                        `}</style>
-                                    </div>
-                                </div>
-                            </section>
-
-                            {/* Actions */}
-                            <div className="flex flex-col md:flex-row justify-end items-center gap-4 pt-4 pb-8">
-                                <button
-                                    onClick={() => setShowSaveModal(true)}
-                                    className="w-full md:w-auto px-6 py-4 rounded-xl font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-all flex items-center justify-center gap-2 text-sm shadow-sm"
-                                >
-                                    💾 Enregistrer comme modèle
-                                </button>
-                                <button
-                                    onClick={handleSend}
-                                    disabled={isSending}
-                                    className={`w-full md:w-auto px-10 py-4 rounded-xl font-bold text-white shadow-lg shadow-indigo-200/50 transition-all text-sm ${isSending ? "bg-slate-400 cursor-not-allowed" : "bg-slate-900 hover:bg-slate-800"}`}
-                                >
-                                    {isSending ? "Envoi en cours..." : "Diffuser le message"}
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-
-                    {/* ==================== TAB 3 : MARKETING ACTIONS ==================== */}
-                    {activeTab === "marketing" && (() => {
-                        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-                        return (
-                            <div className="space-y-8 animate-in fade-in duration-300">
-                                {/* Pale Blue Premium Banner */}
-                                <div className="bg-blue-50/60 border border-blue-100/80 p-4 px-6 rounded-2xl text-blue-900 shadow-sm flex items-center justify-center">
-                                    <div className="flex flex-col md:flex-row md:items-center md:justify-center gap-2 md:gap-4 w-full text-center">
-                                        <h2 className="text-base font-semibold text-blue-950 tracking-tight flex items-center justify-center gap-2 shrink-0">
-                                            <span>🎯</span> Stratégies de marketing intelligentes
-                                        </h2>
-                                        <span className="hidden md:inline text-blue-200">|</span>
-                                        <p className="text-blue-800 text-xs font-normal leading-relaxed truncate">
-                                            Ciblez vos segments clés en un clic et personnalisez le message. Vos campagnes se transforment automatiquement en e-mails premium.
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                                    {/* 1/3 Left Column: Visual Email Preview Mockup */}
-                                    <div className="lg:col-span-1 bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4">
-                                        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Aperçu du visuel cible</h3>
-                                            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
-                                        </div>
-                                        
-                                        {/* Mock Email Client Container */}
-                                        <div className="border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm bg-slate-50 text-[10px]">
-                                            {/* Browser Header Bar */}
-                                            <div className="bg-slate-100 px-3.5 py-2.5 flex items-center gap-2 border-b border-slate-200">
-                                                <div className="flex gap-1.5 shrink-0">
-                                                    <span className="w-2 h-2 rounded-full bg-rose-400 inline-block"></span>
-                                                    <span className="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>
-                                                    <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
-                                                </div>
-                                                <div className="w-full bg-white rounded-md text-[9px] text-slate-400 text-center py-0.5 border border-slate-200 truncate select-none">
-                                                    apercu-zenstudio-mockup
-                                                </div>
-                                            </div>
-                                            
-                                            {/* Email Client Content */}
-                                            <div className="bg-white text-slate-700">
-                                                {/* Brand Logo & Name */}
-                                                <div className="p-4 pb-2.5 flex flex-col items-center justify-center gap-1.5">
-                                                    {tenant?.logo_url ? (
-                                                        <img src={`${API_URL}${tenant.logo_url}`} className="h-9 object-contain" alt="Logo" />
-                                                    ) : (
-                                                        <span className="text-xl">🧘‍♀️</span>
-                                                    )}
-                                                    <span className="font-bold text-[10px] text-slate-900 tracking-widest uppercase" style={{ fontFamily: "'Livvic', sans-serif" }}>
-                                                        {tenant?.name || "Zen Studio"}
-                                                    </span>
-                                                </div>
-
-                                                {/* Premium Yoga Cover Image - Full Width / Edge-to-Edge */}
-                                                <div className="w-full">
-                                                    <img 
-                                                        src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=600&auto=format&fit=crop" 
-                                                        className="w-full h-36 object-cover" 
-                                                        alt="Zen Yoga Studio Preview" 
-                                                    />
-                                                </div>
-                                                
-                                                {/* Elegant Centered Content */}
-                                                <div className="p-5 pt-3.5 space-y-3 text-center" style={{ fontFamily: "'Livvic', sans-serif" }}>
-                                                    <p className="font-bold text-slate-900 leading-normal text-[11px]">Bonjour Julie,</p>
-                                                    <p className="text-slate-500 font-normal leading-relaxed text-[9px] max-w-xs mx-auto">
-                                                        Nous tenions tout particulièrement à vous remercier pour votre fidélité et votre énergie positive au studio ! C&apos;est un réel plaisir de vous accompagner dans vos séances.
-                                                    </p>
-                                                    <p className="text-slate-500 font-normal leading-relaxed text-[9px] max-w-xs mx-auto">
-                                                        Pour vous remercier, voici un code cadeau offrant une invitation gratuite pour le proche de votre choix lors de votre prochain cours :
-                                                    </p>
-                                                    
-                                                    {/* Double Border Coupon Box */}
-                                                    <div className="my-3.5 mx-auto max-w-[250px] p-3 bg-[#FAF9F6] border-4 border-double border-[#e2e8f0] rounded-2xl text-center shadow-[0_2px_4px_rgba(30,41,59,0.02)]">
-                                                        <span className="font-bold text-[12px] text-[#1e293b] tracking-widest uppercase" style={{ fontFamily: "'Livvic', sans-serif" }}>
-                                                            MERCIAMIS
-                                                        </span>
-                                                    </div>
-
-                                                    <p className="text-slate-900 font-semibold text-[9px] mt-3">
-                                                        À très bientôt sur les tapis !
-                                                    </p>
-                                                    <p className="text-slate-400 font-medium text-[8px]">
-                                                        L&apos;équipe {tenant?.name || "Zen Studio"}
-                                                    </p>
-                                                    
-                                                    {/* Soft Rounded CTA Button (Moderate curves, matching Image 2) */}
-                                                    <div className="py-2.5">
-                                                        <span 
-                                                            className="inline-block px-7 py-2.5 text-[9px] font-bold text-white rounded-xl shadow-md hover:shadow-lg tracking-wider uppercase select-none transition-all active:scale-95 cursor-pointer" 
-                                                            style={{ 
-                                                                backgroundColor: tenant?.primary_color || "#7c3aed",
-                                                                fontFamily: "'Livvic', sans-serif" 
-                                                            }}
-                                                        >
-                                                            Réserver votre séance
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                
-                                                {/* Newsletter Footer Menu & Social Links */}
-                                                <div className="pt-4 border-t border-slate-100 text-center space-y-3">
-                                                    {/* Links Menu */}
-                                                    <div className="flex items-center justify-center gap-2 text-[8px] font-bold text-slate-400 select-none">
-                                                        <span>Nos Cours</span>
-                                                        <span className="text-slate-200 font-normal select-none">•</span>
-                                                        <span>Horaires</span>
-                                                        <span className="text-slate-200 font-normal select-none">•</span>
-                                                        <span>Tarifs</span>
-                                                        <span className="text-slate-200 font-normal select-none">•</span>
-                                                        <span>Établissement</span>
-                                                    </div>
-
-                                                    {/* Minimalist Social Icons */}
-                                                    <div className="flex items-center justify-center gap-3">
-                                                        <span className="w-6 h-6 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-[#1877F2] font-bold hover:bg-slate-100 transition-colors">
-                                                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                                                                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                                                            </svg>
-                                                        </span>
-                                                        <span className="w-6 h-6 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-[#E1306C] font-bold hover:bg-slate-100 transition-colors">
-                                                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                                                                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
-                                                            </svg>
-                                                        </span>
-                                                    </div>
-                                                    
-                                                    <p className="font-normal text-[8px] text-slate-400">
-                                                        © {new Date().getFullYear()} {tenant?.name || "Zen Studio"}. Tous droits réservés.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 space-y-2 text-[11px]">
-                                            <p className="font-semibold text-slate-800 flex items-center gap-1.5">
-                                                <span>💡</span> Rendu Automatique
-                                            </p>
-                                            <p className="text-slate-500 font-normal leading-relaxed">
-                                                Pas besoin de mise en page complexe. Vos textes bruts sont automatiquement embellis avec le logo, l&apos;image d&apos;illustration, la couleur d&apos;accentuation et les réseaux sociaux paramétrés pour votre club.
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {/* 2/3 Right Column: Campaign Grid */}
-                                    <div className="lg:col-span-2">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            {marketingCards.map(card => {
-                                                const count = segmentStats ? (segmentStats as any)[card.segment] || 0 : 0;
-                                                return (
-                                                    <div 
-                                                        key={card.id}
-                                                        onClick={() => handleSelectMarketingCard(card)}
-                                                        className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer flex flex-col justify-between group h-full relative overflow-hidden"
-                                                    >
-                                                        <div className="space-y-3">
-                                                            <div className="flex items-center gap-3">
-                                                                <span className="text-xl shrink-0 group-hover:scale-110 transition-transform duration-300 select-none">{card.icon}</span>
-                                                                <h3 className="text-sm font-semibold text-slate-900 leading-snug">
-                                                                    {card.title}
-                                                                </h3>
-                                                            </div>
-                                                            <p className="text-[11px] text-slate-500 font-normal leading-relaxed pl-8">
-                                                                {card.description}
-                                                            </p>
-                                                        </div>
-
-                                                        <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between pl-8">
-                                                            <span className="text-[10px] font-bold px-2.5 py-0.5 bg-slate-100 text-slate-600 rounded-lg">
-                                                                {count} {count > 1 ? "destinataires" : "destinataire"}
-                                                            </span>
-                                                            <span className="text-[10px] font-bold text-blue-600 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all flex items-center gap-0.5">
-                                                                Lancer ➔
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })()}
-
-                    {/* ==================== TAB 3 : SATISFACTION SURVEYS ==================== */}
-                    {activeTab === "surveys" && (
-                        <div className="space-y-10">
-                            
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                
-                                {/* 1. Créateur d'enquêtes */}
-                                <div className="lg:col-span-1 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm self-start">
-                                    <h3 className="text-lg font-semibold text-slate-950 mb-5 pb-3 border-b border-slate-100 flex items-center gap-2 tracking-tight">
-                                        <span>📊</span> Créer une enquête
-                                    </h3>
-                                    
-                                    <form onSubmit={handleCreateSurvey} className="space-y-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Titre</label>
-                                            <input 
-                                                type="text" 
-                                                required
-                                                value={surveyTitle}
-                                                onChange={(e) => setSurveyTitle(e.target.value)}
-                                                placeholder="Ex : Qu'avez-vous pensé de notre stage de mai ?"
-                                                className="w-full p-3 border border-slate-200 bg-white hover:border-slate-300 rounded-xl text-sm font-medium outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 placeholder:text-sm placeholder:font-normal placeholder:text-slate-400 placeholder:opacity-100"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Description <span className="text-[10px] text-slate-400 font-normal ml-1 lowercase">(optionnel)</span></label>
-                                            <textarea 
-                                                value={surveyDescription}
-                                                onChange={(e) => setSurveyDescription(e.target.value)}
-                                                placeholder="Ex : Avez-vous aimé les activités proposées ?"
-                                                rows={2}
-                                                className="w-full p-3 border border-slate-200 bg-white hover:border-slate-300 rounded-xl text-sm font-normal outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 placeholder:text-sm placeholder:font-normal placeholder:text-slate-400 placeholder:opacity-100 resize-none"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Nature</label>
-                                            <div className="flex gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => { setSurveyType("general"); setSurveyTargetSegment(""); }}
-                                                    className={`flex-1 py-2.5 rounded-lg text-xs font-medium border transition-all ${surveyType === "general" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
-                                                >
-                                                    Enquête générale
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => { setSurveyType("event"); setSurveyTargetType("event"); setSurveyTargetSegment("participants"); }}
-                                                    className={`flex-1 py-2.5 rounded-lg text-xs font-medium border transition-all ${surveyType === "event" && surveyTargetType === "event" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
-                                                >
-                                                    Événement
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => { setSurveyType("event"); setSurveyTargetType("session"); setSurveyTargetSegment("participants"); }}
-                                                    className={`flex-1 py-2.5 rounded-lg text-xs font-medium border transition-all ${surveyType === "event" && surveyTargetType === "session" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
-                                                >
-                                                    Séance
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {surveyType === "event" && (
-                                            surveyTargetType === "event" ? (
-                                                <div>
-                                                    <select
-                                                        value={surveyEventId}
-                                                        onChange={(e) => setSurveyEventId(e.target.value)}
-                                                        required
-                                                        className={`w-full p-3 border border-slate-200 bg-white rounded-xl text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 shadow-sm transition-all ${!surveyEventId ? 'text-slate-400 font-normal' : 'text-slate-700 font-medium'}`}
-                                                    >
-                                                        <option value="" className="text-slate-400">Choisir un événement</option>
-                                                        {events.map(ev => (
-                                                            <option key={ev.id} value={ev.id} className="text-slate-700 font-medium">{ev.title} ({ev.event_date ? ev.event_date.split('-').reverse().join('/') : ''})</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                            ) : (
-                                                <div>
-                                                    <select
-                                                        value={surveySessionId}
-                                                        onChange={(e) => setSurveySessionId(e.target.value)}
-                                                        required
-                                                        className={`w-full p-3 border border-slate-200 bg-white rounded-xl text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 shadow-sm transition-all ${!surveySessionId ? 'text-slate-400 font-normal' : 'text-slate-700 font-medium'}`}
-                                                    >
-                                                        <option value="" className="text-slate-400">Choisir une séance</option>
-                                                        {sessions.map(sess => (
-                                                            <option key={sess.id} value={sess.id} className="text-slate-700 font-medium">{sess.title} ({new Date(sess.start_time).toLocaleDateString()})</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                            )
-                                        )}
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Ciblage</label>
-                                            <div className="relative">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                                    className={`w-full p-3 border border-slate-200 bg-white rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 flex items-center justify-between shadow-[0_2px_4px_rgba(30,41,59,0.02)] transition-all text-sm ${
-                                                        surveyType === "event"
-                                                            ? "text-black font-light"
-                                                            : (!surveyTargetSegment || surveyTargetSegment === "tous")
-                                                                ? "text-slate-400 font-normal"
-                                                                : "text-black font-light"
-                                                    }`}
-                                                >
-                                                    <span className="truncate">
-                                                        {surveyType === "event"
-                                                            ? (!surveyTargetSegment || surveyTargetSegment === "participants"
-                                                                ? "Uniquement les participants"
-                                                                : surveyTargetSegment === "tous"
-                                                                    ? "Toute la base utilisateur"
-                                                                    : surveyTargetSegment.split(",").map(k => segmentLabels[k] || k).join(", "))
-                                                            : (!surveyTargetSegment
-                                                                ? "Choisir un ou plusieurs segments"
-                                                                : surveyTargetSegment === "tous"
-                                                                    ? "Toute la base utilisateur"
-                                                                    : surveyTargetSegment.split(",").map(k => segmentLabels[k] || k).join(", "))
-                                                        }
-                                                    </span>
-                                                    <span className="text-slate-400 text-[10px]">▼</span>
-                                                </button>
-                                                
-                                                {isDropdownOpen && (
-                                                    <>
-                                                        <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
-                                                        <div className="absolute left-0 right-0 z-50 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg flex flex-col max-h-64 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
-                                                            {/* Zone défilante des options */}
-                                                            <div className="p-1.5 space-y-0.5 overflow-y-auto max-h-52 flex-1">
-                                                                {/* Option Uniquement les participants (seulement pour type event) */}
-                                                                {surveyType === "event" && (
-                                                                    <>
-                                                                        <label className="flex items-center gap-2.5 p-2 rounded-lg cursor-pointer hover:bg-slate-50 transition-all select-none text-xs font-semibold text-slate-700">
-                                                                            <input
-                                                                                type="checkbox"
-                                                                                checked={surveyTargetSegment.split(",").includes("participants")}
-                                                                                onChange={(e) => {
-                                                                                    let current = surveyTargetSegment.split(",").filter(x => x && x !== "tous");
-                                                                                    if (e.target.checked) {
-                                                                                        if (!current.includes("participants")) {
-                                                                                            current.push("participants");
-                                                                                        }
-                                                                                        setSurveyTargetSegment(current.join(","));
-                                                                                    } else {
-                                                                                        current = current.filter(x => x !== "participants");
-                                                                                        setSurveyTargetSegment(current.join(","));
-                                                                                    }
-                                                                                }}
-                                                                                className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300"
-                                                                            />
-                                                                            Uniquement les participants
-                                                                        </label>
-                                                                        <div className="border-t border-slate-100 my-1" />
-                                                                    </>
-                                                                )}
-
-                                                                {/* Option Tous */}
-                                                                <label className="flex items-center gap-2.5 p-2 rounded-lg cursor-pointer hover:bg-slate-50 transition-all select-none text-xs font-semibold text-slate-700">
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={surveyTargetSegment === "tous" || !!(segmentStats && surveyTargetSegment.split(",").filter(x => x && x !== "tous" && x !== "participants").length === Object.keys(segmentStats).length)}
-                                                                        onChange={(e) => {
-                                                                            if (e.target.checked) {
-                                                                                setSurveyTargetSegment("tous");
-                                                                            } else {
-                                                                                setSurveyTargetSegment("");
-                                                                            }
-                                                                        }}
-                                                                        className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300"
-                                                                    />
-                                                                    Toute la base utilisateur
-                                                                </label>
-                                                                
-                                                                <div className="border-t border-slate-100 my-1" />
-                                                                
-                                                                {/* Options individuelles */}
-                                                                {segmentStats && Object.entries(segmentStats).map(([key, val]) => {
-                                                                    if (key === "participants") return null;
-                                                                    const isChecked = surveyTargetSegment.split(",").includes(key) || surveyTargetSegment.split(",").includes("tous");
-                                                                    return (
-                                                                        <label 
-                                                                            key={key} 
-                                                                            className={`flex items-center gap-2.5 p-2 rounded-lg cursor-pointer transition-all select-none hover:bg-slate-50 ${isChecked ? 'bg-blue-50/20' : ''}`}
-                                                                        >
-                                                                            <input
-                                                                                type="checkbox"
-                                                                                checked={isChecked}
-                                                                                onChange={(e) => {
-                                                                                    let current = surveyTargetSegment.split(",").filter(x => x && x !== "tous");
-                                                                                    if (surveyTargetSegment.split(",").includes("tous") && segmentStats) {
-                                                                                        current = Object.keys(segmentStats).filter(k => k !== "participants");
-                                                                                    }
-                                                                                    
-                                                                                    if (e.target.checked) {
-                                                                                        if (!current.includes(key)) {
-                                                                                            current.push(key);
-                                                                                        }
-                                                                                        if (segmentStats && current.filter(k => k !== "participants").length === Object.keys(segmentStats).filter(k => k !== "participants").length) {
-                                                                                            setSurveyTargetSegment("tous");
-                                                                                        } else {
-                                                                                            setSurveyTargetSegment(current.join(","));
-                                                                                        }
-                                                                                    } else {
-                                                                                        current = current.filter(x => x !== key);
-                                                                                        setSurveyTargetSegment(current.join(","));
-                                                                                    }
-                                                                                }}
-                                                                                className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300"
-                                                                            />
-                                                                            <span className={`text-xs ${isChecked ? 'text-blue-900 font-medium' : 'text-slate-700'}`}>
-                                                                                {segmentLabels[key] || key} <span className="text-slate-400 font-normal text-[10px]">({val})</span>
-                                                                            </span>
-                                                                        </label>
-                                                                    );
-                                                                })}
-                                                            </div>
-
-                                                            {/* Sticky Footer de validation */}
-                                                            <div className="bg-slate-50 border-t border-slate-100 px-3 py-2 flex items-center justify-between z-10 text-[10px]">
-                                                                <span className="text-slate-500 font-medium truncate max-w-[160px]">
-                                                                    {surveyTargetSegment ? (
-                                                                        surveyTargetSegment === "tous" ? "Toute la base" : `${surveyTargetSegment.split(',').filter(Boolean).length} segment(s) sélec.`
-                                                                    ) : "Aucun segment"}
-                                                                </span>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => setIsDropdownOpen(false)}
-                                                                    className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-lg transition-all"
-                                                                >
-                                                                    Valider
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <button
-                                            type="submit"
-                                            disabled={isCreatingSurvey}
-                                            className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-medium transition-all disabled:opacity-50 mt-4 active:scale-95"
-                                        >
-                                            {isCreatingSurvey ? "Génération des jetons..." : "Générer la campagne"}
-                                        </button>
-                                    </form>
-                                </div>
-
-                                {/* 2. Liste des enquêtes existantes */}
-                                <div className="lg:col-span-2 space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Campagnes d&apos;enquêtes actives</h3>
-                                        <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium">{surveys.length} enquêtes</span>
-                                    </div>
-
-                                    {surveys.length === 0 ? (
-                                        <div className="bg-white p-12 text-center rounded-2xl border border-slate-200/80">
-                                            <span className="text-4xl block mb-3">🗳️</span>
-                                            <h4 className="font-semibold text-slate-800 text-base">Aucune enquête créée</h4>
-                                            <p className="text-slate-400 text-xs mt-1">Utilisez le formulaire pour générer des questionnaires 1-Click sécurisés.</p>
-                                        </div>
-                                    ) : (
-                                        <div className="grid grid-cols-1 gap-4">
-                                            {surveys.map(c => (
-                                                <div 
-                                                    key={c.id}
-                                                    className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all space-y-4"
-                                                >
-                                                    {/* Ligne 1 : Badge + Titre à gauche, Stats à droite */}
-                                                    <div className="flex items-start justify-between gap-4">
-                                                        <div className="flex-1 space-y-1.5">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className={`px-2 py-0.5 rounded-md text-[9px] uppercase font-semibold border ${c.survey_type === 'event' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
-                                                                    {c.survey_type === 'event' ? (c.event_id ? 'Événement' : 'Séance') : 'Général'}
-                                                                </span>
-                                                                <span className="text-[10px] text-slate-400">{new Date(c.created_at).toLocaleDateString()}</span>
-                                                            </div>
-                                                            <h4 className="font-medium text-slate-900 text-base">{c.title}</h4>
-                                                            {c.description && (
-                                                                <p className="text-xs text-slate-400 mt-0.5 font-normal leading-relaxed">{c.description}</p>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex gap-3 items-center shrink-0">
-                                                            <div className="text-center bg-white px-3 py-1.5 rounded-lg border border-slate-100">
-                                                                <span className="text-[10px] text-slate-400 font-normal block">Note</span>
-                                                                <span className="font-medium text-sm text-slate-800 flex items-center justify-center gap-0.5">
-                                                                    ⭐ {c.average_rating ? Number(c.average_rating).toFixed(1) : "-"}
-                                                                </span>
-                                                            </div>
-                                                            <div className="text-center bg-white px-3 py-1.5 rounded-lg border border-slate-100">
-                                                                <span className="text-[10px] text-slate-400 font-normal block">Envoi</span>
-                                                                <span className="font-medium text-sm text-slate-800">{c.responses_count}</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Ligne 2 : Actions horizontales */}
-                                                    <div className="flex gap-2 pt-1 justify-end">
-                                                        {!c.is_sent ? (
-                                                            <button
-                                                                onClick={() => handleSendSurvey(c.id)}
-                                                                disabled={isSendingSurvey === c.id}
-                                                                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-lg text-xs font-normal transition-all active:scale-95 text-center min-w-[180px]"
-                                                            >
-                                                                {isSendingSurvey === c.id ? "Envoi..." : "✉️ Lancer l'enquête par mail"}
-                                                            </button>
-                                                        ) : (
-                                                            <button
-                                                                onClick={() => handleViewSurveyDetails(c.id)}
-                                                                className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-black rounded-lg text-xs font-normal transition-all text-center min-w-[180px]"
-                                                            >
-                                                                🔍 Voir les retours détaillés
-                                                            </button>
-                                                        )}
-                                                        <button
-                                                            onClick={() => handleDeleteSurvey(c)}
-                                                            className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-normal transition-all text-center"
-                                                        >
-                                                            🗑️ Supprimer
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </main>
-
-            {/* ==================== MODALS ==================== */}
-
-            {/* Modal / Drawer de configuration de la campagne de relance marketing */}
-            {selectedMarketingCard && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                        {/* Modal Header */}
-                        <div className="p-4 md:p-5 pb-2.5 flex items-center justify-between bg-white sticky top-0 z-10 border-b border-slate-100">
-                            <div className="flex items-center gap-3">
-                                <span className="text-2xl select-none">{selectedMarketingCard.icon}</span>
-                                <div>
-                                    <h3 className="text-base font-semibold text-slate-900 tracking-tight leading-snug">{selectedMarketingCard.title}</h3>
-                                </div>
-                            </div>
-                            <button onClick={() => { setSelectedMarketingCard(null); setShowTips(false); }} className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-50 rounded-xl">
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        {/* Modal Content */}
-                        <div className="flex-1 overflow-y-auto p-4 md:p-5 pt-3 space-y-4">
-                            
-                            {/* Premium Encart de ciblage & conseils marketing */}
-                            {(() => {
-                                const info = marketingCampaignTips[selectedMarketingCard.id] || {
-                                    segmentLabel: segmentLabels[selectedMarketingCard.segment] || selectedMarketingCard.segment,
-                                    tips: ["Définissez des objectifs de campagne clairs.", "Rédigez un contenu direct et chaleureux."]
-                                };
-                                return (
-                                    <div className="bg-gradient-to-r from-blue-50/70 to-indigo-50/50 border border-blue-100/80 rounded-2xl p-4 shadow-sm text-sm">
-                                        <button 
-                                            type="button"
-                                            onClick={() => setShowTips(!showTips)}
-                                            className="w-full flex items-center justify-between font-semibold text-slate-700 outline-none select-none"
-                                        >
-                                            <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 text-left">
-                                                <h4 className="text-xs font-bold flex items-center gap-1.5 uppercase tracking-wide text-slate-800">
-                                                    💡 Idées d&apos;actions recommandées
-                                                </h4>
-                                                <div className="inline-flex items-center px-2 py-0.5 bg-blue-100/50 text-blue-800 text-[10px] font-semibold rounded-lg border border-blue-200/50 self-start md:self-auto leading-none">
-                                                    🎯 Ciblage : {info.segmentLabel.split(" (")[0]}
-                                                </div>
-                                            </div>
-                                            <span className="text-[11px] font-bold text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1 shrink-0 ml-2">
-                                                {showTips ? "Masquer ▲" : "Afficher les conseils ▼"}
-                                            </span>
-                                        </button>
-                                        
-                                        {showTips && (
-                                            <div className="mt-3 pt-3 border-t border-blue-100/40 animate-in slide-in-from-top-2 duration-200">
-                                                <ul className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                    {info.tips.map((tip, idx) => (
-                                                        <li key={idx} className="flex gap-2.5 items-start bg-white/65 p-3 rounded-xl border border-white shadow-[0_2px_4px_rgba(30,41,59,0.02)]">
-                                                            <span className="text-blue-500 font-bold select-none text-xs">{idx + 1}.</span>
-                                                            <span className="text-xs text-slate-600 font-medium leading-relaxed">{tip}</span>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })()}
-
-                            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-                                {/* Colonne Gauche : Liste des Destinataires */}
-                                <div className="lg:col-span-2 flex flex-col gap-4">
-                                    <div className="flex items-center justify-between">
-                                        <h4 className="text-xs font-medium text-slate-400 uppercase tracking-wider">
-                                            Destinataires ({selectedMarketingUserIds.length})
-                                        </h4>
-                                        <button
-                                            onClick={() => {
-                                                const targetedUsers = allUsers.filter(u => u.segment === selectedMarketingCard.segment);
-                                                if (selectedMarketingUserIds.length === targetedUsers.length) {
-                                                    setSelectedMarketingUserIds([]);
-                                                } else {
-                                                    setSelectedMarketingUserIds(targetedUsers.map(u => u.id));
-                                                }
-                                            }}
-                                            className="text-xs font-semibold text-blue-600 hover:underline"
-                                        >
-                                            {selectedMarketingUserIds.length === allUsers.filter(u => u.segment === selectedMarketingCard.segment).length ? "Tout décocher" : "Tout cocher"}
-                                        </button>
-                                    </div>
-
-                                    <div className="flex-1 overflow-y-auto max-h-[360px] pr-2 border border-slate-100 rounded-2xl p-4 bg-slate-50/30 flex flex-col gap-2">
-                                        {allUsers.filter(u => u.segment === selectedMarketingCard.segment).length === 0 ? (
-                                            <div className="text-center text-xs text-slate-400 py-12">
-                                                Aucun membre dans ce segment actuellement.
-                                            </div>
-                                        ) : (
-                                            allUsers.filter(u => u.segment === selectedMarketingCard.segment).map(u => (
-                                                <label
-                                                    key={u.id}
-                                                    className="flex items-center justify-between p-3.5 rounded-2xl bg-white border border-slate-100 hover:border-slate-200 transition-all cursor-pointer hover:shadow-sm"
-                                                >
-                                                    <div className="flex items-center gap-3">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selectedMarketingUserIds.includes(u.id)}
-                                                            onChange={() => {
-                                                                setSelectedMarketingUserIds(prev =>
-                                                                    prev.includes(u.id) ? prev.filter(uid => uid !== u.id) : [...prev, u.id]
-                                                                );
-                                                            }}
-                                                            className="w-4 h-4 text-blue-600 border-slate-200 rounded focus:ring-blue-500"
-                                                        />
-                                                        <div className="flex flex-col text-left">
-                                                            <span className="font-semibold text-slate-700 text-xs">{u.first_name} {u.last_name}</span>
-                                                            <span className="text-[10px] text-slate-400 font-normal mt-0.5">{u.email}</span>
-                                                        </div>
-                                                    </div>
-                                                </label>
-                                            ))
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Colonne Droite : Message */}
-                                <div className="lg:col-span-3 flex flex-col gap-5">
-                                    <div>
-                                        <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">objet du message</label>
-                                        <input
-                                            type="text"
-                                            value={marketingSubject}
-                                            onChange={(e) => setMarketingSubject(e.target.value)}
-                                            className="w-full p-4 border border-slate-200/80 rounded-2xl text-sm font-semibold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 bg-slate-55"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">corps du message</label>
-                                        <div className="border border-slate-200/80 rounded-2xl overflow-hidden focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500/20 bg-white">
-                                             <QuillNode
-                                                 theme="snow"
-                                                 value={marketingContent}
-                                                 onChange={setMarketingContent}
-                                                 modules={{
-                                                     toolbar: [
-                                                         ['bold', 'italic', 'underline', 'strike'],
-                                                         ['link'],
-                                                         [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                                                         [{ 'align': [] }],
-                                                         ['clean']
-                                                      ]
-                                                 }}
-                                                 className="bg-white min-h-[160px] text-sm"
-                                             />
-                                        </div>
-                                        <div className="mt-3 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/80 flex items-start gap-3 text-[11px] text-indigo-950 font-normal leading-relaxed">
-                                            <span className="text-sm select-none">✨</span>
-                                            <div className="space-y-1.5">
-                                                <p className="font-semibold text-indigo-900">Astuces et optimisations visuelles automatiques :</p>
-                                                <ul className="list-disc pl-4 space-y-1">
-                                                    <li><b>Personnalisation</b> : Utilisez le tag <code>{"{first_name}"}</code> dans votre texte pour insérer le prénom de chaque destinataire (ex: Julie, Thomas).</li>
-                                                    <li><b>Cadre Code Promo</b> : Rédigez un code en MAJUSCULES et mettez-le <b>en gras</b> (ex: <b>MERCIAMIS</b>) pour l&apos;afficher dans un magnifique encart double-bordure pastel.</li>
-                                                    <li><b>Bouton d&apos;Action</b> : Insérez un lien hypertexte seul sur sa propre ligne de paragraphe pour le transformer automatiquement en un bouton d&apos;action arrondi à la couleur du club.</li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Modal Footer */}
-                        <div className="p-6 bg-white border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
-                            <span className="text-xs font-medium text-slate-500">
-                                {selectedMarketingUserIds.length} destinataire(s) sélectionné(s) sur {allUsers.filter(u => u.segment === selectedMarketingCard.segment).length}
-                            </span>
-                            <div className="flex items-center gap-3 w-full md:w-auto">
-                                <button
-                                    onClick={() => setSelectedMarketingCard(null)}
-                                    className="w-full md:w-auto px-5 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl font-semibold hover:bg-slate-50 transition-all text-sm active:scale-95"
-                                >
-                                    Annuler
-                                </button>
-                                <button
-                                    onClick={handleSendMarketing}
-                                    disabled={isSendingMarketing || selectedMarketingUserIds.length === 0}
-                                    className="w-full md:w-auto px-8 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-xl font-semibold transition-all text-sm shadow-md active:scale-95 flex items-center justify-center gap-2"
-                                >
-                                    {isSendingMarketing ? "Envoi en cours..." : "Diffuser la campagne 🚀"}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Modal Sélection manuelle utilisateurs */}
-            {showUserSelector && (
-                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
-                        <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
-                            <div className="flex items-center gap-3">
-                                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                                </svg>
-                                <h3 className="text-[17px] font-bold text-slate-900 tracking-tight">Sélectionner les destinataires</h3>
-                            </div>
-                            <button onClick={() => setShowUserSelector(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-50 rounded-lg">
-                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-                        
-                        <div className="p-6 border-b border-slate-100">
-                            <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                    </svg>
-                                </span>
-                                <input
-                                    type="text"
-                                    placeholder="Rechercher un membre..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 outline-none text-sm transition-all"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                            {filteredUsers.map(u => (
-                                <button
-                                    key={u.id}
-                                    onClick={() => toggleUserSelection(u.id)}
-                                    className={`w-full flex items-center p-3 rounded-xl transition-all border ${selectedUserIds.includes(u.id) ? "bg-indigo-50 border-indigo-200" : "bg-white border-slate-100 hover:border-slate-200"}`}
-                                >
-                                    <div className={`w-5 h-5 rounded-md border flex items-center justify-center mr-4 ${selectedUserIds.includes(u.id) ? "bg-indigo-600 border-indigo-600 text-white" : "border-slate-300"}`}>
-                                        {selectedUserIds.includes(u.id) && "✓"}
-                                    </div>
-                                    <div className="text-left">
-                                        <p className="font-bold text-slate-800 text-sm">{u.first_name} {u.last_name}</p>
-                                        <p className="text-xs text-slate-500">{u.email}</p>
-                                    </div>
-                                    <div className="ml-auto">
-                                        <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold border ${u.is_active ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-50 text-slate-500 border-slate-200"}`}>
-                                            {u.is_active ? "Actif" : "Inactif"}
-                                        </span>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-
-                        <div className="p-6 bg-gray-50 border-t border-slate-100 flex justify-between items-center">
-                            <span className="text-sm font-semibold text-slate-600">{selectedUserIds.length} sélectionné(s)</span>
-                            <button
-                                onClick={() => setShowUserSelector(false)}
-                                className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-slate-800 transition-all text-sm active:scale-95"
-                            >
-                                Terminer
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Modal de sauvegarde de modèle */}
-            {showSaveModal && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-10 pb-8">
-                            <h3 className="text-xl font-semibold text-slate-900 mb-2">Enregistrer le modèle</h3>
-                            <p className="text-sm text-slate-500 mb-8 leading-relaxed">Donnez un nom à ce modèle pour le retrouver facilement dans votre bibliothèque.</p>
-                            
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    autoFocus
-                                    value={templateName}
-                                    onChange={(e) => setTemplateName(e.target.value)}
-                                    placeholder="ex: Annonce Stage Printemps"
-                                    className="w-full p-4 rounded-2xl border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 outline-none transition-all bg-slate-50/50 font-bold"
-                                    onKeyDown={(e) => e.key === 'Enter' && handleSaveTemplate()}
-                                />
-                            </div>
-                        </div>
-                        <div className="p-6 bg-gray-50 border-t border-slate-100 flex gap-3 justify-end items-center">
-                            <button 
-                                onClick={() => setShowSaveModal(false)}
-                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-semibold hover:bg-gray-50 transition-all text-sm active:scale-95"
-                            >
-                                Annuler
-                            </button>
-                            <button
-                                onClick={handleSaveTemplate}
-                                disabled={isSavingTemplate || !templateName.trim()}
-                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 disabled:opacity-50 transition-all text-sm shadow-sm active:scale-95"
-                            >
-                                {isSavingTemplate ? "..." : "Enregistrer"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Modal de suppression de modèle */}
-            {templateToDelete && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-10 pb-8">
-                            <h3 className="text-xl font-bold text-slate-900 mb-2">Supprimer le modèle ?</h3>
-                            <p className="text-sm text-slate-500 leading-relaxed font-medium">Cette action est définitive. Le modèle <b>&quot;{templateToDelete.name}&quot;</b> sera supprimé.</p>
-                        </div>
-                        <div className="p-6 bg-gray-50 border-t border-slate-100 flex gap-3 justify-end items-center">
-                            <button 
-                                onClick={() => setTemplateToDelete(null)}
-                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-semibold hover:bg-gray-50 transition-all text-sm active:scale-95"
-                            >
-                                Annuler
-                            </button>
-                            <button
-                                onClick={handleDeleteTemplate}
-                                disabled={isDeleting}
-                                className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-bold hover:bg-rose-700 transition-all text-sm shadow-sm active:scale-95"
-                            >
-                                {isDeleting ? "..." : "Supprimer"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Modal de suppression d'enquête */}
-            {surveyToDelete && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-10 pb-8">
-                            <h3 className="text-xl font-semibold text-slate-900 mb-2">Confirmer la suppression</h3>
-                            <p className="text-[15px] text-slate-500 leading-relaxed font-normal">
-                                Cette action est définitive. L&apos;enquête <b>&quot;{surveyToDelete.title}&quot;</b> ainsi que tous les avis associés seront définitivement supprimés.
-                            </p>
-                        </div>
-                        <div className="p-6 bg-white border-t border-slate-100 flex gap-3 justify-end items-center">
-                            <button 
-                                onClick={() => setSurveyToDelete(null)}
-                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm active:scale-95"
-                            >
-                                Annuler
-                            </button>
-                            <button
-                                onClick={confirmDeleteSurvey}
-                                disabled={isDeletingSurvey}
-                                className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm active:scale-95"
-                            >
-                                {isDeletingSurvey ? "..." : "Supprimer"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Modal Inspecteur détaillé Enquêtes */}
-            {showSurveyDetailsModal && selectedSurveyDetails && (
-                <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[9999] flex items-center justify-end animate-in fade-in duration-300">
-                    <div className="bg-white w-full max-w-2xl h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-                        
-                        {/* Header details */}
-                        <div className="p-8 border-b border-slate-100 flex items-center justify-between">
-                            <div>
-                                <span className={`px-2 py-0.5 rounded-md text-[9px] uppercase font-semibold border ${selectedSurveyDetails.survey_type === 'event' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
-                                    {selectedSurveyDetails.survey_type === 'event' ? (selectedSurveyDetails.event_id ? 'Événement' : 'Séance') : 'Général'}
-                                </span>
-                                <h3 className="font-medium text-slate-900 text-base mt-1">{selectedSurveyDetails.title}</h3>
-                                {selectedSurveyDetails.context_title && (
-                                    <p className="text-xs text-slate-400 mt-0.5">Contexte : {selectedSurveyDetails.context_title}</p>
-                                )}
-                            </div>
-                            <button 
-                                onClick={() => setShowSurveyDetailsModal(false)}
-                                className="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-50 rounded-xl transition-colors"
-                            >
-                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-
-                        {/* Breakdown Panel */}
-                        <div className="p-6 bg-slate-50 border-b border-slate-100 grid grid-cols-3 gap-4 text-center">
-                            <div className="bg-white p-4 rounded-xl border border-slate-200/50 shadow-sm">
-                                <span className="text-[10px] uppercase font-medium text-slate-400 tracking-wider">Note Moyenne</span>
-                                <span className="block font-medium text-2xl text-slate-900 mt-1">
-                                    ⭐ {selectedSurveyDetails.stats.average_rating ? Number(selectedSurveyDetails.stats.average_rating).toFixed(1) : "-"}
-                                </span>
-                            </div>
-                            <div className="bg-white p-4 rounded-xl border border-slate-200/50 shadow-sm">
-                                <span className="text-[10px] uppercase font-medium text-slate-400 tracking-wider">Participation</span>
-                                <span className="block font-medium text-2xl text-slate-900 mt-1">
-                                    {Number(selectedSurveyDetails.stats.response_rate).toFixed(0)}%
-                                </span>
-                            </div>
-                            <div className="bg-white p-4 rounded-xl border border-slate-200/50 shadow-sm">
-                                <span className="text-[10px] uppercase font-medium text-slate-400 tracking-wider">Total Réponses</span>
-                                <span className="block font-medium text-2xl text-slate-900 mt-1">
-                                    {selectedSurveyDetails.stats.total_responses}/{selectedSurveyDetails.stats.total_sent}
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Responses list */}
-                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                            <h4 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Retours Individuels</h4>
-                            
-                            {selectedSurveyDetails.responses.length === 0 ? (
-                                <div className="text-center text-slate-400 text-sm py-12">Aucun retour enregistré pour le moment.</div>
-                            ) : (
-                                <div className="space-y-3">
-                                    {selectedSurveyDetails.responses.map((r: any) => (
-                                        <div key={r.id} className="bg-white p-4 rounded-xl border border-slate-200/60 shadow-sm space-y-2">
-                                            <div className="flex justify-between items-center">
-                                                <div>
-                                                    <p className="font-medium text-sm text-slate-800">{r.user_name}</p>
-                                                    <p className="text-[10px] text-slate-400">{r.user_email}</p>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    {r.submitted_at ? (
-                                                        <span className="bg-emerald-50 border border-emerald-150 text-[10px] font-medium text-emerald-700 px-2 py-0.5 rounded-full">
-                                                            Répondu
-                                                        </span>
-                                                    ) : r.clicked_at ? (
-                                                        <span className="bg-amber-50 border border-amber-150 text-[10px] font-medium text-amber-700 px-2 py-0.5 rounded-full animate-pulse">
-                                                            Cliqué
-                                                        </span>
-                                                    ) : (
-                                                        <span className="bg-slate-100 text-[10px] font-medium text-slate-400 px-2 py-0.5 rounded-full">
-                                                            Envoyé
-                                                        </span>
-                                                    )}
-                                                    {renderSmileys(r.rating)}
-                                                </div>
-                                            </div>
-
-                                            {r.comment && (
-                                                <div className="p-3 bg-slate-50 border border-slate-100 rounded-lg text-xs font-medium text-slate-700 italic">
-                                                    &ldquo;{r.comment}&rdquo;
-                                                </div>
-                                            )}
-
-                                            <div className="text-[10px] text-slate-400 flex justify-between pt-1 border-t border-slate-50">
-                                                {r.clicked_at && <span>Premier clic : {new Date(r.clicked_at).toLocaleString()}</span>}
-                                                {r.submitted_at && <span>Soumis : {new Date(r.submitted_at).toLocaleString()}</span>}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Footer details */}
-                        <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end">
-                            <button
-                                onClick={() => setShowSurveyDetailsModal(false)}
-                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-medium hover:bg-slate-800 transition-all shadow-sm active:scale-95"
-                            >
-                                Fermer
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-        </div>
-    );
-}
-
-export default function AdminEmailsPage() {
-    return (
-        <Suspense fallback={<div className="flex min-h-screen bg-slate-50 items-center justify-center">Chargement...</div>}>
-            <AdminEmailsContent />
-        </Suspense>
-    );
-}
+"use client";
+
+import Sidebar from "@/components/Sidebar";
+import { useEffect, useState, useMemo, useCallback, useRef, Suspense } from "react";
+import { useRouter, useSearchParams, useParams } from "next/navigation";
+import { api, User, EmailTemplate } from "@/lib/api";
+import dynamic from "next/dynamic";
+
+// Import CSS for ReactQuill
+import "react-quill/dist/quill.snow.css";
+
+// Dynamic import of ReactQuill to avoid SSR issues
+const ReactQuill = dynamic(() => import("react-quill"), { 
+    ssr: false,
+    loading: () => <div className="h-64 bg-slate-50 border border-slate-200 rounded-xl animate-pulse flex items-center justify-center text-slate-400">Chargement de l'éditeur...</div>
+});
+
+const marketingCampaignTips: Record<string, { segmentLabel: string; tips: string[] }> = {
+    convert_prospects: {
+        segmentLabel: "Prospects (Comptes créés sans offre ni commande)",
+        tips: [
+            "Offrez une réduction temporaire (ex: -10%) ou proposez un premier cours d'essai à tarif préférentiel.",
+            "Proposez une visite personnalisée de votre établissement ou une séance d'accueil pour lever les freins.",
+            "Créez un sentiment d'urgence en limitant la validité du code de bienvenue (ex: valable 7 jours)."
+        ]
+    },
+    fid_discovery: {
+        segmentLabel: "Nouveaux venus (Une seule commande effectuée)",
+        tips: [
+            "Envoyez une enquête de satisfaction rapide pour recueillir leur ressenti sur leur première séance.",
+            "Suggerez-leur une formule de découverte ou une carte de 5/10 séances pour pérenniser leur pratique.",
+            "Mettez en avant vos services d'accompagnement ou des activités complémentaires pour créer une habitude."
+        ]
+    },
+    reactivate_distant: {
+        segmentLabel: "Membres distants (Offre en cours mais absents depuis 21 jours)",
+        tips: [
+            "Prenez simplement des nouvelles avec bienveillance pour savoir s'ils rencontrent des difficultés.",
+            "Rappelez-leur que la régularité est la clé de leur progression et proposez un accompagnement sur-mesure.",
+            "Suggerez un changement de créneau ou une formule plus souple si leur emploi du temps a changé."
+        ]
+    },
+    reward_actives: {
+        segmentLabel: "Membres actifs (Fidèles et réguliers)",
+        tips: [
+            "Offrez un privilège exclusif (ex: invitation gratuite pour un proche, accès prioritaire aux nouveaux cours).",
+            "Mettez en place un programme de parrainage pour les inciter à faire découvrir votre club à leurs proches.",
+            "Invitez-les à partager leur avis positif sur vos réseaux sociaux ou fiche Google pour accroître votre visibilité."
+        ]
+    },
+    engage_visitors: {
+        segmentLabel: "Visiteurs ponctuels (Passages sporadiques)",
+        tips: [
+            "Démontrez l'intérêt financier de passer à une formule mensuelle ou une carte de 10/20 séances.",
+            "Proposez des offres groupées ou des ateliers thématiques le week-end adaptés aux pratiquants flexibles.",
+            "Valorisez l'appartenance à la communauté du club pour les inciter à s'investir plus régulièrement."
+        ]
+    },
+    winback_inactives: {
+        segmentLabel: "Anciens membres (Inactifs depuis plus de 60 jours)",
+        tips: [
+            "Proposez une offre irrésistible de réengagement (ex: séance offerte, pas de frais d'inscription).",
+            "Présentez vos nouveautés : nouveaux professeurs, équipements ou activités ajoutés récemment.",
+            "Rassurez-les sur la reprise en douceur de leur routine sportive ou bien-être, sans pression."
+        ]
+    }
+};
+
+function AdminEmailsContent() {
+    const router = useRouter();
+    const params = useParams();
+    const searchParams = useSearchParams();
+    const [user, setUser] = useState<User | null>(null);
+    const [tenant, setTenant] = useState<any | null>(null);
+    const [activeTab, setActiveTab] = useState<"newsletter" | "operational" | "marketing" | "surveys">("newsletter");
+    
+    // Destinataires & Segments
+    const [recipientType, setRecipientType] = useState<"all" | "selected" | "segment">("all");
+    const [selectedSegment, setSelectedSegment] = useState<string>("");
+    const [allUsers, setAllUsers] = useState<User[]>([]);
+    const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+    const [selectedTargets, setSelectedTargets] = useState<string[]>(["all"]);
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    const [segmentStats, setSegmentStats] = useState<{
+        explorateur: number;
+        decouverte: number;
+        regulier: number;
+        endormi: number;
+        flexible: number;
+        ancien: number;
+    } | null>(null);
+    
+    // Editor State
+    const [subject, setSubject] = useState("");
+    const [content, setContent] = useState("");
+    const [isSending, setIsSending] = useState(false);
+    const [showValidation, setShowValidation] = useState(false);
+    const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+    const [showUserSelector, setShowUserSelector] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+    
+    // Switch Urgence Opérationnelle
+    const [forceOperational, setForceOperational] = useState(false);
+
+    // Templates state
+    const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+    const [showSaveModal, setShowSaveModal] = useState(false);
+    const [templateName, setTemplateName] = useState("");
+    const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+    const [templateToDelete, setTemplateToDelete] = useState<EmailTemplate | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    // Enquêtes (Surveys) State
+    const [surveys, setSurveys] = useState<any[]>([]);
+    const [events, setEvents] = useState<any[]>([]);
+    const [sessions, setSessions] = useState<any[]>([]);
+    const [selectedSurveyDetails, setSelectedSurveyDetails] = useState<any | null>(null);
+    const [showSurveyDetailsModal, setShowSurveyDetailsModal] = useState(false);
+    const [surveyToDelete, setSurveyToDelete] = useState<any | null>(null);
+    const [isDeletingSurvey, setIsDeletingSurvey] = useState(false);
+    
+    // Form Enquêtes
+    const [surveyTitle, setSurveyTitle] = useState("");
+    const [surveyDescription, setSurveyDescription] = useState("");
+    const [surveyType, setSurveyType] = useState<"general" | "event">("general");
+    const [surveyTargetType, setSurveyTargetType] = useState<"event" | "session">("event");
+    const [surveyTargetSegment, setSurveyTargetSegment] = useState("");
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [surveyEventId, setSurveyEventId] = useState("");
+    const [surveySessionId, setSurveySessionId] = useState("");
+    const [isCreatingSurvey, setIsCreatingSurvey] = useState(false);
+    const [isSendingSurvey, setIsSendingSurvey] = useState<string | null>(null);
+
+    // Marketing State
+    const [selectedMarketingCard, setSelectedMarketingCard] = useState<any | null>(null);
+    const [selectedMarketingUserIds, setSelectedMarketingUserIds] = useState<string[]>([]);
+    const [marketingSubject, setMarketingSubject] = useState("");
+    const [marketingContent, setMarketingContent] = useState("");
+    const [isSendingMarketing, setIsSendingMarketing] = useState(false);
+    const [showTips, setShowTips] = useState(false);
+    const [marketingColor, setMarketingColor] = useState("");
+    const [marketingImageUrl, setMarketingImageUrl] = useState("");
+    const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+    const marketingCards = useMemo(() => [
+        {
+            id: "convert_prospects",
+            title: "Convertir vos prospects",
+            description: "Cible les personnes qui ont créé un compte mais n'ont pas encore passé de commande.",
+            segment: "explorateur",
+            icon: "✨",
+            defaultSubject: "Bienvenue chez {establishment} ! Bénéficiez de -10% sur votre première séance",
+            defaultContent: `<p>Bonjour {first_name},</p><p>Votre compte a été créé avec succès, mais vous n'avez pas encore planifié votre première activité.</p><p>Pour vous souhaiter la bienvenue, voici un code promo exclusif de 10% sur votre première réservation : <b>BIENVENUE10</b></p><p>À très bientôt dans notre studio !</p>`
+        },
+        {
+            id: "fid_discovery",
+            title: "Fidéliser les nouveaux venus",
+            description: "Cible les personnes avec une seule commande passée et aucune réservation future programmée.",
+            segment: "decouverte",
+            icon: "⭐",
+            defaultSubject: "Comment s'est passée votre première séance ?",
+            defaultContent: `<p>Bonjour {first_name},</p><p>Vous avez récemment effectué votre première séance chez nous et nous espérons que vous avez adoré l'expérience !</p><p>Pour continuer sur votre lancée, découvrez nos offres et formules régulières.</p><p>À bientôt !</p>`
+        },
+        {
+            id: "reactivate_distant",
+            title: "Réactiver vos membres distants",
+            description: "Cible les personnes avec une offre en cours mais absentes depuis plus de 21 jours.",
+            segment: "endormi",
+            icon: "🚀",
+            defaultSubject: "Nous pensons à vous !",
+            defaultContent: `<p>Bonjour {first_name},</p><p>Nous avons remarqué que nous ne vous avions pas vu au studio ces derniers temps. Nous espérons que tout va bien de votre côté !</p><p>N'hésitez pas à nous faire un petit signe si vous avez besoin d'adapter vos séances...</p><p>À très bientôt,</p><p>L'équipe</p>`
+        },
+        {
+            id: "reward_actives",
+            title: "Remercier vos membres actifs",
+            description: "Cible les personnes les plus fidèles avec une offre active et des réservations régulières.",
+            segment: "regulier",
+            icon: "💖",
+            defaultSubject: "Merci pour votre fidélité ! Un petit cadeau pour vous 🎁",
+            defaultContent: `<p>Bonjour {first_name},</p><p>Nous tenions tout particulièrement à vous remercier pour votre fidélité et votre énergie positive au studio ! C'est un réel plaisir de vous accompagner dans vos séances.</p><p>Pour vous remercier, voici un code cadeau offrant une invitation gratuite pour le proche de votre choix lors de votre prochain cours : <b>MERCIAMIS</b></p><p>À très bientôt sur les tapis !</p>`
+        },
+        {
+            id: "engage_visitors",
+            title: "Engager vos visiteurs ponctuels",
+            description: "Cible les personnes de passage qui viennent ponctuellement sans offre régulière.",
+            segment: "flexible",
+            icon: "⚡",
+            defaultSubject: "Passez à la vitesse supérieure chez {establishment}",
+            defaultContent: `<p>Bonjour {first_name},</p><p>Vous venez nous voir de temps en temps et nous adorons votre présence ponctuelle au studio !</p><p>Saviez-vous que vous pourriez économiser sur vos séances en optant pour l'une de nos formules régulières ou cartes multi-séances ? Découvrez nos offres adaptées à votre rythme de vie.</p><p>À bientôt pour votre prochaine séance !</p>`
+        },
+        {
+            id: "winback_inactives",
+            title: "Reconquérir vos anciens membres",
+            description: "Cible les personnes inactives qui n'ont pas passé de commande depuis plus de 60 jours.",
+            segment: "ancien",
+            icon: "👋",
+            defaultSubject: "Vous nous manquez... Venez tester nos nouveautés !",
+            defaultContent: `<p>Bonjour {first_name},</p><p>Cela fait plus de deux mois que nous ne vous avons pas vu au studio, et vous nous manquez beaucoup !</p><p>De nouveaux créneaux et de nouvelles activités viennent d'ouvrir. Pour vous encourager à revenir, nous serions ravis de vous offrir une séance d'essai gratuite avec le code : <b>RETOUR2026</b></p><p>À très vite,</p><p>L'équipe</p>`
+        }
+    ], []);
+
+    const handleSelectMarketingCard = (card: any) => {
+        setSelectedMarketingCard(card);
+        const segmentUsers = allUsers.filter(u => u.segment === card.segment);
+        setSelectedMarketingUserIds(segmentUsers.map(u => u.id));
+        
+        // Dynamically replace establishment/tenant name
+        const estName = tenant?.name || "votre établissement";
+        const subject = card.defaultSubject.replace(/{establishment}/g, estName).replace(/Rezea/g, estName).replace(/rezea/g, estName);
+        const content = card.defaultContent.replace(/{establishment}/g, estName).replace(/Rezea/g, estName).replace(/rezea/g, estName);
+        
+        setMarketingSubject(subject);
+        setMarketingContent(content);
+        setMarketingColor(tenant?.primary_color || "#7c3aed");
+        setMarketingImageUrl("");
+    };
+
+    const handleSendMarketing = async () => {
+        if (selectedMarketingUserIds.length === 0) {
+            setMessage({ type: "error", text: "Veuillez sélectionner au moins un destinataire." });
+            return;
+        }
+        if (!marketingSubject.trim()) {
+            setMessage({ type: "error", text: "Veuillez saisir un objet pour l'e-mail." });
+            return;
+        }
+        if (!marketingContent.trim()) {
+            setMessage({ type: "error", text: "Veuillez rédiger le contenu de l'e-mail." });
+            return;
+        }
+
+        setIsSendingMarketing(true);
+        setMessage(null);
+        try {
+            const result = await api.sendAdminEmail({
+                subject: marketingSubject,
+                content: marketingContent,
+                recipient_type: "selected",
+                selected_user_ids: selectedMarketingUserIds,
+                segment: selectedMarketingCard.segment,
+                custom_color: marketingColor || undefined,
+                custom_image_url: marketingImageUrl || undefined
+            });
+            setMessage({
+                type: "success",
+                text: `Campagne de marketing envoyée avec succès à ${result.count} personne(s) !`
+            });
+            setSelectedMarketingCard(null);
+        } catch (err: any) {
+            console.error(err);
+            const errorMsg = err.response?.data?.detail || "Une erreur est survenue lors de l'envoi de la campagne.";
+            setMessage({ type: "error", text: errorMsg });
+        } finally {
+            setIsSendingMarketing(false);
+        }
+    };
+
+    const QuillNode = ReactQuill as any;
+    const quillRef = useRef<any>(null);
+
+    // Configurer le support du texte centré / alignements dans Quill
+    useEffect(() => {
+        const configureQuill = async () => {
+            try {
+                const { default: Quill } = await import('quill');
+                const Align = Quill.import('attributors/style/align');
+                Quill.register(Align, true);
+            } catch (err) {
+                console.warn("Quill could not be configured for inline styles", err);
+            }
+        };
+        configureQuill();
+    }, []);
+
+    // Gestion fermeture clic extérieur pour le dropdown de ciblage
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setDropdownOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
+    const toggleTarget = (target: string) => {
+        setSelectedTargets(prev => {
+            if (target === "all") {
+                return ["all"];
+            }
+            if (target === "selected") {
+                return ["selected"];
+            }
+            // Si on coche un segment
+            let next = prev.filter(t => t !== "all" && t !== "selected");
+            if (next.includes(target)) {
+                next = next.filter(t => t !== target);
+            } else {
+                next.push(target);
+            }
+            if (next.length === 0) {
+                return ["all"];
+            }
+            return next;
+        });
+    };
+
+    // Chargement initial des données
+    const loadSurveys = useCallback(async () => {
+        try {
+            const data = await api.getSurveyCampaigns();
+            setSurveys(data);
+        } catch (err) {
+            console.error("Failed to load satisfaction surveys", err);
+        }
+    }, []);
+
+    const fetchAllData = useCallback(async () => {
+        try {
+            // 1. Authentification & rôle
+            const userData = await api.getCurrentUser();
+            if (userData.role !== "owner" && userData.role !== "manager") {
+                router.push(`/${params.slug}/home`);
+                return;
+            }
+            setUser(userData);
+
+            // 2. Récupérer les données annexes
+            const [users, templatesData, stats, eventsData, sessionsData, tenantData] = await Promise.all([
+                api.getAdminUsers(),
+                api.getEmailTemplates(),
+                api.getSegmentsStats().catch(() => null),
+                api.getAdminEvents().catch(() => []),
+                api.getAdminSessions().catch(() => []),
+                api.getTenantSettings().catch(() => null),
+            ]);
+            
+            setAllUsers(users);
+            setTemplates(templatesData);
+            setSegmentStats(stats);
+            setEvents(eventsData);
+            // Filtrer pour ne garder que les séances passées jusqu'à J-15
+            const filteredSessions = (sessionsData || []).filter((sess: any) => {
+                const startTime = new Date(sess.start_time).getTime();
+                const now = new Date().getTime();
+                const fifteenDaysAgo = now - 15 * 24 * 60 * 60 * 1000;
+                return startTime < now && startTime >= fifteenDaysAgo;
+            });
+            setSessions(filteredSessions);
+            setTenant(tenantData);
+            
+            // Pré-sélection des destinataires via query params
+            const recipientIds = searchParams.get("recipientIds");
+            if (recipientIds) {
+                const ids = recipientIds.split(",");
+                setSelectedUserIds(ids);
+                setRecipientType("selected");
+                setSelectedTargets(["selected"]);
+            }
+        } catch (err: any) {
+            console.error(err);
+            if (err.response?.status === 401) {
+                router.push(`/${params.slug}`);
+            }
+        }
+    }, [searchParams, router, params.slug]);
+
+    useEffect(() => {
+        fetchAllData();
+        loadSurveys();
+    }, [fetchAllData, loadSurveys]);
+
+    // Uploader une image dans Quill
+    const imageHandler = useCallback(() => {
+        const input = document.createElement('input');
+        input.setAttribute('type', 'file');
+        input.setAttribute('accept', 'image/*');
+        input.click();
+
+        input.onchange = async () => {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                try {
+                    const res = await api.uploadImage(file);
+                    const editor = quillRef.current.getEditor();
+                    const range = editor.getSelection();
+                    editor.insertEmbed(range.index, 'image', res.url);
+                } catch (error) {
+                    console.error("Image upload failed:", error);
+                    setMessage({ type: "error", text: "L'upload de l'image a échoué." });
+                }
+            }
+        };
+    }, []);
+
+    const modules = useMemo(() => ({
+        toolbar: {
+            container: [
+                [{ 'header': [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                [{ 'align': [] }],
+                [{ 'color': [] }, { 'background': [] }],
+                ['link', 'image'],
+                ['clean']
+            ],
+            handlers: {
+                image: imageHandler
+            }
+        },
+    }), [imageHandler]);
+
+    // Envoi des e-mails
+    const handleSend = async () => {
+        setShowValidation(true);
+        if (!subject || !content || content === "<p><br></p>") {
+            setMessage({ type: "error", text: "Veuillez remplir l'objet et le contenu de l'email." });
+            return;
+        }
+
+        let resolvedRecipientType = "all";
+        let resolvedSegment: string | undefined = undefined;
+        let resolvedUserIds: string[] | undefined = undefined;
+
+        if (selectedTargets.includes("all")) {
+            resolvedRecipientType = "all";
+        } else if (selectedTargets.includes("selected")) {
+            resolvedRecipientType = "selected";
+            resolvedUserIds = selectedUserIds;
+            if (resolvedUserIds.length === 0) {
+                setMessage({ type: "error", text: "Veuillez sélectionner au moins un destinataire." });
+                return;
+            }
+        } else if (selectedTargets.length === 1) {
+            resolvedRecipientType = "segment";
+            resolvedSegment = selectedTargets[0];
+        } else if (selectedTargets.length > 1) {
+            resolvedRecipientType = "selected";
+            // Filter users belonging to any of the selected segments
+            const targetedUsers = allUsers.filter(u => 
+                u.segment && selectedTargets.map(t => t.toLowerCase()).includes(u.segment.toLowerCase())
+            );
+            resolvedUserIds = targetedUsers.map(u => u.id);
+            
+            if (resolvedUserIds.length === 0) {
+                setMessage({ type: "error", text: "Aucun utilisateur ne correspond aux statuts sélectionnés." });
+                return;
+            }
+        } else {
+            setMessage({ type: "error", text: "Veuillez sélectionner au moins un destinataire." });
+            return;
+        }
+
+        setIsSending(true);
+        setMessage(null);
+
+        try {
+            const result = await api.sendAdminEmail({
+                subject,
+                content: content, 
+                recipient_type: resolvedRecipientType,
+                selected_user_ids: resolvedUserIds,
+                segment: resolvedSegment,
+                force_operational: activeTab === "operational" ? forceOperational : false
+            });
+            setMessage({ type: "success", text: result.message });
+            setSubject("");
+            setContent("");
+            setSelectedTargets(["all"]);
+            setForceOperational(false);
+            setShowValidation(false);
+        } catch (error: any) {
+            const errorMsg = error.response?.data?.detail || "Une erreur est survenue lors de l'envoi de l'email.";
+            setMessage({ type: "error", text: errorMsg });
+        } finally {
+            setIsSending(false);
+        }
+    };
+
+    // Gestion des modèles
+    const handleSaveTemplate = async () => {
+        if (!templateName.trim()) return;
+        if (!subject || !content || content === "<p><br></p>") {
+            setMessage({ type: "error", text: "Veuillez remplir l'objet et le contenu avant d'enregistrer." });
+            return;
+        }
+
+        setIsSavingTemplate(true);
+        try {
+            const newTemplate = await api.saveEmailTemplate({
+                name: templateName,
+                subject,
+                content
+            });
+            setTemplates(prev => [newTemplate, ...prev]);
+            setShowSaveModal(false);
+            setTemplateName("");
+            setMessage({ type: "success", text: "Modèle enregistré dans votre bibliothèque." });
+        } catch (error) {
+            setMessage({ type: "error", text: "Erreur lors de la sauvegarde du modèle." });
+        } finally {
+            setIsSavingTemplate(false);
+        }
+    };
+
+    const handleDeleteTemplate = async () => {
+        if (!templateToDelete) return;
+        
+        setIsDeleting(true);
+        try {
+            await api.deleteEmailTemplate(templateToDelete.id);
+            setTemplates(prev => prev.filter(t => t.id !== templateToDelete.id));
+            setTemplateToDelete(null);
+            setMessage({ type: "success", text: "Modèle supprimé avec succès." });
+        } catch (error) {
+            console.error("Delete failed", error);
+            setMessage({ type: "error", text: "Erreur lors de la suppression." });
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const loadTemplate = (template: EmailTemplate) => {
+        setSubject(template.subject);
+        setContent(template.content);
+        window.scrollTo({ top: 350, behavior: 'smooth' });
+    };
+
+    // Enquêtes : Créer une nouvelle campagne
+    const handleCreateSurvey = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!surveyTitle.trim()) {
+            setMessage({ type: "error", text: "Veuillez attribuer un titre à votre enquête." });
+            return;
+        }
+
+        if (surveyType === "general" && !surveyTargetSegment) {
+            setMessage({ type: "error", text: "Veuillez sélectionner un segment cible." });
+            return;
+        }
+
+        if (surveyType === "event" && !surveyTargetSegment) {
+            setMessage({ type: "error", text: "Veuillez sélectionner un ciblage." });
+            return;
+        }
+
+        if (surveyType === "event" && surveyTargetType === "event" && !surveyEventId) {
+            setMessage({ type: "error", text: "Veuillez sélectionner un événement." });
+            return;
+        }
+
+        if (surveyType === "event" && surveyTargetType === "session" && !surveySessionId) {
+            setMessage({ type: "error", text: "Veuillez sélectionner une séance." });
+            return;
+        }
+
+        setIsCreatingSurvey(true);
+        setMessage(null);
+        try {
+            await api.createSurveyCampaign({
+                title: surveyTitle,
+                description: surveyDescription || undefined,
+                survey_type: surveyType,
+                event_id: surveyType === "event" && surveyTargetType === "event" ? surveyEventId : undefined,
+                session_id: surveyType === "event" && surveyTargetType === "session" ? surveySessionId : undefined,
+                target_segment: surveyTargetSegment || undefined
+            });
+            setMessage({ type: "success", text: "Enquête de satisfaction créée et jetons individuels sécurisés générés." });
+            setSurveyTitle("");
+            setSurveyDescription("");
+            setSurveyTargetSegment(surveyType === "event" ? "participants" : "");
+            setSurveyEventId("");
+            setSurveySessionId("");
+            loadSurveys();
+        } catch (error: any) {
+            const errorMsg = error.response?.data?.detail || "Erreur de création de l'enquête.";
+            setMessage({ type: "error", text: errorMsg });
+        } finally {
+            setIsCreatingSurvey(false);
+        }
+    };
+
+    // Enquêtes : Diffuser par mail aux cibles
+    const handleSendSurvey = async (campaignId: string) => {
+        setIsSendingSurvey(campaignId);
+        setMessage(null);
+        try {
+            const res = await api.sendSurveyCampaignEmails(campaignId);
+            setMessage({ type: "success", text: res.message });
+            loadSurveys();
+        } catch (error: any) {
+            const errorMsg = error.response?.data?.detail || "Erreur lors de l'envoi de l'enquête.";
+            setMessage({ type: "error", text: errorMsg });
+        } finally {
+            setIsSendingSurvey(null);
+        }
+    };
+
+    // Enquêtes : Inspecter les retours clients
+    const handleViewSurveyDetails = async (campaignId: string) => {
+        try {
+            const details = await api.getSurveyCampaignDetails(campaignId);
+            setSelectedSurveyDetails(details);
+            setShowSurveyDetailsModal(true);
+        } catch (err) {
+            console.error(err);
+            setMessage({ type: "error", text: "Impossible de récupérer les retours de l'enquête." });
+        }
+    };
+
+    // Enquêtes : Ouvrir la confirmation de suppression
+    const handleDeleteSurvey = (campaign: any) => {
+        setSurveyToDelete(campaign);
+    };
+
+    // Enquêtes : Confirmer la suppression d'une enquête depuis la modale
+    const confirmDeleteSurvey = async () => {
+        if (!surveyToDelete) return;
+        setIsDeletingSurvey(true);
+        try {
+            await api.deleteSurveyCampaign(surveyToDelete.id);
+            setMessage({ type: "success", text: "Campagne d'enquête supprimée avec succès." });
+            setSurveyToDelete(null);
+            loadSurveys();
+        } catch (error: any) {
+            const errorMsg = error.response?.data?.detail || "Erreur lors de la suppression de l'enquête.";
+            setMessage({ type: "error", text: errorMsg });
+        } finally {
+            setIsDeletingSurvey(false);
+        }
+    };
+
+    // Filtres sélection utilisateurs manuelle
+    const filteredUsers = allUsers.filter(u => 
+        u.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const toggleUserSelection = (id: string) => {
+        setSelectedUserIds(prev => 
+            prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]
+        );
+    };
+
+    // Noms des segments en Français
+    const segmentLabels: Record<string, string> = {
+        explorateur: "Prospect (Compte créé - aucune commande)",
+        decouverte: "Découverte (Une commande passée - aucune réservation à venir)",
+        regulier: "Actif (Commande en cours - inscriptions régulières)",
+        endormi: "Distant (Commande en cours - absence prolongée (+21 jrs))",
+        flexible: "Visiteur (Aucune commande en cours - vient de temps en temps)",
+        ancien: "Inactif (N'a pas repris de commande depuis + de 60jrs)",
+        participants: "Uniquement les participants"
+    };
+
+    const renderSmileys = (rating: number | null) => {
+        if (rating === null) return (
+            <span className="bg-slate-50 border border-slate-200/60 text-[10px] font-medium text-slate-400 px-2 py-0.5 rounded-full">
+                Non répondu
+            </span>
+        );
+        const smileys = ["😠", "🙁", "😐", "🙂", "😍"];
+        return <span className="text-xl" title={`Note: ${rating}/5`}>{smileys[rating - 1] || "⭐"}</span>;
+    };
+
+    return (
+        <div className="flex min-h-screen bg-slate-50">
+            <Sidebar user={user} />
+            <main className="flex-1 p-8">
+                <div className="max-w-7xl mx-auto">
+                    
+                    {/* Header */}
+                    <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+                        <div>
+                            <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight flex items-center gap-3">
+                                📧 Communication & Marketing
+                            </h1>
+                            <p className="text-base font-normal text-slate-500 mt-1">
+                                Segmentez votre base client, diffusez vos actualités et pilotez la satisfaction de votre club.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Navigation Onglets Style Portefeuille / Paramètres */}
+                    <div className="flex items-center border-b border-slate-200 mb-8 overflow-x-auto no-scrollbar">
+                        <button
+                            onClick={() => { setActiveTab("newsletter"); setMessage(null); }}
+                            className={`flex items-center gap-2 px-8 py-4 text-sm font-semibold transition-all border-b-2 whitespace-nowrap ${activeTab === "newsletter"
+                                ? "border-blue-600 text-blue-600"
+                                : "border-transparent text-slate-500 hover:text-slate-700"
+                                }`}
+                        >
+                            <span className="text-base">📧</span> Newsletter & Communication
+                        </button>
+                        <button
+                            onClick={() => { setActiveTab("operational"); setMessage(null); }}
+                            className={`flex items-center gap-2 px-8 py-4 text-sm font-semibold transition-all border-b-2 whitespace-nowrap ${activeTab === "operational"
+                                ? "border-blue-600 text-blue-600"
+                                : "border-transparent text-slate-500 hover:text-slate-700"
+                                }`}
+                        >
+                            <span className="text-base">📢</span> Infos pratiques
+                        </button>
+                        <button
+                            onClick={() => { setActiveTab("marketing"); setMessage(null); }}
+                            className={`flex items-center gap-2 px-8 py-4 text-sm font-semibold transition-all border-b-2 whitespace-nowrap ${activeTab === "marketing"
+                                ? "border-blue-600 text-blue-600"
+                                : "border-transparent text-slate-500 hover:text-slate-700"
+                                }`}
+                        >
+                            <span className="text-base">🚀</span> Marketing
+                        </button>
+                        <button
+                            onClick={() => { setActiveTab("surveys"); setMessage(null); }}
+                            className={`flex items-center gap-2 px-8 py-4 text-sm font-semibold transition-all border-b-2 whitespace-nowrap ${activeTab === "surveys"
+                                ? "border-blue-600 text-blue-600"
+                                : "border-transparent text-slate-500 hover:text-slate-700"
+                                }`}
+                        >
+                            <span className="text-base">📊</span> Enquêtes
+                        </button>
+                    </div>
+
+                    {/* Alertes de retour */}
+                    {message && (
+                        <div className={`mb-6 p-4 rounded-2xl border flex items-center justify-between gap-3 animate-in fade-in duration-200 ${message.type === "success" ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-rose-50 border-rose-200 text-rose-800"}`}>
+                            <div className="flex items-center gap-3">
+                                <span className="text-lg">{message.type === "success" ? "✅" : "❌"}</span>
+                                <p className="text-sm font-medium">{message.text}</p>
+                            </div>
+                            <button 
+                                onClick={() => setMessage(null)} 
+                                className="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-white/40 rounded-lg ml-auto shrink-0"
+                                title="Fermer"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                    )}
+
+                    {/* ==================== TABS 1 & 2 : EMAIL CREATION ==================== */}
+                    {(activeTab === "newsletter" || activeTab === "operational") && (
+                        <div className="grid grid-cols-1 gap-8">
+                            
+                            {/* Section Modèles de bibliothèque */}
+                            {templates.length > 0 && (
+                                <section className="animate-in fade-in duration-300">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Modèles enregistrés</h2>
+                                        <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-bold">{templates.length} modèles</span>
+                                    </div>
+                                    <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">
+                                        {templates.map(t => (
+                                            <div 
+                                                key={t.id}
+                                                onClick={() => loadTemplate(t)}
+                                                className="min-w-[220px] max-w-[220px] bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group relative"
+                                            >
+                                                <button 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setTemplateToDelete(t);
+                                                    }}
+                                                    className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-white text-slate-400 hover:bg-rose-50 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all text-xs z-20"
+                                                    title="Supprimer le modèle"
+                                                >
+                                                    ✕
+                                                </button>
+                                                <div className="w-10 h-10 bg-indigo-50/50 rounded-xl flex items-center justify-center text-indigo-600 transition-colors mb-4 font-bold text-lg">
+                                                    📄
+                                                </div>
+                                                <h3 className="font-bold text-slate-900 text-sm truncate mb-1">{t.name}</h3>
+                                                <p className="text-xs text-slate-500 truncate">{t.subject || "Pas d'objet"}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
+
+                            {/* Cadre Unique de Composition */}
+                            <section className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 z-30 relative space-y-6">
+                                
+                                {/* 1. Destinataires */}
+                                <div className="relative mb-2" ref={dropdownRef}>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                                        Définir les destinataires
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDropdownOpen(!dropdownOpen)}
+                                        className="w-full p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all outline-none flex items-center justify-between text-sm font-semibold text-slate-800 shadow-sm"
+                                    >
+                                        <span className="flex items-center gap-2">
+                                            {selectedTargets.includes("all") ? (
+                                                <>
+                                                    <span className="text-base">🌍</span> Tous les utilisateurs ({allUsers.filter(u => u.role === "user").length} personnes)
+                                                </>
+                                            ) : selectedTargets.includes("selected") ? (
+                                                <>
+                                                    <span className="text-base">✏️</span> Sélection manuelle ({selectedUserIds.length} personnes)
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span className="text-base">🎯</span> Statuts : {selectedTargets.map(t => {
+                                                        const label = segmentLabels[t];
+                                                        return label ? label.split(" (")[0] : t;
+                                                    }).join(", ")}
+                                                </>
+                                            )}
+                                        </span>
+                                        <svg className={`w-5 h-5 text-slate-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+
+                                    {dropdownOpen && (
+                                        <div className="absolute left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                            <div className="p-4 max-h-[350px] overflow-y-auto space-y-2">
+                                                
+                                                {/* Tous les utilisateurs */}
+                                                <label className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-all cursor-pointer border border-slate-100">
+                                                    <div className="flex items-center gap-3">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedTargets.includes("all")}
+                                                            onChange={() => toggleTarget("all")}
+                                                            className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                                                        />
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm font-semibold text-slate-800">🌍 Tous les utilisateurs</span>
+                                                            <span className="text-xs text-slate-400 font-normal">Envoyer à toute la base</span>
+                                                        </div>
+                                                    </div>
+                                                    <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-normal">
+                                                        {allUsers.filter(u => u.role === "user").length} personnes
+                                                    </span>
+                                                </label>
+
+                                                {selectedUserIds.length > 0 && (
+                                                    <label className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-all cursor-pointer border border-slate-100 bg-amber-50/20 border-amber-100">
+                                                        <div className="flex items-center gap-3">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedTargets.includes("selected")}
+                                                                onChange={() => toggleTarget("selected")}
+                                                                className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                                                            />
+                                                            <div className="flex flex-col">
+                                                                <span className="text-sm font-semibold text-slate-800">✏️ Sélection manuelle</span>
+                                                                <span className="text-xs text-slate-400 font-normal">Membres pré-sélectionnés dans la liste</span>
+                                                            </div>
+                                                        </div>
+                                                        <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-normal">
+                                                            {selectedUserIds.length} personnes
+                                                        </span>
+                                                    </label>
+                                                )}
+
+                                                <div className="border-t border-slate-100 my-2 pt-2">
+                                                    <p className="text-[10px] font-normal text-slate-400 uppercase tracking-wider px-3 mb-2">Filtrer par statut comportemental</p>
+                                                </div>
+
+                                                {/* Statuts / segments */}
+                                                {Object.entries(segmentLabels).map(([key, label]) => {
+                                                    const count = segmentStats ? (segmentStats as any)[key] || 0 : 0;
+                                                    const cleanLabel = label.split(" (")[0];
+                                                    const subLabel = label.includes(" (") ? label.substring(label.indexOf(" (") + 2, label.lastIndexOf(")")) : "";
+                                                    
+                                                    return (
+                                                        <label key={key} className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-all cursor-pointer border border-slate-100">
+                                                            <div className="flex items-center gap-3">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selectedTargets.includes(key)}
+                                                                    onChange={() => toggleTarget(key)}
+                                                                    className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                                                                />
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-sm font-semibold text-slate-800">{cleanLabel}</span>
+                                                                    {subLabel && <span className="text-xs text-slate-400 font-normal">{subLabel}</span>}
+                                                                </div>
+                                                            </div>
+                                                            <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-normal">
+                                                                {count} personnes
+                                                            </span>
+                                                        </label>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {activeTab === "newsletter" && (
+                                        <div className="text-slate-400 text-xs font-normal leading-relaxed mt-2.5 flex items-start gap-1.5">
+                                            <span>ℹ️</span>
+                                            <span>
+                                                Ces e-mails respectent le consentement des utilisateurs. Seuls les clients ayant coché <em>&quot;Accepter les e-mails d&apos;information et marketing&quot;</em> recevront ce message.
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* switch urgent en cas d'urgence opérationnelle */}
+                                    {activeTab === "operational" && (
+                                        <div className="mt-4 flex flex-col gap-4">
+                                            <div className="flex items-center justify-end gap-4">
+                                                <span className="text-sm font-semibold text-slate-700">Forcer l&apos;envoi</span>
+                                                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={forceOperational}
+                                                        onChange={(e) => setForceOperational(e.target.checked)}
+                                                        className="sr-only peer" 
+                                                    />
+                                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                                                </label>
+                                            </div>
+
+                                            {forceOperational && (
+                                                <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 text-xs leading-relaxed animate-in slide-in-from-top-4 duration-300">
+                                                    <p className="font-bold flex items-center gap-2 mb-1 text-amber-800">
+                                                        ⚠️ AVERTISSEMENT DE CONFORMITÉ RGPD
+                                                    </p>
+                                                    L&apos;envoi forcé outrepasse le choix de non-réception des utilisateurs. Cette option doit être réservée **uniquement** à des cas majeurs (ex. fermeture exceptionnelle, panne technique, changement d&apos;horaires urgents). Tout usage commercial ou promotionnel via cette option est strictement interdit par la réglementation.
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="border-t border-slate-100 my-4" />
+
+                                {/* 2. Édition du message */}
+                                <div className="space-y-5">
+                                    <div>
+                                        <label className={`block text-sm font-medium mb-1.5 ${showValidation && !subject ? 'text-rose-500' : 'text-slate-700'}`}>Objet de l&apos;email</label>
+                                        <input
+                                            type="text"
+                                            value={subject}
+                                            onChange={(e) => {
+                                                setSubject(e.target.value);
+                                                if (e.target.value) setShowValidation(false);
+                                            }}
+                                            placeholder="Saisissez l'objet de votre e-mail..."
+                                            className={`w-full p-3.5 border rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 outline-none text-sm transition-all font-light ${showValidation && !subject ? 'border-rose-300 bg-rose-50/30' : 'border-slate-200 bg-white'}`}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">Contenu de l&apos;email</label>
+                                        <div className="bg-white rounded-xl overflow-hidden border border-slate-200 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all">
+                                            <QuillNode
+                                                ref={quillRef}
+                                                theme="snow"
+                                                value={content}
+                                                onChange={setContent}
+                                                modules={modules}
+                                                placeholder="Rédigez le corps de votre message..."
+                                                className="h-80 quill-editor"
+                                            />
+                                        </div>
+
+                                        <style jsx global>{`
+                                            .quill-editor .ql-toolbar {
+                                                border: none !important;
+                                                border-bottom: 1px solid #e2e8f0 !important;
+                                                background: #f8fafc;
+                                            }
+                                            .quill-editor .ql-container {
+                                                border: none !important;
+                                                font-family: 'Livvic', sans-serif !important;
+                                            }
+                                            .quill-editor .ql-editor {
+                                                min-height: 240px;
+                                                font-family: 'Livvic', sans-serif !important;
+                                                font-size: 0.875rem !important;
+                                                font-weight: 300 !important;
+                                                line-height: 1.6;
+                                            }
+                                            .quill-editor .ql-editor.ql-blank::before {
+                                                font-family: 'Livvic', sans-serif !important;
+                                                font-size: 0.875rem !important;
+                                                font-weight: 300 !important;
+                                                font-style: normal !important;
+                                                color: #94a3b8 !important;
+                                            }
+                                            .quill-editor .ql-editor img {
+                                                max-width: 100%;
+                                                border-radius: 12px;
+                                            }
+                                        `}</style>
+                                    </div>
+                                </div>
+                            </section>
+
+                            {/* Actions */}
+                            <div className="flex flex-col md:flex-row justify-end items-center gap-4 pt-4 pb-8">
+                                <button
+                                    onClick={() => setShowSaveModal(true)}
+                                    className="w-full md:w-auto px-6 py-4 rounded-xl font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-all flex items-center justify-center gap-2 text-sm shadow-sm"
+                                >
+                                    💾 Enregistrer comme modèle
+                                </button>
+                                <button
+                                    onClick={handleSend}
+                                    disabled={isSending}
+                                    className={`w-full md:w-auto px-10 py-4 rounded-xl font-bold text-white shadow-lg shadow-indigo-200/50 transition-all text-sm ${isSending ? "bg-slate-400 cursor-not-allowed" : "bg-slate-900 hover:bg-slate-800"}`}
+                                >
+                                    {isSending ? "Envoi en cours..." : "Diffuser le message"}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+
+                    {/* ==================== TAB 3 : MARKETING ACTIONS ==================== */}
+                    {activeTab === "marketing" && (() => {
+                        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+                        return (
+                            <div className="animate-in fade-in duration-300">
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                                    {/* 1/3 Left Column: Visual Email Preview Mockup */}
+                                    <div className="lg:col-span-1 bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4">
+                                        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Aperçu du visuel cible</h3>
+                                            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
+                                        </div>
+                                        
+                                        {/* Mock Email Client Container */}
+                                        <div className="border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm bg-slate-50 text-[10px]">
+                                            {/* Browser Header Bar */}
+                                            <div className="bg-slate-100 px-3.5 py-2.5 flex items-center gap-2 border-b border-slate-200">
+                                                <div className="flex gap-1.5 shrink-0">
+                                                    <span className="w-2 h-2 rounded-full bg-rose-400 inline-block"></span>
+                                                    <span className="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>
+                                                    <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
+                                                </div>
+                                                <div className="w-full bg-white rounded-md text-[9px] text-slate-400 text-center py-0.5 border border-slate-200 truncate select-none">
+                                                    apercu-zenstudio-mockup
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Email Client Content */}
+                                            <div className="bg-white text-slate-700">
+                                                {/* Brand Logo & Name */}
+                                                <div className="p-4 pb-2.5 flex flex-col items-center justify-center gap-1.5">
+                                                    {tenant?.logo_url ? (
+                                                        <img src={`${API_URL}${tenant.logo_url}`} className="h-9 object-contain" alt="Logo" />
+                                                    ) : (
+                                                        <span className="text-xl">🧘‍♀️</span>
+                                                    )}
+                                                    <span className="font-bold text-[10px] text-slate-900 tracking-widest uppercase" style={{ fontFamily: "'Livvic', sans-serif" }}>
+                                                        {tenant?.name || "Zen Studio"}
+                                                    </span>
+                                                </div>
+
+                                                {/* Premium Yoga Cover Image - Full Width / Edge-to-Edge */}
+                                                <div className="w-full">
+                                                    <img 
+                                                        src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=600&auto=format&fit=crop" 
+                                                        className="w-full h-36 object-cover" 
+                                                        alt="Zen Yoga Studio Preview" 
+                                                    />
+                                                </div>
+                                                
+                                                {/* Elegant Centered Content */}
+                                                <div className="p-5 pt-3.5 space-y-3 text-center" style={{ fontFamily: "'Livvic', sans-serif" }}>
+                                                    <p className="font-bold text-slate-900 leading-normal text-[11px]">Bonjour Julie,</p>
+                                                    <p className="text-slate-500 font-normal leading-relaxed text-[9px] max-w-xs mx-auto">
+                                                        Nous tenions tout particulièrement à vous remercier pour votre fidélité et votre énergie positive au studio ! C&apos;est un réel plaisir de vous accompagner dans vos séances.
+                                                    </p>
+                                                    <p className="text-slate-500 font-normal leading-relaxed text-[9px] max-w-xs mx-auto">
+                                                        Pour vous remercier, voici un code cadeau offrant une invitation gratuite pour le proche de votre choix lors de votre prochain cours :
+                                                    </p>
+                                                    
+                                                    {/* Double Border Coupon Box */}
+                                                    <div className="my-3.5 mx-auto max-w-[250px] p-3 bg-[#FAF9F6] border-4 border-double border-[#e2e8f0] rounded-2xl text-center shadow-[0_2px_4px_rgba(30,41,59,0.02)]">
+                                                        <span className="font-bold text-[12px] text-[#1e293b] tracking-widest uppercase" style={{ fontFamily: "'Livvic', sans-serif" }}>
+                                                            MERCIAMIS
+                                                        </span>
+                                                    </div>
+
+                                                    <p className="text-slate-900 font-semibold text-[9px] mt-3">
+                                                        À très bientôt sur les tapis !
+                                                    </p>
+                                                    <p className="text-slate-400 font-medium text-[8px]">
+                                                        L&apos;équipe {tenant?.name || "Zen Studio"}
+                                                    </p>
+                                                    
+                                                    {/* Soft Rounded CTA Button (Moderate curves, matching Image 2) */}
+                                                    <div className="py-2.5">
+                                                        <span 
+                                                            className="inline-block px-7 py-2.5 text-[9px] font-bold text-white rounded-xl shadow-md hover:shadow-lg tracking-wider uppercase select-none transition-all active:scale-95 cursor-pointer" 
+                                                            style={{ 
+                                                                backgroundColor: tenant?.primary_color || "#7c3aed",
+                                                                fontFamily: "'Livvic', sans-serif" 
+                                                            }}
+                                                        >
+                                                            Réserver votre séance
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Newsletter Footer Menu & Social Links */}
+                                                <div className="pt-4 border-t border-slate-100 text-center space-y-3">
+                                                    {/* Links Menu */}
+                                                    <div className="flex items-center justify-center gap-2 text-[8px] font-bold text-slate-400 select-none">
+                                                        <span>Nos Cours</span>
+                                                        <span className="text-slate-200 font-normal select-none">•</span>
+                                                        <span>Horaires</span>
+                                                        <span className="text-slate-200 font-normal select-none">•</span>
+                                                        <span>Tarifs</span>
+                                                        <span className="text-slate-200 font-normal select-none">•</span>
+                                                        <span>Établissement</span>
+                                                    </div>
+
+                                                    {/* Minimalist Social Icons */}
+                                                    <div className="flex items-center justify-center gap-3">
+                                                        <span className="w-6 h-6 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-[#1877F2] font-bold hover:bg-slate-100 transition-colors">
+                                                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                                                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                                                            </svg>
+                                                        </span>
+                                                        <span className="w-6 h-6 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-[#E1306C] font-bold hover:bg-slate-100 transition-colors">
+                                                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                                                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+                                                            </svg>
+                                                        </span>
+                                                    </div>
+                                                    
+                                                    <p className="font-normal text-[8px] text-slate-400">
+                                                        © {new Date().getFullYear()} {tenant?.name || "Zen Studio"}. Tous droits réservés.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 space-y-2 text-[11px]">
+                                            <p className="font-semibold text-slate-800 flex items-center gap-1.5">
+                                                <span>💡</span> Rendu Automatique
+                                            </p>
+                                            <p className="text-slate-500 font-normal leading-relaxed">
+                                                Pas besoin de mise en page complexe. Vos textes bruts sont automatiquement embellis avec le logo, l&apos;image d&apos;illustration, la couleur d&apos;accentuation et les réseaux sociaux paramétrés pour votre club.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* 2/3 Right Column: Campaign Grid */}
+                                    <div className="lg:col-span-2 space-y-4">
+                                        <div className="pb-2">
+                                            <h3 className="text-lg font-semibold text-slate-900 tracking-tight">
+                                                Stratégies de marketing intelligentes
+                                            </h3>
+                                            <p className="text-slate-500 text-xs mt-1 font-normal leading-relaxed">
+                                                Ciblez vos segments clés en un clic et personnalisez le message. Vos campagnes se transforment automatiquement en e-mails premium.
+                                            </p>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            {marketingCards.map(card => {
+                                                const count = segmentStats ? (segmentStats as any)[card.segment] || 0 : 0;
+                                                return (
+                                                    <div 
+                                                        key={card.id}
+                                                        onClick={() => handleSelectMarketingCard(card)}
+                                                        className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer flex flex-col justify-between group h-full relative overflow-hidden"
+                                                    >
+                                                        <div className="space-y-3">
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="text-xl shrink-0 group-hover:scale-110 transition-transform duration-300 select-none">{card.icon}</span>
+                                                                <h3 className="text-sm font-semibold text-slate-900 leading-snug">
+                                                                    {card.title}
+                                                                </h3>
+                                                            </div>
+                                                            <p className="text-[11px] text-slate-500 font-normal leading-relaxed pl-8">
+                                                                {card.description}
+                                                            </p>
+                                                        </div>
+
+                                                        <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-start pl-8">
+                                                            <span className="text-[10px] font-bold px-2.5 py-0.5 bg-slate-100 text-slate-600 rounded-lg">
+                                                                {count} {count > 1 ? "destinataires" : "destinataire"}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
+
+                    {/* ==================== TAB 3 : SATISFACTION SURVEYS ==================== */}
+                    {activeTab === "surveys" && (
+                        <div className="space-y-10">
+                            
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                
+                                {/* 1. Créateur d'enquêtes */}
+                                <div className="lg:col-span-1 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm self-start">
+                                    <h3 className="text-lg font-semibold text-slate-950 mb-5 pb-3 border-b border-slate-100 flex items-center gap-2 tracking-tight">
+                                        <span>📊</span> Créer une enquête
+                                    </h3>
+                                    
+                                    <form onSubmit={handleCreateSurvey} className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Titre</label>
+                                            <input 
+                                                type="text" 
+                                                required
+                                                value={surveyTitle}
+                                                onChange={(e) => setSurveyTitle(e.target.value)}
+                                                placeholder="Ex : Qu'avez-vous pensé de notre stage de mai ?"
+                                                className="w-full p-3 border border-slate-200 bg-white hover:border-slate-300 rounded-xl text-sm font-medium outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 placeholder:text-sm placeholder:font-normal placeholder:text-slate-400 placeholder:opacity-100"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Description <span className="text-[10px] text-slate-400 font-normal ml-1 lowercase">(optionnel)</span></label>
+                                            <textarea 
+                                                value={surveyDescription}
+                                                onChange={(e) => setSurveyDescription(e.target.value)}
+                                                placeholder="Ex : Avez-vous aimé les activités proposées ?"
+                                                rows={2}
+                                                className="w-full p-3 border border-slate-200 bg-white hover:border-slate-300 rounded-xl text-sm font-normal outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 placeholder:text-sm placeholder:font-normal placeholder:text-slate-400 placeholder:opacity-100 resize-none"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Nature</label>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setSurveyType("general"); setSurveyTargetSegment(""); }}
+                                                    className={`flex-1 py-2.5 rounded-lg text-xs font-medium border transition-all ${surveyType === "general" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+                                                >
+                                                    Enquête générale
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setSurveyType("event"); setSurveyTargetType("event"); setSurveyTargetSegment("participants"); }}
+                                                    className={`flex-1 py-2.5 rounded-lg text-xs font-medium border transition-all ${surveyType === "event" && surveyTargetType === "event" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+                                                >
+                                                    Événement
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setSurveyType("event"); setSurveyTargetType("session"); setSurveyTargetSegment("participants"); }}
+                                                    className={`flex-1 py-2.5 rounded-lg text-xs font-medium border transition-all ${surveyType === "event" && surveyTargetType === "session" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+                                                >
+                                                    Séance
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {surveyType === "event" && (
+                                            surveyTargetType === "event" ? (
+                                                <div>
+                                                    <select
+                                                        value={surveyEventId}
+                                                        onChange={(e) => setSurveyEventId(e.target.value)}
+                                                        required
+                                                        className={`w-full p-3 border border-slate-200 bg-white rounded-xl text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 shadow-sm transition-all ${!surveyEventId ? 'text-slate-400 font-normal' : 'text-slate-700 font-medium'}`}
+                                                    >
+                                                        <option value="" className="text-slate-400">Choisir un événement</option>
+                                                        {events.map(ev => (
+                                                            <option key={ev.id} value={ev.id} className="text-slate-700 font-medium">{ev.title} ({ev.event_date ? ev.event_date.split('-').reverse().join('/') : ''})</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <select
+                                                        value={surveySessionId}
+                                                        onChange={(e) => setSurveySessionId(e.target.value)}
+                                                        required
+                                                        className={`w-full p-3 border border-slate-200 bg-white rounded-xl text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 shadow-sm transition-all ${!surveySessionId ? 'text-slate-400 font-normal' : 'text-slate-700 font-medium'}`}
+                                                    >
+                                                        <option value="" className="text-slate-400">Choisir une séance</option>
+                                                        {sessions.map(sess => (
+                                                            <option key={sess.id} value={sess.id} className="text-slate-700 font-medium">{sess.title} ({new Date(sess.start_time).toLocaleDateString()})</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )
+                                        )}
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1.5">Ciblage</label>
+                                            <div className="relative">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                                    className={`w-full p-3 border border-slate-200 bg-white rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 flex items-center justify-between shadow-[0_2px_4px_rgba(30,41,59,0.02)] transition-all text-sm ${
+                                                        surveyType === "event"
+                                                            ? "text-black font-light"
+                                                            : (!surveyTargetSegment || surveyTargetSegment === "tous")
+                                                                ? "text-slate-400 font-normal"
+                                                                : "text-black font-light"
+                                                    }`}
+                                                >
+                                                    <span className="truncate">
+                                                        {surveyType === "event"
+                                                            ? (!surveyTargetSegment || surveyTargetSegment === "participants"
+                                                                ? "Uniquement les participants"
+                                                                : surveyTargetSegment === "tous"
+                                                                    ? "Toute la base utilisateur"
+                                                                    : surveyTargetSegment.split(",").map(k => segmentLabels[k] || k).join(", "))
+                                                            : (!surveyTargetSegment
+                                                                ? "Choisir un ou plusieurs segments"
+                                                                : surveyTargetSegment === "tous"
+                                                                    ? "Toute la base utilisateur"
+                                                                    : surveyTargetSegment.split(",").map(k => segmentLabels[k] || k).join(", "))
+                                                        }
+                                                    </span>
+                                                    <span className="text-slate-400 text-[10px]">▼</span>
+                                                </button>
+                                                
+                                                {isDropdownOpen && (
+                                                    <>
+                                                        <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
+                                                        <div className="absolute left-0 right-0 z-50 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg flex flex-col max-h-64 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+                                                            {/* Zone défilante des options */}
+                                                            <div className="p-1.5 space-y-0.5 overflow-y-auto max-h-52 flex-1">
+                                                                {/* Option Uniquement les participants (seulement pour type event) */}
+                                                                {surveyType === "event" && (
+                                                                    <>
+                                                                        <label className="flex items-center gap-2.5 p-2 rounded-lg cursor-pointer hover:bg-slate-50 transition-all select-none text-xs font-semibold text-slate-700">
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={surveyTargetSegment.split(",").includes("participants")}
+                                                                                onChange={(e) => {
+                                                                                    let current = surveyTargetSegment.split(",").filter(x => x && x !== "tous");
+                                                                                    if (e.target.checked) {
+                                                                                        if (!current.includes("participants")) {
+                                                                                            current.push("participants");
+                                                                                        }
+                                                                                        setSurveyTargetSegment(current.join(","));
+                                                                                    } else {
+                                                                                        current = current.filter(x => x !== "participants");
+                                                                                        setSurveyTargetSegment(current.join(","));
+                                                                                    }
+                                                                                }}
+                                                                                className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300"
+                                                                            />
+                                                                            Uniquement les participants
+                                                                        </label>
+                                                                        <div className="border-t border-slate-100 my-1" />
+                                                                    </>
+                                                                )}
+
+                                                                {/* Option Tous */}
+                                                                <label className="flex items-center gap-2.5 p-2 rounded-lg cursor-pointer hover:bg-slate-50 transition-all select-none text-xs font-semibold text-slate-700">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={surveyTargetSegment === "tous" || !!(segmentStats && surveyTargetSegment.split(",").filter(x => x && x !== "tous" && x !== "participants").length === Object.keys(segmentStats).length)}
+                                                                        onChange={(e) => {
+                                                                            if (e.target.checked) {
+                                                                                setSurveyTargetSegment("tous");
+                                                                            } else {
+                                                                                setSurveyTargetSegment("");
+                                                                            }
+                                                                        }}
+                                                                        className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300"
+                                                                    />
+                                                                    Toute la base utilisateur
+                                                                </label>
+                                                                
+                                                                <div className="border-t border-slate-100 my-1" />
+                                                                
+                                                                {/* Options individuelles */}
+                                                                {segmentStats && Object.entries(segmentStats).map(([key, val]) => {
+                                                                    if (key === "participants") return null;
+                                                                    const isChecked = surveyTargetSegment.split(",").includes(key) || surveyTargetSegment.split(",").includes("tous");
+                                                                    return (
+                                                                        <label 
+                                                                            key={key} 
+                                                                            className={`flex items-center gap-2.5 p-2 rounded-lg cursor-pointer transition-all select-none hover:bg-slate-50 ${isChecked ? 'bg-blue-50/20' : ''}`}
+                                                                        >
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={isChecked}
+                                                                                onChange={(e) => {
+                                                                                    let current = surveyTargetSegment.split(",").filter(x => x && x !== "tous");
+                                                                                    if (surveyTargetSegment.split(",").includes("tous") && segmentStats) {
+                                                                                        current = Object.keys(segmentStats).filter(k => k !== "participants");
+                                                                                    }
+                                                                                    
+                                                                                    if (e.target.checked) {
+                                                                                        if (!current.includes(key)) {
+                                                                                            current.push(key);
+                                                                                        }
+                                                                                        if (segmentStats && current.filter(k => k !== "participants").length === Object.keys(segmentStats).filter(k => k !== "participants").length) {
+                                                                                            setSurveyTargetSegment("tous");
+                                                                                        } else {
+                                                                                            setSurveyTargetSegment(current.join(","));
+                                                                                        }
+                                                                                    } else {
+                                                                                        current = current.filter(x => x !== key);
+                                                                                        setSurveyTargetSegment(current.join(","));
+                                                                                    }
+                                                                                }}
+                                                                                className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300"
+                                                                            />
+                                                                            <span className={`text-xs ${isChecked ? 'text-blue-900 font-medium' : 'text-slate-700'}`}>
+                                                                                {segmentLabels[key] || key} <span className="text-slate-400 font-normal text-[10px]">({val})</span>
+                                                                            </span>
+                                                                        </label>
+                                                                    );
+                                                                })}
+                                                            </div>
+
+                                                            {/* Sticky Footer de validation */}
+                                                            <div className="bg-slate-50 border-t border-slate-100 px-3 py-2 flex items-center justify-between z-10 text-[10px]">
+                                                                <span className="text-slate-500 font-medium truncate max-w-[160px]">
+                                                                    {surveyTargetSegment ? (
+                                                                        surveyTargetSegment === "tous" ? "Toute la base" : `${surveyTargetSegment.split(',').filter(Boolean).length} segment(s) sélec.`
+                                                                    ) : "Aucun segment"}
+                                                                </span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setIsDropdownOpen(false)}
+                                                                    className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-lg transition-all"
+                                                                >
+                                                                    Valider
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            type="submit"
+                                            disabled={isCreatingSurvey}
+                                            className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-medium transition-all disabled:opacity-50 mt-4 active:scale-95"
+                                        >
+                                            {isCreatingSurvey ? "Génération des jetons..." : "Générer la campagne"}
+                                        </button>
+                                    </form>
+                                </div>
+
+                                {/* 2. Liste des enquêtes existantes */}
+                                <div className="lg:col-span-2 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Campagnes d&apos;enquêtes actives</h3>
+                                        <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium">{surveys.length} enquêtes</span>
+                                    </div>
+
+                                    {surveys.length === 0 ? (
+                                        <div className="bg-white p-12 text-center rounded-2xl border border-slate-200/80">
+                                            <span className="text-4xl block mb-3">🗳️</span>
+                                            <h4 className="font-semibold text-slate-800 text-base">Aucune enquête créée</h4>
+                                            <p className="text-slate-400 text-xs mt-1">Utilisez le formulaire pour générer des questionnaires 1-Click sécurisés.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 gap-4">
+                                            {surveys.map(c => (
+                                                <div 
+                                                    key={c.id}
+                                                    className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all space-y-4"
+                                                >
+                                                    {/* Ligne 1 : Badge + Titre à gauche, Stats à droite */}
+                                                    <div className="flex items-start justify-between gap-4">
+                                                        <div className="flex-1 space-y-1.5">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className={`px-2 py-0.5 rounded-md text-[9px] uppercase font-semibold border ${c.survey_type === 'event' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                                                                    {c.survey_type === 'event' ? (c.event_id ? 'Événement' : 'Séance') : 'Général'}
+                                                                </span>
+                                                                <span className="text-[10px] text-slate-400">{new Date(c.created_at).toLocaleDateString()}</span>
+                                                            </div>
+                                                            <h4 className="font-medium text-slate-900 text-base">{c.title}</h4>
+                                                            {c.description && (
+                                                                <p className="text-xs text-slate-400 mt-0.5 font-normal leading-relaxed">{c.description}</p>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex gap-3 items-center shrink-0">
+                                                            <div className="text-center bg-white px-3 py-1.5 rounded-lg border border-slate-100">
+                                                                <span className="text-[10px] text-slate-400 font-normal block">Note</span>
+                                                                <span className="font-medium text-sm text-slate-800 flex items-center justify-center gap-0.5">
+                                                                    ⭐ {c.average_rating ? Number(c.average_rating).toFixed(1) : "-"}
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-center bg-white px-3 py-1.5 rounded-lg border border-slate-100">
+                                                                <span className="text-[10px] text-slate-400 font-normal block">Envoi</span>
+                                                                <span className="font-medium text-sm text-slate-800">{c.responses_count}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Ligne 2 : Actions horizontales */}
+                                                    <div className="flex gap-2 pt-1 justify-end">
+                                                        {!c.is_sent ? (
+                                                            <button
+                                                                onClick={() => handleSendSurvey(c.id)}
+                                                                disabled={isSendingSurvey === c.id}
+                                                                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-lg text-xs font-normal transition-all active:scale-95 text-center min-w-[180px]"
+                                                            >
+                                                                {isSendingSurvey === c.id ? "Envoi..." : "✉️ Lancer l'enquête par mail"}
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => handleViewSurveyDetails(c.id)}
+                                                                className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-black rounded-lg text-xs font-normal transition-all text-center min-w-[180px]"
+                                                            >
+                                                                🔍 Voir les retours détaillés
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            onClick={() => handleDeleteSurvey(c)}
+                                                            className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-normal transition-all text-center"
+                                                        >
+                                                            🗑️ Supprimer
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </main>
+
+            {/* ==================== MODALS ==================== */}
+
+            {/* Modal / Drawer de configuration de la campagne de relance marketing */}
+            {selectedMarketingCard && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        {/* Modal Header */}
+                        <div className="p-4 md:p-5 pb-2.5 flex items-center justify-between bg-white sticky top-0 z-10 border-b border-slate-100">
+                            <div className="flex items-center gap-3">
+                                <span className="text-2xl select-none">{selectedMarketingCard.icon}</span>
+                                <div>
+                                    <h3 className="text-base font-semibold text-slate-900 tracking-tight leading-snug">{selectedMarketingCard.title}</h3>
+                                </div>
+                            </div>
+                            <button onClick={() => { setSelectedMarketingCard(null); setShowTips(false); }} className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-50 rounded-xl">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Modal Content */}
+                        <div className="flex-1 overflow-y-auto p-4 md:p-5 pt-3 space-y-4">
+                            
+                            {/* Premium Encart de ciblage & conseils marketing */}
+                            {(() => {
+                                const info = marketingCampaignTips[selectedMarketingCard.id] || {
+                                    segmentLabel: segmentLabels[selectedMarketingCard.segment] || selectedMarketingCard.segment,
+                                    tips: ["Définissez des objectifs de campagne clairs.", "Rédigez un contenu direct et chaleureux."]
+                                };
+                                return (
+                                    <div className="bg-gradient-to-r from-blue-50/70 to-indigo-50/50 border border-blue-100/80 rounded-2xl p-4 shadow-sm text-sm">
+                                        <button 
+                                            type="button"
+                                            onClick={() => setShowTips(!showTips)}
+                                            className="w-full flex items-center justify-between font-semibold text-slate-700 outline-none select-none"
+                                        >
+                                            <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 text-left">
+                                                <h4 className="text-xs font-bold flex items-center gap-1.5 uppercase tracking-wide text-slate-800">
+                                                    💡 Idées d&apos;actions recommandées
+                                                </h4>
+                                                <div className="inline-flex items-center px-2 py-0.5 bg-blue-100/50 text-blue-800 text-[10px] font-semibold rounded-lg border border-blue-200/50 self-start md:self-auto leading-none">
+                                                    🎯 Ciblage : {info.segmentLabel.split(" (")[0]}
+                                                </div>
+                                            </div>
+                                            <span className="text-[11px] font-bold text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1 shrink-0 ml-2">
+                                                {showTips ? "Masquer ▲" : "Afficher les conseils ▼"}
+                                            </span>
+                                        </button>
+                                        
+                                        {showTips && (
+                                            <div className="mt-3 pt-3 border-t border-blue-100/40 animate-in slide-in-from-top-2 duration-200">
+                                                <ul className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    {info.tips.map((tip, idx) => (
+                                                        <li key={idx} className="flex gap-2.5 items-start bg-white/65 p-3 rounded-xl border border-white shadow-[0_2px_4px_rgba(30,41,59,0.02)]">
+                                                            <span className="text-blue-500 font-bold select-none text-xs">{idx + 1}.</span>
+                                                            <span className="text-xs text-slate-600 font-medium leading-relaxed">{tip}</span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+
+                            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                                {/* Colonne Gauche : Liste des Destinataires */}
+                                <div className="lg:col-span-2 flex flex-col gap-4">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+                                            Destinataires ({selectedMarketingUserIds.length})
+                                        </h4>
+                                        <button
+                                            onClick={() => {
+                                                const targetedUsers = allUsers.filter(u => u.segment === selectedMarketingCard.segment);
+                                                if (selectedMarketingUserIds.length === targetedUsers.length) {
+                                                    setSelectedMarketingUserIds([]);
+                                                } else {
+                                                    setSelectedMarketingUserIds(targetedUsers.map(u => u.id));
+                                                }
+                                            }}
+                                            className="text-xs font-semibold text-blue-600 hover:underline"
+                                        >
+                                            {selectedMarketingUserIds.length === allUsers.filter(u => u.segment === selectedMarketingCard.segment).length ? "Tout décocher" : "Tout cocher"}
+                                        </button>
+                                    </div>
+
+                                    <div className="flex-1 overflow-y-auto max-h-[360px] pr-2 border border-slate-100 rounded-2xl p-4 bg-slate-50/30 flex flex-col gap-2">
+                                        {allUsers.filter(u => u.segment === selectedMarketingCard.segment).length === 0 ? (
+                                            <div className="text-center text-xs text-slate-400 py-12">
+                                                Aucun membre dans ce segment actuellement.
+                                            </div>
+                                        ) : (
+                                            allUsers.filter(u => u.segment === selectedMarketingCard.segment).map(u => (
+                                                <label
+                                                    key={u.id}
+                                                    className="flex items-center justify-between p-3.5 rounded-2xl bg-white border border-slate-100 hover:border-slate-200 transition-all cursor-pointer hover:shadow-sm"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedMarketingUserIds.includes(u.id)}
+                                                            onChange={() => {
+                                                                setSelectedMarketingUserIds(prev =>
+                                                                    prev.includes(u.id) ? prev.filter(uid => uid !== u.id) : [...prev, u.id]
+                                                                );
+                                                            }}
+                                                            className="w-4 h-4 text-blue-600 border-slate-200 rounded focus:ring-blue-500"
+                                                        />
+                                                        <div className="flex flex-col text-left">
+                                                            <span className="font-semibold text-slate-700 text-xs">{u.first_name} {u.last_name}</span>
+                                                            <span className="text-[10px] text-slate-400 font-normal mt-0.5">{u.email}</span>
+                                                        </div>
+                                                    </div>
+                                                </label>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Colonne Droite : Message */}
+                                <div className="lg:col-span-3 flex flex-col gap-5">
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">objet du message</label>
+                                        <input
+                                            type="text"
+                                            value={marketingSubject}
+                                            onChange={(e) => setMarketingSubject(e.target.value)}
+                                            className="w-full p-4 border border-slate-200/80 rounded-2xl text-sm font-semibold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 bg-slate-55"
+                                        />
+                                    </div>
+
+                                     {/* Accent Color and Illustration Image Fields */}
+                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                         <div>
+                                             <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Couleur d&apos;accentuation</label>
+                                             <div className="flex items-center gap-3">
+                                                 <input
+                                                     type="color"
+                                                     value={marketingColor}
+                                                     onChange={(e) => setMarketingColor(e.target.value)}
+                                                     className="w-10 h-10 border border-slate-200 rounded-xl cursor-pointer p-0 overflow-hidden bg-transparent"
+                                                 />
+                                                 <input
+                                                     type="text"
+                                                     value={marketingColor}
+                                                     onChange={(e) => setMarketingColor(e.target.value)}
+                                                     placeholder="#7c3aed"
+                                                     className="flex-1 px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold uppercase focus:border-blue-500 focus:ring-1 focus:ring-blue-500/10 outline-none"
+                                                 />
+                                             </div>
+                                         </div>
+
+                                         <div>
+                                             <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Image d&apos;illustration</label>
+                                             {marketingImageUrl ? (
+                                                 <div className="flex items-center gap-3 bg-slate-50 border border-slate-100 p-1.5 pr-3.5 rounded-xl">
+                                                     <img
+                                                         src={`${API_URL}${marketingImageUrl}`}
+                                                         alt="Illustration Preview"
+                                                         className="w-8 h-8 rounded-lg object-cover border border-slate-200"
+                                                     />
+                                                     <span className="text-[10px] font-semibold text-slate-500 truncate flex-1">Image chargée</span>
+                                                     <button
+                                                         type="button"
+                                                         onClick={() => setMarketingImageUrl("")}
+                                                         className="text-xs font-bold text-rose-500 hover:text-rose-600 ml-2"
+                                                     >
+                                                         Retirer
+                                                     </button>
+                                                 </div>
+                                             ) : (
+                                                 <div className="relative">
+                                                     <input
+                                                         type="file"
+                                                         accept="image/*"
+                                                         onChange={async (e) => {
+                                                             const file = e.target.files?.[0];
+                                                             if (!file) return;
+                                                             setIsUploadingImage(true);
+                                                             try {
+                                                                 const res = await api.uploadImage(file);
+                                                                 setMarketingImageUrl(res.url);
+                                                             } catch (err) {
+                                                                 console.error(err);
+                                                                 alert("Erreur lors de l'upload de l'image.");
+                                                             } finally {
+                                                                 setIsUploadingImage(false);
+                                                             }
+                                                         }}
+                                                         disabled={isUploadingImage}
+                                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                                     />
+                                                     <button
+                                                         type="button"
+                                                         disabled={isUploadingImage}
+                                                         className="w-full py-2.5 border border-dashed border-slate-200 text-slate-500 hover:border-slate-300 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2"
+                                                     >
+                                                         {isUploadingImage ? "Chargement..." : "Charger une image 📸"}
+                                                     </button>
+                                                 </div>
+                                             )}
+                                         </div>
+                                     </div>
+
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">corps du message</label>
+                                        <div className="border border-slate-200/80 rounded-2xl overflow-hidden focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500/20 bg-white">
+                                             <QuillNode
+                                                 theme="snow"
+                                                 value={marketingContent}
+                                                 onChange={setMarketingContent}
+                                                 modules={{
+                                                     toolbar: [
+                                                         ['bold', 'italic', 'underline', 'strike'],
+                                                         ['link'],
+                                                         [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                                         [{ 'align': [] }],
+                                                         ['clean']
+                                                      ]
+                                                 }}
+                                                 className="bg-white min-h-[160px] text-sm"
+                                             />
+                                        </div>
+                                        <div className="mt-3 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/80 flex items-start gap-3 text-[11px] text-indigo-950 font-normal leading-relaxed">
+                                            <span className="text-sm select-none">✨</span>
+                                            <div className="space-y-1.5">
+                                                <p className="font-semibold text-indigo-900">Astuces et optimisations visuelles automatiques :</p>
+                                                <ul className="list-disc pl-4 space-y-1">
+                                                    <li><b>Personnalisation</b> : Utilisez le tag <code>{"{first_name}"}</code> dans votre texte pour insérer le prénom de chaque destinataire (ex: Julie, Thomas).</li>
+                                                    <li><b>Cadre Code Promo</b> : Rédigez un code en MAJUSCULES et mettez-le <b>en gras</b> (ex: <b>MERCIAMIS</b>) pour l&apos;afficher dans un magnifique encart double-bordure pastel.</li>
+                                                    <li><b>Bouton d&apos;Action</b> : Insérez un lien hypertexte seul sur sa propre ligne de paragraphe pour le transformer automatiquement en un bouton d&apos;action arrondi à la couleur du club.</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-6 bg-white border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                            <span className="text-xs font-medium text-slate-500">
+                                {selectedMarketingUserIds.length} destinataire(s) sélectionné(s) sur {allUsers.filter(u => u.segment === selectedMarketingCard.segment).length}
+                            </span>
+                            <div className="flex items-center gap-3 w-full md:w-auto">
+                                <button
+                                    onClick={() => setSelectedMarketingCard(null)}
+                                    className="w-full md:w-auto px-5 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl font-semibold hover:bg-slate-50 transition-all text-sm active:scale-95"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    onClick={handleSendMarketing}
+                                    disabled={isSendingMarketing || selectedMarketingUserIds.length === 0}
+                                    className="w-full md:w-auto px-8 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-xl font-semibold transition-all text-sm shadow-md active:scale-95 flex items-center justify-center gap-2"
+                                >
+                                    {isSendingMarketing ? "Envoi en cours..." : "Diffuser la campagne 🚀"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Sélection manuelle utilisateurs */}
+            {showUserSelector && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
+                        <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                            <div className="flex items-center gap-3">
+                                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
+                                <h3 className="text-[17px] font-bold text-slate-900 tracking-tight">Sélectionner les destinataires</h3>
+                            </div>
+                            <button onClick={() => setShowUserSelector(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-50 rounded-lg">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <div className="p-6 border-b border-slate-100">
+                            <div className="relative">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </span>
+                                <input
+                                    type="text"
+                                    placeholder="Rechercher un membre..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 outline-none text-sm transition-all"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                            {filteredUsers.map(u => (
+                                <button
+                                    key={u.id}
+                                    onClick={() => toggleUserSelection(u.id)}
+                                    className={`w-full flex items-center p-3 rounded-xl transition-all border ${selectedUserIds.includes(u.id) ? "bg-indigo-50 border-indigo-200" : "bg-white border-slate-100 hover:border-slate-200"}`}
+                                >
+                                    <div className={`w-5 h-5 rounded-md border flex items-center justify-center mr-4 ${selectedUserIds.includes(u.id) ? "bg-indigo-600 border-indigo-600 text-white" : "border-slate-300"}`}>
+                                        {selectedUserIds.includes(u.id) && "✓"}
+                                    </div>
+                                    <div className="text-left">
+                                        <p className="font-bold text-slate-800 text-sm">{u.first_name} {u.last_name}</p>
+                                        <p className="text-xs text-slate-500">{u.email}</p>
+                                    </div>
+                                    <div className="ml-auto">
+                                        <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold border ${u.is_active ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-slate-50 text-slate-500 border-slate-200"}`}>
+                                            {u.is_active ? "Actif" : "Inactif"}
+                                        </span>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="p-6 bg-gray-50 border-t border-slate-100 flex justify-between items-center">
+                            <span className="text-sm font-semibold text-slate-600">{selectedUserIds.length} sélectionné(s)</span>
+                            <button
+                                onClick={() => setShowUserSelector(false)}
+                                className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-slate-800 transition-all text-sm active:scale-95"
+                            >
+                                Terminer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de sauvegarde de modèle */}
+            {showSaveModal && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-10 pb-8">
+                            <h3 className="text-xl font-semibold text-slate-900 mb-2">Enregistrer le modèle</h3>
+                            <p className="text-sm text-slate-500 mb-8 leading-relaxed">Donnez un nom à ce modèle pour le retrouver facilement dans votre bibliothèque.</p>
+                            
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    autoFocus
+                                    value={templateName}
+                                    onChange={(e) => setTemplateName(e.target.value)}
+                                    placeholder="ex: Annonce Stage Printemps"
+                                    className="w-full p-4 rounded-2xl border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 outline-none transition-all bg-slate-50/50 font-bold"
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSaveTemplate()}
+                                />
+                            </div>
+                        </div>
+                        <div className="p-6 bg-gray-50 border-t border-slate-100 flex gap-3 justify-end items-center">
+                            <button 
+                                onClick={() => setShowSaveModal(false)}
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-semibold hover:bg-gray-50 transition-all text-sm active:scale-95"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                onClick={handleSaveTemplate}
+                                disabled={isSavingTemplate || !templateName.trim()}
+                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 disabled:opacity-50 transition-all text-sm shadow-sm active:scale-95"
+                            >
+                                {isSavingTemplate ? "..." : "Enregistrer"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de suppression de modèle */}
+            {templateToDelete && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-10 pb-8">
+                            <h3 className="text-xl font-bold text-slate-900 mb-2">Supprimer le modèle ?</h3>
+                            <p className="text-sm text-slate-500 leading-relaxed font-medium">Cette action est définitive. Le modèle <b>&quot;{templateToDelete.name}&quot;</b> sera supprimé.</p>
+                        </div>
+                        <div className="p-6 bg-gray-50 border-t border-slate-100 flex gap-3 justify-end items-center">
+                            <button 
+                                onClick={() => setTemplateToDelete(null)}
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-semibold hover:bg-gray-50 transition-all text-sm active:scale-95"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                onClick={handleDeleteTemplate}
+                                disabled={isDeleting}
+                                className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-bold hover:bg-rose-700 transition-all text-sm shadow-sm active:scale-95"
+                            >
+                                {isDeleting ? "..." : "Supprimer"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de suppression d'enquête */}
+            {surveyToDelete && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-10 pb-8">
+                            <h3 className="text-xl font-semibold text-slate-900 mb-2">Confirmer la suppression</h3>
+                            <p className="text-[15px] text-slate-500 leading-relaxed font-normal">
+                                Cette action est définitive. L&apos;enquête <b>&quot;{surveyToDelete.title}&quot;</b> ainsi que tous les avis associés seront définitivement supprimés.
+                            </p>
+                        </div>
+                        <div className="p-6 bg-white border-t border-slate-100 flex gap-3 justify-end items-center">
+                            <button 
+                                onClick={() => setSurveyToDelete(null)}
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm active:scale-95"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                onClick={confirmDeleteSurvey}
+                                disabled={isDeletingSurvey}
+                                className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm active:scale-95"
+                            >
+                                {isDeletingSurvey ? "..." : "Supprimer"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Inspecteur détaillé Enquêtes */}
+            {showSurveyDetailsModal && selectedSurveyDetails && (
+                <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[9999] flex items-center justify-end animate-in fade-in duration-300">
+                    <div className="bg-white w-full max-w-2xl h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+                        
+                        {/* Header details */}
+                        <div className="p-8 border-b border-slate-100 flex items-center justify-between">
+                            <div>
+                                <span className={`px-2 py-0.5 rounded-md text-[9px] uppercase font-semibold border ${selectedSurveyDetails.survey_type === 'event' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                                    {selectedSurveyDetails.survey_type === 'event' ? (selectedSurveyDetails.event_id ? 'Événement' : 'Séance') : 'Général'}
+                                </span>
+                                <h3 className="font-medium text-slate-900 text-base mt-1">{selectedSurveyDetails.title}</h3>
+                                {selectedSurveyDetails.context_title && (
+                                    <p className="text-xs text-slate-400 mt-0.5">Contexte : {selectedSurveyDetails.context_title}</p>
+                                )}
+                            </div>
+                            <button 
+                                onClick={() => setShowSurveyDetailsModal(false)}
+                                className="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-50 rounded-xl transition-colors"
+                            >
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Breakdown Panel */}
+                        <div className="p-6 bg-slate-50 border-b border-slate-100 grid grid-cols-3 gap-4 text-center">
+                            <div className="bg-white p-4 rounded-xl border border-slate-200/50 shadow-sm">
+                                <span className="text-[10px] uppercase font-medium text-slate-400 tracking-wider">Note Moyenne</span>
+                                <span className="block font-medium text-2xl text-slate-900 mt-1">
+                                    ⭐ {selectedSurveyDetails.stats.average_rating ? Number(selectedSurveyDetails.stats.average_rating).toFixed(1) : "-"}
+                                </span>
+                            </div>
+                            <div className="bg-white p-4 rounded-xl border border-slate-200/50 shadow-sm">
+                                <span className="text-[10px] uppercase font-medium text-slate-400 tracking-wider">Participation</span>
+                                <span className="block font-medium text-2xl text-slate-900 mt-1">
+                                    {Number(selectedSurveyDetails.stats.response_rate).toFixed(0)}%
+                                </span>
+                            </div>
+                            <div className="bg-white p-4 rounded-xl border border-slate-200/50 shadow-sm">
+                                <span className="text-[10px] uppercase font-medium text-slate-400 tracking-wider">Total Réponses</span>
+                                <span className="block font-medium text-2xl text-slate-900 mt-1">
+                                    {selectedSurveyDetails.stats.total_responses}/{selectedSurveyDetails.stats.total_sent}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Responses list */}
+                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                            <h4 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Retours Individuels</h4>
+                            
+                            {selectedSurveyDetails.responses.length === 0 ? (
+                                <div className="text-center text-slate-400 text-sm py-12">Aucun retour enregistré pour le moment.</div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {selectedSurveyDetails.responses.map((r: any) => (
+                                        <div key={r.id} className="bg-white p-4 rounded-xl border border-slate-200/60 shadow-sm space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <div>
+                                                    <p className="font-medium text-sm text-slate-800">{r.user_name}</p>
+                                                    <p className="text-[10px] text-slate-400">{r.user_email}</p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    {r.submitted_at ? (
+                                                        <span className="bg-emerald-50 border border-emerald-150 text-[10px] font-medium text-emerald-700 px-2 py-0.5 rounded-full">
+                                                            Répondu
+                                                        </span>
+                                                    ) : r.clicked_at ? (
+                                                        <span className="bg-amber-50 border border-amber-150 text-[10px] font-medium text-amber-700 px-2 py-0.5 rounded-full animate-pulse">
+                                                            Cliqué
+                                                        </span>
+                                                    ) : (
+                                                        <span className="bg-slate-100 text-[10px] font-medium text-slate-400 px-2 py-0.5 rounded-full">
+                                                            Envoyé
+                                                        </span>
+                                                    )}
+                                                    {renderSmileys(r.rating)}
+                                                </div>
+                                            </div>
+
+                                            {r.comment && (
+                                                <div className="p-3 bg-slate-50 border border-slate-100 rounded-lg text-xs font-medium text-slate-700 italic">
+                                                    &ldquo;{r.comment}&rdquo;
+                                                </div>
+                                            )}
+
+                                            <div className="text-[10px] text-slate-400 flex justify-between pt-1 border-t border-slate-50">
+                                                {r.clicked_at && <span>Premier clic : {new Date(r.clicked_at).toLocaleString()}</span>}
+                                                {r.submitted_at && <span>Soumis : {new Date(r.submitted_at).toLocaleString()}</span>}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer details */}
+                        <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end">
+                            <button
+                                onClick={() => setShowSurveyDetailsModal(false)}
+                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-medium hover:bg-slate-800 transition-all shadow-sm active:scale-95"
+                            >
+                                Fermer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+        </div>
+    );
+}
+
+export default function AdminEmailsPage() {
+    return (
+        <Suspense fallback={<div className="flex min-h-screen bg-slate-50 items-center justify-center">Chargement...</div>}>
+            <AdminEmailsContent />
+        </Suspense>
+    );
+}

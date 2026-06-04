@@ -1088,7 +1088,7 @@ export default function AdminEventRegistrationsPage() {
                         </div>
                     </div>
                 </div>
-            )}}}
+            )}
         </div>
     );
 }

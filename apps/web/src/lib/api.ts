@@ -282,6 +282,7 @@ export interface Tenant {
   description?: string;
   logo_url?: string;
   banner_url?: string;
+  slogan?: string;
   primary_color: string;
   login_primary_color?: string;
   login_background_url?: string;
@@ -1092,6 +1093,8 @@ export const api = {
     selected_user_ids?: string[]; 
     segment?: string; 
     force_operational?: boolean; 
+    custom_color?: string;
+    custom_image_url?: string;
   }): Promise<{ message: string; count: number }> => {
     const response = await apiClient.post('/api/admin/emails/send', data);
     return response.data;

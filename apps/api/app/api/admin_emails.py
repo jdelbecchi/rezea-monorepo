@@ -101,12 +101,16 @@ async def send_admin_emails(
     tenant_res = await db.execute(tenant_stmt)
     tenant = tenant_res.scalar_one()
 
-    # Logo personnalisé ou nom par défaut
+    # Logo personnalisé uniquement (plus gros) s'il existe, sinon nom textuel
     logo_html = ""
     if tenant.logo_url:
-        logo_html = f'<img src="http://localhost:8000{tenant.logo_url}" alt="{tenant.name}" style="max-height: 60px; margin-bottom: 15px; display: inline-block;">'
+        logo_html = f"""
+        <div style="text-align: center; margin-bottom: 6px; line-height: 1.2;">
+            <img src="http://localhost:8000{tenant.logo_url}" alt="{tenant.name}" style="max-height: 140px; max-width: 100%; width: auto; display: block; margin: 0 auto; vertical-align: middle;">
+        </div>
+        """
     else:
-        logo_html = f'<span style="font-size: 24px; font-weight: 700; color: #0f172a; font-family: \'Livvic\', sans-serif;">{tenant.name}</span>'
+        logo_html = f'<div style="text-align: center; margin-bottom: 6px;"><span style="font-size: 24px; font-weight: 700; color: #0f172a; font-family: \'Livvic\', sans-serif; letter-spacing: -0.02em;">{tenant.name}</span></div>'
 
     # Liens sociaux du footer (sans adresse physique)
     links = []
@@ -122,18 +126,19 @@ async def send_admin_emails(
     # Post-traitement automatique du texte de l'éditeur riche
     import re
     processed_content = request_data.content
+    primary_color = request_data.custom_color or tenant.primary_color or "#7c3aed"
 
-    # A. Détecter et envelopper les codes promos (ex: MERCIAMIS) dans un cadre double filet pastel
+    # A. Détecter et envelopper les codes promos (ex: MERCIAMIS) dans un cadre double filet ton-sur-ton, fond pastel et bords 4px
     def replace_promo(match):
         code = match.group(2)
         return f"""
-        <div align="center" style="margin: 25px auto; max-width: 280px; border: 2px double #e2e8f0; background-color: #fbf9f7; padding: 15px 20px; border-radius: 14px; text-align: center;">
-            <span style="font-family: 'Livvic', sans-serif; font-size: 18px; font-weight: 700; color: #1e293b; letter-spacing: 0.12em;">{code}</span>
+        <div align="center" style="margin: 24px auto; max-width: 180px; border: 3px double #a7825d; background-color: #fbf2eb; padding: 10px 20px; border-radius: 4px; text-align: center;">
+            <span style="font-family: 'Livvic', sans-serif; font-size: 15px; font-weight: 700; color: #a7825d; letter-spacing: 0.1em;">{code}</span>
         </div>
         """
     processed_content = re.sub(r'<(strong|b)>([A-Z0-9_-]{4,15})</\1>', replace_promo, processed_content)
 
-    # B. Détecter les liens isolés dans des paragraphes et les transformer en magnifiques boutons d'action
+    # B. Détecter les liens isolés dans des paragraphes et les transformer en boutons d'action (fond noir, angles carrés 4px, marges internes réduites)
     def replace_button(match):
         attrs = match.group(1) or ""
         url = match.group(2)
@@ -145,13 +150,51 @@ async def send_admin_emails(
         elif "align-right" in attrs or "text-align: right" in attrs:
             align = "right"
             
-        btn_color = tenant.primary_color or "#7c3aed"
         return f"""
-        <div align="{align}" style="margin: 25px 0; text-align: {align};">
-            <a href="{url}" style="display: inline-block; background-color: {btn_color}; color: #ffffff; font-family: 'Livvic', sans-serif; font-size: 14px; font-weight: 700; text-decoration: none; padding: 12px 30px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); text-align: center;">{text}</a>
+        <div align="{align}" style="margin: 20px 0; text-align: {align};">
+            <a href="{url}" style="display: inline-block; background-color: #0f172a; color: #ffffff; font-family: 'Livvic', sans-serif; font-size: 14px; font-weight: 500; text-decoration: none; padding: 8px 18px; border-radius: 4px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); text-align: center;">{text}</a>
         </div>
         """
     processed_content = re.sub(r'<p([^>]*)>\s*<a href="([^"]+)"[^>]*>\s*([^<]+?)\s*</a>\s*</p>', replace_button, processed_content)
+
+    # C. Détecter le message de salutation et le passer en semi-bold
+    processed_content = re.sub(
+        r'(Bonjour\s+[^,<\n\r]+,?)',
+        r'<strong style="font-weight: 600; color: #0f172a;">\1</strong>',
+        processed_content
+    )
+
+    # D. Détecter les images, les forcer à faire toute la largeur du cadre (marges négatives) et ajouter le slogan/phrase d'accroche au-dessus de la première image
+    has_added_slogan = [False]
+    def replace_image(match):
+        img_tag = match.group(0)
+        if 'style="' in img_tag:
+            img_tag = re.sub(r'style="[^"]*"', 'style="width: 100%; max-height: 250px; object-fit: cover; display: block;"', img_tag)
+        else:
+            img_tag = img_tag.replace('<img', '<img style="width: 100%; max-height: 250px; object-fit: cover; display: block;"')
+        
+        slogan_html = ""
+        if tenant.slogan and not has_added_slogan[0]:
+            slogan_html = f"""
+            <div style="border-top: 1px solid #cbd5e1; margin: 10px auto 8px auto; width: 80px;"></div>
+            <div style="text-align: center; font-size: 16px; font-weight: 300; color: #0f172a; margin-bottom: 8px; font-family: 'Livvic', sans-serif;">
+                {tenant.slogan}
+            </div>
+            """
+            has_added_slogan[0] = True
+        return f'{slogan_html}<div class="full-width-image-wrapper" style="margin: 0 -24px 10px -24px;">{img_tag}</div>'
+    
+    processed_content = re.sub(r'<img[^>]+>', replace_image, processed_content)
+
+    # Fallback si aucune image n'était présente dans l'e-mail pour afficher la phrase d'accroche/slogan
+    if tenant.slogan and not has_added_slogan[0]:
+        slogan_html = f"""
+        <div style="border-top: 1px solid #cbd5e1; margin: 10px auto 8px auto; width: 80px;"></div>
+        <div style="text-align: center; font-size: 16px; font-weight: 300; color: #0f172a; margin-bottom: 10px; font-family: 'Livvic', sans-serif;">
+            {tenant.slogan}
+        </div>
+        """
+        processed_content = slogan_html + processed_content
 
     # Envelopper dans l'enveloppe HTML master
     html_envelope = f"""
@@ -159,27 +202,44 @@ async def send_admin_emails(
     <html>
     <head>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
-            body, table, td, p, a, h2, div {{
+            body, table, td, p, a, h2, div {
                 font-family: 'Livvic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
-            }}
+            }
+            p {
+                margin-top: 0;
+                margin-bottom: 8px;
+            }
+            @media only screen and (max-width: 480px) {
+                .email-body {
+                    padding: 8px !important;
+                }
+                .email-container {
+                    padding: 12px 16px !important;
+                    border-radius: 12px !important;
+                }
+                .full-width-image-wrapper {
+                    margin-left: -16px !important;
+                    margin-right: -16px !important;
+                    margin-bottom: 8px !important;
+                }
+            }
         </style>
     </head>
-    <body style="margin: 0; padding: 20px; background-color: #f8fafc;">
-        <div style="font-family: 'Livvic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 550px; margin: 0 auto; padding: 40px 30px; border: 1px solid #e2e8f0; border-radius: 24px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
-            <div style="text-align: center; margin-bottom: 30px;">
-                {logo_html}
-            </div>
+    <body class="email-body" style="margin: 0; padding: 20px; background-color: #f8fafc;">
+        <div class="email-container" style="font-family: 'Livvic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 16px 24px; border: 1px solid #e2e8f0; border-radius: 24px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+            {logo_html}
             
-            <div style="color: #334155; font-size: 15px; line-height: 1.6; font-weight: 300;">
+            <div style="color: #334155; font-size: 16px; line-height: 1.6; font-weight: 300; text-align: center;">
                 {processed_content}
             </div>
             
-            <div style="border-top: 1px solid #f1f5f9; margin-top: 40px; padding-top: 20px; text-align: center;">
+            <div style="border-top: 1px solid #f1f5f9; margin-top: 15px; padding-top: 10px; text-align: center;">
                 {socials_html}
                 <p style="font-family: 'Livvic', sans-serif; color: #94a3b8; font-size: 12px; font-weight: 500; margin: 0;">
-                    © {tenant.name}
+                    © {tenant.name} - Propulsé par Rezea
                 </p>
             </div>
         </div>

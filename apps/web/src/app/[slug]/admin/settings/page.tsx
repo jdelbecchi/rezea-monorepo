@@ -308,6 +308,17 @@ export default function AdminSettingsPage() {
                                                 />
                                             </div>
 
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Phrase d&apos;accroche / Signature</label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.slogan || ""}
+                                                    onChange={e => setFormData({ ...formData, slogan: e.target.value })}
+                                                    placeholder="Votre phrase d'accroche ou signature..."
+                                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-slate-700"
+                                                />
+                                            </div>
+
                                             <div className="pt-2 border-t border-slate-100/50">
                                                 <label className="block text-sm font-medium text-slate-700 mb-2 text-center">Logo de l&apos;établissement</label>
                                                 <div className="flex flex-col items-center gap-6">
@@ -356,14 +367,16 @@ export default function AdminSettingsPage() {
                                             </div>
 
                                             <div className="pt-4 border-t border-slate-100/50 space-y-4">
-                                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Réseaux sociaux & Site Web</h4>
-                                                
                                                 <div>
                                                     <label className="block text-sm font-medium text-slate-700 mb-2">
                                                         Site internet de l&apos;établissement
                                                     </label>
                                                     <div className="relative">
-                                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-semibold select-none">🌐</span>
+                                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 select-none">
+                                                            <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                                                            </svg>
+                                                        </span>
                                                         <input
                                                             type="url"
                                                             value={formData.website_url || ""}
@@ -380,7 +393,11 @@ export default function AdminSettingsPage() {
                                                             Lien Facebook
                                                         </label>
                                                         <div className="relative">
-                                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-semibold select-none">🔵</span>
+                                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 select-none">
+                                                                <svg className="w-5 h-5 text-[#1877F2]" fill="currentColor" viewBox="0 0 24 24">
+                                                                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                                                                </svg>
+                                                            </span>
                                                             <input
                                                                 type="url"
                                                                 value={formData.facebook_url || ""}
@@ -396,7 +413,11 @@ export default function AdminSettingsPage() {
                                                             Lien Instagram
                                                         </label>
                                                         <div className="relative">
-                                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-semibold select-none">📸</span>
+                                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 select-none">
+                                                                <svg className="w-5 h-5 text-[#E1306C]" fill="currentColor" viewBox="0 0 24 24">
+                                                                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+                                                                </svg>
+                                                            </span>
                                                             <input
                                                                 type="url"
                                                                 value={formData.instagram_url || ""}

@@ -20,6 +20,24 @@ const ROLE_COLORS: Record<string, string> = {
     user: "bg-gray-100 text-gray-800",
 };
 
+const SEGMENT_LABELS: Record<string, string> = {
+    explorateur: "Prospect",
+    decouverte: "Découverte",
+    regulier: "Actif",
+    endormi: "Distant",
+    flexible: "Visiteur",
+    ancien: "Inactif",
+};
+
+const SEGMENT_COLORS: Record<string, string> = {
+    explorateur: "bg-amber-50 text-amber-700 border-amber-200",
+    decouverte: "bg-orange-50 text-orange-700 border-orange-200",
+    regulier: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    endormi: "bg-rose-50 text-rose-700 border-rose-200",
+    flexible: "bg-sky-50 text-sky-700 border-sky-200",
+    ancien: "bg-slate-100 text-slate-600 border-slate-200",
+};
+
 export default function AdminUsersPage() {
     const router = useRouter();
     const params = useParams();
@@ -28,7 +46,7 @@ export default function AdminUsersPage() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [roleFilter, setRoleFilter] = useState<string[]>([]);
-    const [statusFilter, setStatusFilter] = useState<string>("");
+    const [segmentFilter, setSegmentFilter] = useState<string[]>([]);
     const [totalCount, setTotalCount] = useState(0);
 
     // Edit modal state
@@ -92,7 +110,7 @@ export default function AdminUsersPage() {
             const params: Record<string, any> = {};
             if (search) params.search = search;
             if (roleFilter.length > 0) params.role = roleFilter.join(",");
-            if (statusFilter !== "") params.is_active = statusFilter === "true";
+            if (segmentFilter.length > 0) params.segment = segmentFilter.join(",");
 
             const [data, countData] = await Promise.all([
                 api.getAdminUsers(params),
@@ -106,7 +124,7 @@ export default function AdminUsersPage() {
         } finally {
             setLoading(false);
         }
-    }, [search, roleFilter, statusFilter]);
+    }, [search, roleFilter, segmentFilter]);
 
     useEffect(() => {
         fetchData();
@@ -124,7 +142,7 @@ export default function AdminUsersPage() {
             "Prénom", "Nom", "Email", "Téléphone",
             "Adresse", "Code postal", "Ville",
             "Date de naissance", "Instagram", "Facebook",
-            "Profil", "Statut", "Black List", "Motif", "Date de création",
+            "Profil", "Statut / Segment", "Black List", "Motif", "Date de création",
         ];
 
         const rows = users.map((u) => [
@@ -139,7 +157,7 @@ export default function AdminUsersPage() {
             u.instagram_handle || "",
             u.facebook_handle || "",
             ROLE_LABELS[u.role] || u.role,
-            u.is_active ? "Actif" : "Inactif",
+            u.role !== "user" ? "Administrateur" : (u.segment ? (SEGMENT_LABELS[u.segment] || u.segment) : (u.is_active ? "Actif" : "Inactif")),
             u.is_blacklisted ? "Oui" : "Non",
             u.blacklist_reason || "",
             u.created_at ? new Date(u.created_at).toLocaleDateString("fr-FR") : "",
@@ -334,16 +352,20 @@ export default function AdminUsersPage() {
                                 />
                             </div>
                             <div className="w-48">
-                                <label className="block text-xs font-medium text-slate-500 mb-1">Statut</label>
-                                <select
-                                    value={statusFilter}
-                                    onChange={(e) => setStatusFilter(e.target.value)}
-                                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-normal appearance-none cursor-pointer"
-                                >
-                                    <option value="">Tous</option>
-                                    <option value="true">Actifs</option>
-                                    <option value="false">Inactifs</option>
-                                </select>
+                                <MultiSelect
+                                    label="Statut(s)"
+                                    options={[
+                                        { id: "explorateur", label: "Prospect" },
+                                        { id: "decouverte", label: "Découverte" },
+                                        { id: "regulier", label: "Actif" },
+                                        { id: "endormi", label: "Distant" },
+                                        { id: "flexible", label: "Visiteur" },
+                                        { id: "ancien", label: "Inactif" },
+                                    ]}
+                                    selected={segmentFilter}
+                                    onChange={setSegmentFilter}
+                                    placeholder="Tous les statuts"
+                                />
                             </div>
                             <div className="flex-none">
                                 <label className="block text-xs font-medium text-transparent mb-1">Export</label>
@@ -379,8 +401,8 @@ export default function AdminUsersPage() {
                                             <th className="py-3 px-4 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">téléphone</th>
                                             <th className="py-3 px-4 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">ville</th>
                                             <th className="py-3 px-4 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">profil</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">statut</th>
-                                            <th className="py-3 px-4 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">créé le</th>
+                                            <th className="py-3 px-4 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">statut(s)</th>
+                                            <th className="py-3 px-4 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">créé le</th>
                                             <th className="px-3 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Actions</th>
                                         </tr>
                                     </thead>
@@ -408,16 +430,12 @@ export default function AdminUsersPage() {
                                                         {ROLE_LABELS[user.role] || user.role}
                                                     </span>
                                                 </td>
-                                                <td className="py-2.5 px-4">
-                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-normal border ${user.is_active
-                                                        ? "bg-green-50 text-green-700 border-green-100"
-                                                        : "bg-rose-50 text-rose-700 border-rose-100"
-                                                        }`}>
-                                                        {user.is_active ? "Actif" : "Inactif"}
-                                                        {user.is_active_override && <span className="ml-1" title="Statut forcé par admin">🛡️</span>}
+                                                <td className="py-2.5 px-4 text-center">
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-normal border ${SEGMENT_COLORS[user.segment || "explorateur"]}`}>
+                                                        {SEGMENT_LABELS[user.segment || "explorateur"]}
                                                     </span>
                                                 </td>
-                                                <td className="py-2.5 px-4 text-slate-600">
+                                                <td className="py-2.5 px-4 text-slate-600 text-center">
                                                     {user.created_at
                                                         ? new Date(user.created_at).toLocaleDateString("fr-FR")
                                                         : "—"}
@@ -657,24 +675,7 @@ export default function AdminUsersPage() {
                                 </div>
                             </div>
                             
-                            {/* Status Override */}
-                            <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4">
-                                <h3 className="text-[10px] font-medium text-blue-600 lowercase tracking-widest mb-3 flex items-center gap-2">
-                                    🛡️ contrôle statut
-                                </h3>
-                                <div className="flex items-center gap-3">
-                                    <input
-                                        type="checkbox"
-                                        id="edit_is_active_override"
-                                        checked={editingUser.is_active_override || false}
-                                        onChange={(e) => updateEditField("is_active_override", e.target.checked)}
-                                        className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                                    />
-                                    <label htmlFor="edit_is_active_override" className="text-sm font-medium text-slate-700">
-                                        Forcer le statut actif (pour les comptes sans commande)
-                                    </label>
-                                </div>
-                            </div>
+                            {/* Contrôle de statut supprimé pour simplicité */}
                             
                             {/* Black List */}
                             <div className="bg-rose-50/50 border border-rose-100 rounded-xl p-4">
@@ -907,24 +908,7 @@ export default function AdminUsersPage() {
                                 </div>
                             </div>
 
-                            {/* Status Override Create */}
-                            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-                                <h3 className="text-sm font-semibold text-blue-800 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                    🛡️ Contrôle du Statut
-                                </h3>
-                                <div className="flex items-center gap-3">
-                                    <input
-                                        type="checkbox"
-                                        id="create_is_active_override"
-                                        checked={newUser.is_active_override}
-                                        onChange={(e) => updateNewUserField("is_active_override", e.target.checked)}
-                                        className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                                    />
-                                    <label htmlFor="create_is_active_override" className="text-sm font-medium text-slate-700">
-                                        Forcer le statut actif (Manager / Staff / Utilisateur spécial)
-                                    </label>
-                                </div>
-                            </div>
+                            {/* Contrôle de statut supprimé pour simplicité */}
 
                             {/* Status message */}
                             {createMessage && (

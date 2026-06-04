@@ -133,6 +133,7 @@ class TenantSettingsUpdate(BaseModel):
     description: Optional[str] = None
     logo_url: Optional[str] = None
     banner_url: Optional[str] = None
+    slogan: Optional[str] = Field(None, max_length=500)
     primary_color: Optional[str] = Field(None, pattern="^#[0-9a-fA-F]{6}$")
     login_primary_color: Optional[str] = Field(None, pattern="^#[0-9a-fA-FA-F]{6}$")
     login_background_url: Optional[str] = None
@@ -169,6 +170,7 @@ class TenantResponse(TenantBase):
     max_sessions_per_day: int
     logo_url: Optional[str] = None
     banner_url: Optional[str] = None
+    slogan: Optional[str] = None
     primary_color: Optional[str] = "#7c3aed"
     login_primary_color: Optional[str] = None
     login_background_url: Optional[str] = None
@@ -713,6 +715,8 @@ class EmailSendRequest(BaseModel):
     selected_user_ids: Optional[List[UUID]] = None
     segment: Optional[str] = None
     force_operational: bool = False
+    custom_color: Optional[str] = None
+    custom_image_url: Optional[str] = None
 
 
 class EmailTemplateBase(BaseModel):
