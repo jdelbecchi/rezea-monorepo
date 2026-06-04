@@ -138,6 +138,7 @@ function AdminEmailsContent() {
     const [marketingSubject, setMarketingSubject] = useState("");
     const [marketingContent, setMarketingContent] = useState("");
     const [isSendingMarketing, setIsSendingMarketing] = useState(false);
+    const [showTips, setShowTips] = useState(false);
 
     const marketingCards = useMemo(() => [
         {
@@ -1010,58 +1011,190 @@ function AdminEmailsContent() {
 
 
                     {/* ==================== TAB 3 : MARKETING ACTIONS ==================== */}
-                    {activeTab === "marketing" && (
-                        <div className="space-y-8 animate-in fade-in duration-300">
-                            {/* Pale Blue Premium Banner */}
-                            <div className="bg-blue-50/60 border border-blue-100/80 p-4 px-6 rounded-2xl text-blue-900 shadow-sm flex items-center justify-center">
-                                <div className="flex flex-col md:flex-row md:items-center md:justify-center gap-2 md:gap-4 w-full text-center">
-                                    <h2 className="text-base font-semibold text-blue-950 tracking-tight flex items-center justify-center gap-2 shrink-0">
-                                        <span>🎯</span> Stratégies de marketing intelligentes
-                                    </h2>
-                                    <span className="hidden md:inline text-blue-200">|</span>
-                                    <p className="text-blue-800 text-xs font-normal leading-relaxed truncate">
-                                        Activez l&apos;une de nos campagnes de relance pré-configurées. Ciblez les segments clés en un clic et personnalisez le message.
-                                    </p>
+                    {activeTab === "marketing" && (() => {
+                        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+                        return (
+                            <div className="space-y-8 animate-in fade-in duration-300">
+                                {/* Pale Blue Premium Banner */}
+                                <div className="bg-blue-50/60 border border-blue-100/80 p-4 px-6 rounded-2xl text-blue-900 shadow-sm flex items-center justify-center">
+                                    <div className="flex flex-col md:flex-row md:items-center md:justify-center gap-2 md:gap-4 w-full text-center">
+                                        <h2 className="text-base font-semibold text-blue-950 tracking-tight flex items-center justify-center gap-2 shrink-0">
+                                            <span>🎯</span> Stratégies de marketing intelligentes
+                                        </h2>
+                                        <span className="hidden md:inline text-blue-200">|</span>
+                                        <p className="text-blue-800 text-xs font-normal leading-relaxed truncate">
+                                            Ciblez vos segments clés en un clic et personnalisez le message. Vos campagnes se transforment automatiquement en e-mails premium.
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
 
-                            {/* Campaign Cards Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                {marketingCards.map(card => {
-                                    const count = segmentStats ? (segmentStats as any)[card.segment] || 0 : 0;
-                                    return (
-                                        <div 
-                                            key={card.id}
-                                            onClick={() => handleSelectMarketingCard(card)}
-                                            className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer flex flex-col justify-between group h-full relative overflow-hidden"
-                                        >
-                                            <div className="space-y-4">
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-2xl shrink-0 group-hover:scale-110 transition-transform duration-300 select-none">{card.icon}</span>
-                                                    <h3 className="text-base font-semibold text-slate-900 leading-snug group-hover:text-blue-600 transition-colors">
-                                                        {card.title}
-                                                    </h3>
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                                    {/* 1/3 Left Column: Visual Email Preview Mockup */}
+                                    <div className="lg:col-span-1 bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4">
+                                        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Aperçu du visuel cible</h3>
+                                            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
+                                        </div>
+                                        
+                                        {/* Mock Email Client Container */}
+                                        <div className="border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm bg-slate-50 text-[10px]">
+                                            {/* Browser Header Bar */}
+                                            <div className="bg-slate-100 px-3.5 py-2.5 flex items-center gap-2 border-b border-slate-200">
+                                                <div className="flex gap-1.5 shrink-0">
+                                                    <span className="w-2 h-2 rounded-full bg-rose-400 inline-block"></span>
+                                                    <span className="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>
+                                                    <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
                                                 </div>
-                                                <p className="text-xs text-slate-500 font-medium leading-relaxed mt-2 pl-9">
-                                                    {card.description}
-                                                </p>
+                                                <div className="w-full bg-white rounded-md text-[9px] text-slate-400 text-center py-0.5 border border-slate-200 truncate select-none">
+                                                    apercu-zenstudio-mockup
+                                                </div>
                                             </div>
+                                            
+                                            {/* Email Client Content */}
+                                            <div className="bg-white text-slate-700">
+                                                {/* Brand Logo & Name */}
+                                                <div className="p-4 pb-2.5 flex flex-col items-center justify-center gap-1.5">
+                                                    {tenant?.logo_url ? (
+                                                        <img src={`${API_URL}${tenant.logo_url}`} className="h-9 object-contain" alt="Logo" />
+                                                    ) : (
+                                                        <span className="text-xl">🧘‍♀️</span>
+                                                    )}
+                                                    <span className="font-bold text-[10px] text-slate-900 tracking-widest uppercase" style={{ fontFamily: "'Livvic', sans-serif" }}>
+                                                        {tenant?.name || "Zen Studio"}
+                                                    </span>
+                                                </div>
 
-                                            <div className="mt-8 pt-4 border-t border-slate-100 flex items-center justify-between pl-9">
-                                                <span className="text-xs font-medium px-3 py-1 bg-slate-100 text-slate-600 rounded-full">
-                                                    {count} {count > 1 ? "personnes" : "personne"}
-                                                </span>
-                                                <span className="text-xs font-bold text-blue-600 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                                                    Configurer ➔
-                                                </span>
+                                                {/* Premium Yoga Cover Image - Full Width / Edge-to-Edge */}
+                                                <div className="w-full">
+                                                    <img 
+                                                        src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=600&auto=format&fit=crop" 
+                                                        className="w-full h-36 object-cover" 
+                                                        alt="Zen Yoga Studio Preview" 
+                                                    />
+                                                </div>
+                                                
+                                                {/* Elegant Centered Content */}
+                                                <div className="p-5 pt-3.5 space-y-3 text-center" style={{ fontFamily: "'Livvic', sans-serif" }}>
+                                                    <p className="font-bold text-slate-900 leading-normal text-[11px]">Bonjour Julie,</p>
+                                                    <p className="text-slate-500 font-normal leading-relaxed text-[9px] max-w-xs mx-auto">
+                                                        Nous tenions tout particulièrement à vous remercier pour votre fidélité et votre énergie positive au studio ! C&apos;est un réel plaisir de vous accompagner dans vos séances.
+                                                    </p>
+                                                    <p className="text-slate-500 font-normal leading-relaxed text-[9px] max-w-xs mx-auto">
+                                                        Pour vous remercier, voici un code cadeau offrant une invitation gratuite pour le proche de votre choix lors de votre prochain cours :
+                                                    </p>
+                                                    
+                                                    {/* Double Border Coupon Box */}
+                                                    <div className="my-3.5 mx-auto max-w-[250px] p-3 bg-[#FAF9F6] border-4 border-double border-[#e2e8f0] rounded-2xl text-center shadow-[0_2px_4px_rgba(30,41,59,0.02)]">
+                                                        <span className="font-bold text-[12px] text-[#1e293b] tracking-widest uppercase" style={{ fontFamily: "'Livvic', sans-serif" }}>
+                                                            MERCIAMIS
+                                                        </span>
+                                                    </div>
+
+                                                    <p className="text-slate-900 font-semibold text-[9px] mt-3">
+                                                        À très bientôt sur les tapis !
+                                                    </p>
+                                                    <p className="text-slate-400 font-medium text-[8px]">
+                                                        L&apos;équipe {tenant?.name || "Zen Studio"}
+                                                    </p>
+                                                    
+                                                    {/* Soft Rounded CTA Button (Moderate curves, matching Image 2) */}
+                                                    <div className="py-2.5">
+                                                        <span 
+                                                            className="inline-block px-7 py-2.5 text-[9px] font-bold text-white rounded-xl shadow-md hover:shadow-lg tracking-wider uppercase select-none transition-all active:scale-95 cursor-pointer" 
+                                                            style={{ 
+                                                                backgroundColor: tenant?.primary_color || "#7c3aed",
+                                                                fontFamily: "'Livvic', sans-serif" 
+                                                            }}
+                                                        >
+                                                            Réserver votre séance
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Newsletter Footer Menu & Social Links */}
+                                                <div className="pt-4 border-t border-slate-100 text-center space-y-3">
+                                                    {/* Links Menu */}
+                                                    <div className="flex items-center justify-center gap-2 text-[8px] font-bold text-slate-400 select-none">
+                                                        <span>Nos Cours</span>
+                                                        <span className="text-slate-200 font-normal select-none">•</span>
+                                                        <span>Horaires</span>
+                                                        <span className="text-slate-200 font-normal select-none">•</span>
+                                                        <span>Tarifs</span>
+                                                        <span className="text-slate-200 font-normal select-none">•</span>
+                                                        <span>Établissement</span>
+                                                    </div>
+
+                                                    {/* Minimalist Social Icons */}
+                                                    <div className="flex items-center justify-center gap-3">
+                                                        <span className="w-6 h-6 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-[#1877F2] font-bold hover:bg-slate-100 transition-colors">
+                                                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                                                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                                                            </svg>
+                                                        </span>
+                                                        <span className="w-6 h-6 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-[#E1306C] font-bold hover:bg-slate-100 transition-colors">
+                                                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                                                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+                                                            </svg>
+                                                        </span>
+                                                    </div>
+                                                    
+                                                    <p className="font-normal text-[8px] text-slate-400">
+                                                        © {new Date().getFullYear()} {tenant?.name || "Zen Studio"}. Tous droits réservés.
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
+                                        
+                                        <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 space-y-2 text-[11px]">
+                                            <p className="font-semibold text-slate-800 flex items-center gap-1.5">
+                                                <span>💡</span> Rendu Automatique
+                                            </p>
+                                            <p className="text-slate-500 font-normal leading-relaxed">
+                                                Pas besoin de mise en page complexe. Vos textes bruts sont automatiquement embellis avec le logo, l&apos;image d&apos;illustration, la couleur d&apos;accentuation et les réseaux sociaux paramétrés pour votre club.
+                                            </p>
+                                        </div>
+                                    </div>
 
+                                    {/* 2/3 Right Column: Campaign Grid */}
+                                    <div className="lg:col-span-2">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            {marketingCards.map(card => {
+                                                const count = segmentStats ? (segmentStats as any)[card.segment] || 0 : 0;
+                                                return (
+                                                    <div 
+                                                        key={card.id}
+                                                        onClick={() => handleSelectMarketingCard(card)}
+                                                        className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer flex flex-col justify-between group h-full relative overflow-hidden"
+                                                    >
+                                                        <div className="space-y-3">
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="text-xl shrink-0 group-hover:scale-110 transition-transform duration-300 select-none">{card.icon}</span>
+                                                                <h3 className="text-sm font-bold text-slate-900 leading-snug group-hover:text-blue-600 transition-colors">
+                                                                    {card.title}
+                                                                </h3>
+                                                            </div>
+                                                            <p className="text-[11px] text-slate-500 font-normal leading-relaxed pl-8">
+                                                                {card.description}
+                                                            </p>
+                                                        </div>
+
+                                                        <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between pl-8">
+                                                            <span className="text-[10px] font-bold px-2.5 py-0.5 bg-slate-100 text-slate-600 rounded-lg">
+                                                                {count} {count > 1 ? "destinataires" : "destinataire"}
+                                                            </span>
+                                                            <span className="text-[10px] font-bold text-blue-600 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all flex items-center gap-0.5">
+                                                                Lancer ➔
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
 
                     {/* ==================== TAB 3 : SATISFACTION SURVEYS ==================== */}
                     {activeTab === "surveys" && (
@@ -1111,36 +1244,23 @@ function AdminEmailsContent() {
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    onClick={() => { setSurveyType("event"); setSurveyTargetSegment("participants"); }}
-                                                    className={`flex-1 py-2.5 rounded-lg text-xs font-medium border transition-all ${surveyType === "event" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+                                                    onClick={() => { setSurveyType("event"); setSurveyTargetType("event"); setSurveyTargetSegment("participants"); }}
+                                                    className={`flex-1 py-2.5 rounded-lg text-xs font-medium border transition-all ${surveyType === "event" && surveyTargetType === "event" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
                                                 >
-                                                    Post-activité
+                                                    Événement
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setSurveyType("event"); setSurveyTargetType("session"); setSurveyTargetSegment("participants"); }}
+                                                    className={`flex-1 py-2.5 rounded-lg text-xs font-medium border transition-all ${surveyType === "event" && surveyTargetType === "session" ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+                                                >
+                                                    Séance
                                                 </button>
                                             </div>
                                         </div>
 
                                         {surveyType === "event" && (
                                             <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-4 space-y-4 shadow-[inset_0_1px_2px_rgba(0,0,0,0.015)]">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-slate-500 mb-1.5">Type d&apos;activité</label>
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setSurveyTargetType("event")}
-                                                            className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-all ${surveyTargetType === "event" ? "bg-white text-blue-700 border-slate-200 shadow-sm" : "bg-transparent text-slate-500 border-transparent hover:bg-white/40"}`}
-                                                        >
-                                                            Événement
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setSurveyTargetType("session")}
-                                                            className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-all ${surveyTargetType === "session" ? "bg-white text-blue-700 border-slate-200 shadow-sm" : "bg-transparent text-slate-500 border-transparent hover:bg-white/40"}`}
-                                                        >
-                                                            Séance
-                                                        </button>
-                                                    </div>
-                                                </div>
-
                                                 {surveyTargetType === "event" ? (
                                                     <div>
                                                         <select
@@ -1420,22 +1540,22 @@ function AdminEmailsContent() {
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
                         {/* Modal Header */}
-                        <div className="p-6 md:p-8 pb-3 flex items-center justify-between bg-white sticky top-0 z-10">
+                        <div className="p-4 md:p-5 pb-2.5 flex items-center justify-between bg-white sticky top-0 z-10 border-b border-slate-100">
                             <div className="flex items-center gap-3">
                                 <span className="text-2xl select-none">{selectedMarketingCard.icon}</span>
                                 <div>
-                                    <h3 className="text-lg font-semibold text-slate-900 tracking-tight leading-snug">{selectedMarketingCard.title}</h3>
+                                    <h3 className="text-base font-semibold text-slate-900 tracking-tight leading-snug">{selectedMarketingCard.title}</h3>
                                 </div>
                             </div>
-                            <button onClick={() => setSelectedMarketingCard(null)} className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-50 rounded-xl">
-                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <button onClick={() => { setSelectedMarketingCard(null); setShowTips(false); }} className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-50 rounded-xl">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
 
                         {/* Modal Content */}
-                        <div className="flex-1 overflow-y-auto p-6 md:p-8 pt-2 space-y-6">
+                        <div className="flex-1 overflow-y-auto p-4 md:p-5 pt-3 space-y-4">
                             
                             {/* Premium Encart de ciblage & conseils marketing */}
                             {(() => {
@@ -1444,24 +1564,37 @@ function AdminEmailsContent() {
                                     tips: ["Définissez des objectifs de campagne clairs.", "Rédigez un contenu direct et chaleureux."]
                                 };
                                 return (
-                                    <div className="bg-gradient-to-r from-blue-50/70 to-indigo-50/50 border border-blue-100/80 rounded-2xl p-5 shadow-sm text-sm">
-                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-blue-100/40 pb-3 mb-4">
-                                            <h4 className="text-xs font-bold text-slate-700 flex items-center gap-1.5 uppercase tracking-wide">
-                                                💡 Idées d&apos;actions recommandées :
-                                            </h4>
-                                            <div className="inline-flex items-center px-3 py-1 bg-blue-100/60 text-blue-800 text-xs font-medium rounded-lg border border-blue-200/50">
-                                                🎯 Segment cible : {info.segmentLabel}
+                                    <div className="bg-gradient-to-r from-blue-50/70 to-indigo-50/50 border border-blue-100/80 rounded-2xl p-4 shadow-sm text-sm">
+                                        <button 
+                                            type="button"
+                                            onClick={() => setShowTips(!showTips)}
+                                            className="w-full flex items-center justify-between font-semibold text-slate-700 outline-none select-none"
+                                        >
+                                            <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 text-left">
+                                                <h4 className="text-xs font-bold flex items-center gap-1.5 uppercase tracking-wide text-slate-800">
+                                                    💡 Idées d&apos;actions recommandées
+                                                </h4>
+                                                <div className="inline-flex items-center px-2 py-0.5 bg-blue-100/50 text-blue-800 text-[10px] font-semibold rounded-lg border border-blue-200/50 self-start md:self-auto leading-none">
+                                                    🎯 Ciblage : {info.segmentLabel.split(" (")[0]}
+                                                </div>
                                             </div>
-                                        </div>
+                                            <span className="text-[11px] font-bold text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1 shrink-0 ml-2">
+                                                {showTips ? "Masquer ▲" : "Afficher les conseils ▼"}
+                                            </span>
+                                        </button>
                                         
-                                        <ul className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            {info.tips.map((tip, idx) => (
-                                                <li key={idx} className="flex gap-2.5 items-start bg-white/65 p-3 rounded-xl border border-white shadow-[0_2px_4px_rgba(30,41,59,0.02)]">
-                                                    <span className="text-blue-500 font-bold select-none text-xs">{idx + 1}.</span>
-                                                    <span className="text-xs text-slate-600 font-medium leading-relaxed">{tip}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
+                                        {showTips && (
+                                            <div className="mt-3 pt-3 border-t border-blue-100/40 animate-in slide-in-from-top-2 duration-200">
+                                                <ul className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    {info.tips.map((tip, idx) => (
+                                                        <li key={idx} className="flex gap-2.5 items-start bg-white/65 p-3 rounded-xl border border-white shadow-[0_2px_4px_rgba(30,41,59,0.02)]">
+                                                            <span className="text-blue-500 font-bold select-none text-xs">{idx + 1}.</span>
+                                                            <span className="text-xs text-slate-600 font-medium leading-relaxed">{tip}</span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })()}
@@ -1552,11 +1685,16 @@ function AdminEmailsContent() {
                                                  className="bg-white min-h-[160px] text-sm"
                                              />
                                         </div>
-                                        <div className="mt-2 p-3 bg-amber-50 rounded-xl border border-amber-150 flex items-start gap-2 text-[11px] text-amber-800">
-                                            <span className="text-sm">💡</span>
-                                            <p className="leading-relaxed">
-                                                Utilisez le tag <b>&#123;first_name&#125;</b> dans votre message : il sera remplacé dynamiquement par le prénom de chaque destinataire (ex: Marie, Pierre).
-                                            </p>
+                                        <div className="mt-3 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/80 flex items-start gap-3 text-[11px] text-indigo-950 font-normal leading-relaxed">
+                                            <span className="text-sm select-none">✨</span>
+                                            <div className="space-y-1.5">
+                                                <p className="font-semibold text-indigo-900">Astuces et optimisations visuelles automatiques :</p>
+                                                <ul className="list-disc pl-4 space-y-1">
+                                                    <li><b>Personnalisation</b> : Utilisez le tag <code>{"{first_name}"}</code> dans votre texte pour insérer le prénom de chaque destinataire (ex: Julie, Thomas).</li>
+                                                    <li><b>Cadre Code Promo</b> : Rédigez un code en MAJUSCULES et mettez-le <b>en gras</b> (ex: <b>MERCIAMIS</b>) pour l&apos;afficher dans un magnifique encart double-bordure pastel.</li>
+                                                    <li><b>Bouton d&apos;Action</b> : Insérez un lien hypertexte seul sur sa propre ligne de paragraphe pour le transformer automatiquement en un bouton d&apos;action arrondi à la couleur du club.</li>
+                                                </ul>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
