@@ -1169,7 +1169,7 @@ function AdminEmailsContent() {
                                                         <div className="space-y-3">
                                                             <div className="flex items-center gap-3">
                                                                 <span className="text-xl shrink-0 group-hover:scale-110 transition-transform duration-300 select-none">{card.icon}</span>
-                                                                <h3 className="text-sm font-bold text-slate-900 leading-snug group-hover:text-blue-600 transition-colors">
+                                                                <h3 className="text-sm font-semibold text-slate-900 leading-snug">
                                                                     {card.title}
                                                                 </h3>
                                                             </div>
