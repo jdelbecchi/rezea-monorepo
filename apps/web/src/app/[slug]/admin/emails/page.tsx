@@ -940,12 +940,12 @@ function AdminEmailsContent() {
                                                 if (e.target.value) setShowValidation(false);
                                             }}
                                             placeholder="Saisissez l'objet de votre e-mail..."
-                                            className={`w-full p-3.5 border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all font-light ${showValidation && !subject ? 'border-rose-300 bg-rose-50/30' : 'border-slate-200 bg-white'}`}
+                                            className={`w-full p-3.5 border rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 outline-none text-sm transition-all font-light ${showValidation && !subject ? 'border-rose-300 bg-rose-50/30' : 'border-slate-200 bg-white'}`}
                                         />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 mb-2">Contenu de l&apos;email</label>
-                                        <div className="bg-white rounded-xl overflow-hidden border border-slate-200 focus-within:ring-2 focus-within:ring-indigo-500 transition-all">
+                                        <div className="bg-white rounded-xl overflow-hidden border border-slate-200 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all">
                                             <QuillNode
                                                 ref={quillRef}
                                                 theme="snow"
@@ -1217,7 +1217,7 @@ function AdminEmailsContent() {
                                                 value={surveyTitle}
                                                 onChange={(e) => setSurveyTitle(e.target.value)}
                                                 placeholder="Ex : Qu'avez-vous pensé de notre stage de mai ?"
-                                                className="w-full p-3 border border-slate-200 bg-white hover:border-slate-300 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-sm placeholder:font-normal placeholder:text-slate-400 placeholder:opacity-100"
+                                                className="w-full p-3 border border-slate-200 bg-white hover:border-slate-300 rounded-xl text-sm font-medium outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 placeholder:text-sm placeholder:font-normal placeholder:text-slate-400 placeholder:opacity-100"
                                             />
                                         </div>
 
@@ -1228,7 +1228,7 @@ function AdminEmailsContent() {
                                                 onChange={(e) => setSurveyDescription(e.target.value)}
                                                 placeholder="Ex : Vos retours nous permettent d'améliorer la qualité de nos séances."
                                                 rows={2}
-                                                className="w-full p-3 border border-slate-200 bg-white hover:border-slate-300 rounded-xl text-sm font-normal outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-sm placeholder:font-normal placeholder:text-slate-400 placeholder:opacity-100 resize-none"
+                                                className="w-full p-3 border border-slate-200 bg-white hover:border-slate-300 rounded-xl text-sm font-normal outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 placeholder:text-sm placeholder:font-normal placeholder:text-slate-400 placeholder:opacity-100 resize-none"
                                             />
                                         </div>
 
@@ -1267,7 +1267,7 @@ function AdminEmailsContent() {
                                                             value={surveyEventId}
                                                             onChange={(e) => setSurveyEventId(e.target.value)}
                                                             required
-                                                            className={`w-full p-3 border border-slate-200 bg-white rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-all ${!surveyEventId ? 'text-slate-400 font-normal' : 'text-slate-700 font-medium'}`}
+                                                            className={`w-full p-3 border border-slate-200 bg-white rounded-xl text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 shadow-sm transition-all ${!surveyEventId ? 'text-slate-400 font-normal' : 'text-slate-700 font-medium'}`}
                                                         >
                                                             <option value="" className="text-slate-400">Choisir un événement</option>
                                                             {events.map(ev => (
@@ -1281,7 +1281,7 @@ function AdminEmailsContent() {
                                                             value={surveySessionId}
                                                             onChange={(e) => setSurveySessionId(e.target.value)}
                                                             required
-                                                            className={`w-full p-3 border border-slate-200 bg-white rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-all ${!surveySessionId ? 'text-slate-400 font-normal' : 'text-slate-700 font-medium'}`}
+                                                            className={`w-full p-3 border border-slate-200 bg-white rounded-xl text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 shadow-sm transition-all ${!surveySessionId ? 'text-slate-400 font-normal' : 'text-slate-700 font-medium'}`}
                                                         >
                                                             <option value="" className="text-slate-400">Choisir une séance</option>
                                                             {sessions.map(sess => (
@@ -1299,7 +1299,7 @@ function AdminEmailsContent() {
                                                 <button
                                                     type="button"
                                                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                                    className={`w-full p-3 border border-slate-200 bg-white rounded-xl outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between shadow-[0_2px_4px_rgba(30,41,59,0.02)] transition-all text-sm ${
+                                                    className={`w-full p-3 border border-slate-200 bg-white rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 flex items-center justify-between shadow-[0_2px_4px_rgba(30,41,59,0.02)] transition-all text-sm ${
                                                         surveyType === "event"
                                                             ? "text-black font-light"
                                                             : (!surveyTargetSegment || surveyTargetSegment === "tous")
@@ -1662,13 +1662,13 @@ function AdminEmailsContent() {
                                             type="text"
                                             value={marketingSubject}
                                             onChange={(e) => setMarketingSubject(e.target.value)}
-                                            className="w-full p-4 border border-slate-200/80 rounded-2xl text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500 bg-slate-55"
+                                            className="w-full p-4 border border-slate-200/80 rounded-2xl text-sm font-semibold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 bg-slate-55"
                                         />
                                     </div>
 
                                     <div>
                                         <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">corps du message</label>
-                                        <div className="border border-slate-200/80 rounded-2xl overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 bg-white">
+                                        <div className="border border-slate-200/80 rounded-2xl overflow-hidden focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500/20 bg-white">
                                              <QuillNode
                                                  theme="snow"
                                                  value={marketingContent}
@@ -1756,7 +1756,7 @@ function AdminEmailsContent() {
                                     placeholder="Rechercher un membre..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all"
+                                    className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 outline-none text-sm transition-all"
                                 />
                             </div>
                         </div>
@@ -1812,7 +1812,7 @@ function AdminEmailsContent() {
                                     value={templateName}
                                     onChange={(e) => setTemplateName(e.target.value)}
                                     placeholder="ex: Annonce Stage Printemps"
-                                    className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all bg-slate-50/50 font-bold"
+                                    className="w-full p-4 rounded-2xl border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 outline-none transition-all bg-slate-50/50 font-bold"
                                     onKeyDown={(e) => e.key === 'Enter' && handleSaveTemplate()}
                                 />
                             </div>
