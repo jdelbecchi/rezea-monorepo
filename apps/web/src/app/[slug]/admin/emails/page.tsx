@@ -1226,7 +1226,7 @@ function AdminEmailsContent() {
                                             <textarea 
                                                 value={surveyDescription}
                                                 onChange={(e) => setSurveyDescription(e.target.value)}
-                                                placeholder="Ex : Vos retours nous permettent d'améliorer la qualité de nos séances."
+                                                placeholder="Ex : Avez-vous aimé les activités proposées ?"
                                                 rows={2}
                                                 className="w-full p-3 border border-slate-200 bg-white hover:border-slate-300 rounded-xl text-sm font-normal outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 placeholder:text-sm placeholder:font-normal placeholder:text-slate-400 placeholder:opacity-100 resize-none"
                                             />
@@ -1260,37 +1260,35 @@ function AdminEmailsContent() {
                                         </div>
 
                                         {surveyType === "event" && (
-                                            <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-4 space-y-4 shadow-[inset_0_1px_2px_rgba(0,0,0,0.015)]">
-                                                {surveyTargetType === "event" ? (
-                                                    <div>
-                                                        <select
-                                                            value={surveyEventId}
-                                                            onChange={(e) => setSurveyEventId(e.target.value)}
-                                                            required
-                                                            className={`w-full p-3 border border-slate-200 bg-white rounded-xl text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 shadow-sm transition-all ${!surveyEventId ? 'text-slate-400 font-normal' : 'text-slate-700 font-medium'}`}
-                                                        >
-                                                            <option value="" className="text-slate-400">Choisir un événement</option>
-                                                            {events.map(ev => (
-                                                                <option key={ev.id} value={ev.id} className="text-slate-700 font-medium">{ev.title} ({ev.event_date ? ev.event_date.split('-').reverse().join('/') : ''})</option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
-                                                ) : (
-                                                    <div>
-                                                        <select
-                                                            value={surveySessionId}
-                                                            onChange={(e) => setSurveySessionId(e.target.value)}
-                                                            required
-                                                            className={`w-full p-3 border border-slate-200 bg-white rounded-xl text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 shadow-sm transition-all ${!surveySessionId ? 'text-slate-400 font-normal' : 'text-slate-700 font-medium'}`}
-                                                        >
-                                                            <option value="" className="text-slate-400">Choisir une séance</option>
-                                                            {sessions.map(sess => (
-                                                                <option key={sess.id} value={sess.id} className="text-slate-700 font-medium">{sess.title} ({new Date(sess.start_time).toLocaleDateString()})</option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
-                                                )}
-                                            </div>
+                                            surveyTargetType === "event" ? (
+                                                <div>
+                                                    <select
+                                                        value={surveyEventId}
+                                                        onChange={(e) => setSurveyEventId(e.target.value)}
+                                                        required
+                                                        className={`w-full p-3 border border-slate-200 bg-white rounded-xl text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 shadow-sm transition-all ${!surveyEventId ? 'text-slate-400 font-normal' : 'text-slate-700 font-medium'}`}
+                                                    >
+                                                        <option value="" className="text-slate-400">Choisir un événement</option>
+                                                        {events.map(ev => (
+                                                            <option key={ev.id} value={ev.id} className="text-slate-700 font-medium">{ev.title} ({ev.event_date ? ev.event_date.split('-').reverse().join('/') : ''})</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <select
+                                                        value={surveySessionId}
+                                                        onChange={(e) => setSurveySessionId(e.target.value)}
+                                                        required
+                                                        className={`w-full p-3 border border-slate-200 bg-white rounded-xl text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 shadow-sm transition-all ${!surveySessionId ? 'text-slate-400 font-normal' : 'text-slate-700 font-medium'}`}
+                                                    >
+                                                        <option value="" className="text-slate-400">Choisir une séance</option>
+                                                        {sessions.map(sess => (
+                                                            <option key={sess.id} value={sess.id} className="text-slate-700 font-medium">{sess.title} ({new Date(sess.start_time).toLocaleDateString()})</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )
                                         )}
 
                                         <div>
