@@ -1,0 +1,122 @@
+# -*- coding: utf-8 -*-
+import os
+
+# Mock data
+class MockUser:
+    first_name = "Jean"
+
+class MockCampaign:
+    title = "Qu'avez-vous pensé des Portes Ouvertes ?"
+    description = ""
+
+class MockTenant:
+    name = "PolAir"
+
+usr = MockUser()
+campaign = MockCampaign()
+tenant = MockTenant()
+base_url = "preview_feedback.html"
+
+class MockResponse:
+    token = "mock-token-xyz"
+
+resp = MockResponse()
+
+description_html = '<div style="height: 20px;"></div>'
+
+socials_html = """<div style="margin-bottom: 15px; text-align: center;">
+    <a href="#" style="text-decoration: none; color: #64748b; font-size: 10px; margin: 0 6px; font-weight: 500; white-space: nowrap;">Notre Site</a>
+    <a href="#" style="text-decoration: none; color: #64748b; font-size: 10px; margin: 0 6px; font-weight: 500; white-space: nowrap;">Insta</a>
+    <a href="#" style="text-decoration: none; color: #64748b; font-size: 10px; margin: 0 6px; font-weight: 500; white-space: nowrap;">Facebook</a>
+    <a href="#" style="text-decoration: none; color: #64748b; font-size: 10px; margin: 0 6px; font-weight: 500; white-space: nowrap;">Se désabonner</a>
+</div>"""
+
+# Real HTML body template from admin_surveys.py
+html_body = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+        body, table, td, p, a, h2 {{
+            font-family: 'Livvic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+        }}
+    </style>
+</head>
+<body style="margin: 0; padding: 20px 10px; background-color: #f8fafc;">
+    <div style="font-family: 'Livvic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; width: 100%; max-width: 550px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 24px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); overflow: hidden;">
+        <!-- Bandeau haut (Header Banner) - Sur fond blanc -->
+        <div style="background-color: #ffffff; border-bottom: 1px solid #e2e8f0; padding: 30px 24px; text-align: center;">
+            <h2 style="font-family: 'Livvic', sans-serif; color: #0f172a; font-size: 20px; font-weight: 500; margin: 0; tracking: -0.02em;">✨ Votre avis nous intéresse !</h2>
+        </div>
+        
+        <!-- Corps de l'email (Body Content) -->
+        <div style="padding: 30px 16px;">
+            <div align="center" style="text-align: center; margin-bottom: 24px;">
+                <p style="font-family: 'Livvic', sans-serif; color: #475569; font-size: 14px; line-height: 1.5; text-align: center; margin: 0;">
+                    Bonjour {usr.first_name},<br><br>
+                    Votre avis est précieux !<br>
+                    Partagez-le avec nous en 2 clics 😊
+                </p>
+            </div>
+            
+            <!-- Encart enquête (Enclosed Survey Card) -->
+            <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px 10px; text-align: center; margin-bottom: 24px;">
+                <p style="font-family: 'Livvic', sans-serif; color: #1e293b; font-size: 14px; font-weight: 500; margin: 0 0 16px 0; line-height: 1.4;">
+                    {campaign.title}
+                </p>
+                {description_html}
+                
+                <table align="center" style="margin: 0 auto; border-collapse: collapse;">
+                    <tr>
+                        <td align="center" style="padding: 0 4px; width: 64px; vertical-align: top;">
+                            <a href="{base_url}?t={resp.token}&r=1" style="text-decoration: none; font-size: 24px; display: inline-block; line-height: 1;" title="Pas du tout satisfait">😔</a>
+                            <div style="font-family: 'Livvic', sans-serif; font-size: 9px; color: #64748b; margin-top: 6px; line-height: 1.2; font-weight: 500;">Pas du tout satisfait</div>
+                        </td>
+                        <td align="center" style="padding: 0 4px; width: 64px; vertical-align: top;">
+                            <a href="{base_url}?t={resp.token}&r=2" style="text-decoration: none; font-size: 24px; display: inline-block; line-height: 1;" title="Peu satisfait">🙁</a>
+                            <div style="font-family: 'Livvic', sans-serif; font-size: 9px; color: #64748b; margin-top: 6px; line-height: 1.2; font-weight: 500;">Peu satisfait</div>
+                        </td>
+                        <td align="center" style="padding: 0 4px; width: 64px; vertical-align: top;">
+                            <a href="{base_url}?t={resp.token}&r=3" style="text-decoration: none; font-size: 24px; display: inline-block; line-height: 1;" title="Moyen">😐</a>
+                            <div style="font-family: 'Livvic', sans-serif; font-size: 9px; color: #64748b; margin-top: 6px; line-height: 1.2; font-weight: 500;">Moyen</div>
+                        </td>
+                        <td align="center" style="padding: 0 4px; width: 64px; vertical-align: top;">
+                            <a href="{base_url}?t={resp.token}&r=4" style="text-decoration: none; font-size: 24px; display: inline-block; line-height: 1;" title="Satisfait">🙂</a>
+                            <div style="font-family: 'Livvic', sans-serif; font-size: 9px; color: #64748b; margin-top: 6px; line-height: 1.2; font-weight: 500;">Satisfait</div>
+                        </td>
+                        <td align="center" style="padding: 0 4px; width: 64px; vertical-align: top;">
+                            <a href="{base_url}?t={resp.token}&r=5" style="text-decoration: none; font-size: 24px; display: inline-block; line-height: 1;" title="Très satisfait">😍</a>
+                            <div style="font-family: 'Livvic', sans-serif; font-size: 9px; color: #64748b; margin-top: 6px; line-height: 1.2; font-weight: 500;">Très satisfait</div>
+                        </td>
+                    </tr>
+                </table>
+                
+                <div style="border-top: 1px solid #e2e8f0; margin: 20px 0;"></div>
+                
+                <p style="font-family: 'Livvic', sans-serif; color: #64748b; font-size: 13px; text-align: center; margin: 0; line-height: 1.5; font-style: italic;">
+                    Merci de nous aider à nous améliorer.
+                </p>
+            </div>
+            
+            <!-- Footer -->
+            <div style="border-top: 1px solid #f1f5f9; padding-top: 20px; text-align: center;">
+                {socials_html}
+                <p style="font-family: 'Livvic', sans-serif; color: #94a3b8; font-size: 12px; font-weight: 500; margin: 10px 0 0 0;">
+                    {tenant.name} - Propulsé par Rezea
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+"""
+
+# Write HTML output
+output_path = os.path.join(os.path.dirname(__file__), "preview_email.html")
+with open(output_path, "w", encoding="utf-8") as f:
+    f.write(html_body)
+
+print(f"Generated HTML preview at: {output_path}")

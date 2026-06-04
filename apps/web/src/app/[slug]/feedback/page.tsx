@@ -152,25 +152,21 @@ function PublicFeedbackContent() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-            <div className="bg-white p-8 md:p-10 rounded-3xl border border-slate-200/80 shadow-2xl max-w-lg w-full space-y-8 animate-in fade-in duration-300">
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6">
+            <div className="bg-white p-6 sm:p-8 md:p-10 rounded-3xl border border-slate-200/80 shadow-2xl max-w-lg w-full space-y-6 animate-in fade-in duration-300">
                 
                 {/* Header */}
-                <div className="text-center space-y-2">
+                <div className="text-center space-y-2.5">
                     <span className="text-3xl">🌟</span>
-                    <h2 className="text-lg font-bold text-slate-400 uppercase tracking-widest text-[10px]">Enquête de satisfaction</h2>
+                    <h2 className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em]">Enquête de satisfaction</h2>
+                    <div className="border-t border-slate-100 w-24 mx-auto my-2.5"></div>
                     <h1 className="text-lg md:text-xl font-medium text-slate-800 tracking-tight leading-snug">
                         {campaignTitle || "Votre avis nous intéresse"}
                     </h1>
-                    {campaignDescription && (
-                        <p className="text-slate-500 text-xs mt-2 font-normal leading-relaxed max-w-sm mx-auto">
-                            {campaignDescription}
-                        </p>
-                    )}
                 </div>
 
                 {/* Main interactive Rating Row */}
-                <div className="border-t border-b border-slate-100 py-6 text-center space-y-4">
+                <div className="border-t border-b border-slate-100 py-4 text-center space-y-3">
                     <p className="text-slate-500 text-xs font-medium">Votre évaluation :</p>
                     
                     <div className="flex justify-between items-center max-w-sm mx-auto px-2">
@@ -181,9 +177,9 @@ function PublicFeedbackContent() {
                                     key={s.val}
                                     type="button"
                                     onClick={() => handleRatingClick(s.val)}
-                                    className={`w-14 h-14 flex items-center justify-center text-4xl rounded-full transition-all duration-200 focus:outline-none ${
+                                    className={`w-12 h-12 flex items-center justify-center text-2xl rounded-full transition-all duration-200 focus:outline-none ${
                                         isSelected 
-                                            ? "bg-slate-100/90 scale-110 shadow-sm border border-slate-200/40" 
+                                            ? "bg-slate-100/90 scale-105 shadow-sm border border-slate-200/40" 
                                             : rating !== null 
                                                 ? "opacity-35 grayscale hover:opacity-75 hover:grayscale-0 hover:bg-slate-50" 
                                                 : "hover:bg-slate-50"
@@ -211,21 +207,21 @@ function PublicFeedbackContent() {
                             value={comment}
                             onChange={(e) => setComment(e.target.value)}
                             placeholder="Partagez-nous votre ressenti, vos remarques ou vos idées d'amélioration..."
-                            className="w-full p-4 rounded-2xl border border-slate-200 bg-slate-50/30 font-medium text-slate-800 placeholder:text-slate-400 text-sm h-32 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all resize-none"
+                            className="w-full p-4 rounded-2xl border border-slate-200 bg-slate-50/30 font-medium text-slate-800 placeholder:text-slate-400 text-xs h-32 focus:border-slate-400 focus:bg-white outline-none transition-all resize-none"
                         />
                     </div>
 
                     <button
                         type="submit"
                         disabled={isSubmitting || rating === null}
-                        className={`w-full py-4 rounded-xl font-bold text-sm text-white shadow-lg transition-all ${rating === null ? "bg-slate-300 cursor-not-allowed shadow-none" : "bg-slate-900 hover:bg-slate-800 shadow-slate-200"}`}
+                        className={`w-full py-3 rounded-xl font-semibold text-xs text-white shadow-lg transition-all ${rating === null ? "bg-slate-300 cursor-not-allowed shadow-none" : "bg-slate-900 hover:bg-slate-800 shadow-slate-200"}`}
                     >
                         {isSubmitting ? "Enregistrement en cours..." : "Enregistrer mon avis"}
                     </button>
                 </form>
 
                 <p className="text-[10px] text-slate-400 text-center leading-relaxed">
-                    Votre réponse est sécurisée et confidentielle. Merci de contribuer au développement de notre club !
+                    Votre réponse est sécurisée et confidentielle. Merci de contribuer à notre développement !
                 </p>
             </div>
         </div>
