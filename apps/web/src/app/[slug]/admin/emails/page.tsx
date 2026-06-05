@@ -1644,7 +1644,7 @@ function AdminEmailsContent() {
                                 {/* Colonne Droite : Message */}
                                 <div className="lg:col-span-3 flex flex-col gap-5">
                                     <div>
-                                        <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">objet du message</label>
+                                        <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">objet du message</label>
                                         <input
                                             type="text"
                                             value={marketingSubject}
