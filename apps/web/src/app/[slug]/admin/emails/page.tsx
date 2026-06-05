@@ -1061,7 +1061,7 @@ function AdminEmailsContent() {
                                                 {/* Slogan */}
                                                 <div className="px-4 text-center">
                                                     <div className="border-t border-slate-200 w-10 mx-auto my-1.5" />
-                                                    <div className="text-[10px] font-light text-[#0f172a] mb-2" style={{ fontFamily: "'Livvic', sans-serif" }}>
+                                                    <div className="text-[10px] font-light text-[#475569] mb-2" style={{ fontFamily: "'Livvic', sans-serif" }}>
                                                         Le bien-être à chaque respiration | A vos côtés depuis 2005
                                                     </div>
                                                 </div>
