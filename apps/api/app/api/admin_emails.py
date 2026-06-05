@@ -105,8 +105,8 @@ async def send_admin_emails(
     logo_html = ""
     if tenant.logo_url:
         logo_html = f"""
-        <div style="text-align: center; margin-bottom: 6px; line-height: 1.2;">
-            <img src="http://localhost:8000{tenant.logo_url}" alt="{tenant.name}" style="max-height: 140px; max-width: 100%; width: auto; display: block; margin: 0 auto; vertical-align: middle;">
+        <div class="email-logo-wrapper" style="text-align: center; margin-bottom: 6px; line-height: 1.2;">
+            <img src="http://localhost:8000{tenant.logo_url}" alt="{tenant.name}" class="email-logo" style="max-height: 140px; max-width: 100%; width: auto; display: block; margin: 0 auto; vertical-align: middle;">
         </div>
         """
     else:
@@ -176,7 +176,7 @@ async def send_admin_emails(
         slogan_html = ""
         if tenant.slogan and not has_added_slogan[0]:
             slogan_html = f"""
-            <div style="border-top: 1px solid #cbd5e1; margin: 10px auto 8px auto; width: 80px;"></div>
+            <div class="email-divider" style="border-top: 1px solid #cbd5e1; margin: 10px auto 8px auto; width: 80px;"></div>
             <div class="email-slogan" style="text-align: center; font-size: 16px; font-weight: 300; color: #0f172a; margin-bottom: 8px; font-family: 'Livvic', sans-serif;">
                 {tenant.slogan}
             </div>
@@ -189,7 +189,7 @@ async def send_admin_emails(
     # Fallback si aucune image n'était présente dans l'e-mail pour afficher la phrase d'accroche/slogan
     if tenant.slogan and not has_added_slogan[0]:
         slogan_html = f"""
-        <div style="border-top: 1px solid #cbd5e1; margin: 10px auto 8px auto; width: 80px;"></div>
+        <div class="email-divider" style="border-top: 1px solid #cbd5e1; margin: 10px auto 8px auto; width: 80px;"></div>
         <div class="email-slogan" style="text-align: center; font-size: 16px; font-weight: 300; color: #0f172a; margin-bottom: 10px; font-family: 'Livvic', sans-serif;">
             {tenant.slogan}
         </div>
@@ -217,13 +217,25 @@ async def send_admin_emails(
                     padding: 8px !important;
                 }
                 .email-container {
-                    padding: 12px 16px !important;
+                    padding: 8px 16px 16px 16px !important;
                     border-radius: 12px !important;
                 }
                 .full-width-image-wrapper {
                     margin-left: -16px !important;
                     margin-right: -16px !important;
                     margin-bottom: 8px !important;
+                }
+                .full-width-image-wrapper img {
+                    max-height: 160px !important;
+                }
+                .email-logo {
+                    max-height: 90px !important;
+                }
+                .email-logo-wrapper {
+                    margin-bottom: 2px !important;
+                }
+                .email-divider {
+                    margin: 6px auto 6px auto !important;
                 }
                 .email-slogan {
                     font-size: 14px !important;
