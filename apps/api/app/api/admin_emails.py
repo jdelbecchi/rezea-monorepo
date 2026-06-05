@@ -205,49 +205,49 @@ async def send_admin_emails(
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
-            body, table, td, p, a, h2, div {
+            body, table, td, p, a, h2, div {{
                 font-family: 'Livvic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
-            }
-            p {
+            }}
+            p {{
                 margin-top: 0;
                 margin-bottom: 8px;
-            }
-            @media only screen and (max-width: 480px) {
-                .email-body {
+            }}
+            @media only screen and (max-width: 480px) {{
+                .email-body {{
                     padding: 8px !important;
-                }
-                .email-container {
+                }}
+                .email-container {{
                     padding: 8px 16px 16px 16px !important;
                     border-radius: 12px !important;
-                }
-                .full-width-image-wrapper {
+                }}
+                .full-width-image-wrapper {{
                     margin-left: -16px !important;
                     margin-right: -16px !important;
                     margin-bottom: 8px !important;
-                }
-                .email-logo {
+                }}
+                .email-logo {{
                     max-height: 90px !important;
-                }
-                .email-logo-wrapper {
+                }}
+                .email-logo-wrapper {{
                     margin-bottom: 2px !important;
-                }
-                .email-divider {
+                }}
+                .email-divider {{
                     margin: 6px auto 6px auto !important;
-                }
-                .email-slogan {
+                }}
+                .email-slogan {{
                     font-size: 14px !important;
-                }
-                .email-content {
+                }}
+                .email-content {{
                     font-size: 14px !important;
-                }
-                .email-promo {
+                }}
+                .email-promo {{
                     font-size: 13px !important;
-                }
-                .email-button {
+                }}
+                .email-button {{
                     font-size: 13px !important;
                     padding: 6px 14px !important;
-                }
-            }
+                }}
+            }}
         </style>
     </head>
     <body class="email-body" style="margin: 0; padding: 20px; background-color: #f8fafc;">
