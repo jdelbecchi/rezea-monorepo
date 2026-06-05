@@ -115,12 +115,12 @@ async def send_admin_emails(
     # Liens sociaux du footer (sans adresse physique)
     links = []
     if tenant.website_url:
-        links.append(f'<a href="{tenant.website_url}" style="text-decoration: none; color: #64748b; font-size: 13px; margin: 0 10px; font-weight: 500;">Notre Site</a>')
+        links.append(f'<a href="{tenant.website_url}" class="email-footer-link" style="text-decoration: none; color: #64748b; font-size: 13px; margin: 0 10px; font-weight: 500;">Notre Site</a>')
     if tenant.instagram_url:
-        links.append(f'<a href="{tenant.instagram_url}" style="text-decoration: none; color: #64748b; font-size: 13px; margin: 0 10px; font-weight: 500;">Instagram</a>')
+        links.append(f'<a href="{tenant.instagram_url}" class="email-footer-link" style="text-decoration: none; color: #64748b; font-size: 13px; margin: 0 10px; font-weight: 500;">Insta</a>')
     if tenant.facebook_url:
-        links.append(f'<a href="{tenant.facebook_url}" style="text-decoration: none; color: #64748b; font-size: 13px; margin: 0 10px; font-weight: 500;">Facebook</a>')
-    links.append(f'<a href="http://localhost:3000/{tenant.slug}/unsubscribe" style="text-decoration: none; color: #64748b; font-size: 13px; margin: 0 10px; font-weight: 500;">Se désabonner</a>')
+        links.append(f'<a href="{tenant.facebook_url}" class="email-footer-link" style="text-decoration: none; color: #64748b; font-size: 13px; margin: 0 10px; font-weight: 500;">Facebook</a>')
+    links.append(f'<a href="http://localhost:3000/{tenant.slug}/unsubscribe" class="email-footer-link" style="text-decoration: none; color: #64748b; font-size: 13px; margin: 0 10px; font-weight: 500;">Se désabonner</a>')
     socials_html = f'<div style="margin-bottom: 15px; text-align: center;">{" ".join(links)}</div>'
 
     # Post-traitement automatique du texte de l'éditeur riche
@@ -246,6 +246,10 @@ async def send_admin_emails(
                 .email-button {{
                     font-size: 13px !important;
                     padding: 6px 14px !important;
+                }}
+                .email-footer-link {{
+                    font-size: 11px !important;
+                    margin: 0 4px !important;
                 }}
             }}
         </style>
