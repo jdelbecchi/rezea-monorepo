@@ -1556,22 +1556,19 @@ function AdminEmailsContent() {
                                 return (
                                     <div className="bg-gradient-to-r from-blue-50/70 to-indigo-50/50 border border-blue-100/80 rounded-2xl p-4 shadow-sm text-sm">
                                         <button 
-                                            type="button"
-                                            onClick={() => setShowTips(!showTips)}
-                                            className="w-full flex items-center justify-between font-semibold text-slate-700 outline-none select-none"
-                                        >
-                                            <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 text-left">
-                                                <h4 className="text-xs font-bold flex items-center gap-1.5 uppercase tracking-wide text-slate-800">
-                                                    💡 Idées d&apos;actions recommandées
-                                                </h4>
-                                                <div className="inline-flex items-center px-2 py-0.5 bg-blue-100/50 text-blue-800 text-[10px] font-semibold rounded-lg border border-blue-200/50 self-start md:self-auto leading-none">
-                                                    🎯 Ciblage : {info.segmentLabel.split(" (")[0]}
-                                                </div>
-                                            </div>
-                                            <span className="text-[11px] font-bold text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1 shrink-0 ml-2">
-                                                {showTips ? "Masquer ▲" : "Afficher les conseils ▼"}
-                                            </span>
-                                        </button>
+                                             type="button"
+                                             onClick={() => setShowTips(!showTips)}
+                                             className="w-full flex items-center justify-between font-semibold text-slate-700 outline-none select-none"
+                                         >
+                                             <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 text-left">
+                                                 <h4 className="text-xs font-semibold flex items-center gap-1.5 text-slate-800">
+                                                     💡 idées d&apos;actions recommandées
+                                                 </h4>
+                                             </div>
+                                             <span className="text-[11px] font-medium text-slate-500 hover:text-slate-700 transition-colors flex items-center gap-1 shrink-0 ml-2">
+                                                 {showTips ? "masquer ▲" : "afficher les conseils ▼"}
+                                             </span>
+                                         </button>
                                         
                                         {showTips && (
                                             <div className="mt-3 pt-3 border-t border-blue-100/40 animate-in slide-in-from-top-2 duration-200">
@@ -1656,80 +1653,58 @@ function AdminEmailsContent() {
                                         />
                                     </div>
 
-                                     {/* Accent Color and Illustration Image Fields */}
-                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                         <div>
-                                             <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Couleur d&apos;accentuation</label>
-                                             <div className="flex items-center gap-3">
-                                                 <input
-                                                     type="color"
-                                                     value={marketingColor}
-                                                     onChange={(e) => setMarketingColor(e.target.value)}
-                                                     className="w-10 h-10 border border-slate-200 rounded-xl cursor-pointer p-0 overflow-hidden bg-transparent"
+                                     {/* Illustration Image Field */}
+                                     <div className="w-full">
+                                         <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Image d&apos;illustration</label>
+                                         {marketingImageUrl ? (
+                                             <div className="flex items-center gap-3 bg-slate-50 border border-slate-100 p-1.5 pr-3.5 rounded-xl">
+                                                 <img
+                                                     src={`${API_URL}${marketingImageUrl}`}
+                                                     alt="Illustration Preview"
+                                                     className="w-8 h-8 rounded-lg object-cover border border-slate-200"
                                                  />
-                                                 <input
-                                                     type="text"
-                                                     value={marketingColor}
-                                                     onChange={(e) => setMarketingColor(e.target.value)}
-                                                     placeholder="#7c3aed"
-                                                     className="flex-1 px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold uppercase focus:border-blue-500 focus:ring-1 focus:ring-blue-500/10 outline-none"
-                                                 />
+                                                 <span className="text-[10px] font-semibold text-slate-500 truncate flex-1">Image chargée</span>
+                                                 <button
+                                                     type="button"
+                                                     onClick={() => setMarketingImageUrl("")}
+                                                     className="text-xs font-bold text-rose-500 hover:text-rose-600 ml-2"
+                                                 >
+                                                     Retirer
+                                                 </button>
                                              </div>
-                                         </div>
-
-                                         <div>
-                                             <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Image d&apos;illustration</label>
-                                             {marketingImageUrl ? (
-                                                 <div className="flex items-center gap-3 bg-slate-50 border border-slate-100 p-1.5 pr-3.5 rounded-xl">
-                                                     <img
-                                                         src={`${API_URL}${marketingImageUrl}`}
-                                                         alt="Illustration Preview"
-                                                         className="w-8 h-8 rounded-lg object-cover border border-slate-200"
-                                                     />
-                                                     <span className="text-[10px] font-semibold text-slate-500 truncate flex-1">Image chargée</span>
-                                                     <button
-                                                         type="button"
-                                                         onClick={() => setMarketingImageUrl("")}
-                                                         className="text-xs font-bold text-rose-500 hover:text-rose-600 ml-2"
-                                                     >
-                                                         Retirer
-                                                     </button>
-                                                 </div>
-                                             ) : (
-                                                 <div className="relative">
-                                                     <input
-                                                         type="file"
-                                                         accept="image/*"
-                                                         onChange={async (e) => {
-                                                             const file = e.target.files?.[0];
-                                                             if (!file) return;
-                                                             setIsUploadingImage(true);
-                                                             try {
-                                                                 const res = await api.uploadImage(file);
-                                                                 setMarketingImageUrl(res.url);
-                                                             } catch (err) {
-                                                                 console.error(err);
-                                                                 alert("Erreur lors de l'upload de l'image.");
-                                                             } finally {
-                                                                 setIsUploadingImage(false);
-                                                             }
-                                                         }}
-                                                         disabled={isUploadingImage}
-                                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                                     />
-                                                     <button
-                                                         type="button"
-                                                         disabled={isUploadingImage}
-                                                         className="w-full py-2.5 border border-dashed border-slate-200 text-slate-500 hover:border-slate-300 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2"
-                                                     >
-                                                         {isUploadingImage ? "Chargement..." : "Charger une image 📸"}
-                                                     </button>
-                                                 </div>
-                                             )}
-                                         </div>
+                                         ) : (
+                                             <div className="relative">
+                                                 <input
+                                                     type="file"
+                                                     accept="image/*"
+                                                     onChange={async (e) => {
+                                                         const file = e.target.files?.[0];
+                                                         if (!file) return;
+                                                         setIsUploadingImage(true);
+                                                         try {
+                                                             const res = await api.uploadImage(file);
+                                                             setMarketingImageUrl(res.url);
+                                                         } catch (err) {
+                                                             console.error(err);
+                                                             alert("Erreur lors de l'upload de l'image.");
+                                                         } finally {
+                                                             setIsUploadingImage(false);
+                                                         }
+                                                     }}
+                                                     disabled={isUploadingImage}
+                                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                                 />
+                                                 <button
+                                                     type="button"
+                                                     disabled={isUploadingImage}
+                                                     className="w-full py-2.5 border border-dashed border-slate-200 text-slate-500 hover:border-slate-300 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2"
+                                                 >
+                                                     {isUploadingImage ? "Chargement..." : "Charger une image 📸"}
+                                                 </button>
+                                             </div>
+                                         )}
                                      </div>
-
-                                    <div>
+                                     <div>
                                         <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">corps du message</label>
                                         <div className="border border-slate-200/80 rounded-2xl overflow-hidden focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500/20 bg-white">
                                              <QuillNode
@@ -1749,22 +1724,21 @@ function AdminEmailsContent() {
                                              />
                                         </div>
                                         <div className="mt-3 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/80 flex items-start gap-3 text-[11px] text-indigo-950 font-normal leading-relaxed">
-                                            <span className="text-sm select-none">✨</span>
-                                            <div className="space-y-1.5">
-                                                <p className="font-semibold text-indigo-900">Astuces et optimisations visuelles automatiques :</p>
-                                                <ul className="list-disc pl-4 space-y-1">
-                                                    <li><b>Personnalisation</b> : Utilisez le tag <code>{"{first_name}"}</code> dans votre texte pour insérer le prénom de chaque destinataire (ex: Julie, Thomas).</li>
-                                                    <li><b>Cadre Code Promo</b> : Rédigez un code en MAJUSCULES et mettez-le <b>en gras</b> (ex: <b>MERCIAMIS</b>) pour l&apos;afficher dans un magnifique encart double-bordure pastel.</li>
-                                                    <li><b>Bouton d&apos;Action</b> : Insérez un lien hypertexte seul sur sa propre ligne de paragraphe pour le transformer automatiquement en un bouton d&apos;action arrondi à la couleur du club.</li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Modal Footer */}
+                                             <span className="text-sm select-none">✨</span>
+                                             <div className="space-y-1.5">
+                                                 <p className="font-semibold text-indigo-900">Créer la mise en page :</p>
+                                                 <ul className="list-disc pl-4 space-y-1">
+                                                     <li>Personnaliser le prénom du destinataire en utilisant le tag <code>{"{first_name}"}</code> dans votre texte</li>
+                                                     <li>Mettre un mot en évidence dans un encart en l&apos;écrivant en MAJUSCULE et en gras (ex : un code promo, un mot de passe...)</li>
+                                                     <li>Insérer un bouton d&apos;action en ajoutant un lien hypertexte seul sur sa propre ligne de texte (ex : Plus d&apos;infos, Réserver votre séance...)</li>
+                                                 </ul>
+                                             </div>
+                                         </div>
+                                     </div>
+                                 </div>
+                             </div>
+                         </div>
+                         {/* Modal Footer */}
                         <div className="p-6 bg-white border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
                             <span className="text-xs font-medium text-slate-500">
                                 {selectedMarketingUserIds.length} destinataire(s) sélectionné(s) sur {allUsers.filter(u => u.segment === selectedMarketingCard.segment).length}
