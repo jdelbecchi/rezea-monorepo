@@ -105,12 +105,12 @@ async def send_admin_emails(
     logo_html = ""
     if tenant.logo_url:
         logo_html = f"""
-        <div class="email-logo-wrapper" style="text-align: center; margin-bottom: 6px; line-height: 1.2;">
+        <div class="email-logo-wrapper" style="text-align: center; margin-bottom: 0px; line-height: 1.2;">
             <img src="http://localhost:8000{tenant.logo_url}" alt="{tenant.name}" class="email-logo" style="max-height: 140px; max-width: 100%; width: auto; display: block; margin: 0 auto; vertical-align: middle;">
         </div>
         """
     else:
-        logo_html = f'<div style="text-align: center; margin-bottom: 6px;"><span style="font-size: 24px; font-weight: 700; color: #0f172a; font-family: \'Livvic\', sans-serif; letter-spacing: -0.02em;">{tenant.name}</span></div>'
+        logo_html = f'<div style="text-align: center; margin-bottom: 0px;"><span style="font-size: 24px; font-weight: 700; color: #0f172a; font-family: \'Livvic\', sans-serif; letter-spacing: -0.02em;">{tenant.name}</span></div>'
 
     # Liens sociaux du footer (sans adresse physique)
     links = []
@@ -136,7 +136,7 @@ async def send_admin_emails(
             <span class="email-promo" style="font-family: 'Livvic', sans-serif; font-size: 15px; font-weight: 700; color: #a7825d; letter-spacing: 0.1em;">{code}</span>
         </div>
         """
-    processed_content = re.sub(r'<(strong|b)>([A-Z0-9_-]{4,15})</\1>', replace_promo, processed_content)
+    processed_content = re.sub(r'<(strong|b)(?:\s+[^>]*)?>\s*([A-Z0-9_-]{4,15})\s*</\1>', replace_promo, processed_content)
 
     # B. Détecter les liens isolés dans des paragraphes et les transformer en boutons d'action (fond noir, angles carrés 4px, marges internes réduites)
     def replace_button(match):
@@ -155,7 +155,7 @@ async def send_admin_emails(
             <a href="{url}" class="email-button" style="display: inline-block; background-color: #0f172a; color: #ffffff; font-family: 'Livvic', sans-serif; font-size: 14px; font-weight: 500; text-decoration: none; padding: 8px 18px; border-radius: 4px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); text-align: center;">{text}</a>
         </div>
         """
-    processed_content = re.sub(r'<p([^>]*)>\s*<a href="([^"]+)"[^>]*>\s*([^<]+?)\s*</a>\s*</p>', replace_button, processed_content)
+    processed_content = re.sub(r'<p([^>]*)>\s*<a\s+(?:[^>]*?\s+)?href="([^"]+)"[^>]*?>\s*([^<]+?)\s*</a>\s*</p>', replace_button, processed_content)
 
     # C. Détecter le message de salutation et le passer en semi-bold
     processed_content = re.sub(
@@ -164,37 +164,28 @@ async def send_admin_emails(
         processed_content
     )
 
-    # D. Détecter les images, les forcer à faire toute la largeur du cadre (marges négatives) et ajouter le slogan/phrase d'accroche au-dessus de la première image
-    has_added_slogan = [False]
+    # D. Détecter les images, les forcer à faire toute la largeur du cadre (marges négatives)
     def replace_image(match):
         img_tag = match.group(0)
+        # Ne pas toucher aux images des sections de newsletter
+        if 'class="newsletter-image"' in img_tag or 'data-newsletter="true"' in img_tag:
+            return img_tag
         if 'style="' in img_tag:
             img_tag = re.sub(r'style="[^"]*"', 'style="width: 100%; height: auto; display: block;"', img_tag)
         else:
             img_tag = img_tag.replace('<img', '<img style="width: 100%; height: auto; display: block;"')
-        
-        slogan_html = ""
-        if tenant.slogan and not has_added_slogan[0]:
-            slogan_html = f"""
-            <div class="email-divider" style="border-top: 1px solid #cbd5e1; margin: 10px auto 8px auto; width: 80px;"></div>
-            <div class="email-slogan" style="text-align: center; font-size: 16px; font-weight: 300; color: #0f172a; margin-bottom: 8px; font-family: 'Livvic', sans-serif;">
-                {tenant.slogan}
-            </div>
-            """
-            has_added_slogan[0] = True
-        return f'{slogan_html}<div class="full-width-image-wrapper" style="margin: 0 -24px 10px -24px;">{img_tag}</div>'
+        return f'<div class="full-width-image-wrapper" style="margin: 0 -24px 10px -24px;">{img_tag}</div>'
     
     processed_content = re.sub(r'<img[^>]+>', replace_image, processed_content)
 
-    # Fallback si aucune image n'était présente dans l'e-mail pour afficher la phrase d'accroche/slogan
-    if tenant.slogan and not has_added_slogan[0]:
+    # Slogan/phrase d'accroche sous le logo (toujours sous le logo dans le template)
+    slogan_html = ""
+    if tenant.slogan:
         slogan_html = f"""
-        <div class="email-divider" style="border-top: 1px solid #cbd5e1; margin: 10px auto 8px auto; width: 80px;"></div>
-        <div class="email-slogan" style="text-align: center; font-size: 16px; font-weight: 300; color: #0f172a; margin-bottom: 10px; font-family: 'Livvic', sans-serif;">
+        <div class="email-slogan" style="text-align: center; font-size: 16px; font-weight: 300; color: #0f172a; margin-top: 0px; margin-bottom: 24px; font-family: 'Livvic', sans-serif;">
             {tenant.slogan}
         </div>
         """
-        processed_content = slogan_html + processed_content
 
     # Envelopper dans l'enveloppe HTML master
     html_envelope = f"""
@@ -212,6 +203,13 @@ async def send_admin_emails(
                 margin-top: 0;
                 margin-bottom: 8px;
             }}
+            strong, b {{
+                font-weight: 600 !important;
+            }}
+            .full-width-title-band {{
+                margin-left: -24px !important;
+                margin-right: -24px !important;
+            }}
             @media only screen and (max-width: 480px) {{
                 .email-body {{
                     padding: 8px !important;
@@ -225,17 +223,19 @@ async def send_admin_emails(
                     margin-right: -16px !important;
                     margin-bottom: 8px !important;
                 }}
+                .full-width-title-band {{
+                    margin-left: -16px !important;
+                    margin-right: -16px !important;
+                }}
                 .email-logo {{
                     max-height: 90px !important;
                 }}
                 .email-logo-wrapper {{
-                    margin-bottom: 2px !important;
-                }}
-                .email-divider {{
-                    margin: 6px auto 6px auto !important;
+                    margin-bottom: 0px !important;
                 }}
                 .email-slogan {{
                     font-size: 14px !important;
+                    margin-top: 0px !important;
                 }}
                 .email-content {{
                     font-size: 14px !important;
@@ -258,7 +258,9 @@ async def send_admin_emails(
         <div class="email-container" style="font-family: 'Livvic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 16px 24px; border: 1px solid #e2e8f0; border-radius: 24px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
             {logo_html}
             
-            <div class="email-content" style="color: #334155; font-size: 16px; line-height: 1.6; font-weight: 300; text-align: center;">
+            {slogan_html}
+            
+            <div class="email-content" style="color: #334155; font-size: 16px; line-height: 1.6; font-weight: 300;">
                 {processed_content}
             </div>
             

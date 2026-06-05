@@ -104,6 +104,22 @@ function AdminEmailsContent() {
     // Switch Urgence Opérationnelle
     const [forceOperational, setForceOperational] = useState(false);
 
+    // Newsletter sections states
+    interface NewsletterSection {
+        id: string;
+        title: string;
+        titleBgColor: string;
+        imageUrl: string;
+        imageSize?: "small" | "medium" | "large";
+        content: string;
+    }
+    const [newsletterSections, setNewsletterSections] = useState<NewsletterSection[]>([
+        { id: "1", title: "", titleBgColor: "#7c3aed", imageUrl: "", imageSize: "large", content: "" }
+    ]);
+    const [uploadingSectionId, setUploadingSectionId] = useState<string | null>(null);
+    const [showPreviewModal, setShowPreviewModal] = useState(false);
+    const [previewDeviceMode, setPreviewDeviceMode] = useState<"desktop" | "mobile">("desktop");
+
     // Templates state
     const [templates, setTemplates] = useState<EmailTemplate[]>([]);
     const [showSaveModal, setShowSaveModal] = useState(false);
@@ -374,28 +390,325 @@ function AdminEmailsContent() {
         loadSurveys();
     }, [fetchAllData, loadSurveys]);
 
-    // Uploader une image dans Quill
-    const imageHandler = useCallback(() => {
+    // Uploader une image dans Quill (compatible multi-éditeurs)
+    const imageHandler = useCallback(function(this: any) {
+        const quill = this.quill;
         const input = document.createElement('input');
         input.setAttribute('type', 'file');
         input.setAttribute('accept', 'image/*');
-        input.click();
-
         input.onchange = async () => {
             if (input.files && input.files[0]) {
                 const file = input.files[0];
                 try {
                     const res = await api.uploadImage(file);
-                    const editor = quillRef.current.getEditor();
-                    const range = editor.getSelection();
-                    editor.insertEmbed(range.index, 'image', res.url);
-                } catch (error) {
+                    const range = quill.getSelection();
+                    const index = range ? range.index : quill.getLength();
+                    quill.insertEmbed(index, 'image', `${API_URL}${res.url}`);
+                } catch (error: any) {
                     console.error("Image upload failed:", error);
-                    setMessage({ type: "error", text: "L'upload de l'image a échoué." });
+                    const detail = error.response?.data?.detail || "L'upload de l'image a échoué.";
+                    setMessage({ type: "error", text: detail });
                 }
             }
         };
-    }, []);
+        input.click();
+    }, [API_URL]);
+
+    // Section operations
+    const updateSection = (id: string, updates: Partial<NewsletterSection>) => {
+        setNewsletterSections(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
+    };
+
+    const addSection = () => {
+        setNewsletterSections(prev => [
+            ...prev,
+            { id: Math.random().toString(), title: "", titleBgColor: "#7c3aed", imageUrl: "", imageSize: "large", content: "" }
+        ]);
+    };
+
+    const removeSection = (id: string) => {
+        if (newsletterSections.length <= 1) return;
+        setNewsletterSections(prev => prev.filter(s => s.id !== id));
+    };
+
+    const moveSection = (index: number, direction: "up" | "down") => {
+        const targetIndex = direction === "up" ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= newsletterSections.length) return;
+        setNewsletterSections(prev => {
+            const next = [...prev];
+            const [moved] = next.splice(index, 1);
+            next.splice(targetIndex, 0, moved);
+            return next;
+        });
+    };
+
+    const handleSectionImageUpload = async (sectionId: string, file: File) => {
+        setUploadingSectionId(sectionId);
+        try {
+            const res = await api.uploadImage(file);
+            updateSection(sectionId, { imageUrl: `${API_URL}${res.url}` });
+        } catch (err: any) {
+            console.error("Image upload failed:", err);
+            const detail = err.response?.data?.detail || "L'upload de l'image a échoué.";
+            setMessage({ type: "error", text: detail });
+        } finally {
+            setUploadingSectionId(null);
+        }
+    };
+
+    // HTML parsing for newsletter sections
+    const parseNewsletterHtml = (html: string): NewsletterSection[] => {
+        if (!html) return [{ id: "1", title: "", titleBgColor: "#7c3aed", imageUrl: "", imageSize: "large", content: "" }];
+        const match = html.match(/<!--\s*NEWSLETTER_SECTIONS_JSON:\s*([\s\S]*?)\s*-->/);
+        if (match) {
+            try {
+                const parsed = JSON.parse(match[1]);
+                return parsed.map((s: any) => ({
+                    id: s.id || Math.random().toString(),
+                    title: s.title || "",
+                    titleBgColor: s.titleBgColor || "#7c3aed",
+                    imageUrl: s.imageUrl || "",
+                    imageSize: s.imageSize || "large",
+                    content: s.content || ""
+                }));
+            } catch (e) {
+                console.error("Failed to parse newsletter sections JSON", e);
+            }
+        }
+        return [{ id: Math.random().toString(), title: "", titleBgColor: "#7c3aed", imageUrl: "", imageSize: "large", content: html }];
+    };
+
+    // Compile newsletter sections to HTML
+    const compileNewsletterHtml = (sections: NewsletterSection[]): string => {
+        let html = "";
+        sections.forEach((sec, idx) => {
+            if (idx > 0) {
+                // Trait de séparateur entre chaque section
+                html += '<hr style="border: 0; border-top: 1px solid #cbd5e1; margin: 24px 0;" />';
+            }
+            
+            // Section Title color band - FULL WIDTH
+            if (sec.title) {
+                html += `
+                <div class="full-width-title-band" style="background-color: ${sec.titleBgColor || '#7c3aed'}; padding: 6px 16px; font-family: 'Livvic', sans-serif; font-size: 15px; font-weight: 500; color: #ffffff; text-align: center; margin: 0 -24px 12px -24px; letter-spacing: 0.02em;">
+                    ${sec.title}
+                </div>
+                `;
+            }
+            
+            // Image (NOT full width by default, with slight rounding 6px, and adjustable size)
+            if (sec.imageUrl) {
+                let imgWidth = "100%";
+                let imgMaxWidth = "100%";
+                if (sec.imageSize === "small") {
+                    imgWidth = "180";
+                    imgMaxWidth = "180px";
+                } else if (sec.imageSize === "medium") {
+                    imgWidth = "320";
+                    imgMaxWidth = "320px";
+                }
+                
+                html += `
+                <div style="text-align: center; margin-bottom: 12px;">
+                    <img src="${sec.imageUrl}" alt="${sec.title || 'Image'}" class="newsletter-image" data-newsletter="true" width="${imgWidth}" style="width: ${imgWidth === "100%" ? "100%" : imgMaxWidth}; max-width: 100%; height: auto; display: inline-block; border-radius: 6px;" />
+                </div>
+                `;
+            }
+            
+            // Content text (NO forced text-align center)
+            if (sec.content && sec.content !== "<p><br></p>") {
+                html += `<div style="font-family: 'Livvic', sans-serif; font-size: 16px; font-weight: 300; line-height: 1.6; color: #334155; margin-bottom: 12px;">${sec.content}</div>`;
+            }
+        });
+        
+        // Append logical JSON state as HTML comment
+        html += `\n<!-- NEWSLETTER_SECTIONS_JSON: ${JSON.stringify(sections)} -->`;
+        return html;
+    };
+
+    // Generate realistic HTML preview matching the backend compile
+    const generateRealisticHtml = () => {
+        let rawContent = activeTab === "newsletter" ? compileNewsletterHtml(newsletterSections) : content;
+        let processed = rawContent;
+        
+        // 1. Tag first_name
+        processed = processed.replace(/{first_name}/g, user?.first_name || "Julie");
+        
+        // 2. Salutation
+        processed = processed.replace(
+            /(Bonjour\s+[^,<\n\r]+,?)/g,
+            '<strong style="font-weight: 600; color: #0f172a;">$1</strong>'
+        );
+        
+        // 3. Promos (double-border styled box)
+        processed = processed.replace(
+            /<(strong|b)(?:\s+[^>]*)?>\s*([A-Z0-9_-]{4,15})\s*<\/\1>/g,
+            (match, p1, code) => {
+                return `
+                <div align="center" style="margin: 24px auto; max-width: 180px; border: 3px double #a7825d; background-color: #fbf2eb; padding: 10px 20px; border-radius: 4px; text-align: center;">
+                    <span class="email-promo" style="font-family: 'Livvic', sans-serif; font-size: 15px; font-weight: 700; color: #a7825d; letter-spacing: 0.1em;">${code}</span>
+                </div>
+                `;
+            }
+        );
+        
+        // 4. Standalone CTA button formatting
+        processed = processed.replace(
+            /<p([^>]*)>\s*<a\s+(?:[^>]*?\s+)?href="([^"]+)"[^>]*?>\s*([^<]+?)\s*<\/a>\s*<\/p>/g,
+            (match, attrs, url, text) => {
+                let align = "center";
+                if (attrs.includes("align-left") || attrs.includes("text-align: left")) {
+                    align = "left";
+                } else if (attrs.includes("align-right") || attrs.includes("text-align: right")) {
+                    align = "right";
+                }
+                return `
+                <div align="${align}" style="margin: 20px 0; text-align: ${align};">
+                    <a href="${url}" class="email-button" style="display: inline-block; background-color: #0f172a; color: #ffffff; font-family: 'Livvic', sans-serif; font-size: 14px; font-weight: 500; text-decoration: none; padding: 8px 18px; border-radius: 4px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); text-align: center;">${text}</a>
+                </div>
+                `;
+            }
+        );
+        
+        // 5. Images full width
+        processed = processed.replace(/<img[^>]+>/g, (imgTag) => {
+            // Ne pas toucher aux images des sections de newsletter
+            if (imgTag.includes('class="newsletter-image"') || imgTag.includes('data-newsletter="true"')) {
+                return imgTag;
+            }
+            let cleanImg = imgTag;
+            if (cleanImg.includes('style="')) {
+                cleanImg = cleanImg.replace(/style="[^"]*"/, 'style="width: 100%; height: auto; display: block;"');
+            } else {
+                cleanImg = cleanImg.replace('<img', '<img style="width: 100%; height: auto; display: block;"');
+            }
+            return `<div class="full-width-image-wrapper" style="margin: 0 -24px 10px -24px;">${cleanImg}</div>`;
+        });
+        
+        // Slogan/phrase d'accroche sous le logo (toujours sous le logo dans le template)
+        let sloganHtml = "";
+        const sloganText = tenant?.slogan;
+        if (sloganText) {
+            sloganHtml = `
+            <div class="email-slogan" style="text-align: center; font-size: 16px; font-weight: 300; color: #0f172a; margin-top: 0px; margin-bottom: 24px; font-family: 'Livvic', sans-serif;">
+                ${sloganText}
+            </div>
+            `;
+        }
+        
+        // Logo
+        let logoHtml = "";
+        if (tenant?.logo_url) {
+            logoHtml = `
+            <div class="email-logo-wrapper" style="text-align: center; margin-bottom: 0px; line-height: 1.2;">
+                <img src="${API_URL}${tenant.logo_url}" alt="${tenant.name}" class="email-logo" style="max-height: 140px; max-width: 100%; width: auto; display: block; margin: 0 auto; vertical-align: middle;">
+            </div>
+            `;
+        } else {
+            logoHtml = `<div style="text-align: center; margin-bottom: 0px;"><span style="font-size: 24px; font-weight: 700; color: #0f172a; font-family: 'Livvic', sans-serif; letter-spacing: -0.02em;">${tenant?.name || "Zen Yoga"}</span></div>`;
+        }
+        
+        // Social links
+        let links = [];
+        if (tenant?.website_url) {
+            links.push(`<a href="${tenant.website_url}" class="email-footer-link" style="text-decoration: none; color: #64748b; font-size: 13px; margin: 0 10px; font-weight: 500;">Notre Site</a>`);
+        }
+        if (tenant?.instagram_url) {
+            links.push(`<a href="${tenant.instagram_url}" class="email-footer-link" style="text-decoration: none; color: #64748b; font-size: 13px; margin: 0 10px; font-weight: 500;">Insta</a>`);
+        }
+        if (tenant?.facebook_url) {
+            links.push(`<a href="${tenant.facebook_url}" class="email-footer-link" style="text-decoration: none; color: #64748b; font-size: 13px; margin: 0 10px; font-weight: 500;">Facebook</a>`);
+        }
+        links.push(`<a href="#" class="email-footer-link" style="text-decoration: none; color: #64748b; font-size: 13px; margin: 0 10px; font-weight: 500;">Se désabonner</a>`);
+        const socialsHtml = `<div style="margin-bottom: 15px; text-align: center;">${links.join(" ")}</div>`;
+        
+        return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+                body, table, td, p, a, h2, div {
+                    font-family: 'Livvic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+                }
+                p {
+                    margin-top: 0;
+                    margin-bottom: 8px;
+                }
+                strong, b {
+                    font-weight: 600 !important;
+                }
+                .full-width-title-band {
+                    margin-left: -24px !important;
+                    margin-right: -24px !important;
+                }
+                @media only screen and (max-width: 480px) {
+                    .email-body {
+                        padding: 8px !important;
+                    }
+                    .email-container {
+                        padding: 8px 16px 16px 16px !important;
+                        border-radius: 12px !important;
+                    }
+                    .full-width-image-wrapper {
+                        margin-left: -16px !important;
+                        margin-right: -16px !important;
+                        margin-bottom: 8px !important;
+                    }
+                    .full-width-title-band {
+                        margin-left: -16px !important;
+                        margin-right: -16px !important;
+                    }
+                    .email-logo {
+                        max-height: 90px !important;
+                    }
+                    .email-logo-wrapper {
+                        margin-bottom: 0px !important;
+                    }
+                    .email-slogan {
+                        font-size: 14px !important;
+                        margin-top: 0px !important;
+                    }
+                    .email-content {
+                        font-size: 14px !important;
+                    }
+                    .email-promo {
+                        font-size: 13px !important;
+                    }
+                    .email-button {
+                        font-size: 13px !important;
+                        padding: 6px 14px !important;
+                    }
+                    .email-footer-link {
+                        font-size: 11px !important;
+                        margin: 0 4px !important;
+                    }
+                }
+            </style>
+        </head>
+        <body class="email-body" style="margin: 0; padding: 20px; background-color: #f8fafc;">
+            <div class="email-container" style="font-family: 'Livvic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 16px 24px; border: 1px solid #e2e8f0; border-radius: 24px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+                ${logoHtml}
+                
+                ${sloganHtml}
+                
+                <div class="email-content" style="color: #334155; font-size: 16px; line-height: 1.6; font-weight: 300;">
+                    ${processed}
+                </div>
+                
+                <div style="border-top: 1px solid #f1f5f9; margin-top: 15px; padding-top: 10px; text-align: center;">
+                    ${socialsHtml}
+                    <p style="font-family: 'Livvic', sans-serif; color: #94a3b8; font-size: 12px; font-weight: 500; margin: 0;">
+                        © ${tenant?.name || "Zen Yoga"} - Propulsé par Rezea
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        `;
+    };
 
     const modules = useMemo(() => ({
         toolbar: {
@@ -417,7 +730,13 @@ function AdminEmailsContent() {
     // Envoi des e-mails
     const handleSend = async () => {
         setShowValidation(true);
-        if (!subject || !content || content === "<p><br></p>") {
+        const finalContent = activeTab === "newsletter" ? compileNewsletterHtml(newsletterSections) : content;
+        
+        // Validation check
+        const isNewsletterEmpty = activeTab === "newsletter" && newsletterSections.every(s => !s.title && !s.imageUrl && (!s.content || s.content === "<p><br></p>"));
+        const isClassicEmpty = activeTab !== "newsletter" && (!content || content === "<p><br></p>");
+        
+        if (!subject || (activeTab === "newsletter" ? isNewsletterEmpty : isClassicEmpty)) {
             setMessage({ type: "error", text: "Veuillez remplir l'objet et le contenu de l'email." });
             return;
         }
@@ -461,7 +780,7 @@ function AdminEmailsContent() {
         try {
             const result = await api.sendAdminEmail({
                 subject,
-                content: content, 
+                content: finalContent, 
                 recipient_type: resolvedRecipientType,
                 selected_user_ids: resolvedUserIds,
                 segment: resolvedSegment,
@@ -470,6 +789,7 @@ function AdminEmailsContent() {
             setMessage({ type: "success", text: result.message });
             setSubject("");
             setContent("");
+            setNewsletterSections([{ id: "1", title: "", titleBgColor: "#7c3aed", imageUrl: "", content: "" }]);
             setSelectedTargets(["all"]);
             setForceOperational(false);
             setShowValidation(false);
@@ -484,7 +804,12 @@ function AdminEmailsContent() {
     // Gestion des modèles
     const handleSaveTemplate = async () => {
         if (!templateName.trim()) return;
-        if (!subject || !content || content === "<p><br></p>") {
+        const finalContent = activeTab === "newsletter" ? compileNewsletterHtml(newsletterSections) : content;
+        
+        const isNewsletterEmpty = activeTab === "newsletter" && newsletterSections.every(s => !s.title && !s.imageUrl && (!s.content || s.content === "<p><br></p>"));
+        const isClassicEmpty = activeTab !== "newsletter" && (!content || content === "<p><br></p>");
+        
+        if (!subject || (activeTab === "newsletter" ? isNewsletterEmpty : isClassicEmpty)) {
             setMessage({ type: "error", text: "Veuillez remplir l'objet et le contenu avant d'enregistrer." });
             return;
         }
@@ -494,7 +819,7 @@ function AdminEmailsContent() {
             const newTemplate = await api.saveEmailTemplate({
                 name: templateName,
                 subject,
-                content
+                content: finalContent
             });
             setTemplates(prev => [newTemplate, ...prev]);
             setShowSaveModal(false);
@@ -526,7 +851,16 @@ function AdminEmailsContent() {
 
     const loadTemplate = (template: EmailTemplate) => {
         setSubject(template.subject);
-        setContent(template.content);
+        
+        // Try to parse newsletter sections JSON
+        const sections = parseNewsletterHtml(template.content);
+        if (sections && (sections.length > 1 || sections[0].title || sections[0].imageUrl)) {
+            setNewsletterSections(sections);
+            setActiveTab("newsletter");
+        } else {
+            setContent(template.content);
+            setNewsletterSections([{ id: "1", title: "", titleBgColor: "#7c3aed", imageUrl: "", content: template.content }]);
+        }
         window.scrollTo({ top: 350, behavior: 'smooth' });
     };
 
@@ -745,10 +1079,462 @@ function AdminEmailsContent() {
                         </div>
                     )}
 
-                    {/* ==================== TABS 1 & 2 : EMAIL CREATION ==================== */}
-                    {(activeTab === "newsletter" || activeTab === "operational") && (
-                        <div className="grid grid-cols-1 gap-8">
-                            
+                    {activeTab === "newsletter" && (
+                        <div className="animate-in fade-in duration-300">
+                            {/* Section Modèles de bibliothèque */}
+                            {templates.length > 0 && (
+                                <section className="mb-6">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Modèles enregistrés</h2>
+                                        <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-bold">{templates.length} modèles</span>
+                                    </div>
+                                    <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">
+                                        {templates.map(t => (
+                                            <div 
+                                                key={t.id}
+                                                onClick={() => loadTemplate(t)}
+                                                className="min-w-[220px] max-w-[220px] bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group relative"
+                                            >
+                                                <button 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setTemplateToDelete(t);
+                                                    }}
+                                                    className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-white text-slate-400 hover:bg-rose-50 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all text-xs z-20"
+                                                    title="Supprimer le modèle"
+                                                >
+                                                    ✕
+                                                </button>
+                                                <div className="w-10 h-10 bg-indigo-50/50 rounded-xl flex items-center justify-center text-indigo-600 transition-colors mb-4 font-bold text-lg">
+                                                    📄
+                                                </div>
+                                                <h3 className="font-bold text-slate-900 text-sm truncate mb-1">{t.name}</h3>
+                                                <p className="text-xs text-slate-500 truncate">{t.subject || "Pas d'objet"}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
+
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                                {/* Left Column: Editor & Inputs */}
+                                <div className="space-y-6">
+                                    
+                                    {/* 1. Destinataires */}
+                                    <section className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 relative">
+                                        <div className="relative" ref={dropdownRef}>
+                                            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                                                Définir les destinataires
+                                            </label>
+                                            <button
+                                                type="button"
+                                                onClick={() => setDropdownOpen(!dropdownOpen)}
+                                                className="w-full p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all outline-none flex items-center justify-between text-sm font-semibold text-slate-800 shadow-sm"
+                                            >
+                                                <span className="flex items-center gap-2">
+                                                    👥 {selectedTargets.includes("all") ? "Tous les membres du club" : 
+                                                        selectedTargets.includes("selected") ? `Sélection manuelle (${selectedUserIds.length} cible(s))` :
+                                                        `Groupes ciblés (${selectedTargets.length} segment(s))`}
+                                                </span>
+                                                <span className="text-xs text-slate-400 transition-transform duration-200">
+                                                    {dropdownOpen ? "▲" : "▼"}
+                                                </span>
+                                            </button>
+
+                                            {dropdownOpen && (
+                                                <div className="absolute left-0 right-0 mt-2 bg-white border border-slate-150 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in duration-200">
+                                                    <div className="p-2.5 max-h-80 overflow-y-auto space-y-1 bg-slate-50/30">
+                                                        
+                                                        {/* Option: Tous les membres */}
+                                                        <label className="flex items-center justify-between p-3.5 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors border border-transparent hover:border-slate-100">
+                                                            <div className="flex items-center gap-3">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selectedTargets.includes("all")}
+                                                                    onChange={() => toggleTarget("all")}
+                                                                    className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                                                                />
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-sm font-semibold text-slate-800">Tous les membres</span>
+                                                                    <span className="text-xs text-slate-400 font-normal">Envoyer la communication à toute la base active</span>
+                                                                </div>
+                                                            </div>
+                                                            <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-normal">
+                                                                {allUsers.length} personnes
+                                                            </span>
+                                                        </label>
+
+                                                        {/* Option: Sélection manuelle */}
+                                                        <label className="flex items-center justify-between p-3.5 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors border border-transparent hover:border-slate-100">
+                                                            <div className="flex items-center gap-3">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selectedTargets.includes("selected")}
+                                                                    onChange={() => toggleTarget("selected")}
+                                                                    className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                                                                />
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-sm font-semibold text-slate-800">Sélection manuelle</span>
+                                                                    <span className="text-xs text-slate-400 font-normal">Choisir individuellement les destinataires</span>
+                                                                </div>
+                                                            </div>
+                                                            {selectedUserIds.length > 0 && (
+                                                                <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-normal">
+                                                                    {selectedUserIds.length} cibles
+                                                                </span>
+                                                            )}
+                                                        </label>
+
+                                                        {selectedTargets.includes("selected") && (
+                                                            <div className="p-3 bg-white border border-slate-100 rounded-xl my-2 space-y-3">
+                                                                <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                                                                    <span className="text-xs">🔍</span>
+                                                                    <input
+                                                                        type="text"
+                                                                        placeholder="Rechercher un membre..."
+                                                                        value={searchTerm}
+                                                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                                                        className="w-full text-xs font-light outline-none"
+                                                                    />
+                                                                </div>
+                                                                <div className="max-h-40 overflow-y-auto space-y-1.5">
+                                                                    {filteredUsers.map(u => (
+                                                                        <label key={u.id} className="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors">
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={selectedUserIds.includes(u.id)}
+                                                                                onChange={() => toggleUserSelection(u.id)}
+                                                                                className="w-3.5 h-3.5 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                                                                            />
+                                                                            <span className="text-xs font-light text-slate-700">{u.first_name} {u.last_name} ({u.email})</span>
+                                                                        </label>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        <div className="border-t border-slate-100 my-2 pt-2">
+                                                            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-3.5">Cibler par segment</span>
+                                                        </div>
+
+                                                        {/* Option: Par segments */}
+                                                        {segmentStats && Object.entries(segmentStats).map(([key, count]) => {
+                                                            const cleanLabel = segmentLabels[key] || key;
+                                                            let subLabel = "";
+                                                            if (key === "explorateur") subLabel = "Créé un compte sans commande";
+                                                            else if (key === "decouverte") subLabel = "Une seule commande passée";
+                                                            else if (key === "regulier") subLabel = "Fidèle avec réservations régulières";
+                                                            else if (key === "endormi") subLabel = "Absent depuis plus de 21 jours";
+                                                            else if (key === "flexible") subLabel = "Visiteur ponctuel";
+                                                            else if (key === "ancien") subLabel = "Inactif depuis plus de 60 jours";
+
+                                                            return (
+                                                                <label key={key} className="flex items-center justify-between p-3.5 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors border border-transparent hover:border-slate-100">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={selectedTargets.includes(key)}
+                                                                            onChange={() => toggleTarget(key)}
+                                                                            className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                                                                        />
+                                                                        <div className="flex flex-col">
+                                                                            <span className="text-sm font-semibold text-slate-800">{cleanLabel}</span>
+                                                                            {subLabel && <span className="text-xs text-slate-400 font-normal">{subLabel}</span>}
+                                                                        </div>
+                                                                    </div>
+                                                                    <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-normal">
+                                                                        {count} personnes
+                                                                    </span>
+                                                                </label>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                        
+                                        <div className="text-slate-400 text-xs font-normal leading-relaxed mt-2.5 flex items-start gap-1.5">
+                                            <span>ℹ️</span>
+                                            <span>
+                                                Ces e-mails respectent le consentement des utilisateurs. Seuls les clients ayant coché <em>&quot;Accepter les e-mails d&apos;information et marketing&quot;</em> recevront ce message.
+                                            </span>
+                                        </div>
+                                    </section>
+
+                                    {/* 2. Édition de l'objet & des sections */}
+                                    <section className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 space-y-6">
+                                        <div>
+                                            <label className={`block text-sm font-medium mb-1.5 ${showValidation && !subject ? 'text-rose-500' : 'text-slate-700'}`}>Objet de l&apos;email</label>
+                                            <input
+                                                type="text"
+                                                value={subject}
+                                                onChange={(e) => {
+                                                    setSubject(e.target.value);
+                                                    if (e.target.value) setShowValidation(false);
+                                                }}
+                                                placeholder="Saisissez l'objet de votre e-mail..."
+                                                className={`w-full p-3.5 border rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 outline-none text-sm transition-all font-light ${showValidation && !subject ? 'border-rose-300 bg-rose-50/30' : 'border-slate-200 bg-white'}`}
+                                            />
+                                        </div>
+
+                                        <div className="border-t border-slate-100 my-4" />
+
+                                        {/* Multi-sections list */}
+                                        <div className="space-y-6">
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Sections de la Newsletter</h3>
+                                                <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-bold">{newsletterSections.length} section(s)</span>
+                                            </div>
+
+                                            {newsletterSections.map((sec, idx) => (
+                                                <div key={sec.id} className="p-5 border border-slate-200 rounded-2xl bg-slate-50/50 space-y-4 relative group animate-in fade-in duration-200">
+                                                    {/* Controls */}
+                                                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Section #{idx + 1}</h4>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => moveSection(idx, 'up')}
+                                                                disabled={idx === 0}
+                                                                className="w-6 h-6 flex items-center justify-center rounded bg-white border border-slate-200 text-slate-500 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white transition-all text-[10px]"
+                                                                title="Monter"
+                                                            >
+                                                                ▲
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => moveSection(idx, 'down')}
+                                                                disabled={idx === newsletterSections.length - 1}
+                                                                className="w-6 h-6 flex items-center justify-center rounded bg-white border border-slate-200 text-slate-500 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-white transition-all text-[10px]"
+                                                                title="Descendre"
+                                                            >
+                                                                ▼
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeSection(sec.id)}
+                                                                disabled={newsletterSections.length <= 1}
+                                                                className="w-6 h-6 flex items-center justify-center rounded bg-white border border-slate-200 text-rose-500 hover:bg-rose-50 hover:border-rose-200 disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-slate-200 transition-all text-xs"
+                                                                title="Supprimer"
+                                                            >
+                                                                🗑️
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Title & Color Picker */}
+                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                        <div className="md:col-span-2">
+                                                            <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Titre de la section (optionnel)</label>
+                                                            <input
+                                                                type="text"
+                                                                value={sec.title}
+                                                                onChange={(e) => updateSection(sec.id, { title: e.target.value })}
+                                                                placeholder="Ex: Les nouvelles du mois..."
+                                                                className="w-full p-2.5 border border-slate-200 rounded-xl bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 outline-none text-xs transition-all font-light"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Couleur du titre</label>
+                                                            <div className="flex items-center gap-2">
+                                                                <input
+                                                                    type="color"
+                                                                    value={sec.titleBgColor}
+                                                                    onChange={(e) => updateSection(sec.id, { titleBgColor: e.target.value })}
+                                                                    className="w-10 h-10 border border-slate-200 rounded-xl cursor-pointer p-0 bg-transparent shrink-0"
+                                                                />
+                                                                <select
+                                                                    value={sec.titleBgColor}
+                                                                    onChange={(e) => updateSection(sec.id, { titleBgColor: e.target.value })}
+                                                                    className="flex-1 p-2 border border-slate-200 rounded-xl bg-white text-xs font-light outline-none"
+                                                                >
+                                                                    <option value="#7c3aed">Violet</option>
+                                                                    <option value="#10b981">Émeraude</option>
+                                                                    <option value="#3b82f6">Bleu</option>
+                                                                    <option value="#f59e0b">Ambre</option>
+                                                                    <option value="#ef4444">Rouge</option>
+                                                                    <option value="#0f172a">Noir</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Image Upload */}
+                                                    <div>
+                                                        <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                                                            Image d&apos;illustration <span className="lowercase font-normal text-slate-400/80">(optionnel)</span>
+                                                        </label>
+                                                        {sec.imageUrl ? (
+                                                            <div className="space-y-3">
+                                                                <div className="relative rounded-xl overflow-hidden border border-slate-200 max-h-40 bg-slate-100 flex items-center justify-center">
+                                                                    <img src={sec.imageUrl} alt="Preview" className="max-h-40 object-contain w-auto" />
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => updateSection(sec.id, { imageUrl: "" })}
+                                                                        className="absolute top-2 right-2 p-1.5 bg-rose-50 text-rose-500 hover:bg-rose-100 rounded-lg border border-rose-200 text-[10px] font-semibold transition-all shadow-sm"
+                                                                    >
+                                                                        Retirer l&apos;image ✕
+                                                                    </button>
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Taille de l&apos;image :</span>
+                                                                    <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200/50">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => updateSection(sec.id, { imageSize: 'small' })}
+                                                                            className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+                                                                                (sec.imageSize || 'large') === 'small'
+                                                                                    ? 'bg-white text-indigo-600 shadow-sm border border-slate-200/30'
+                                                                                    : 'text-slate-600 hover:text-slate-900'
+                                                                            }`}
+                                                                        >
+                                                                            Petite
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => updateSection(sec.id, { imageSize: 'medium' })}
+                                                                            className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+                                                                                (sec.imageSize || 'large') === 'medium'
+                                                                                    ? 'bg-white text-indigo-600 shadow-sm border border-slate-200/30'
+                                                                                    : 'text-slate-600 hover:text-slate-900'
+                                                                            }`}
+                                                                        >
+                                                                            Moyenne
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => updateSection(sec.id, { imageSize: 'large' })}
+                                                                            className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+                                                                                (sec.imageSize || 'large') === 'large'
+                                                                                    ? 'bg-white text-indigo-600 shadow-sm border border-slate-200/30'
+                                                                                    : 'text-slate-600 hover:text-slate-900'
+                                                                            }`}
+                                                                        >
+                                                                            Grande
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                disabled={uploadingSectionId === sec.id}
+                                                                onClick={() => {
+                                                                    const input = document.createElement('input');
+                                                                    input.setAttribute('type', 'file');
+                                                                    input.setAttribute('accept', 'image/*');
+                                                                    input.onchange = async () => {
+                                                                        if (input.files && input.files[0]) {
+                                                                            handleSectionImageUpload(sec.id, input.files[0]);
+                                                                        }
+                                                                    };
+                                                                    input.click();
+                                                                }}
+                                                                className="w-full py-2.5 border border-dashed border-slate-200 text-slate-500 hover:border-slate-300 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2 bg-white hover:bg-slate-50/50"
+                                                            >
+                                                                {uploadingSectionId === sec.id ? "Chargement..." : "Charger une image 📸"}
+                                                            </button>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Text Content */}
+                                                    <div>
+                                                        <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Contenu</label>
+                                                        <div className="bg-white rounded-xl overflow-hidden border border-slate-200 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-all">
+                                                            <QuillNode
+                                                                theme="snow"
+                                                                value={sec.content}
+                                                                onChange={(val: string) => updateSection(sec.id, { content: val })}
+                                                                modules={modules}
+                                                                placeholder="Rédigez votre contenu..."
+                                                                className="h-64 quill-editor"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+
+                                            <button
+                                                type="button"
+                                                onClick={addSection}
+                                                className="w-full py-3 border-2 border-dashed border-indigo-200 text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50/20 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 bg-white"
+                                            >
+                                                ➕ Ajouter une section
+                                            </button>
+                                        </div>
+
+                                        <div className="mt-3 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/80 flex items-start gap-3 text-[11px] text-indigo-950 font-normal leading-relaxed">
+                                            <span className="text-sm select-none">✨</span>
+                                            <div className="space-y-1.5">
+                                                <p className="font-semibold text-indigo-900">Créer la mise en page :</p>
+                                                <ul className="list-disc pl-4 space-y-1">
+                                                    <li><span className="font-semibold">Personnaliser le prénom du destinataire</span> en utilisant le tag <code>{"{first_name}"}</code> dans votre texte</li>
+                                                    <li><span className="font-semibold">Mettre un mot en évidence</span> dans un encart en l&apos;écrivant en MAJUSCULE et en gras (ex : un code promo, un mot de passe...)</li>
+                                                    <li><span className="font-semibold">Insérer un bouton d&apos;action</span> en ajoutant un lien hypertexte seul sur sa propre ligne de texte (ex : Plus d&apos;infos, Réserver votre séance...)</li>
+                                                    <li><span className="font-semibold">Insérer des emojis depuis votre ordinateur</span> dans votre titre et votre corps de mail en appuyant simultanément sur la touche Windows (❖) + la touche Point ( . ) ou sur <code>Cmd + Ctrl + Espace</code> si vous êtes sur Mac.</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    {/* Action Buttons */}
+                                    <div className="flex flex-col md:flex-row justify-end items-center gap-4 pt-4">
+                                        <button
+                                            onClick={() => setShowSaveModal(true)}
+                                            className="w-full md:w-auto px-6 py-4 rounded-xl font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-all flex items-center justify-center gap-2 text-sm shadow-sm active:scale-95"
+                                        >
+                                            💾 Enregistrer comme modèle
+                                        </button>
+                                        <button
+                                            onClick={handleSend}
+                                            disabled={isSending}
+                                            className={`w-full md:w-auto px-10 py-4 rounded-xl font-bold text-white shadow-lg shadow-indigo-200/50 transition-all text-sm active:scale-95 ${isSending ? "bg-slate-400 cursor-not-allowed" : "bg-slate-900 hover:bg-slate-800"}`}
+                                        >
+                                            {isSending ? "Envoi en cours..." : "Diffuser la newsletter"}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Right Column: Live Sticky Preview */}
+                                <div className="sticky top-6 lg:col-span-1 space-y-4">
+                                    <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4">
+                                        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Aperçu en direct</h3>
+                                            <button
+                                                onClick={() => setShowPreviewModal(true)}
+                                                className="px-3.5 py-1.5 bg-indigo-50 text-indigo-600 rounded-xl text-[11px] font-bold hover:bg-indigo-100 transition-all active:scale-95 flex items-center gap-1.5 shadow-sm border border-indigo-100/50"
+                                            >
+                                                🔍 Rendu Réel
+                                            </button>
+                                        </div>
+                                        
+                                        <div className="border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm bg-slate-50">
+                                            <div className="bg-slate-100 px-3.5 py-2.5 flex items-center gap-2 border-b border-slate-200">
+                                                <div className="flex gap-1.5 shrink-0">
+                                                    <span className="w-2 h-2 rounded-full bg-rose-400 inline-block"></span>
+                                                    <span className="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>
+                                                    <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
+                                                </div>
+                                                <div className="w-full bg-white rounded-md text-[9px] text-slate-400 text-center py-0.5 border border-slate-200 truncate select-none">
+                                                    apercu-newsletter
+                                                </div>
+                                            </div>
+                                            <div className="bg-white">
+                                                <iframe 
+                                                    srcDoc={generateRealisticHtml()} 
+                                                    className="w-full h-[540px] border-0 block bg-white"
+                                                    title="Live Email Preview"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === "operational" && (
+                        <div className="grid grid-cols-1 gap-8 animate-in fade-in duration-300">
                             {/* Section Modèles de bibliothèque */}
                             {templates.length > 0 && (
                                 <section className="animate-in fade-in duration-300">
@@ -897,41 +1683,30 @@ function AdminEmailsContent() {
                                         </div>
                                     )}
 
-                                    {activeTab === "newsletter" && (
-                                        <div className="text-slate-400 text-xs font-normal leading-relaxed mt-2.5 flex items-start gap-1.5">
-                                            <span>ℹ️</span>
-                                            <span>
-                                                Ces e-mails respectent le consentement des utilisateurs. Seuls les clients ayant coché <em>&quot;Accepter les e-mails d&apos;information et marketing&quot;</em> recevront ce message.
-                                            </span>
-                                        </div>
-                                    )}
-
                                     {/* switch urgent en cas d'urgence opérationnelle */}
-                                    {activeTab === "operational" && (
-                                        <div className="mt-4 flex flex-col gap-4">
-                                            <div className="flex items-center justify-end gap-4">
-                                                <span className="text-sm font-semibold text-slate-700">Forcer l&apos;envoi</span>
-                                                <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                                                    <input 
-                                                        type="checkbox" 
-                                                        checked={forceOperational}
-                                                        onChange={(e) => setForceOperational(e.target.checked)}
-                                                        className="sr-only peer" 
-                                                    />
-                                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
-                                                </label>
-                                            </div>
-
-                                            {forceOperational && (
-                                                <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 text-xs leading-relaxed animate-in slide-in-from-top-4 duration-300">
-                                                    <p className="font-bold flex items-center gap-2 mb-1 text-amber-800">
-                                                        ⚠️ AVERTISSEMENT DE CONFORMITÉ RGPD
-                                                    </p>
-                                                    L&apos;envoi forcé outrepasse le choix de non-réception des utilisateurs. Cette option doit être réservée **uniquement** à des cas majeurs (ex. fermeture exceptionnelle, panne technique, changement d&apos;horaires urgents). Tout usage commercial ou promotionnel via cette option est strictement interdit par la réglementation.
-                                                </div>
-                                            )}
+                                    <div className="mt-4 flex flex-col gap-4">
+                                        <div className="flex items-center justify-end gap-4">
+                                            <span className="text-sm font-semibold text-slate-700">Forcer l&apos;envoi</span>
+                                            <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={forceOperational}
+                                                    onChange={(e) => setForceOperational(e.target.checked)}
+                                                    className="sr-only peer" 
+                                                />
+                                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                                            </label>
                                         </div>
-                                    )}
+
+                                        {forceOperational && (
+                                            <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 text-xs leading-relaxed animate-in slide-in-from-top-4 duration-300">
+                                                <p className="font-bold flex items-center gap-2 mb-1 text-amber-800">
+                                                    ⚠️ AVERTISSEMENT DE CONFORMITÉ RGPD
+                                                </p>
+                                                L&apos;envoi forcé outrepasse le choix de non-réception des utilisateurs. Cette option doit être réservée **uniquement** à des cas majeurs (ex. fermeture exceptionnelle, panne technique, changement d&apos;horaires urgents). Tout usage commercial ou promotionnel via cette option est strictement interdit par la réglementation.
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div className="border-t border-slate-100 my-4" />
@@ -965,36 +1740,18 @@ function AdminEmailsContent() {
                                             />
                                         </div>
 
-                                        <style jsx global>{`
-                                            @import url('https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap');
-                                            .quill-editor .ql-toolbar {
-                                                border: none !important;
-                                                border-bottom: 1px solid #e2e8f0 !important;
-                                                background: #f8fafc;
-                                            }
-                                            .quill-editor .ql-container {
-                                                border: none !important;
-                                                font-family: 'Livvic', sans-serif !important;
-                                            }
-                                            .quill-editor .ql-editor {
-                                                min-height: 240px;
-                                                font-family: 'Livvic', sans-serif !important;
-                                                font-size: 0.875rem !important;
-                                                font-weight: 300 !important;
-                                                line-height: 1.6;
-                                            }
-                                            .quill-editor .ql-editor.ql-blank::before {
-                                                font-family: 'Livvic', sans-serif !important;
-                                                font-size: 0.875rem !important;
-                                                font-weight: 300 !important;
-                                                font-style: normal !important;
-                                                color: #94a3b8 !important;
-                                            }
-                                            .quill-editor .ql-editor img {
-                                                max-width: 100%;
-                                                border-radius: 12px;
-                                            }
-                                        `}</style>
+                                        <div className="mt-3 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/80 flex items-start gap-3 text-[11px] text-indigo-950 font-normal leading-relaxed">
+                                            <span className="text-sm select-none">✨</span>
+                                            <div className="space-y-1.5">
+                                                <p className="font-semibold text-indigo-900">Créer la mise en page :</p>
+                                                <ul className="list-disc pl-4 space-y-1">
+                                                    <li><span className="font-semibold">Personnaliser le prénom du destinataire</span> en utilisant le tag <code>{"{first_name}"}</code> dans votre texte</li>
+                                                    <li><span className="font-semibold">Mettre un mot en évidence</span> dans un encart en l&apos;écrivant en MAJUSCULE et en gras (ex : un code promo, un mot de passe...)</li>
+                                                    <li><span className="font-semibold">Insérer un bouton d&apos;action</span> en ajoutant un lien hypertexte seul sur sa propre ligne de texte (ex : Plus d&apos;infos, Réserver votre séance...)</li>
+                                                    <li><span className="font-semibold">Insérer des emojis depuis votre ordinateur</span> dans votre titre et votre corps de mail en appuyant simultanément sur la touche Windows (❖) + la touche Point ( . ) ou sur <code>Cmd + Ctrl + Espace</code> si vous êtes sur Mac.</li>
+                                                </ul>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </section>
@@ -2043,6 +2800,133 @@ function AdminEmailsContent() {
                 </div>
             )}
 
+            {/* Modal de Rendu Réel (Aperçu Responsive) */}
+            {showPreviewModal && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl w-full max-w-5xl h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        {/* Header */}
+                        <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white sticky top-0 z-10">
+                            <div className="flex items-center gap-3">
+                                <span className="text-xl">🔍</span>
+                                <div>
+                                    <h3 className="text-base font-bold text-slate-900 tracking-tight">Rendu Réel de l&apos;Email</h3>
+                                    <p className="text-xs text-slate-400">Visualisez le rendu final de l&apos;e-mail tel qu&apos;il sera reçu.</p>
+                                </div>
+                            </div>
+                            
+                            {/* Device Mode Selectors */}
+                            <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200/50">
+                                <button
+                                    type="button"
+                                    onClick={() => setPreviewDeviceMode("desktop")}
+                                    className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                                        previewDeviceMode === "desktop"
+                                            ? "bg-white text-indigo-600 shadow-sm"
+                                            : "text-slate-600 hover:text-slate-900"
+                                    }`}
+                                >
+                                    🖥️ Bureau (640px)
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPreviewDeviceMode("mobile")}
+                                    className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                                        previewDeviceMode === "mobile"
+                                            ? "bg-white text-indigo-600 shadow-sm"
+                                            : "text-slate-600 hover:text-slate-900"
+                                    }`}
+                                >
+                                    📱 Mobile (380px)
+                                </button>
+                            </div>
+
+                            {/* Close Button */}
+                            <button
+                                onClick={() => setShowPreviewModal(false)}
+                                className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-50 rounded-xl"
+                                title="Fermer"
+                            >
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Iframe Container */}
+                        <div className="flex-1 bg-slate-100 p-8 flex items-center justify-center overflow-y-auto">
+                            <div
+                                style={{
+                                    width: previewDeviceMode === "desktop" ? "640px" : "380px",
+                                    transition: "width 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                                }}
+                                className="h-full bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200 flex flex-col max-w-full"
+                            >
+                                <div className="bg-slate-50 px-3 py-2 border-b border-slate-200 flex items-center justify-between text-[10px] text-slate-400 shrink-0">
+                                    <div className="flex gap-1.5">
+                                        <span className="w-2.5 h-2.5 rounded-full bg-rose-400 inline-block"></span>
+                                        <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span>
+                                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span>
+                                    </div>
+                                    <div className="bg-slate-100 px-3 py-0.5 rounded-md border border-slate-200 select-none">
+                                        {previewDeviceMode === "desktop" ? "640px (Desktop Width)" : "380px (Mobile Width)"}
+                                    </div>
+                                    <div className="w-8"></div>
+                                </div>
+                                <iframe
+                                    srcDoc={generateRealisticHtml()}
+                                    className="w-full flex-1 border-0 bg-white"
+                                    title="Real Email Preview"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-6 bg-white border-t border-slate-100 flex justify-end shrink-0">
+                            <button
+                                onClick={() => setShowPreviewModal(false)}
+                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-semibold hover:bg-slate-800 transition-all shadow-sm active:scale-95"
+                            >
+                                Fermer l&apos;aperçu
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <style jsx global>{`
+                @import url('https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap');
+                .quill-editor .ql-toolbar {
+                    border: none !important;
+                    border-bottom: 1px solid #e2e8f0 !important;
+                    background: #f8fafc;
+                }
+                .quill-editor .ql-container {
+                    border: none !important;
+                    font-family: 'Livvic', sans-serif !important;
+                }
+                .quill-editor .ql-editor {
+                    min-height: 240px;
+                    font-family: 'Livvic', sans-serif !important;
+                    font-size: 0.875rem !important;
+                    font-weight: 300 !important;
+                    line-height: 1.6;
+                }
+                .ql-editor strong,
+                .ql-editor b {
+                    font-weight: 600 !important;
+                }
+                .quill-editor .ql-editor.ql-blank::before {
+                    font-family: 'Livvic', sans-serif !important;
+                    font-size: 0.875rem !important;
+                    font-weight: 300 !important;
+                    font-style: normal !important;
+                    color: #94a3b8 !important;
+                }
+                .quill-editor .ql-editor img {
+                    max-width: 100%;
+                    border-radius: 12px;
+                }
+            `}</style>
         </div>
     );
 }
