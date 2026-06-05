@@ -1697,7 +1697,7 @@ function AdminEmailsContent() {
                                                  <button
                                                      type="button"
                                                      disabled={isUploadingImage}
-                                                     className="w-full py-2.5 border border-dashed border-slate-200 text-slate-500 hover:border-slate-300 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2"
+                                                     className="w-full py-2.5 border border-dashed border-slate-200 text-slate-900 hover:border-slate-300 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-2"
                                                  >
                                                      {isUploadingImage ? "Chargement..." : "Charger une image 📸"}
                                                  </button>
