@@ -1562,11 +1562,11 @@ function AdminEmailsContent() {
                                          >
                                              <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 text-left">
                                                  <h4 className="text-xs font-semibold flex items-center gap-1.5 text-slate-800">
-                                                     💡 idées d&apos;actions recommandées
+                                                     💡 Idées d&apos;actions recommandées
                                                  </h4>
                                              </div>
                                              <span className="text-[11px] font-medium text-slate-500 hover:text-slate-700 transition-colors flex items-center gap-1 shrink-0 ml-2">
-                                                 {showTips ? "masquer ▲" : "afficher les conseils ▼"}
+                                                 {showTips ? "Masquer ▲" : "Afficher les conseils ▼"}
                                              </span>
                                          </button>
                                         
@@ -1655,7 +1655,7 @@ function AdminEmailsContent() {
 
                                      {/* Illustration Image Field */}
                                      <div className="w-full">
-                                         <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Image d&apos;illustration</label>
+                                         <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">Image d&apos;illustration <span className="lowercase font-normal text-slate-400/80">(optionnel)</span></label>
                                          {marketingImageUrl ? (
                                              <div className="flex items-center gap-3 bg-slate-50 border border-slate-100 p-1.5 pr-3.5 rounded-xl">
                                                  <img
@@ -1703,6 +1703,9 @@ function AdminEmailsContent() {
                                                  </button>
                                              </div>
                                          )}
+                                         <p className="text-[10px] text-slate-400 italic mt-1.5 leading-relaxed">
+                                             L&apos;image s&apos;affichera en haut de l&apos;email juste en dessous de votre logo et votre phrase d&apos;accroche renseignés dans les paramètres
+                                         </p>
                                      </div>
                                      <div>
                                         <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">corps du message</label>
@@ -1728,9 +1731,9 @@ function AdminEmailsContent() {
                                              <div className="space-y-1.5">
                                                  <p className="font-semibold text-indigo-900">Créer la mise en page :</p>
                                                  <ul className="list-disc pl-4 space-y-1">
-                                                     <li>Personnaliser le prénom du destinataire en utilisant le tag <code>{"{first_name}"}</code> dans votre texte</li>
-                                                     <li>Mettre un mot en évidence dans un encart en l&apos;écrivant en MAJUSCULE et en gras (ex : un code promo, un mot de passe...)</li>
-                                                     <li>Insérer un bouton d&apos;action en ajoutant un lien hypertexte seul sur sa propre ligne de texte (ex : Plus d&apos;infos, Réserver votre séance...)</li>
+                                                     <li><span className="font-semibold">Personnaliser le prénom du destinataire</span> en utilisant le tag <code>{"{first_name}"}</code> dans votre texte</li>
+                                                     <li><span className="font-semibold">Mettre un mot en évidence</span> dans un encart en l&apos;écrivant en MAJUSCULE et en gras (ex : un code promo, un mot de passe...)</li>
+                                                     <li><span className="font-semibold">Insérer un bouton d&apos;action</span> en ajoutant un lien hypertexte seul sur sa propre ligne de texte (ex : Plus d&apos;infos, Réserver votre séance...)</li>
                                                  </ul>
                                              </div>
                                          </div>
