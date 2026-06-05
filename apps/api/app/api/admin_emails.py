@@ -133,7 +133,7 @@ async def send_admin_emails(
         code = match.group(2)
         return f"""
         <div align="center" style="margin: 24px auto; max-width: 180px; border: 3px double #a7825d; background-color: #fbf2eb; padding: 10px 20px; border-radius: 4px; text-align: center;">
-            <span style="font-family: 'Livvic', sans-serif; font-size: 15px; font-weight: 700; color: #a7825d; letter-spacing: 0.1em;">{code}</span>
+            <span class="email-promo" style="font-family: 'Livvic', sans-serif; font-size: 15px; font-weight: 700; color: #a7825d; letter-spacing: 0.1em;">{code}</span>
         </div>
         """
     processed_content = re.sub(r'<(strong|b)>([A-Z0-9_-]{4,15})</\1>', replace_promo, processed_content)
@@ -152,7 +152,7 @@ async def send_admin_emails(
             
         return f"""
         <div align="{align}" style="margin: 20px 0; text-align: {align};">
-            <a href="{url}" style="display: inline-block; background-color: #0f172a; color: #ffffff; font-family: 'Livvic', sans-serif; font-size: 14px; font-weight: 500; text-decoration: none; padding: 8px 18px; border-radius: 4px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); text-align: center;">{text}</a>
+            <a href="{url}" class="email-button" style="display: inline-block; background-color: #0f172a; color: #ffffff; font-family: 'Livvic', sans-serif; font-size: 14px; font-weight: 500; text-decoration: none; padding: 8px 18px; border-radius: 4px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); text-align: center;">{text}</a>
         </div>
         """
     processed_content = re.sub(r'<p([^>]*)>\s*<a href="([^"]+)"[^>]*>\s*([^<]+?)\s*</a>\s*</p>', replace_button, processed_content)
@@ -177,7 +177,7 @@ async def send_admin_emails(
         if tenant.slogan and not has_added_slogan[0]:
             slogan_html = f"""
             <div style="border-top: 1px solid #cbd5e1; margin: 10px auto 8px auto; width: 80px;"></div>
-            <div style="text-align: center; font-size: 16px; font-weight: 300; color: #0f172a; margin-bottom: 8px; font-family: 'Livvic', sans-serif;">
+            <div class="email-slogan" style="text-align: center; font-size: 16px; font-weight: 300; color: #0f172a; margin-bottom: 8px; font-family: 'Livvic', sans-serif;">
                 {tenant.slogan}
             </div>
             """
@@ -190,7 +190,7 @@ async def send_admin_emails(
     if tenant.slogan and not has_added_slogan[0]:
         slogan_html = f"""
         <div style="border-top: 1px solid #cbd5e1; margin: 10px auto 8px auto; width: 80px;"></div>
-        <div style="text-align: center; font-size: 16px; font-weight: 300; color: #0f172a; margin-bottom: 10px; font-family: 'Livvic', sans-serif;">
+        <div class="email-slogan" style="text-align: center; font-size: 16px; font-weight: 300; color: #0f172a; margin-bottom: 10px; font-family: 'Livvic', sans-serif;">
             {tenant.slogan}
         </div>
         """
@@ -225,6 +225,19 @@ async def send_admin_emails(
                     margin-right: -16px !important;
                     margin-bottom: 8px !important;
                 }
+                .email-slogan {
+                    font-size: 14px !important;
+                }
+                .email-content {
+                    font-size: 14px !important;
+                }
+                .email-promo {
+                    font-size: 13px !important;
+                }
+                .email-button {
+                    font-size: 13px !important;
+                    padding: 6px 14px !important;
+                }
             }
         </style>
     </head>
@@ -232,7 +245,7 @@ async def send_admin_emails(
         <div class="email-container" style="font-family: 'Livvic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 16px 24px; border: 1px solid #e2e8f0; border-radius: 24px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
             {logo_html}
             
-            <div style="color: #334155; font-size: 16px; line-height: 1.6; font-weight: 300; text-align: center;">
+            <div class="email-content" style="color: #334155; font-size: 16px; line-height: 1.6; font-weight: 300; text-align: center;">
                 {processed_content}
             </div>
             
