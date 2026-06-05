@@ -1734,7 +1734,7 @@ function AdminEmailsContent() {
                                                      <li><span className="font-semibold">Personnaliser le prénom du destinataire</span> en utilisant le tag <code>{"{first_name}"}</code> dans votre texte</li>
                                                      <li><span className="font-semibold">Mettre un mot en évidence</span> dans un encart en l&apos;écrivant en MAJUSCULE et en gras (ex : un code promo, un mot de passe...)</li>
                                                      <li><span className="font-semibold">Insérer un bouton d&apos;action</span> en ajoutant un lien hypertexte seul sur sa propre ligne de texte (ex : Plus d&apos;infos, Réserver votre séance...)</li>
-                                                     <li><span className="font-semibold">Insérer des émojis</span> dans le titre ou le corps du message en utilisant le raccourci <code>Win + .</code> (PC / Windows) ou <code>Cmd + Ctrl + Espace</code> (Mac)</li>
+                                                     <li><span className="font-semibold">Insérer des emojis</span> depuis votre PC dans votre titre et votre corps de mail en appuyant simultanément sur la touche Windows (❖) + la touche Point ( . ) ou sur <code>Cmd + Ctrl + Espace</code> si vous êtes sur Mac.</li>
                                                  </ul>
                                              </div>
                                          </div>
