@@ -495,7 +495,7 @@ export default function MemberOrdersPage() {
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-8 h-8 flex items-center justify-center text-lg">📅</div>
                                                     <p className="text-xs font-medium text-slate-600">
-                                                        {new Date(reg.event_date).toLocaleDateString("fr-FR")}
+                                                        {reg.event_date ? new Date(reg.event_date).toLocaleDateString("fr-FR") : ""}
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center gap-2">

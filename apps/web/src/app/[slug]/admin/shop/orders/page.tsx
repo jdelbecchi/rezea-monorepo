@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { api, User, OrderItem, InstallmentItem } from "@/lib/api";
+import { api, User, OrderItem, InstallmentItem, Tenant } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import { formatCredits } from "@/lib/formatters";
 import MultiSelect from "@/components/MultiSelect";
@@ -365,7 +365,8 @@ export default function AdminShopOrdersPage() {
             amount_ht: "",
             amount_ttc: (order.price_cents / 100).toFixed(2),
             notes: "",
-            is_acquitted: true
+            is_acquitted: true,
+            vat_mention: tenant?.legal_vat_mention || ""
         });
     };
 

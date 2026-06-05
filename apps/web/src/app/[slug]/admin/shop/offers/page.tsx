@@ -17,7 +17,7 @@ const emptyForm = {
     classes_included: "1",
     is_unlimited: false,
     validity_duration: "1",
-    validity_unit: "months" as "days" | "months",
+    validity_unit: "months" as "days" | "weeks" | "months",
     deadline_date: "",
     is_validity_unlimited: false,
     is_unique: false,

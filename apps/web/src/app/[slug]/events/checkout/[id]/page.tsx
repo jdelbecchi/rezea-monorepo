@@ -235,7 +235,7 @@ export default function EventCheckoutPage() {
                                 <div className="space-y-4">
                                     {(tenant?.payment_redirect_link || event?.payment_link) ? (
                                         <>
-                                            {tenant.allow_pay_later_events ? (
+                                            {tenant?.allow_pay_later_events ? (
                                                 <>
                                                     <label className="flex items-center justify-center md:justify-start gap-3 cursor-pointer group">
                                                         <div className="relative flex items-center h-5">

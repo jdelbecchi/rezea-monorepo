@@ -565,7 +565,7 @@ export default function AdminBookingsPage() {
                                     Annuler
                                 </button>
                                 <button 
-                                    onClick={() => handleDelete(deleteConfirmId)}
+                                    onClick={() => handleDelete()}
                                     className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm active:scale-95"
                                 >
                                     Confirmer

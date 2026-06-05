@@ -184,6 +184,7 @@ export interface EventRegistration {
   event_time?: string;
   user_name?: string;
   has_pending_order?: boolean;
+  instructor_name?: string;
 }
 
 // Finance
@@ -327,7 +328,7 @@ export interface Offer {
   classes_included: number | null;
   is_unlimited: boolean;
   validity_days: number | null;
-  validity_unit: 'days' | 'months';
+  validity_unit: 'days' | 'weeks' | 'months';
   deadline_date: string | null;
   is_validity_unlimited: boolean;
   is_unique: boolean;
@@ -381,6 +382,7 @@ export interface OrderItem {
   offer_snap_validity_days: number | null;
   offer_snap_validity_unit: string | null;
   offer_snap_is_validity_unlimited: boolean;
+  invoice_number?: string | null;
 }
 
 export interface InstallmentItem {
@@ -709,7 +711,7 @@ export const api = {
     classes_included: number | null;
     is_unlimited: boolean;
     validity_days: number | null;
-    validity_unit: 'days' | 'months';
+    validity_unit: 'days' | 'weeks' | 'months';
     deadline_date: string | null;
     is_validity_unlimited: boolean;
     is_unique: boolean;
@@ -1196,6 +1198,8 @@ export const api = {
   getPublicFeedback: async (token: string): Promise<{
     id: string;
     campaign_title: string;
+    campaign_description?: string | null;
+    tenant_name?: string | null;
     rating: number | null;
     comment: string | null;
   }> => {

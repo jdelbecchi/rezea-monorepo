@@ -553,12 +553,12 @@ export default function AdminEventsProgrammingPage() {
                                         <input
                                             type="time"
                                             required
-                                            value={formData.duration_minutes ? `${Math.floor(formData.duration_minutes / 60).toString().padStart(2, '0')}:${(formData.duration_minutes % 60).toString().padStart(2, '0')}` : ""}
+                                            value={formData.duration_minutes ? `${Math.floor(Number(formData.duration_minutes) / 60).toString().padStart(2, '0')}:${(Number(formData.duration_minutes) % 60).toString().padStart(2, '0')}` : ""}
                                             onChange={e => {
                                                 const val = e.target.value;
                                                 if (!val) return;
                                                 const [h, m] = val.split(':').map(Number);
-                                                setFormData({ ...formData, duration_minutes: (h || 0) * 60 + (m || 0) });
+                                                setFormData({ ...formData, duration_minutes: ((h || 0) * 60 + (m || 0)).toString() });
                                             }}
                                             className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 appearance-none cursor-pointer"
                                         />
@@ -585,7 +585,7 @@ export default function AdminEventsProgrammingPage() {
                                                 min="1"
                                                 required
                                                 value={formData.max_places}
-                                                onChange={e => setFormData({ ...formData, max_places: parseInt(e.target.value) || 0 })}
+                                                onChange={e => setFormData({ ...formData, max_places: e.target.value })}
                                                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
                                                 placeholder="Capacité max"
                                             />
