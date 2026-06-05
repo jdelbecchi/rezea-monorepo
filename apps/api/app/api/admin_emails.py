@@ -169,9 +169,9 @@ async def send_admin_emails(
     def replace_image(match):
         img_tag = match.group(0)
         if 'style="' in img_tag:
-            img_tag = re.sub(r'style="[^"]*"', 'style="width: 100%; max-height: 250px; object-fit: cover; display: block;"', img_tag)
+            img_tag = re.sub(r'style="[^"]*"', 'style="width: 100%; height: auto; display: block;"', img_tag)
         else:
-            img_tag = img_tag.replace('<img', '<img style="width: 100%; max-height: 250px; object-fit: cover; display: block;"')
+            img_tag = img_tag.replace('<img', '<img style="width: 100%; height: auto; display: block;"')
         
         slogan_html = ""
         if tenant.slogan and not has_added_slogan[0]:
@@ -224,9 +224,6 @@ async def send_admin_emails(
                     margin-left: -16px !important;
                     margin-right: -16px !important;
                     margin-bottom: 8px !important;
-                }
-                .full-width-image-wrapper img {
-                    max-height: 160px !important;
                 }
                 .email-logo {
                     max-height: 90px !important;
