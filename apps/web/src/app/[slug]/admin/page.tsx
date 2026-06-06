@@ -448,9 +448,9 @@ export default function AdminDashboardPage() {
                         </div>
                     </div>
 
-                    {/* Niveau 1 : Gestion des offres et du planning */}
+                    {/* Offres, planning et activité */}
                     <div className="space-y-4">
-                        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Niveau 1 : Gestion des offres et du planning</h2>
+                        <h2 className="text-xs font-medium text-slate-400 uppercase tracking-widest px-1">Offres, planning et activité</h2>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                             {/* Offres actives */}
                             <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
@@ -576,10 +576,8 @@ export default function AdminDashboardPage() {
                         </div>
                     </div>
 
-                    {/* Niveau 2 : Gestion de l'activité */}
-                    <div className="space-y-4">
-                        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Niveau 2 : Gestion de l&apos;activité</h2>
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Gestion de l'activité */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             
                             {/* Volume d'offres actives */}
                             <section className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between">
@@ -703,11 +701,10 @@ export default function AdminDashboardPage() {
                                 )}
                             </section>
                         </div>
-                    </div>
 
-                    {/* Niveau 3 : Gestion des utilisateurs */}
+                    {/* Suivi de la base utilisateur */}
                     <div className="space-y-4">
-                        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Niveau 3 : Gestion des utilisateurs</h2>
+                        <h2 className="text-xs font-medium text-slate-400 uppercase tracking-widest px-1">Suivi de la base utilisateur</h2>
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             
                             {/* Left Column: Key User Indicators */}
@@ -816,9 +813,9 @@ export default function AdminDashboardPage() {
                         </div>
                     </div>
 
-                    {/* Niveau 4 : Gestion de la communication */}
+                    {/* Communication et retours */}
                     <div className="space-y-4">
-                        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Niveau 4 : Gestion de la communication</h2>
+                        <h2 className="text-xs font-medium text-slate-400 uppercase tracking-widest px-1">Communication et retours</h2>
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             
                             {/* Left Column: Sent custom emails */}
