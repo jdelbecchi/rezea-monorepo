@@ -429,7 +429,7 @@ export default function AdminDashboardPage() {
 
         return [...orderItems, ...eventItems]
             .sort((a, b) => b.date.getTime() - a.date.getTime())
-            .slice(0, 5);
+            .slice(0, 15);
     }, [currentOrders, eventRegistrations]);
 
     // 9. Recent sent email campaigns (Simulated Newsletter/Infos)
@@ -626,7 +626,12 @@ export default function AdminDashboardPage() {
                                                 <div key={item.name} className="space-y-1">
                                                     <div className="flex justify-between items-end text-xs font-semibold">
                                                         <span className="text-slate-800 truncate max-w-[200px]">{item.name}</span>
-                                                        <span className="text-slate-500 font-bold">{item.count} ({pct}%)</span>
+                                                        <span className="flex items-center gap-1.5 text-slate-900 font-bold">
+                                                            <span>{item.count}</span>
+                                                            <span className="text-[10px] text-slate-400 font-medium bg-slate-50 px-1.5 py-0.5 rounded-md border border-slate-100 shrink-0">
+                                                                {pct}%
+                                                            </span>
+                                                        </span>
                                                     </div>
                                                     <div className="h-2 w-full bg-slate-50 rounded-full overflow-hidden">
                                                         <div 
@@ -673,7 +678,6 @@ export default function AdminDashboardPage() {
                                                 {instructorStats.map((inst, i) => (
                                                     <tr key={inst.name} className="text-xs group hover:bg-slate-50 transition-colors">
                                                         <td className="py-3 font-semibold text-slate-800 flex items-center gap-2">
-                                                            {i === 0 && <span title="Top intervenant">🏆</span>}
                                                             {inst.name}
                                                         </td>
                                                         <td className="py-3 text-center text-slate-600 font-medium">{inst.sessionsCount}</td>
@@ -690,39 +694,41 @@ export default function AdminDashboardPage() {
                             <section className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col">
                                 <div className="space-y-2 mb-6">
                                     <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                                        <span>⚡</span> Activités récentes
+                                        <span>⚡</span> Activité récente
                                     </h3>
                                     <p className="text-[11px] text-slate-400 font-medium">
-                                        Les 5 dernières commandes d&apos;offres ou d&apos;évènements
+                                        Les 15 dernières commandes d&apos;offres ou d&apos;évènements
                                     </p>
                                 </div>
 
-                                {recentActivities.length === 0 ? (
-                                    <div className="flex-1 flex flex-col items-center justify-center text-slate-400 italic text-xs py-8">
-                                        Aucune activité récente enregistrée
-                                    </div>
-                                ) : (
-                                    <div className="flex-1 space-y-3 justify-center flex flex-col">
-                                        {recentActivities.map((act) => (
-                                            <div key={act.id} className="flex items-center justify-between p-2 bg-slate-50 border border-slate-100 rounded-2xl text-[11px]">
-                                                <div className="space-y-0.5 truncate max-w-[170px]">
-                                                    <p className="font-bold text-slate-800 truncate">{act.userName}</p>
-                                                    <p className="text-slate-500 truncate">
-                                                        {act.type === "offer" ? "🏷️ Offre" : "🎟️ Événement"} : <strong>{act.itemName}</strong>
-                                                    </p>
+                                <div className="flex-1 overflow-y-auto max-h-[300px] pr-1 no-scrollbar text-left">
+                                    {recentActivities.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center text-slate-400 italic text-xs py-8">
+                                            Aucune activité récente enregistrée
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {recentActivities.map((act) => (
+                                                <div key={act.id} className="flex items-center justify-between p-2 bg-slate-50 border border-slate-100 rounded-2xl text-[11px]">
+                                                    <div className="space-y-0.5 truncate max-w-[170px]">
+                                                        <p className="font-bold text-slate-800 truncate">{act.userName}</p>
+                                                        <p className="text-slate-500 truncate">
+                                                            {act.type === "offer" ? "🏷️ Offre" : "🎟️ Événement"} : <strong>{act.itemName}</strong>
+                                                        </p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <span className="font-extrabold text-slate-700">
+                                                            {formatCurrency(act.priceCents)}
+                                                        </span>
+                                                        <p className="text-[8px] text-slate-400 mt-0.5">
+                                                            {act.date.toLocaleDateString("fr-FR")}
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <span className="font-extrabold text-slate-700">
-                                                        {formatCurrency(act.priceCents)}
-                                                    </span>
-                                                    <p className="text-[8px] text-slate-400 mt-0.5">
-                                                        {act.date.toLocaleDateString("fr-FR")}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </section>
                         </div>
 
@@ -744,12 +750,12 @@ export default function AdminDashboardPage() {
                                     ) : (
                                         <div className="space-y-2">
                                             {regularizePayments.map(item => (
-                                                <div key={item.id} className="flex items-center justify-between p-2 bg-rose-50/20 border border-rose-100 rounded-xl hover:bg-rose-50/50 transition-colors text-[10px]">
+                                                <div key={item.id} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-b-0 text-[10px]">
                                                     <div className="space-y-0.5 truncate max-w-[110px]">
                                                         <p className="font-bold text-slate-800 truncate">{item.userName}</p>
                                                         <p className="text-slate-400 truncate text-[9px]">{item.type === "offer" ? "🏷️ " : "🎟️ "}{item.itemName}</p>
                                                     </div>
-                                                    <span className="font-extrabold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-lg border border-rose-100 shrink-0 text-[9px]">
+                                                    <span className="font-bold text-rose-600 shrink-0 text-[10px]">
                                                         {formatCurrency(item.priceCents)}
                                                     </span>
                                                 </div>
@@ -772,12 +778,12 @@ export default function AdminDashboardPage() {
                                     ) : (
                                         <div className="space-y-2">
                                             {pendingPayments.map(item => (
-                                                <div key={item.id} className="flex items-center justify-between p-2 bg-amber-50/20 border border-amber-100 rounded-xl hover:bg-amber-50/50 transition-colors text-[10px]">
+                                                <div key={item.id} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-b-0 text-[10px]">
                                                     <div className="space-y-0.5 truncate max-w-[110px]">
                                                         <p className="font-bold text-slate-800 truncate">{item.userName}</p>
                                                         <p className="text-slate-400 truncate text-[9px]">{item.type === "offer" ? "🏷️ " : "🎟️ "}{item.itemName}</p>
                                                     </div>
-                                                    <span className="font-extrabold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-lg border border-amber-100 shrink-0 text-[9px]">
+                                                    <span className="font-bold text-amber-600 shrink-0 text-[10px]">
                                                         {formatCurrency(item.priceCents)}
                                                     </span>
                                                 </div>
@@ -800,12 +806,12 @@ export default function AdminDashboardPage() {
                                     ) : (
                                         <div className="space-y-2">
                                             {toValidatePayments.map(item => (
-                                                <div key={item.id} className="flex items-center justify-between p-2 bg-indigo-50/20 border border-indigo-100 rounded-xl hover:bg-indigo-50/50 transition-colors text-[10px]">
+                                                <div key={item.id} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-b-0 text-[10px]">
                                                     <div className="space-y-0.5 truncate max-w-[110px]">
                                                         <p className="font-bold text-slate-800 truncate">{item.userName}</p>
                                                         <p className="text-slate-400 truncate text-[9px]">{item.type === "offer" ? "🏷️ " : "🎟️ "}{item.itemName}</p>
                                                     </div>
-                                                    <span className="font-extrabold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-lg border border-indigo-100 shrink-0 text-[9px]">
+                                                    <span className="font-bold text-indigo-600 shrink-0 text-[10px]">
                                                         {formatCurrency(item.priceCents)}
                                                     </span>
                                                 </div>
@@ -828,12 +834,12 @@ export default function AdminDashboardPage() {
                                     ) : (
                                         <div className="space-y-2">
                                             {refundedPayments.map(item => (
-                                                <div key={item.id} className="flex items-center justify-between p-2 bg-slate-50 border border-slate-200/50 rounded-xl text-[10px]">
+                                                <div key={item.id} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-b-0 text-[10px]">
                                                     <div className="space-y-0.5 truncate max-w-[110px]">
                                                         <p className="font-bold text-slate-800 truncate">{item.userName}</p>
                                                         <p className="text-slate-400 truncate text-[9px]">{item.type === "offer" ? "🏷️ " : "🎟️ "}{item.itemName}</p>
                                                     </div>
-                                                    <span className="font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-lg border border-slate-200 shrink-0 text-[9px]">
+                                                    <span className="font-bold text-slate-500 shrink-0 text-[10px]">
                                                         -{formatCurrency(item.priceCents)}
                                                     </span>
                                                 </div>
@@ -856,7 +862,7 @@ export default function AdminDashboardPage() {
                                 {/* Prospects card */}
                                 <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
                                     <div>
-                                        <p className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Prospects</p>
+                                        <p className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Nouveaux prospects</p>
                                         <p className="text-2xl font-bold text-slate-900 mt-1">{currentSegments.explorateur || 0}</p>
                                         <p className="text-[10px] text-slate-500 font-medium">Nombre de personnes ayant créé un compte</p>
                                     </div>
