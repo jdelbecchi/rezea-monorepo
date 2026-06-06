@@ -606,7 +606,7 @@ export default function AdminDashboardPage() {
                             {/* Volume d'offres actives */}
                             <section className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between">
                                 <div className="space-y-2 mb-6">
-                                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                                    <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                                         <span>🏷️</span> Volume d&apos;Offres Actives
                                     </h3>
                                     <p className="text-[11px] text-slate-400 font-medium lowercase">
@@ -647,7 +647,7 @@ export default function AdminDashboardPage() {
                             {/* Charge des intervenants réguliers */}
                             <section className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col">
                                 <div className="space-y-2 mb-6">
-                                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                                    <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                                         <span>👤</span> Charge des Intervenants Réguliers
                                     </h3>
                                     <p className="text-[11px] text-slate-400 font-medium lowercase">
@@ -689,7 +689,7 @@ export default function AdminDashboardPage() {
                             {/* Activités récentes */}
                             <section className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col">
                                 <div className="space-y-2 mb-6">
-                                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                                    <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                                         <span>⚡</span> Activités récentes
                                     </h3>
                                     <p className="text-[11px] text-slate-400 font-medium lowercase">
@@ -893,7 +893,7 @@ export default function AdminDashboardPage() {
                             {/* Right Column: Répartition des utilisateurs (Cockpit) */}
                             <section className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm lg:col-span-2 flex flex-col justify-between">
                                 <div className="space-y-2 mb-6">
-                                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                                    <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                                         <span>👥</span> Répartition des utilisateurs
                                     </h3>
                                     <p className="text-[11px] text-slate-400 font-medium lowercase">
@@ -965,7 +965,7 @@ export default function AdminDashboardPage() {
                             {/* Left Column: Sent custom emails */}
                             <section className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm lg:col-span-2 flex flex-col justify-between">
                                 <div className="space-y-2 mb-6">
-                                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                                    <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                                         <span>📧</span> Derniers e-mails envoyés
                                     </h3>
                                     <p className="text-[11px] text-slate-400 font-medium lowercase">
@@ -1012,7 +1012,7 @@ export default function AdminDashboardPage() {
                             {/* Right Column: Customer satisfaction */}
                             <section className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between">
                                 <div className="space-y-2 mb-4">
-                                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                                    <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                                         <span>💬</span> Satisfaction & Retours
                                     </h3>
                                     <div className="flex items-center justify-between pt-1">
