@@ -552,7 +552,7 @@ export default function AdminDashboardPage() {
                             {/* Offres actives */}
                             <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
                                 <div className="space-y-1">
-                                    <p className="text-[10px] text-slate-900 font-medium uppercase tracking-wider">Offres actives</p>
+                                    <p className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Offres actives</p>
                                     <p className="text-3xl font-bold text-slate-900">{totalActiveOffers}</p>
                                     <p className="text-[10px] text-slate-500 font-medium">
                                         {isGlobalView ? "En cours de validité sur la période" : "En cours de validité ce mois"}
@@ -566,7 +566,7 @@ export default function AdminDashboardPage() {
                             {/* Séances programmées */}
                             <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
                                 <div className="space-y-1">
-                                    <p className="text-[10px] text-slate-900 font-medium uppercase tracking-wider">Séances programmées</p>
+                                    <p className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Séances programmées</p>
                                     <p className="text-3xl font-bold text-slate-900">{currentSessions.filter(s => s.is_active !== false).length}</p>
                                     <p className="text-[10px] text-slate-500 font-medium">Créneaux planifiés ce mois</p>
                                 </div>
@@ -578,7 +578,7 @@ export default function AdminDashboardPage() {
                             {/* Taux d'occupation */}
                             <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
                                 <div className="space-y-2">
-                                    <p className="text-[10px] text-slate-900 font-medium uppercase tracking-wider">Taux d&apos;occupation</p>
+                                    <p className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Taux d&apos;occupation</p>
                                     <p className="text-3xl font-bold text-slate-900">{occupancyStats.rate}%</p>
                                     <p className="text-[10px] text-slate-500 font-medium lowercase">
                                         {occupancyStats.totalBookings} réservations / {occupancyStats.totalCapacity} places
@@ -734,7 +734,7 @@ export default function AdminDashboardPage() {
                             {/* À régulariser */}
                             <section className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between group hover:shadow-md transition-all">
                                 <div className="border-b border-slate-100 pb-2 mb-2">
-                                    <p className="text-[10px] text-slate-900 font-medium uppercase tracking-wider">⚠️ À régulariser ({regularizePayments.length})</p>
+                                    <p className="text-xs font-semibold text-slate-900 uppercase tracking-wider">⚠️ À régulariser ({regularizePayments.length})</p>
                                 </div>
                                 <div className="flex-1 overflow-y-auto max-h-[100px] pr-1 no-scrollbar text-left">
                                     {regularizePayments.length === 0 ? (
@@ -762,7 +762,7 @@ export default function AdminDashboardPage() {
                             {/* En attente de paiement */}
                             <section className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between group hover:shadow-md transition-all">
                                 <div className="border-b border-slate-100 pb-2 mb-2">
-                                    <p className="text-[10px] text-slate-900 font-medium uppercase tracking-wider">⏳ En attente ({pendingPayments.length})</p>
+                                    <p className="text-xs font-semibold text-slate-900 uppercase tracking-wider">⏳ En attente ({pendingPayments.length})</p>
                                 </div>
                                 <div className="flex-1 overflow-y-auto max-h-[100px] pr-1 no-scrollbar text-left">
                                     {pendingPayments.length === 0 ? (
@@ -790,7 +790,7 @@ export default function AdminDashboardPage() {
                             {/* À valider */}
                             <section className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between group hover:shadow-md transition-all">
                                 <div className="border-b border-slate-100 pb-2 mb-2">
-                                    <p className="text-[10px] text-slate-900 font-medium uppercase tracking-wider">📋 À valider ({toValidatePayments.length})</p>
+                                    <p className="text-xs font-semibold text-slate-900 uppercase tracking-wider">📋 À valider ({toValidatePayments.length})</p>
                                 </div>
                                 <div className="flex-1 overflow-y-auto max-h-[100px] pr-1 no-scrollbar text-left">
                                     {toValidatePayments.length === 0 ? (
@@ -818,7 +818,7 @@ export default function AdminDashboardPage() {
                             {/* Remboursés */}
                             <section className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between group hover:shadow-md transition-all">
                                 <div className="border-b border-slate-100 pb-2 mb-2">
-                                    <p className="text-[10px] text-slate-900 font-medium uppercase tracking-wider">🔄 Remboursés ({refundedPayments.length})</p>
+                                    <p className="text-xs font-semibold text-slate-900 uppercase tracking-wider">🔄 Remboursés ({refundedPayments.length})</p>
                                 </div>
                                 <div className="flex-1 overflow-y-auto max-h-[100px] pr-1 no-scrollbar text-left">
                                     {refundedPayments.length === 0 ? (
@@ -856,8 +856,8 @@ export default function AdminDashboardPage() {
                                 {/* Prospects card */}
                                 <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
                                     <div>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Prospects</p>
-                                        <p className="text-2xl font-extrabold text-slate-900 mt-1">{currentSegments.explorateur || 0}</p>
+                                        <p className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Prospects</p>
+                                        <p className="text-2xl font-bold text-slate-900 mt-1">{currentSegments.explorateur || 0}</p>
                                         <p className="text-[10px] text-slate-500 font-medium">Nombre de personnes ayant créé un compte</p>
                                     </div>
                                     <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-lg">
@@ -868,8 +868,8 @@ export default function AdminDashboardPage() {
                                 {/* Découverte card */}
                                 <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
                                     <div>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Découvertes</p>
-                                        <p className="text-2xl font-extrabold text-slate-900 mt-1">{currentSegments.decouverte || 0}</p>
+                                        <p className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Découvertes</p>
+                                        <p className="text-2xl font-bold text-slate-900 mt-1">{currentSegments.decouverte || 0}</p>
                                         <p className="text-[10px] text-slate-500 font-medium">Nombre de personnes ayant passé une commande</p>
                                     </div>
                                     <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-lg">
@@ -880,8 +880,8 @@ export default function AdminDashboardPage() {
                                 {/* Actifs card */}
                                 <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
                                     <div>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Actifs</p>
-                                        <p className="text-2xl font-extrabold text-slate-900 mt-1">{currentSegments.regulier || 0}</p>
+                                        <p className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Actifs</p>
+                                        <p className="text-2xl font-bold text-slate-900 mt-1">{currentSegments.regulier || 0}</p>
                                         <p className="text-[10px] text-slate-500 font-medium">Nombre de personnes ayant renouvelé une commande</p>
                                     </div>
                                     <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-lg">
