@@ -278,17 +278,115 @@ export default function AdminDashboardPage() {
         return activeOffersStats.reduce((sum, item) => sum + item.count, 0);
     }, [activeOffersStats]);
 
-    // 5. Payments to regularize (all periods)
+    // 5. Payments to regularize (all periods, combining orders and events)
     const regularizePayments = useMemo(() => {
-        return currentOrders.filter(o => o.payment_status === PaymentStatus.A_REGULARISER);
-    }, [currentOrders]);
+        const orderItems = currentOrders
+            .filter(o => o.payment_status === PaymentStatus.A_REGULARISER)
+            .map(o => ({
+                id: o.id,
+                type: "offer" as const,
+                userName: o.user_name || "Membre",
+                itemName: o.offer_name || o.offer_snap_name || "Offre",
+                priceCents: o.price_cents || 0,
+                date: new Date(o.created_at || o.start_date),
+            }));
 
-    // 6. Refunded payments (current selected month or range)
+        const eventItems = eventRegistrations
+            .filter(r => r.payment_status === PaymentStatus.A_REGULARISER)
+            .map(r => ({
+                id: r.id,
+                type: "event" as const,
+                userName: r.user_name || "Membre",
+                itemName: r.event_title || "Événement",
+                priceCents: r.price_paid_cents || 0,
+                date: new Date(r.created_at),
+            }));
+
+        return [...orderItems, ...eventItems].sort((a, b) => b.date.getTime() - a.date.getTime());
+    }, [currentOrders, eventRegistrations]);
+
+    // 5b. Payments pending (all periods, combining orders and events)
+    const pendingPayments = useMemo(() => {
+        const orderItems = currentOrders
+            .filter(o => o.payment_status === PaymentStatus.EN_ATTENTE)
+            .map(o => ({
+                id: o.id,
+                type: "offer" as const,
+                userName: o.user_name || "Membre",
+                itemName: o.offer_name || o.offer_snap_name || "Offre",
+                priceCents: o.price_cents || 0,
+                date: new Date(o.created_at || o.start_date),
+            }));
+
+        const eventItems = eventRegistrations
+            .filter(r => r.payment_status === PaymentStatus.EN_ATTENTE)
+            .map(r => ({
+                id: r.id,
+                type: "event" as const,
+                userName: r.user_name || "Membre",
+                itemName: r.event_title || "Événement",
+                priceCents: r.price_paid_cents || 0,
+                date: new Date(r.created_at),
+            }));
+
+        return [...orderItems, ...eventItems].sort((a, b) => b.date.getTime() - a.date.getTime());
+    }, [currentOrders, eventRegistrations]);
+
+    // 5c. Payments to validate (all periods, combining orders and events)
+    const toValidatePayments = useMemo(() => {
+        const orderItems = currentOrders
+            .filter(o => o.payment_status === PaymentStatus.A_VALIDER)
+            .map(o => ({
+                id: o.id,
+                type: "offer" as const,
+                userName: o.user_name || "Membre",
+                itemName: o.offer_name || o.offer_snap_name || "Offre",
+                priceCents: o.price_cents || 0,
+                date: new Date(o.created_at || o.start_date),
+            }));
+
+        const eventItems = eventRegistrations
+            .filter(r => r.payment_status === PaymentStatus.A_VALIDER)
+            .map(r => ({
+                id: r.id,
+                type: "event" as const,
+                userName: r.user_name || "Membre",
+                itemName: r.event_title || "Événement",
+                priceCents: r.price_paid_cents || 0,
+                date: new Date(r.created_at),
+            }));
+
+        return [...orderItems, ...eventItems].sort((a, b) => b.date.getTime() - a.date.getTime());
+    }, [currentOrders, eventRegistrations]);
+
+    // 6. Refunded payments (current selected month or range, combining orders and events)
     const refundedPayments = useMemo(() => {
-        return currentOrders.filter(o => {
-            if (o.payment_status !== PaymentStatus.REMBOURSE) return false;
-            const date = new Date(o.updated_at || o.created_at);
-            
+        const orderItems = currentOrders
+            .filter(o => o.payment_status === PaymentStatus.REMBOURSE)
+            .map(o => ({
+                id: o.id,
+                type: "offer" as const,
+                userName: o.user_name || "Membre",
+                itemName: o.offer_name || o.offer_snap_name || "Offre",
+                priceCents: o.price_cents || 0,
+                date: new Date(o.updated_at || o.created_at),
+            }));
+
+        const eventItems = eventRegistrations
+            .filter(r => r.payment_status === PaymentStatus.REMBOURSE)
+            .map(r => ({
+                id: r.id,
+                type: "event" as const,
+                userName: r.user_name || "Membre",
+                itemName: r.event_title || "Événement",
+                priceCents: r.price_paid_cents || 0,
+                date: new Date(r.created_at),
+            }));
+
+        const combined = [...orderItems, ...eventItems];
+
+        return combined.filter(item => {
+            const date = item.date;
             if (isGlobalView) {
                 const rangeStart = new Date(customStartDate + "T00:00:00");
                 const rangeEnd = new Date(customEndDate + "T23:59:59");
@@ -296,8 +394,8 @@ export default function AdminDashboardPage() {
             } else {
                 return date.getMonth() + 1 === selectedMonth && date.getFullYear() === selectedYear;
             }
-        });
-    }, [currentOrders, selectedMonth, selectedYear, isGlobalView, customStartDate, customEndDate]);
+        }).sort((a, b) => b.date.getTime() - a.date.getTime());
+    }, [currentOrders, eventRegistrations, selectedMonth, selectedYear, isGlobalView, customStartDate, customEndDate]);
 
     // 7. Average satisfaction score
     const avgSatisfaction = useMemo(() => {
@@ -450,9 +548,9 @@ export default function AdminDashboardPage() {
                     {/* Offres, planning et activité */}
                     <div className="space-y-4">
                         <h2 className="text-xs font-medium text-slate-400 uppercase tracking-widest px-1">Offres, planning et activité</h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                             {/* Offres actives */}
-                            <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
+                            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
                                 <div className="space-y-1">
                                     <p className="text-[10px] text-slate-900 font-medium uppercase tracking-wider">Offres actives</p>
                                     <p className="text-3xl font-bold text-slate-900">{totalActiveOffers}</p>
@@ -466,7 +564,7 @@ export default function AdminDashboardPage() {
                             </div>
 
                             {/* Séances programmées */}
-                            <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
+                            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
                                 <div className="space-y-1">
                                     <p className="text-[10px] text-slate-900 font-medium uppercase tracking-wider">Séances programmées</p>
                                     <p className="text-3xl font-bold text-slate-900">{currentSessions.filter(s => s.is_active !== false).length}</p>
@@ -478,7 +576,7 @@ export default function AdminDashboardPage() {
                             </div>
 
                             {/* Taux d'occupation */}
-                            <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
+                            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
                                 <div className="space-y-2">
                                     <p className="text-[10px] text-slate-900 font-medium uppercase tracking-wider">Taux d&apos;occupation</p>
                                     <p className="text-3xl font-bold text-slate-900">{occupancyStats.rate}%</p>
@@ -499,64 +597,6 @@ export default function AdminDashboardPage() {
                                     <span className="absolute text-[10px] font-bold text-slate-700">📈</span>
                                 </div>
                             </div>
-
-                            {/* Encart à régulariser */}
-                            <section className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between group hover:shadow-md transition-all">
-                                <div className="border-b border-slate-100 pb-2 mb-2">
-                                    <p className="text-[10px] text-slate-900 font-medium uppercase tracking-wider">⚠️ À régulariser ({regularizePayments.length})</p>
-                                </div>
-
-                                <div className="flex-1 overflow-y-auto max-h-[100px] pr-1 no-scrollbar text-left">
-                                    {regularizePayments.length === 0 ? (
-                                        <div className="h-full flex flex-col items-center justify-center text-slate-400 text-[10px] italic py-4">
-                                            Aucun paiement en attente
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            {regularizePayments.map(order => (
-                                                <div key={order.id} className="flex items-center justify-between p-2 bg-rose-50/20 border border-rose-100 rounded-xl hover:bg-rose-50/50 transition-colors text-[10px]">
-                                                    <div className="space-y-0.5 truncate max-w-[110px]">
-                                                        <p className="font-bold text-slate-800 truncate">{order.user_name}</p>
-                                                        <p className="text-slate-400 truncate text-[9px]">{order.offer_name}</p>
-                                                    </div>
-                                                    <span className="font-extrabold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-lg border border-rose-100 shrink-0 text-[9px]">
-                                                        {formatCurrency(order.price_cents)}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </section>
-
-                            {/* Encart remboursés */}
-                            <section className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between group hover:shadow-md transition-all">
-                                <div className="border-b border-slate-100 pb-2 mb-2">
-                                    <p className="text-[10px] text-slate-900 font-medium uppercase tracking-wider">🔄 Remboursés ({refundedPayments.length})</p>
-                                </div>
-
-                                <div className="flex-1 overflow-y-auto max-h-[100px] pr-1 no-scrollbar text-left">
-                                    {refundedPayments.length === 0 ? (
-                                        <div className="h-full flex flex-col items-center justify-center text-slate-400 text-[10px] italic py-4">
-                                            Aucun remboursement
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            {refundedPayments.map(order => (
-                                                <div key={order.id} className="flex items-center justify-between p-2 bg-slate-50 border border-slate-200/50 rounded-xl text-[10px]">
-                                                    <div className="space-y-0.5 truncate max-w-[110px]">
-                                                        <p className="font-bold text-slate-800 truncate">{order.user_name}</p>
-                                                        <p className="text-slate-400 truncate text-[9px]">{order.offer_name}</p>
-                                                    </div>
-                                                    <span className="font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-lg border border-slate-200 shrink-0 text-[9px]">
-                                                        -{formatCurrency(order.price_cents)}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </section>
                         </div>
                     </div>
 
@@ -685,6 +725,126 @@ export default function AdminDashboardPage() {
                                 )}
                             </section>
                         </div>
+
+                    {/* Suivi des paiements non perçus */}
+                    <div className="space-y-4">
+                        <h2 className="text-xs font-medium text-slate-400 uppercase tracking-widest px-1">Suivi des paiements non perçus</h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                            
+                            {/* À régulariser */}
+                            <section className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between group hover:shadow-md transition-all">
+                                <div className="border-b border-slate-100 pb-2 mb-2">
+                                    <p className="text-[10px] text-slate-900 font-medium uppercase tracking-wider">⚠️ À régulariser ({regularizePayments.length})</p>
+                                </div>
+                                <div className="flex-1 overflow-y-auto max-h-[100px] pr-1 no-scrollbar text-left">
+                                    {regularizePayments.length === 0 ? (
+                                        <div className="h-full flex flex-col items-center justify-center text-slate-400 text-[10px] italic py-4">
+                                            Aucun paiement en attente
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {regularizePayments.map(item => (
+                                                <div key={item.id} className="flex items-center justify-between p-2 bg-rose-50/20 border border-rose-100 rounded-xl hover:bg-rose-50/50 transition-colors text-[10px]">
+                                                    <div className="space-y-0.5 truncate max-w-[110px]">
+                                                        <p className="font-bold text-slate-800 truncate">{item.userName}</p>
+                                                        <p className="text-slate-400 truncate text-[9px]">{item.type === "offer" ? "🏷️ " : "🎟️ "}{item.itemName}</p>
+                                                    </div>
+                                                    <span className="font-extrabold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-lg border border-rose-100 shrink-0 text-[9px]">
+                                                        {formatCurrency(item.priceCents)}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </section>
+
+                            {/* En attente de paiement */}
+                            <section className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between group hover:shadow-md transition-all">
+                                <div className="border-b border-slate-100 pb-2 mb-2">
+                                    <p className="text-[10px] text-slate-900 font-medium uppercase tracking-wider">⏳ En attente ({pendingPayments.length})</p>
+                                </div>
+                                <div className="flex-1 overflow-y-auto max-h-[100px] pr-1 no-scrollbar text-left">
+                                    {pendingPayments.length === 0 ? (
+                                        <div className="h-full flex flex-col items-center justify-center text-slate-400 text-[10px] italic py-4">
+                                            Aucune attente de paiement
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {pendingPayments.map(item => (
+                                                <div key={item.id} className="flex items-center justify-between p-2 bg-amber-50/20 border border-amber-100 rounded-xl hover:bg-amber-50/50 transition-colors text-[10px]">
+                                                    <div className="space-y-0.5 truncate max-w-[110px]">
+                                                        <p className="font-bold text-slate-800 truncate">{item.userName}</p>
+                                                        <p className="text-slate-400 truncate text-[9px]">{item.type === "offer" ? "🏷️ " : "🎟️ "}{item.itemName}</p>
+                                                    </div>
+                                                    <span className="font-extrabold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-lg border border-amber-100 shrink-0 text-[9px]">
+                                                        {formatCurrency(item.priceCents)}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </section>
+
+                            {/* À valider */}
+                            <section className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between group hover:shadow-md transition-all">
+                                <div className="border-b border-slate-100 pb-2 mb-2">
+                                    <p className="text-[10px] text-slate-900 font-medium uppercase tracking-wider">📋 À valider ({toValidatePayments.length})</p>
+                                </div>
+                                <div className="flex-1 overflow-y-auto max-h-[100px] pr-1 no-scrollbar text-left">
+                                    {toValidatePayments.length === 0 ? (
+                                        <div className="h-full flex flex-col items-center justify-center text-slate-400 text-[10px] italic py-4">
+                                            Aucun paiement à valider
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {toValidatePayments.map(item => (
+                                                <div key={item.id} className="flex items-center justify-between p-2 bg-indigo-50/20 border border-indigo-100 rounded-xl hover:bg-indigo-50/50 transition-colors text-[10px]">
+                                                    <div className="space-y-0.5 truncate max-w-[110px]">
+                                                        <p className="font-bold text-slate-800 truncate">{item.userName}</p>
+                                                        <p className="text-slate-400 truncate text-[9px]">{item.type === "offer" ? "🏷️ " : "🎟️ "}{item.itemName}</p>
+                                                    </div>
+                                                    <span className="font-extrabold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-lg border border-indigo-100 shrink-0 text-[9px]">
+                                                        {formatCurrency(item.priceCents)}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </section>
+
+                            {/* Remboursés */}
+                            <section className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between group hover:shadow-md transition-all">
+                                <div className="border-b border-slate-100 pb-2 mb-2">
+                                    <p className="text-[10px] text-slate-900 font-medium uppercase tracking-wider">🔄 Remboursés ({refundedPayments.length})</p>
+                                </div>
+                                <div className="flex-1 overflow-y-auto max-h-[100px] pr-1 no-scrollbar text-left">
+                                    {refundedPayments.length === 0 ? (
+                                        <div className="h-full flex flex-col items-center justify-center text-slate-400 text-[10px] italic py-4">
+                                            Aucun remboursement
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {refundedPayments.map(item => (
+                                                <div key={item.id} className="flex items-center justify-between p-2 bg-slate-50 border border-slate-200/50 rounded-xl text-[10px]">
+                                                    <div className="space-y-0.5 truncate max-w-[110px]">
+                                                        <p className="font-bold text-slate-800 truncate">{item.userName}</p>
+                                                        <p className="text-slate-400 truncate text-[9px]">{item.type === "offer" ? "🏷️ " : "🎟️ "}{item.itemName}</p>
+                                                    </div>
+                                                    <span className="font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-lg border border-slate-200 shrink-0 text-[9px]">
+                                                        -{formatCurrency(item.priceCents)}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </section>
+
+                        </div>
+                    </div>
 
                     {/* Suivi de la base utilisateur */}
                     <div className="space-y-4">
