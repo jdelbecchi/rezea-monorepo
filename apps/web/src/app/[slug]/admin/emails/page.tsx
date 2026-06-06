@@ -1083,37 +1083,40 @@ function AdminEmailsContent() {
                         <div className="animate-in fade-in duration-300">
                             {/* Section Modèles de bibliothèque */}
                             {templates.length > 0 && (
-                                <section className="mb-6">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Modèles enregistrés</h2>
-                                        <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-bold">{templates.length} modèles</span>
-                                    </div>
-                                    <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">
-                                        {templates.map(t => (
-                                            <div 
-                                                key={t.id}
-                                                onClick={() => loadTemplate(t)}
-                                                className="min-w-[220px] max-w-[220px] bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group relative"
-                                            >
-                                                <button 
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setTemplateToDelete(t);
-                                                    }}
-                                                    className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-white text-slate-400 hover:bg-rose-50 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all text-xs z-20"
-                                                    title="Supprimer le modèle"
+                                <>
+                                    <section className="mb-6">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h2 className="text-xs font-medium text-slate-400 uppercase tracking-wider">Modèles enregistrés</h2>
+                                            <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-bold">{templates.length} modèles</span>
+                                        </div>
+                                        <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">
+                                            {templates.map(t => (
+                                                <div 
+                                                    key={t.id}
+                                                    onClick={() => loadTemplate(t)}
+                                                    className="min-w-[220px] max-w-[220px] bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group relative"
                                                 >
-                                                    ✕
-                                                </button>
-                                                <div className="w-10 h-10 bg-indigo-50/50 rounded-xl flex items-center justify-center text-indigo-600 transition-colors mb-4 font-bold text-lg">
-                                                    📄
+                                                    <button 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setTemplateToDelete(t);
+                                                        }}
+                                                        className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-white text-slate-400 hover:bg-rose-50 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all text-xs z-20"
+                                                        title="Supprimer le modèle"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                    <div className="w-10 h-10 bg-indigo-50/50 rounded-xl flex items-center justify-center text-indigo-600 transition-colors mb-4 font-bold text-lg">
+                                                        📄
+                                                    </div>
+                                                    <h3 className="font-semibold text-slate-900 text-sm truncate mb-1">{t.name}</h3>
+                                                    <p className="text-xs text-slate-500 truncate">{t.subject || "Pas d'objet"}</p>
                                                 </div>
-                                                <h3 className="font-bold text-slate-900 text-sm truncate mb-1">{t.name}</h3>
-                                                <p className="text-xs text-slate-500 truncate">{t.subject || "Pas d'objet"}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </section>
+                                            ))}
+                                        </div>
+                                    </section>
+                                    <div className="border-t border-slate-200 my-6" />
+                                </>
                             )}
 
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
@@ -1132,9 +1135,12 @@ function AdminEmailsContent() {
                                                 className="w-full p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all outline-none flex items-center justify-between text-sm font-semibold text-slate-800 shadow-sm"
                                             >
                                                 <span className="flex items-center gap-2">
-                                                    👥 {selectedTargets.includes("all") ? "Tous les membres du club" : 
+                                                    👥 {selectedTargets.includes("all") ? "Tous les utilisateurs" : 
                                                         selectedTargets.includes("selected") ? `Sélection manuelle (${selectedUserIds.length} cible(s))` :
-                                                        `Groupes ciblés (${selectedTargets.length} segment(s))`}
+                                                        `Statuts : ${selectedTargets.map(t => {
+                                                            const label = segmentLabels[t];
+                                                            return label ? label.split(" (")[0] : t;
+                                                        }).join(", ")}`}
                                                 </span>
                                                 <span className="text-xs text-slate-400 transition-transform duration-200">
                                                     {dropdownOpen ? "▲" : "▼"}
@@ -1145,7 +1151,7 @@ function AdminEmailsContent() {
                                                 <div className="absolute left-0 right-0 mt-2 bg-white border border-slate-150 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in duration-200">
                                                     <div className="p-2.5 max-h-80 overflow-y-auto space-y-1 bg-slate-50/30">
                                                         
-                                                        {/* Option: Tous les membres */}
+                                                        {/* Option: Tous les utilisateurs */}
                                                         <label className="flex items-center justify-between p-3.5 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors border border-transparent hover:border-slate-100">
                                                             <div className="flex items-center gap-3">
                                                                 <input
@@ -1155,78 +1161,24 @@ function AdminEmailsContent() {
                                                                     className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
                                                                 />
                                                                 <div className="flex flex-col">
-                                                                    <span className="text-sm font-semibold text-slate-800">Tous les membres</span>
-                                                                    <span className="text-xs text-slate-400 font-normal">Envoyer la communication à toute la base active</span>
+                                                                    <span className="text-sm font-semibold text-slate-800">Tous les utilisateurs</span>
+                                                                    <span className="text-xs text-slate-400 font-normal">Envoyer à toute la base</span>
                                                                 </div>
                                                             </div>
                                                             <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-normal">
-                                                                {allUsers.length} personnes
+                                                                {allUsers.length} pers.
                                                             </span>
                                                         </label>
 
-                                                        {/* Option: Sélection manuelle */}
-                                                        <label className="flex items-center justify-between p-3.5 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors border border-transparent hover:border-slate-100">
-                                                            <div className="flex items-center gap-3">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={selectedTargets.includes("selected")}
-                                                                    onChange={() => toggleTarget("selected")}
-                                                                    className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
-                                                                />
-                                                                <div className="flex flex-col">
-                                                                    <span className="text-sm font-semibold text-slate-800">Sélection manuelle</span>
-                                                                    <span className="text-xs text-slate-400 font-normal">Choisir individuellement les destinataires</span>
-                                                                </div>
-                                                            </div>
-                                                            {selectedUserIds.length > 0 && (
-                                                                <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-normal">
-                                                                    {selectedUserIds.length} cibles
-                                                                </span>
-                                                            )}
-                                                        </label>
-
-                                                        {selectedTargets.includes("selected") && (
-                                                            <div className="p-3 bg-white border border-slate-100 rounded-xl my-2 space-y-3">
-                                                                <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                                                                    <span className="text-xs">🔍</span>
-                                                                    <input
-                                                                        type="text"
-                                                                        placeholder="Rechercher un membre..."
-                                                                        value={searchTerm}
-                                                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                                                        className="w-full text-xs font-light outline-none"
-                                                                    />
-                                                                </div>
-                                                                <div className="max-h-40 overflow-y-auto space-y-1.5">
-                                                                    {filteredUsers.map(u => (
-                                                                        <label key={u.id} className="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors">
-                                                                            <input
-                                                                                type="checkbox"
-                                                                                checked={selectedUserIds.includes(u.id)}
-                                                                                onChange={() => toggleUserSelection(u.id)}
-                                                                                className="w-3.5 h-3.5 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
-                                                                            />
-                                                                            <span className="text-xs font-light text-slate-700">{u.first_name} {u.last_name} ({u.email})</span>
-                                                                        </label>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        )}
-
                                                         <div className="border-t border-slate-100 my-2 pt-2">
-                                                            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-3.5">Cibler par segment</span>
+                                                            <span className="block text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-2 px-3.5">CIBLER PAR SEGMENT</span>
                                                         </div>
 
                                                         {/* Option: Par segments */}
                                                         {segmentStats && Object.entries(segmentStats).map(([key, count]) => {
-                                                            const cleanLabel = segmentLabels[key] || key;
-                                                            let subLabel = "";
-                                                            if (key === "explorateur") subLabel = "Créé un compte sans commande";
-                                                            else if (key === "decouverte") subLabel = "Une seule commande passée";
-                                                            else if (key === "regulier") subLabel = "Fidèle avec réservations régulières";
-                                                            else if (key === "endormi") subLabel = "Absent depuis plus de 21 jours";
-                                                            else if (key === "flexible") subLabel = "Visiteur ponctuel";
-                                                            else if (key === "ancien") subLabel = "Inactif depuis plus de 60 jours";
+                                                            const label = segmentLabels[key] || key;
+                                                            const cleanLabel = label.split(" (")[0];
+                                                            const subLabel = label.includes(" (") ? label.substring(label.indexOf(" (") + 2, label.lastIndexOf(")")) : "";
 
                                                             return (
                                                                 <label key={key} className="flex items-center justify-between p-3.5 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors border border-transparent hover:border-slate-100">
@@ -1243,7 +1195,7 @@ function AdminEmailsContent() {
                                                                         </div>
                                                                     </div>
                                                                     <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-normal">
-                                                                        {count} personnes
+                                                                        {count} pers.
                                                                     </span>
                                                                 </label>
                                                             );
@@ -1282,7 +1234,7 @@ function AdminEmailsContent() {
                                         {/* Multi-sections list */}
                                         <div className="space-y-6">
                                             <div className="flex items-center justify-between">
-                                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Sections de la Newsletter</h3>
+                                                <h3 className="text-sm font-medium text-slate-700">Sections de la newsletter</h3>
                                                 <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-bold">{newsletterSections.length} section(s)</span>
                                             </div>
 
@@ -1290,7 +1242,7 @@ function AdminEmailsContent() {
                                                 <div key={sec.id} className="p-5 border border-slate-200 rounded-2xl bg-slate-50/50 space-y-4 relative group animate-in fade-in duration-200">
                                                     {/* Controls */}
                                                     <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                                                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Section #{idx + 1}</h4>
+                                                        <h4 className="text-xs font-normal text-slate-500 uppercase tracking-wider">Section #{idx + 1}</h4>
                                                         <div className="flex items-center gap-1.5">
                                                             <button
                                                                 type="button"
@@ -1334,27 +1286,15 @@ function AdminEmailsContent() {
                                                                 className="w-full p-2.5 border border-slate-200 rounded-xl bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 outline-none text-xs transition-all font-light"
                                                             />
                                                         </div>
-                                                        <div>
-                                                            <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Couleur du titre</label>
-                                                            <div className="flex items-center gap-2">
+                                                        <div className="flex flex-col items-end">
+                                                            <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 text-right w-full">Couleur du titre</label>
+                                                            <div className="flex items-center gap-2 justify-end w-full">
                                                                 <input
                                                                     type="color"
                                                                     value={sec.titleBgColor}
                                                                     onChange={(e) => updateSection(sec.id, { titleBgColor: e.target.value })}
-                                                                    className="w-10 h-10 border border-slate-200 rounded-xl cursor-pointer p-0 bg-transparent shrink-0"
+                                                                    className="w-10 h-10 border border-slate-200 cursor-pointer p-0 bg-transparent shrink-0"
                                                                 />
-                                                                <select
-                                                                    value={sec.titleBgColor}
-                                                                    onChange={(e) => updateSection(sec.id, { titleBgColor: e.target.value })}
-                                                                    className="flex-1 p-2 border border-slate-200 rounded-xl bg-white text-xs font-light outline-none"
-                                                                >
-                                                                    <option value="#7c3aed">Violet</option>
-                                                                    <option value="#10b981">Émeraude</option>
-                                                                    <option value="#3b82f6">Bleu</option>
-                                                                    <option value="#f59e0b">Ambre</option>
-                                                                    <option value="#ef4444">Rouge</option>
-                                                                    <option value="#0f172a">Noir</option>
-                                                                </select>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1371,9 +1311,12 @@ function AdminEmailsContent() {
                                                                     <button
                                                                         type="button"
                                                                         onClick={() => updateSection(sec.id, { imageUrl: "" })}
-                                                                        className="absolute top-2 right-2 p-1.5 bg-rose-50 text-rose-500 hover:bg-rose-100 rounded-lg border border-rose-200 text-[10px] font-semibold transition-all shadow-sm"
+                                                                        className="absolute top-2 right-2 p-1.5 bg-white text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg border border-slate-200 hover:border-rose-200 transition-all shadow-sm"
+                                                                        title="Retirer l'image"
                                                                     >
-                                                                        Retirer l&apos;image ✕
+                                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                        </svg>
                                                                     </button>
                                                                 </div>
                                                                 <div className="flex items-center gap-2">
@@ -1382,9 +1325,9 @@ function AdminEmailsContent() {
                                                                         <button
                                                                             type="button"
                                                                             onClick={() => updateSection(sec.id, { imageSize: 'small' })}
-                                                                            className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+                                                                            className={`px-2.5 py-1 rounded-md text-[10px] font-medium transition-all ${
                                                                                 (sec.imageSize || 'large') === 'small'
-                                                                                    ? 'bg-white text-indigo-600 shadow-sm border border-slate-200/30'
+                                                                                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200/30'
                                                                                     : 'text-slate-600 hover:text-slate-900'
                                                                             }`}
                                                                         >
@@ -1393,9 +1336,9 @@ function AdminEmailsContent() {
                                                                         <button
                                                                             type="button"
                                                                             onClick={() => updateSection(sec.id, { imageSize: 'medium' })}
-                                                                            className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+                                                                            className={`px-2.5 py-1 rounded-md text-[10px] font-medium transition-all ${
                                                                                 (sec.imageSize || 'large') === 'medium'
-                                                                                    ? 'bg-white text-indigo-600 shadow-sm border border-slate-200/30'
+                                                                                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200/30'
                                                                                     : 'text-slate-600 hover:text-slate-900'
                                                                             }`}
                                                                         >
@@ -1404,9 +1347,9 @@ function AdminEmailsContent() {
                                                                         <button
                                                                             type="button"
                                                                             onClick={() => updateSection(sec.id, { imageSize: 'large' })}
-                                                                            className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+                                                                            className={`px-2.5 py-1 rounded-md text-[10px] font-medium transition-all ${
                                                                                 (sec.imageSize || 'large') === 'large'
-                                                                                    ? 'bg-white text-indigo-600 shadow-sm border border-slate-200/30'
+                                                                                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200/30'
                                                                                     : 'text-slate-600 hover:text-slate-900'
                                                                             }`}
                                                                         >
@@ -1430,7 +1373,7 @@ function AdminEmailsContent() {
                                                                     };
                                                                     input.click();
                                                                 }}
-                                                                className="w-full py-2.5 border border-dashed border-slate-200 text-slate-500 hover:border-slate-300 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2 bg-white hover:bg-slate-50/50"
+                                                                className="w-full py-2.5 border border-dashed border-slate-200 text-slate-400 hover:border-slate-300 rounded-xl text-xs font-normal transition-all flex items-center justify-center gap-2 bg-white hover:bg-slate-50/50"
                                                             >
                                                                 {uploadingSectionId === sec.id ? "Chargement..." : "Charger une image 📸"}
                                                             </button>
@@ -1586,7 +1529,7 @@ function AdminEmailsContent() {
                                         <span className="flex items-center gap-2">
                                             {selectedTargets.includes("all") ? (
                                                 <>
-                                                    <span className="text-base">🌍</span> Tous les utilisateurs ({allUsers.filter(u => u.role === "user").length} personnes)
+                                                    <span className="text-base">👥</span> Tous les utilisateurs
                                                 </>
                                             ) : selectedTargets.includes("selected") ? (
                                                 <>
@@ -1594,7 +1537,7 @@ function AdminEmailsContent() {
                                                 </>
                                             ) : (
                                                 <>
-                                                    <span className="text-base">🎯</span> Statuts : {selectedTargets.map(t => {
+                                                    Statuts : {selectedTargets.map(t => {
                                                         const label = segmentLabels[t];
                                                         return label ? label.split(" (")[0] : t;
                                                     }).join(", ")}
@@ -1620,7 +1563,7 @@ function AdminEmailsContent() {
                                                             className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
                                                         />
                                                         <div className="flex flex-col">
-                                                            <span className="text-sm font-semibold text-slate-800">🌍 Tous les utilisateurs</span>
+                                                            <span className="text-sm font-semibold text-slate-800">👥 Tous les utilisateurs</span>
                                                             <span className="text-xs text-slate-400 font-normal">Envoyer à toute la base</span>
                                                         </div>
                                                     </div>
@@ -1650,7 +1593,7 @@ function AdminEmailsContent() {
                                                 )}
 
                                                 <div className="border-t border-slate-100 my-2 pt-2">
-                                                    <p className="text-[10px] font-normal text-slate-400 uppercase tracking-wider px-3 mb-2">Filtrer par statut comportemental</p>
+                                                    <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider px-3 mb-2">Filtrer par segment</p>
                                                 </div>
 
                                                 {/* Statuts / segments */}
@@ -2610,7 +2553,7 @@ function AdminEmailsContent() {
                                     value={templateName}
                                     onChange={(e) => setTemplateName(e.target.value)}
                                     placeholder="ex: Annonce Stage Printemps"
-                                    className="w-full p-4 rounded-2xl border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 outline-none transition-all bg-slate-50/50 font-bold"
+                                    className="w-full p-4 rounded-2xl border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 outline-none transition-all bg-slate-50/50 font-medium"
                                     onKeyDown={(e) => e.key === 'Enter' && handleSaveTemplate()}
                                 />
                             </div>
