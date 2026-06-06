@@ -451,7 +451,7 @@ export default function AdminDashboardPage() {
                     {/* Niveau 1 : Gestion des offres et du planning */}
                     <div className="space-y-4">
                         <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Niveau 1 : Gestion des offres et du planning</h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                             {/* Offres actives */}
                             <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
                                 <div className="space-y-1">
@@ -500,6 +500,79 @@ export default function AdminDashboardPage() {
                                     <span className="absolute text-[10px] font-bold text-slate-700">📈</span>
                                 </div>
                             </div>
+
+                            {/* Encart à régulariser / remboursés */}
+                            <section className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between group hover:shadow-md transition-all">
+                                <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2 flex-wrap gap-1">
+                                    <div className="flex items-center gap-2">
+                                        <button 
+                                            onClick={() => setActiveTab("regulariser")}
+                                            className={`pb-1 text-[10px] font-bold uppercase tracking-wider transition-all border-b-2 ${
+                                                activeTab === "regulariser" 
+                                                    ? "border-slate-900 text-slate-900 font-extrabold" 
+                                                    : "border-transparent text-slate-400 hover:text-slate-600"
+                                            }`}
+                                        >
+                                            ⚠️ À régulariser ({regularizePayments.length})
+                                        </button>
+                                        <button 
+                                            onClick={() => setActiveTab("rembourse")}
+                                            className={`pb-1 text-[10px] font-bold uppercase tracking-wider transition-all border-b-2 ${
+                                                activeTab === "rembourse" 
+                                                    ? "border-slate-900 text-slate-900 font-extrabold" 
+                                                    : "border-transparent text-slate-400 hover:text-slate-600"
+                                            }`}
+                                        >
+                                            {isGlobalView ? "🔄 Remboursés" : "🔄 Remboursés"} ({refundedPayments.length})
+                                        </button>
+                                    </div>
+                                    <p className="text-[8px] text-slate-400 font-medium">Finances</p>
+                                </div>
+
+                                <div className="flex-1 overflow-y-auto max-h-[100px] pr-1 no-scrollbar text-left">
+                                    {activeTab === "regulariser" ? (
+                                        regularizePayments.length === 0 ? (
+                                            <div className="h-full flex flex-col items-center justify-center text-slate-400 text-[10px] italic py-4">
+                                                Aucun paiement en attente
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                {regularizePayments.map(order => (
+                                                    <div key={order.id} className="flex items-center justify-between p-2 bg-rose-50/20 border border-rose-100 rounded-xl hover:bg-rose-50/50 transition-colors text-[10px]">
+                                                        <div className="space-y-0.5 truncate max-w-[110px]">
+                                                            <p className="font-bold text-slate-800 truncate">{order.user_name}</p>
+                                                            <p className="text-slate-400 truncate text-[9px]">{order.offer_name}</p>
+                                                        </div>
+                                                        <span className="font-extrabold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-lg border border-rose-100 shrink-0 text-[9px]">
+                                                            {formatCurrency(order.price_cents)}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )
+                                    ) : (
+                                        refundedPayments.length === 0 ? (
+                                            <div className="h-full flex flex-col items-center justify-center text-slate-400 text-[10px] italic py-4">
+                                                Aucun remboursement
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                {refundedPayments.map(order => (
+                                                    <div key={order.id} className="flex items-center justify-between p-2 bg-slate-50 border border-slate-200/50 rounded-xl text-[10px]">
+                                                        <div className="space-y-0.5 truncate max-w-[110px]">
+                                                            <p className="font-bold text-slate-800 truncate">{order.user_name}</p>
+                                                            <p className="text-slate-400 truncate text-[9px]">{order.offer_name}</p>
+                                                        </div>
+                                                        <span className="font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-lg border border-slate-200 shrink-0 text-[9px]">
+                                                            -{formatCurrency(order.price_cents)}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )
+                                    )}
+                                </div>
+                            </section>
                         </div>
                     </div>
 
@@ -628,94 +701,6 @@ export default function AdminDashboardPage() {
                                         ))}
                                     </div>
                                 )}
-                            </section>
-                        </div>
-
-                        {/* Payments Alerts tabs widget */}
-                        <div className="grid grid-cols-1 gap-6">
-                            <section className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col">
-                                <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4 flex-wrap gap-2">
-                                    <div className="flex items-center gap-4">
-                                        <button 
-                                            onClick={() => setActiveTab("regulariser")}
-                                            className={`pb-2 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
-                                                activeTab === "regulariser" 
-                                                    ? "border-slate-900 text-slate-900 font-extrabold" 
-                                                    : "border-transparent text-slate-400 hover:text-slate-600"
-                                            }`}
-                                        >
-                                            ⚠️ À régulariser ({regularizePayments.length})
-                                        </button>
-                                        <button 
-                                            onClick={() => setActiveTab("rembourse")}
-                                            className={`pb-2 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
-                                                activeTab === "rembourse" 
-                                                    ? "border-slate-900 text-slate-900 font-extrabold" 
-                                                    : "border-transparent text-slate-400 hover:text-slate-600"
-                                            }`}
-                                        >
-                                            {isGlobalView ? "🔄 Remboursés sur la période" : "🔄 Remboursés ce mois"} ({refundedPayments.length})
-                                        </button>
-                                    </div>
-                                    <p className="text-[10px] text-slate-400 font-medium">Suivi administratif des transactions</p>
-                                </div>
-
-                                <div className="flex-1 overflow-y-auto max-h-[300px] pr-2 no-scrollbar">
-                                    {activeTab === "regulariser" ? (
-                                        regularizePayments.length === 0 ? (
-                                            <div className="h-full flex flex-col items-center justify-center text-slate-400 text-xs italic py-8">
-                                                Aucun paiement en attente de régularisation !
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-3">
-                                                {regularizePayments.map(order => (
-                                                    <div key={order.id} className="flex items-center justify-between p-3.5 bg-rose-50/20 border border-rose-100 rounded-2xl hover:bg-rose-50/50 transition-colors">
-                                                        <div className="space-y-1">
-                                                            <p className="text-xs font-bold text-slate-800">{order.user_name}</p>
-                                                            <p className="text-[10px] text-slate-500">
-                                                                A acheté : <strong>{order.offer_name}</strong> le {new Date(order.start_date).toLocaleDateString('fr-FR')}
-                                                            </p>
-                                                        </div>
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="text-xs font-extrabold text-rose-600 bg-rose-50 border border-rose-100 px-2.5 py-1 rounded-xl">
-                                                                {formatCurrency(order.price_cents)}
-                                                            </span>
-                                                            <Link 
-                                                                href={`/${slug}/admin/shop/orders`}
-                                                                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors text-xs"
-                                                                title="Gérer la commande"
-                                                            >
-                                                                ➡️
-                                                            </Link>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )
-                                    ) : (
-                                        refundedPayments.length === 0 ? (
-                                            <div className="h-full flex flex-col items-center justify-center text-slate-400 text-xs italic py-8">
-                                                {isGlobalView ? "Aucun remboursement enregistré sur cette période" : "Aucun remboursement enregistré ce mois-ci"}
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-3">
-                                                {refundedPayments.map(order => (
-                                                    <div key={order.id} className="flex items-center justify-between p-3.5 bg-slate-50/50 border border-slate-200/50 rounded-2xl">
-                                                        <div className="space-y-1">
-                                                            <p className="text-xs font-bold text-slate-800">{order.user_name}</p>
-                                                            <p className="text-[10px] text-slate-500">
-                                                                Offre : <strong>{order.offer_name}</strong> · Remboursé le {new Date(order.updated_at || order.created_at).toLocaleDateString('fr-FR')}
-                                                            </p>
-                                                        </div>
-                                                        <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-200">
-                                                            -{formatCurrency(order.price_cents)}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )
-                                    )}
-                                </div>
                             </section>
                         </div>
                     </div>
