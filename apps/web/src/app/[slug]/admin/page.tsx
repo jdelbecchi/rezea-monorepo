@@ -609,8 +609,8 @@ export default function AdminDashboardPage() {
                                     <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                                         <span>🏷️</span> Volume d&apos;Offres Actives
                                     </h3>
-                                    <p className="text-[11px] text-slate-400 font-medium lowercase">
-                                        répartition des forfaits en cours d&apos;utilisation sur la période
+                                    <p className="text-[11px] text-slate-400 font-medium">
+                                        Répartition des forfaits en cours d&apos;utilisation sur la période
                                     </p>
                                 </div>
 
@@ -650,8 +650,8 @@ export default function AdminDashboardPage() {
                                     <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                                         <span>👤</span> Charge des Intervenants Réguliers
                                     </h3>
-                                    <p className="text-[11px] text-slate-400 font-medium lowercase">
-                                        séances régulières animées sur la période (hors évènements)
+                                    <p className="text-[11px] text-slate-400 font-medium">
+                                        Séances régulières animées sur la période (hors évènements)
                                     </p>
                                 </div>
 
@@ -692,8 +692,8 @@ export default function AdminDashboardPage() {
                                     <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                                         <span>⚡</span> Activités récentes
                                     </h3>
-                                    <p className="text-[11px] text-slate-400 font-medium lowercase">
-                                        les 5 dernières commandes d&apos;offres ou d&apos;évènements
+                                    <p className="text-[11px] text-slate-400 font-medium">
+                                        Les 5 dernières commandes d&apos;offres ou d&apos;évènements
                                     </p>
                                 </div>
 
@@ -896,8 +896,8 @@ export default function AdminDashboardPage() {
                                     <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                                         <span>👥</span> Répartition des utilisateurs
                                     </h3>
-                                    <p className="text-[11px] text-slate-400 font-medium lowercase">
-                                        état comportemental de vos {totalSegmentUsers} membres enregistrés
+                                    <p className="text-[11px] text-slate-400 font-medium">
+                                        État comportemental de vos {totalSegmentUsers} membres enregistrés
                                     </p>
                                 </div>
 
@@ -968,8 +968,8 @@ export default function AdminDashboardPage() {
                                     <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                                         <span>📧</span> Derniers e-mails envoyés
                                     </h3>
-                                    <p className="text-[11px] text-slate-400 font-medium lowercase">
-                                        historique des newsletters et informations pratiques
+                                    <p className="text-[11px] text-slate-400 font-medium">
+                                        Historique des newsletters et informations pratiques
                                     </p>
                                 </div>
 
@@ -1016,7 +1016,7 @@ export default function AdminDashboardPage() {
                                         <span>💬</span> Satisfaction & Retours
                                     </h3>
                                     <div className="flex items-center justify-between pt-1">
-                                        <p className="text-[11px] text-slate-400 font-medium lowercase">enquêtes de satisfaction</p>
+                                        <p className="text-[11px] text-slate-400 font-medium">Enquêtes de satisfaction</p>
                                         <span className="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
                                             ⭐ {avgSatisfaction !== null ? `${avgSatisfaction}/5` : "—"}
                                         </span>
