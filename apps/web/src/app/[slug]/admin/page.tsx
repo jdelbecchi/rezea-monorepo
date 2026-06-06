@@ -27,7 +27,6 @@ export default function AdminDashboardPage() {
     // Filter states
     const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-    const [activeTab, setActiveTab] = useState<"regulariser" | "rembourse">("regulariser");
 
     // Real DB data
     const [segments, setSegments] = useState<any>({ regulier: 0, endormi: 0, flexible: 0, explorateur: 0, decouverte: 0, ancien: 0 });
@@ -451,14 +450,14 @@ export default function AdminDashboardPage() {
                     {/* Offres, planning et activité */}
                     <div className="space-y-4">
                         <h2 className="text-xs font-medium text-slate-400 uppercase tracking-widest px-1">Offres, planning et activité</h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
                             {/* Offres actives */}
-                            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
+                            <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
                                 <div className="space-y-1">
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Offres actives</p>
-                                    <p className="text-3xl font-extrabold text-slate-900">{totalActiveOffers}</p>
-                                    <p className="text-[10px] text-slate-500 font-medium lowercase">
-                                        {isGlobalView ? "en cours de validité sur la période" : "en cours de validité ce mois"}
+                                    <p className="text-[10px] text-slate-900 font-medium uppercase tracking-wider">Offres actives</p>
+                                    <p className="text-3xl font-bold text-slate-900">{totalActiveOffers}</p>
+                                    <p className="text-[10px] text-slate-500 font-medium">
+                                        {isGlobalView ? "En cours de validité sur la période" : "En cours de validité ce mois"}
                                     </p>
                                 </div>
                                 <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
@@ -467,11 +466,11 @@ export default function AdminDashboardPage() {
                             </div>
 
                             {/* Séances programmées */}
-                            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
+                            <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
                                 <div className="space-y-1">
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Séances programmées</p>
-                                    <p className="text-3xl font-extrabold text-slate-900">{currentSessions.filter(s => s.is_active !== false).length}</p>
-                                    <p className="text-[10px] text-slate-500 font-medium lowercase">cours planifiés au planning</p>
+                                    <p className="text-[10px] text-slate-900 font-medium uppercase tracking-wider">Séances programmées</p>
+                                    <p className="text-3xl font-bold text-slate-900">{currentSessions.filter(s => s.is_active !== false).length}</p>
+                                    <p className="text-[10px] text-slate-500 font-medium">Créneaux planifiés ce mois</p>
                                 </div>
                                 <div className="w-12 h-12 bg-sky-50 rounded-2xl flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
                                     📅
@@ -479,10 +478,10 @@ export default function AdminDashboardPage() {
                             </div>
 
                             {/* Taux d'occupation */}
-                            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
+                            <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
                                 <div className="space-y-2">
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Taux d&apos;occupation</p>
-                                    <p className="text-3xl font-extrabold text-slate-900">{occupancyStats.rate}%</p>
+                                    <p className="text-[10px] text-slate-900 font-medium uppercase tracking-wider">Taux d&apos;occupation</p>
+                                    <p className="text-3xl font-bold text-slate-900">{occupancyStats.rate}%</p>
                                     <p className="text-[10px] text-slate-500 font-medium lowercase">
                                         {occupancyStats.totalBookings} réservations / {occupancyStats.totalCapacity} places
                                     </p>
@@ -501,75 +500,60 @@ export default function AdminDashboardPage() {
                                 </div>
                             </div>
 
-                            {/* Encart à régulariser / remboursés */}
+                            {/* Encart à régulariser */}
                             <section className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between group hover:shadow-md transition-all">
-                                <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2 flex-wrap gap-1">
-                                    <div className="flex items-center gap-2">
-                                        <button 
-                                            onClick={() => setActiveTab("regulariser")}
-                                            className={`pb-1 text-[10px] font-bold uppercase tracking-wider transition-all border-b-2 ${
-                                                activeTab === "regulariser" 
-                                                    ? "border-slate-900 text-slate-900 font-extrabold" 
-                                                    : "border-transparent text-slate-400 hover:text-slate-600"
-                                            }`}
-                                        >
-                                            ⚠️ À régulariser ({regularizePayments.length})
-                                        </button>
-                                        <button 
-                                            onClick={() => setActiveTab("rembourse")}
-                                            className={`pb-1 text-[10px] font-bold uppercase tracking-wider transition-all border-b-2 ${
-                                                activeTab === "rembourse" 
-                                                    ? "border-slate-900 text-slate-900 font-extrabold" 
-                                                    : "border-transparent text-slate-400 hover:text-slate-600"
-                                            }`}
-                                        >
-                                            {isGlobalView ? "🔄 Remboursés" : "🔄 Remboursés"} ({refundedPayments.length})
-                                        </button>
-                                    </div>
-                                    <p className="text-[8px] text-slate-400 font-medium">Finances</p>
+                                <div className="border-b border-slate-100 pb-2 mb-2">
+                                    <p className="text-[10px] text-slate-900 font-medium uppercase tracking-wider">⚠️ À régulariser ({regularizePayments.length})</p>
                                 </div>
 
                                 <div className="flex-1 overflow-y-auto max-h-[100px] pr-1 no-scrollbar text-left">
-                                    {activeTab === "regulariser" ? (
-                                        regularizePayments.length === 0 ? (
-                                            <div className="h-full flex flex-col items-center justify-center text-slate-400 text-[10px] italic py-4">
-                                                Aucun paiement en attente
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-2">
-                                                {regularizePayments.map(order => (
-                                                    <div key={order.id} className="flex items-center justify-between p-2 bg-rose-50/20 border border-rose-100 rounded-xl hover:bg-rose-50/50 transition-colors text-[10px]">
-                                                        <div className="space-y-0.5 truncate max-w-[110px]">
-                                                            <p className="font-bold text-slate-800 truncate">{order.user_name}</p>
-                                                            <p className="text-slate-400 truncate text-[9px]">{order.offer_name}</p>
-                                                        </div>
-                                                        <span className="font-extrabold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-lg border border-rose-100 shrink-0 text-[9px]">
-                                                            {formatCurrency(order.price_cents)}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )
+                                    {regularizePayments.length === 0 ? (
+                                        <div className="h-full flex flex-col items-center justify-center text-slate-400 text-[10px] italic py-4">
+                                            Aucun paiement en attente
+                                        </div>
                                     ) : (
-                                        refundedPayments.length === 0 ? (
-                                            <div className="h-full flex flex-col items-center justify-center text-slate-400 text-[10px] italic py-4">
-                                                Aucun remboursement
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-2">
-                                                {refundedPayments.map(order => (
-                                                    <div key={order.id} className="flex items-center justify-between p-2 bg-slate-50 border border-slate-200/50 rounded-xl text-[10px]">
-                                                        <div className="space-y-0.5 truncate max-w-[110px]">
-                                                            <p className="font-bold text-slate-800 truncate">{order.user_name}</p>
-                                                            <p className="text-slate-400 truncate text-[9px]">{order.offer_name}</p>
-                                                        </div>
-                                                        <span className="font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-lg border border-slate-200 shrink-0 text-[9px]">
-                                                            -{formatCurrency(order.price_cents)}
-                                                        </span>
+                                        <div className="space-y-2">
+                                            {regularizePayments.map(order => (
+                                                <div key={order.id} className="flex items-center justify-between p-2 bg-rose-50/20 border border-rose-100 rounded-xl hover:bg-rose-50/50 transition-colors text-[10px]">
+                                                    <div className="space-y-0.5 truncate max-w-[110px]">
+                                                        <p className="font-bold text-slate-800 truncate">{order.user_name}</p>
+                                                        <p className="text-slate-400 truncate text-[9px]">{order.offer_name}</p>
                                                     </div>
-                                                ))}
-                                            </div>
-                                        )
+                                                    <span className="font-extrabold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-lg border border-rose-100 shrink-0 text-[9px]">
+                                                        {formatCurrency(order.price_cents)}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </section>
+
+                            {/* Encart remboursés */}
+                            <section className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between group hover:shadow-md transition-all">
+                                <div className="border-b border-slate-100 pb-2 mb-2">
+                                    <p className="text-[10px] text-slate-900 font-medium uppercase tracking-wider">🔄 Remboursés ({refundedPayments.length})</p>
+                                </div>
+
+                                <div className="flex-1 overflow-y-auto max-h-[100px] pr-1 no-scrollbar text-left">
+                                    {refundedPayments.length === 0 ? (
+                                        <div className="h-full flex flex-col items-center justify-center text-slate-400 text-[10px] italic py-4">
+                                            Aucun remboursement
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {refundedPayments.map(order => (
+                                                <div key={order.id} className="flex items-center justify-between p-2 bg-slate-50 border border-slate-200/50 rounded-xl text-[10px]">
+                                                    <div className="space-y-0.5 truncate max-w-[110px]">
+                                                        <p className="font-bold text-slate-800 truncate">{order.user_name}</p>
+                                                        <p className="text-slate-400 truncate text-[9px]">{order.offer_name}</p>
+                                                    </div>
+                                                    <span className="font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-lg border border-slate-200 shrink-0 text-[9px]">
+                                                        -{formatCurrency(order.price_cents)}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
                                     )}
                                 </div>
                             </section>
