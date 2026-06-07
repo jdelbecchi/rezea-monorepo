@@ -268,7 +268,10 @@ async def create_registration(
         price = event.price_member_cents
 
     # Déterminer le statut initial : WAITING_LIST si plein, sinon CONFIRMED (Inscrit)
-    payment = data.payment_status or OrderPaymentStatus.PENDING
+    if price == 0:
+        payment = OrderPaymentStatus.PAID
+    else:
+        payment = data.payment_status or OrderPaymentStatus.PENDING
     if is_waitlist:
         reg_status = EventRegistrationStatus.WAITING_LIST
     else:
@@ -381,6 +384,9 @@ async def update_registration(
     # Tarif
     if "price_paid_cents" in update_data:
         reg.price_paid_cents = update_data["price_paid_cents"]
+        
+    if reg.price_paid_cents == 0:
+        reg.payment_status = OrderPaymentStatus.PAID
 
     await db.commit()
 

@@ -29,7 +29,7 @@ export default function AdminDashboardPage() {
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
     // Real DB data
-    const [segments, setSegments] = useState<any>({ regulier: 0, endormi: 0, flexible: 0, explorateur: 0, decouverte: 0, ancien: 0 });
+    const [segments, setSegments] = useState<any>({ prospect: 0, decouverte_1: 0, decouverte_2: 0, post_essai: 0, actif: 0, occasionnel: 0, distant: 0, inactif: 0, archive: 0 });
     const [sessions, setSessions] = useState<Session[]>([]);
     const [orders, setOrders] = useState<OrderItem[]>([]);
     const [eventRegistrations, setEventRegistrations] = useState<AdminEventRegistrationItem[]>([]);
@@ -110,7 +110,7 @@ export default function AdminDashboardPage() {
                 const [segmentsData, sessionsData, ordersData, campaignsData, eventsData] = await Promise.all([
                     api.getSegmentsStats().catch(err => {
                         console.warn("Segments stats fetch failed:", err);
-                        return { regulier: 0, endormi: 0, flexible: 0, explorateur: 0, decouverte: 0, ancien: 0 };
+                        return { prospect: 0, decouverte_1: 0, decouverte_2: 0, post_essai: 0, actif: 0, occasionnel: 0, distant: 0, inactif: 0, archive: 0 };
                     }),
                     api.getSessions({
                         start_date: `${start}T00:00:00`,
@@ -863,8 +863,8 @@ export default function AdminDashboardPage() {
                                 <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
                                     <div>
                                         <p className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Nouveaux prospects</p>
-                                        <p className="text-2xl font-bold text-slate-900 mt-1">{currentSegments.explorateur || 0}</p>
-                                        <p className="text-[10px] text-slate-500 font-medium">Nombre de personnes ayant créé un compte</p>
+                                        <p className="text-2xl font-bold text-slate-900 mt-1">{currentSegments.prospect || 0}</p>
+                                        <p className="text-[10px] text-slate-500 font-medium">Nombre de personnes ayant créé un compte ce mois-ci</p>
                                     </div>
                                     <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-lg">
                                         🔍
@@ -875,8 +875,8 @@ export default function AdminDashboardPage() {
                                 <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
                                     <div>
                                         <p className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Découvertes</p>
-                                        <p className="text-2xl font-bold text-slate-900 mt-1">{currentSegments.decouverte || 0}</p>
-                                        <p className="text-[10px] text-slate-500 font-medium">Nombre de personnes ayant passé une commande</p>
+                                        <p className="text-2xl font-bold text-slate-900 mt-1">{(currentSegments.decouverte_1 || 0) + (currentSegments.decouverte_2 || 0)}</p>
+                                        <p className="text-[10px] text-slate-500 font-medium">Nombre de personnes ayant passé leur première commande</p>
                                     </div>
                                     <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-lg">
                                         🏷️
@@ -886,9 +886,9 @@ export default function AdminDashboardPage() {
                                 {/* Actifs card */}
                                 <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
                                     <div>
-                                        <p className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Actifs</p>
-                                        <p className="text-2xl font-bold text-slate-900 mt-1">{currentSegments.regulier || 0}</p>
-                                        <p className="text-[10px] text-slate-500 font-medium">Nombre de personnes ayant renouvelé une commande</p>
+                                        <p className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Nouveaux actifs & renouvellements</p>
+                                        <p className="text-2xl font-bold text-slate-900 mt-1">{currentSegments.actif || 0}</p>
+                                        <p className="text-[10px] text-slate-500 font-medium">Nombre de personnes ayant commandé une offre &quot;régulière&quot; ce mois-ci</p>
                                     </div>
                                     <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-lg">
                                         👥
@@ -903,7 +903,7 @@ export default function AdminDashboardPage() {
                                         <span>👥</span> Répartition des utilisateurs
                                     </h3>
                                     <p className="text-[11px] text-slate-400 font-medium">
-                                        État comportemental de vos {totalSegmentUsers} membres enregistrés
+                                        Etat comportemental de votre base utilisateur
                                     </p>
                                 </div>
 
@@ -915,12 +915,15 @@ export default function AdminDashboardPage() {
                                 ) : (
                                     <div className="space-y-4 flex-1 flex flex-col justify-center">
                                         {[
-                                            { label: "Actif", key: "regulier", color: "bg-emerald-500", text: "text-emerald-600", desc: "Commande en cours - inscriptions régulières" },
-                                            { label: "Visiteur", key: "flexible", color: "bg-blue-500", text: "text-blue-600", desc: "Aucune commande en cours - vient de temps en temps" },
-                                            { label: "Distant", key: "endormi", color: "bg-rose-500", text: "text-rose-600", desc: "Commande en cours - absence prolongée (+21 jrs)" },
-                                            { label: "Découverte", key: "decouverte", color: "bg-indigo-500", text: "text-indigo-600", desc: "Une commande passée - aucune réservation à venir" },
-                                            { label: "Prospect", key: "explorateur", color: "bg-amber-500", text: "text-amber-600", desc: "Compte créé - aucune commande" },
-                                            { label: "Inactif", key: "ancien", color: "bg-slate-400", text: "text-slate-400", desc: "N'a pas repris de commande depuis + de 60jrs" },
+                                            { label: "Actif", key: "actif", color: "bg-emerald-500", text: "text-emerald-600", desc: "Offre régulière active ou fidélité historique" },
+                                            { label: "Occasionnel", key: "occasionnel", color: "bg-sky-500", text: "text-sky-600", desc: "Offres ponctuelles ou visites occasionnelles" },
+                                            { label: "Distant", key: "distant", color: "bg-rose-500", text: "text-rose-600", desc: "Membres sans réservation récente (+21 jrs)" },
+                                            { label: "Post-Essai", key: "post_essai", color: "bg-purple-500", text: "text-purple-600", desc: "Essai terminé sans renouvellement d'offre" },
+                                            { label: "Découverte 2", key: "decouverte_2", color: "bg-orange-500", text: "text-orange-600", desc: "Débutant avec au moins un cours réservé (max 3)" },
+                                            { label: "Découverte 1", key: "decouverte_1", color: "bg-indigo-500", text: "text-indigo-600", desc: "Première offre achetée mais sans aucune réservation" },
+                                            { label: "Prospect", key: "prospect", color: "bg-amber-500", text: "text-amber-600", desc: "Compte créé mais aucun achat" },
+                                            { label: "Inactif", key: "inactif", color: "bg-slate-400", text: "text-slate-400", desc: "Offre terminée - sans activité" },
+                                            { label: "Archivé", key: "archive", color: "bg-slate-300", text: "text-slate-500", desc: "Membres inactifs longue durée ou archivés" },
                                         ].map((segment) => {
                                             const value = currentSegments[segment.key] || 0;
                                             const pct = totalSegmentUsers > 0 ? Math.round((value / totalSegmentUsers) * 100) : 0;
@@ -983,7 +986,7 @@ export default function AdminDashboardPage() {
                                     {recentEmailsMock.map((email) => (
                                         <div key={email.id} className="p-3 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-between text-xs">
                                             <div className="space-y-1 truncate max-w-[350px]">
-                                                <p className="font-bold text-slate-800 truncate">{email.title}</p>
+                                                <p className="font-semibold text-slate-800 truncate">{email.title}</p>
                                                 <span className="text-[9px] font-semibold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full">
                                                     {email.type}
                                                 </span>
@@ -997,10 +1000,9 @@ export default function AdminDashboardPage() {
 
                                 {/* Communication alert */}
                                 {daysSinceLastEmail && daysSinceLastEmail > 7 && (
-                                    <div className="mt-6 p-4 bg-amber-50/50 border border-amber-100 rounded-2xl flex items-start gap-3 animate-pulse">
+                                    <div className="mt-6 p-4 bg-amber-50/50 border border-amber-100 rounded-2xl flex items-start gap-3">
                                         <span className="text-base mt-0.5">🔔</span>
                                         <div className="space-y-1">
-                                            <p className="text-xs font-bold text-amber-800">Manque de communication</p>
                                             <p className="text-[10px] text-slate-600 leading-tight">
                                                 Vos utilisateurs n&apos;ont pas eu de vos nouvelles depuis {daysSinceLastEmail} jours, voulez-vous leur envoyer une communication ?
                                             </p>
@@ -1022,7 +1024,7 @@ export default function AdminDashboardPage() {
                                         <span>💬</span> Satisfaction & Retours
                                     </h3>
                                     <div className="flex items-center justify-between pt-1">
-                                        <p className="text-[11px] text-slate-400 font-medium">Enquêtes de satisfaction</p>
+                                        <p className="text-[11px] text-slate-400 font-medium">Note moyenne des enquêtes</p>
                                         <span className="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
                                             ⭐ {avgSatisfaction !== null ? `${avgSatisfaction}/5` : "—"}
                                         </span>

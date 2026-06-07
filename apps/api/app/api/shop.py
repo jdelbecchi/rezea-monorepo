@@ -74,6 +74,9 @@ async def shop_checkout(
         price_cents = offer.price_lump_sum_cents or offer.price_recurring_cents or 0
         payment_status = OrderPaymentStatus.WAITING if effective_pay_later else OrderPaymentStatus.PENDING
 
+    if price_cents == 0:
+        payment_status = OrderPaymentStatus.PAID
+
     order = Order(
         tenant_id=tenant_id,
         user_id=user_id,

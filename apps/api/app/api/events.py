@@ -271,7 +271,7 @@ async def event_checkout(
         user_id=user_id,
         event_id=event_id,
         price_paid_cents=0 if is_full else price_cents,
-        payment_status=OrderPaymentStatus.PAID if is_full else (OrderPaymentStatus.WAITING if effective_pay_later else OrderPaymentStatus.PENDING),
+        payment_status=OrderPaymentStatus.PAID if (is_full or price_cents == 0) else (OrderPaymentStatus.WAITING if effective_pay_later else OrderPaymentStatus.PENDING),
         status=EventRegistrationStatus.WAITING_LIST if is_full else EventRegistrationStatus.CONFIRMED,
         notes=f"Inscription via PWA (Tarif {tariff}){notes_suffix}"
     )

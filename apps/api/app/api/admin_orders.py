@@ -238,8 +238,8 @@ async def create_order(
 
     # Determine price and payment status
     price = offer.price_lump_sum_cents or offer.price_recurring_cents or 0
-    # Force WAITING status for admin-created orders
-    payment_status = OrderPaymentStatus.WAITING
+    # Force WAITING status for admin-created orders, unless price is 0 (free)
+    payment_status = OrderPaymentStatus.PAID if price == 0 else OrderPaymentStatus.WAITING
 
     order = Order(
         tenant_id=tenant_id,
@@ -326,6 +326,10 @@ async def update_order(
 
     for field, value in update_data.items():
         setattr(order, field, value)
+
+    # Force payment status to PAID if final price is 0
+    if order.price_cents == 0:
+        order.payment_status = OrderPaymentStatus.PAID
 
     # Transition to INSTALLMENT: generate installments if they don't exist
     payment_is_installment = order.payment_status == OrderPaymentStatus.INSTALLMENT
