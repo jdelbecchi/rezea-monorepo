@@ -433,6 +433,22 @@ async def cancel_booking(
                 promoted_booking_id=str(next_booking.id),
                 promoted_user_id=str(next_booking.user_id),
             )
+            
+            # Send promotion email
+            from app.services.email_service import EmailService
+            from app.models.models import User
+            
+            user_res = await db.execute(select(User).where(User.id == next_booking.user_id))
+            promoted_user = user_res.scalar_one_or_none()
+            
+            tenant_res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+            tenant = tenant_res.scalar_one_or_none()
+            
+            if promoted_user and tenant:
+                try:
+                    await EmailService.send_session_promotion(promoted_user, tenant, session)
+                except Exception as e:
+                    logger.error("Error sending session promotion email", error=str(e), booking_id=str(next_booking.id))
     
     await db.commit()
     

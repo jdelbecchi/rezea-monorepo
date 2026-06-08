@@ -213,6 +213,8 @@ class User(Base):
     # Statut
     is_active = Column(Boolean, default=True)
     is_active_override = Column(Boolean, default=False)
+    is_archived = Column(Boolean, default=False, nullable=False)
+    status_override = Column(String(50), nullable=True)
     created_by_admin = Column(Boolean, default=False)
     email_verified = Column(Boolean, default=False)
     docs_accepted_at = Column(DateTime, nullable=True)
@@ -399,6 +401,7 @@ class Offer(Base):
     is_active = Column(Boolean, default=True)
     display_order = Column(Integer, default=0) # N° d'offre
     category_display_order = Column(Integer, default=0) # N° de rubrique
+    engagement_type = Column(String(50), default="ponctuel", nullable=False) # 'essai', 'regulier', 'ponctuel'
     
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

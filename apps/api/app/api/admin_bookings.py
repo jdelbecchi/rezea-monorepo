@@ -80,6 +80,9 @@ async def auto_promote_waitlist(db: AsyncSession, tenant_id, session_id):
     Promeut automatiquement le 1er inscrit en attente vers confirmé
     quand une place se libère.
     """
+    from app.services.email_service import EmailService
+    from app.models.models import Tenant
+
     # Trouver le 1er en attente (par date de création = FIFO)
     result = await db.execute(
         select(Booking)
@@ -88,10 +91,11 @@ async def auto_promote_waitlist(db: AsyncSession, tenant_id, session_id):
             Booking.session_id == session_id,
             Booking.status == BookingStatus.PENDING,
         )
+        .options(joinedload(Booking.user), joinedload(Booking.session))
         .order_by(Booking.created_at.asc())
         .limit(1)
     )
-    next_booking = result.scalar_one_or_none()
+    next_booking = result.unique().scalar_one_or_none()
 
     if not next_booking:
         return None
@@ -100,13 +104,23 @@ async def auto_promote_waitlist(db: AsyncSession, tenant_id, session_id):
     next_booking.status = BookingStatus.CONFIRMED
 
     # Récupérer la séance pour incrémenter le compteur
-    sess_result = await db.execute(
-        select(Session).where(Session.id == session_id).with_for_update()
-    )
-    session = sess_result.scalar_one_or_none()
+    session = next_booking.session
     if session:
         session.current_participants += 1
         session.waitlist_count = max(0, session.waitlist_count - 1)
+
+    # Récupérer le Tenant
+    tenant_res = await db.execute(
+        select(Tenant).where(Tenant.id == tenant_id)
+    )
+    tenant = tenant_res.scalar_one_or_none()
+
+    if tenant and next_booking.user and session:
+        try:
+            await EmailService.send_session_promotion(next_booking.user, tenant, session)
+        except Exception as e:
+            import structlog
+            structlog.get_logger().error("Error sending session promotion email", error=str(e), booking_id=str(next_booking.id))
 
     return next_booking
 

@@ -285,21 +285,24 @@ async def get_segments_stats(
     """Renvoie le nombre d'utilisateurs dans chaque segment pour le tableau de bord"""
     tenant_id = request.state.tenant_id
     
-    explorateurs = await get_segment_user_ids(db, tenant_id, "explorateur")
-    decouvertes = await get_segment_user_ids(db, tenant_id, "decouverte")
-    reguliers = await get_segment_user_ids(db, tenant_id, "regulier")
-    endormis = await get_segment_user_ids(db, tenant_id, "endormi")
-    flexibles = await get_segment_user_ids(db, tenant_id, "flexible")
-    anciens = await get_segment_user_ids(db, tenant_id, "ancien")
+    segments_map = await compute_users_segments(db, tenant_id)
     
-    return {
-        "explorateur": len(explorateurs),
-        "decouverte": len(decouvertes),
-        "regulier": len(reguliers),
-        "endormi": len(endormis),
-        "flexible": len(flexibles),
-        "ancien": len(anciens),
+    counts = {
+        "prospect": 0,
+        "decouverte_1": 0,
+        "decouverte_2": 0,
+        "post_essai": 0,
+        "actif": 0,
+        "occasionnel": 0,
+        "distant": 0,
+        "inactif": 0,
+        "archive": 0,
     }
+    for seg in segments_map.values():
+        if seg in counts:
+            counts[seg] += 1
+            
+    return counts
 
 
 @router.get("/{user_id}", response_model=UserResponse)
@@ -460,299 +463,224 @@ async def delete_user(
     return {"detail": "Utilisateur supprimé"}
 
 
+async def compute_users_segments(db: AsyncSession, tenant_id: UUID, user_ids: Optional[List[UUID]] = None) -> dict[UUID, str]:
+    """
+    Calcule dynamiquement le segment de chaque utilisateur selon l'arbre de décision comportemental.
+    """
+    from datetime import datetime, timedelta
+    from sqlalchemy import select, func, case
+    from app.models.models import User, UserRole, Order, Offer, Booking, Session, CreditAccount, BookingStatus
+
+    now = datetime.utcnow()
+    days_180_ago = now - timedelta(days=180)
+    days_300_ago = now - timedelta(days=300)
+
+    # 1. Fetch Users
+    users_stmt = select(User.id, User.role, User.created_at, User.is_archived, User.status_override)
+    if user_ids is not None:
+        if not user_ids:
+            return {}
+        users_stmt = users_stmt.where(User.id.in_(user_ids))
+    else:
+        users_stmt = users_stmt.where(User.tenant_id == tenant_id, User.role != UserRole.OWNER)
+
+    users_res = await db.execute(users_stmt)
+    users_list = users_res.all()
+    if not users_list:
+        return {}
+
+    target_user_ids = [row.id for row in users_list]
+
+    # 2. Fetch Credit Balance
+    balance_stmt = select(CreditAccount.user_id, CreditAccount.balance).where(CreditAccount.user_id.in_(target_user_ids))
+    balance_res = await db.execute(balance_stmt)
+    balances_map = {row.user_id: row.balance for row in balance_res.all()}
+
+    # 3. Fetch Order Aggregates
+    orders_stmt = (
+        select(
+            Order.user_id,
+            func.count(Order.id).label("total_orders"),
+            func.sum(case((Order.status == "active", 1), else_=0)).label("active_orders"),
+            func.max(Order.created_at).label("latest_order_date"),
+            func.sum(case(((Order.status == "active") & (Offer.engagement_type == "regulier"), 1), else_=0)).label("active_regulier_orders"),
+            func.sum(case(((Order.status == "active") & (Offer.engagement_type == "ponctuel"), 1), else_=0)).label("active_ponctuel_orders"),
+            func.sum(case((Offer.engagement_type == "regulier", 1), else_=0)).label("total_regulier_orders")
+        )
+        .join(Offer, Order.offer_id == Offer.id)
+        .where(Order.user_id.in_(target_user_ids))
+        .group_by(Order.user_id)
+    )
+    orders_res = await db.execute(orders_stmt)
+    orders_data = {row.user_id: row for row in orders_res.all()}
+
+    # 4. Fetch Booking Aggregates
+    bookings_stmt = (
+        select(
+            Booking.user_id,
+            func.count(Booking.id).label("total_bookings"),
+            func.sum(case((Session.start_time <= now, 1), else_=0)).label("past_bookings"),
+            func.sum(case((Session.start_time > now, 1), else_=0)).label("future_bookings"),
+            func.max(Session.start_time).label("latest_booking_date"),
+            func.max(case((Session.start_time <= now, Session.start_time), else_=None)).label("latest_past_booking_date"),
+            func.sum(case(((Session.start_time >= days_180_ago) & (Session.start_time <= now), 1), else_=0)).label("sessions_180"),
+            func.sum(case(((Session.start_time >= days_300_ago) & (Session.start_time <= now), 1), else_=0)).label("sessions_300")
+        )
+        .join(Session, Booking.session_id == Session.id)
+        .where(
+            Booking.user_id.in_(target_user_ids),
+            Booking.status.not_in([BookingStatus.CANCELLED, BookingStatus.SESSION_CANCELLED])
+        )
+        .group_by(Booking.user_id)
+    )
+    bookings_res = await db.execute(bookings_stmt)
+    bookings_data = {row.user_id: row for row in bookings_res.all()}
+
+    # 5. Compute Segments
+    segments_map = {}
+    for u in users_list:
+        # Overrides & Admin roles
+        if u.is_archived:
+            segments_map[u.id] = "archive"
+            continue
+        if u.status_override is not None:
+            segments_map[u.id] = u.status_override
+            continue
+        if u.role in (UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF):
+            segments_map[u.id] = "actif"
+            continue
+
+        # Get metrics
+        total_orders = 0
+        active_orders = 0
+        latest_order_date = None
+        active_regulier_orders = 0
+        active_ponctuel_orders = 0
+        total_regulier_orders = 0
+        if u.id in orders_data:
+            o_row = orders_data[u.id]
+            total_orders = o_row.total_orders or 0
+            active_orders = o_row.active_orders or 0
+            latest_order_date = o_row.latest_order_date
+            active_regulier_orders = o_row.active_regulier_orders or 0
+            active_ponctuel_orders = o_row.active_ponctuel_orders or 0
+            total_regulier_orders = o_row.total_regulier_orders or 0
+
+        total_bookings = 0
+        past_bookings = 0
+        future_bookings = 0
+        latest_booking_date = None
+        latest_past_booking_date = None
+        sessions_180 = 0
+        sessions_300 = 0
+        if u.id in bookings_data:
+            b_row = bookings_data[u.id]
+            total_bookings = b_row.total_bookings or 0
+            past_bookings = b_row.past_bookings or 0
+            future_bookings = b_row.future_bookings or 0
+            latest_booking_date = b_row.latest_booking_date
+            latest_past_booking_date = b_row.latest_past_booking_date
+            sessions_180 = b_row.sessions_180 or 0
+            sessions_300 = b_row.sessions_300 or 0
+
+        balance = balances_map.get(u.id, 0)
+        days_since_created = (now - u.created_at).days
+        days_since_latest_order = (now - latest_order_date).days if latest_order_date else None
+        days_since_latest_booking = (now - latest_booking_date).days if latest_booking_date else None
+
+        # Meets historical fidelity criteria
+        meets_fidelity = False
+        if days_since_created >= 180 and sessions_180 >= 18:
+            meets_fidelity = True
+        elif days_since_created >= 300 and sessions_300 >= 20:
+            meets_fidelity = True
+
+        no_active_offer = (active_orders == 0)
+
+        # Archive rules
+        is_archived_dynamically = False
+        if total_orders == 0 and days_since_created > 90:
+            is_archived_dynamically = True
+        elif total_orders >= 1 and total_bookings == 0 and days_since_latest_order is not None and days_since_latest_order > 90:
+            is_archived_dynamically = True
+        elif total_bookings > 0 and past_bookings <= 3 and no_active_offer and days_since_latest_booking is not None and days_since_latest_booking > 90:
+            is_archived_dynamically = True
+        elif total_bookings > 3 and days_since_latest_booking is not None and days_since_latest_booking > 365 and (days_since_latest_order is None or days_since_latest_order > 365):
+            is_archived_dynamically = True
+
+        if is_archived_dynamically:
+            segments_map[u.id] = "archive"
+            continue
+
+        # Prospect
+        if total_orders == 0:
+            segments_map[u.id] = "prospect"
+            continue
+
+        # Découverte 1
+        if total_bookings == 0:
+            segments_map[u.id] = "decouverte_1"
+            continue
+
+        # Découverte 2 / Post-Essai (past_bookings <= 3)
+        if past_bookings <= 3:
+            if balance == 0 and days_since_latest_booking is not None and days_since_latest_booking > 7:
+                segments_map[u.id] = "post_essai"
+            else:
+                segments_map[u.id] = "decouverte_2"
+            continue
+
+        # Established (past_bookings > 3) - compute base segment
+        segment = "inactif"
+        if not no_active_offer:
+            if active_regulier_orders > 0:
+                segment = "actif"
+            elif active_ponctuel_orders > 0:
+                if meets_fidelity:
+                    segment = "actif"
+                else:
+                    segment = "occasionnel"
+            else:
+                segment = "occasionnel"
+        else:
+            previously_actif = (total_regulier_orders > 0) or meets_fidelity
+            if previously_actif:
+                if days_since_latest_booking is not None and days_since_latest_booking < 60:
+                    segment = "actif"
+                else:
+                    segment = "inactif"
+            else:
+                if days_since_latest_booking is not None and days_since_latest_booking < 180:
+                    segment = "occasionnel"
+                else:
+                    segment = "inactif"
+
+        # Distant check
+        if segment in ("actif", "occasionnel") and not no_active_offer:
+            has_recent_activity = False
+            if future_bookings > 0:
+                has_recent_activity = True
+            elif days_since_latest_booking is not None and days_since_latest_booking <= 21:
+                has_recent_activity = True
+
+            if not has_recent_activity:
+                segment = "distant"
+
+        segments_map[u.id] = segment
+
+    return segments_map
+
+
 async def get_segment_user_ids(db: AsyncSession, tenant_id: UUID, segment: str) -> List[UUID]:
     """Calcule dynamiquement les IDs des utilisateurs appartenant à un segment donné"""
-    from app.models.models import Order, Booking, Session, User
-    from datetime import datetime, timedelta
-    from sqlalchemy import exists
-    
-    now = datetime.utcnow()
-    fourteen_days_ago = now - timedelta(days=14)
-    twenty_one_days_ago = now - timedelta(days=21)
-    sixty_days_ago = now - timedelta(days=60)
-    
-    # 1. Explorateurs : Membres inscrits sans aucune commande
-    if segment == "explorateur":
-        stmt = (
-            select(User.id)
-            .where(
-                User.tenant_id == tenant_id,
-                User.role == UserRole.USER,
-                ~exists().where(Order.user_id == User.id)
-            )
-        )
-        res = await db.execute(stmt)
-        return [row[0] for row in res.all()]
-        
-    # 2. Découvertes : Membres ayant exactement 1 commande au total, et pas de réservation future
-    elif segment == "decouverte":
-        # Utilisateurs avec exactement 1 commande
-        users_with_one_order_stmt = (
-            select(Order.user_id)
-            .join(User, Order.user_id == User.id)
-            .where(User.tenant_id == tenant_id, User.role == UserRole.USER)
-            .group_by(Order.user_id)
-            .having(func.count(Order.id) == 1)
-        )
-        res = await db.execute(users_with_one_order_stmt)
-        one_order_user_ids = [row[0] for row in res.all()]
-        
-        if not one_order_user_ids:
-            return []
-            
-        # Filtrer ceux qui n'ont aucune réservation future
-        future_bookings_stmt = (
-            select(Booking.user_id)
-            .join(Session, Booking.session_id == Session.id)
-            .where(
-                Booking.user_id.in_(one_order_user_ids),
-                Session.start_time >= now
-            )
-        )
-        res_future = await db.execute(future_bookings_stmt)
-        users_with_future_bookings = set([row[0] for row in res_future.all()])
-        
-        return [uid for uid in one_order_user_ids if uid not in users_with_future_bookings]
-        
-    # 3. Réguliers : Membres ayant une commande active ET au moins 1 réservation confirmée les 14 derniers jours
-    elif segment == "regulier":
-        # Commande active
-        active_stmt = (
-            select(Order.user_id)
-            .join(User, Order.user_id == User.id)
-            .where(
-                User.tenant_id == tenant_id,
-                User.role == UserRole.USER,
-                Order.status == "active"
-            )
-        )
-        res_active = await db.execute(active_stmt)
-        active_uids = set([row[0] for row in res_active.all()])
-        
-        if not active_uids:
-            reg_uids = set()
-        else:
-            # Réservation récente dans les 14 jours
-            recent_stmt = (
-                select(Booking.user_id)
-                .join(Session, Booking.session_id == Session.id)
-                .where(
-                    Booking.user_id.in_(list(active_uids)),
-                    Session.start_time >= fourteen_days_ago
-                )
-            )
-            res_recent = await db.execute(recent_stmt)
-            recent_uids = set([row[0] for row in res_recent.all()])
-            reg_uids = active_uids.intersection(recent_uids)
-            
-        # Ajouter TOUS les managers, staff et owners (car ils sont systématiquement considérés comme Actifs)
-        admin_stmt = select(User.id).where(
-            User.tenant_id == tenant_id,
-            User.role.in_([UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF])
-        )
-        res_admin = await db.execute(admin_stmt)
-        admin_uids = set([row[0] for row in res_admin.all()])
-        
-        return list(reg_uids.union(admin_uids))
-        
-    # 4. Endormis : Membres ayant une commande active ET aucune réservation dans les 21 derniers jours
-    elif segment == "endormi":
-        # Commande active
-        active_stmt = (
-            select(Order.user_id)
-            .join(User, Order.user_id == User.id)
-            .where(
-                User.tenant_id == tenant_id,
-                User.role == UserRole.USER,
-                Order.status == "active"
-            )
-        )
-        res_active = await db.execute(active_stmt)
-        active_uids = set([row[0] for row in res_active.all()])
-        
-        if not active_uids:
-            return []
-            
-        # Réservation récente dans les 21 jours
-        recent_21_stmt = (
-            select(Booking.user_id)
-            .join(Session, Booking.session_id == Session.id)
-            .where(
-                Booking.user_id.in_(list(active_uids)),
-                Session.start_time >= twenty_one_days_ago
-            )
-        )
-        res_recent = await db.execute(recent_21_stmt)
-        recent_21_uids = set([row[0] for row in res_recent.all()])
-        
-        return list(active_uids.difference(recent_21_uids))
-        
-    # 5. Flexibles : Membres sans commande active, mais ayant au moins 1 commande au total, et au moins 1 réservation les 60 derniers jours
-    elif segment == "flexible":
-        # Toutes les commandes actives uids
-        active_stmt = select(Order.user_id).where(Order.status == "active")
-        res_active = await db.execute(active_stmt)
-        active_uids = set([row[0] for row in res_active.all()])
-        
-        # Utilisateurs ayant commandé au moins une fois
-        ordered_stmt = (
-            select(Order.user_id)
-            .join(User, Order.user_id == User.id)
-            .where(
-                User.tenant_id == tenant_id,
-                User.role == UserRole.USER
-            )
-            .group_by(Order.user_id)
-        )
-        res_ordered = await db.execute(ordered_stmt)
-        ordered_uids = set([row[0] for row in res_ordered.all()])
-        
-        uids_no_active = ordered_uids.difference(active_uids)
-        
-        if not uids_no_active:
-            return []
-            
-        # Ayant au moins une réservation les 60 derniers jours
-        recent_60_stmt = (
-            select(Booking.user_id)
-            .join(Session, Booking.session_id == Session.id)
-            .where(
-                Booking.user_id.in_(list(uids_no_active)),
-                Session.start_time >= sixty_days_ago
-            )
-        )
-        res_recent = await db.execute(recent_60_stmt)
-        recent_60_uids = set([row[0] for row in res_recent.all()])
-        
-        return list(recent_60_uids)
-        
-    # 6. Anciens : Membres ayant au moins 1 commande dans l'historique, aucune commande active, et aucune réservation dans les 60 derniers jours
-    elif segment == "ancien":
-        # Toutes les commandes actives uids
-        active_stmt = select(Order.user_id).where(Order.status == "active")
-        res_active = await db.execute(active_stmt)
-        active_uids = set([row[0] for row in res_active.all()])
-        
-        # Utilisateurs ayant commandé au moins une fois
-        ordered_stmt = (
-            select(Order.user_id)
-            .join(User, Order.user_id == User.id)
-            .where(
-                User.tenant_id == tenant_id,
-                User.role == UserRole.USER
-            )
-            .group_by(Order.user_id)
-        )
-        res_ordered = await db.execute(ordered_stmt)
-        ordered_uids = set([row[0] for row in res_ordered.all()])
-        
-        uids_no_active = ordered_uids.difference(active_uids)
-        
-        if not uids_no_active:
-            return []
-            
-        # Ayant au moins une réservation les 60 derniers jours
-        recent_60_stmt = (
-            select(Booking.user_id)
-            .join(Session, Booking.session_id == Session.id)
-            .where(
-                Booking.user_id.in_(list(uids_no_active)),
-                Session.start_time >= sixty_days_ago
-            )
-        )
-        res_recent = await db.execute(recent_60_stmt)
-        recent_60_uids = set([row[0] for row in res_recent.all()])
-        
-        return list(uids_no_active.difference(recent_60_uids))
-        
-    return []
+    segments_map = await compute_users_segments(db, tenant_id)
+    return [uid for uid, seg in segments_map.items() if seg == segment]
 
 
 async def attach_user_segments(db: AsyncSession, tenant_id: UUID, users: List[User]):
     """Calcule et attache le segment à chaque utilisateur dans la liste de manière optimisée"""
     if not users:
         return
-
-    from app.models.models import Order, Booking, Session, UserRole
-    from datetime import datetime, timedelta
-    
-    now = datetime.utcnow()
-    fourteen_days_ago = now - timedelta(days=14)
-    twenty_one_days_ago = now - timedelta(days=21)
-    sixty_days_ago = now - timedelta(days=60)
-    
-    user_ids = [u.id for u in users]
-    
-    # 1. Nombre total de commandes par utilisateur
-    total_orders_query = (
-        select(Order.user_id, func.count(Order.id))
-        .where(Order.user_id.in_(user_ids))
-        .group_by(Order.user_id)
-    )
-    total_orders_res = await db.execute(total_orders_query)
-    total_orders_map = {row[0]: row[1] for row in total_orders_res.all()}
-    
-    # 2. Nombre de commandes actives par utilisateur
-    active_orders_query = (
-        select(Order.user_id, func.count(Order.id))
-        .where(Order.user_id.in_(user_ids), Order.status == "active")
-        .group_by(Order.user_id)
-    )
-    active_orders_res = await db.execute(active_orders_query)
-    active_orders_map = {row[0]: row[1] for row in active_orders_res.all()}
-    
-    # 3. Réservations futures (pour le segment découverte)
-    future_bookings_query = (
-        select(Booking.user_id)
-        .join(Session, Booking.session_id == Session.id)
-        .where(Booking.user_id.in_(user_ids), Session.start_time >= now)
-    )
-    future_bookings_res = await db.execute(future_bookings_query)
-    future_bookings_set = set(row[0] for row in future_bookings_res.all())
-    
-    # 4. Date de la dernière réservation pour chaque utilisateur
-    latest_booking_query = (
-        select(Booking.user_id, func.max(Session.start_time))
-        .join(Session, Booking.session_id == Session.id)
-        .where(Booking.user_id.in_(user_ids))
-        .group_by(Booking.user_id)
-    )
-    latest_booking_res = await db.execute(latest_booking_query)
-    latest_booking_map = {row[0]: row[1] for row in latest_booking_res.all()}
-    
+    segments_map = await compute_users_segments(db, tenant_id, [u.id for u in users])
     for u in users:
-        if u.role in (UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF):
-            u.segment = "regulier"
-            continue
-            
-        total_orders = total_orders_map.get(u.id, 0)
-        active_orders = active_orders_map.get(u.id, 0)
-        has_future_bookings = u.id in future_bookings_set
-        latest_booking = latest_booking_map.get(u.id)
-        
-        # 1. Explorateurs : Membres inscrits sans aucune commande
-        if total_orders == 0:
-            u.segment = "explorateur"
-            
-        # 2. Découvertes : Membres ayant exactement 1 commande au total, et pas de réservation future
-        elif total_orders == 1 and not has_future_bookings:
-            u.segment = "decouverte"
-            
-        # 3. Réguliers : Membres ayant une commande active ET au moins 1 réservation confirmée les 14 derniers jours
-        elif active_orders > 0 and latest_booking and latest_booking >= fourteen_days_ago:
-            u.segment = "regulier"
-            
-        # 4. Endormis : Membres ayant une commande active ET aucune réservation dans les 21 derniers jours
-        elif active_orders > 0 and (not latest_booking or latest_booking < twenty_one_days_ago):
-            u.segment = "endormi"
-            
-        # 5. Flexibles : Membres sans commande active, mais ayant au moins 1 commande au total, et au moins 1 réservation les 60 derniers jours
-        elif active_orders == 0 and total_orders > 0 and latest_booking and latest_booking >= sixty_days_ago:
-            u.segment = "flexible"
-            
-        # 6. Anciens : Membres ayant au moins 1 commande dans l'historique, aucune commande active, et aucune réservation dans les 60 derniers jours
-        elif active_orders == 0 and total_orders > 0 and (not latest_booking or latest_booking < sixty_days_ago):
-            u.segment = "ancien"
-            
-        else:
-            u.segment = None
+        u.segment = segments_map.get(u.id)

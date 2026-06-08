@@ -2,22 +2,24 @@
 
 {% block content %}
 {% if is_waitlist %}
-    <h2 style="font-size: 20px; color: #0f172a; margin-bottom: 10px;">Inscription sur liste d'attente</h2>
+    <h2 style="font-weight: 600; margin-top: 0; font-size: 20px; color: #0f172a; margin-bottom: 10px;">Inscription sur liste d'attente</h2>
+<div style="width: 60px; border-top: 1px solid #e2e8f0; height: 0; line-height: 0; font-size: 0; margin: 12px 0 20px 0;"></div>
     <p>Bonjour {{ first_name }},</p>
     <p>Cet évènement est actuellement complet. Nous avons bien enregistré votre inscription sur la <strong>liste d'attente</strong> pour l'évènement suivant :</p>
 {% else %}
-    <h2 style="font-size: 20px; color: #0f172a; margin-bottom: 10px;">Votre inscription est confirmée !</h2>
+    <h2 style="font-weight: 600; margin-top: 0; font-size: 20px; color: #0f172a; margin-bottom: 10px;">Votre inscription est confirmée !</h2>
+<div style="width: 60px; border-top: 1px solid #e2e8f0; height: 0; line-height: 0; font-size: 0; margin: 12px 0 20px 0;"></div>
     <p>Bonjour {{ first_name }},</p>
     <p>Nous avons bien enregistré votre inscription pour l'évènement suivant chez <strong>{{ tenant_name }}</strong> :</p>
 {% endif %}
 
 <div style="background-color: #f8fafc; border-radius: 12px; padding: 25px; margin: 20px 0; border-left: 4px solid {{ primary_color or '#0f172a' }};">
-    <h3 style="margin: 0 0 10px 0; font-size: 18px; color: #0f172a;">{{ event_title }}</h3>
+    <h3 style="font-weight: 600; margin: 0 0 10px 0; font-size: 18px; color: #0f172a;">{{ event_title }}</h3>
     <p style="margin: 5px 0; font-size: 14px; color: #475569;">
         📅 <strong>{{ event_date }}</strong> à <strong>{{ event_time }}</strong>
     </p>
     
-    <div style="height: 1px; background-color: #e2e8f0; margin: 15px 0;"></div>
+    <div style="border-top: 1px solid #f1f5f9; height: 0; line-height: 0; font-size: 0; margin: 15px 0;"></div>
     
     <p style="margin: 0; font-size: 13px;">
         Statut : 
@@ -39,17 +41,17 @@
         <a href="{{ payment_link }}" class="button" style="color: #ffffff;">Régler mon inscription</a>
     </p>
     <p style="font-size: 12px; color: #94a3b8; margin-top: 15px; font-style: italic; text-align: center;">
-        Note : Votre place n'est définitivement réservée qu'après réception du paiement.
+        Note : Si vous avez effectué le règlement récemment ou par un autre moyen (CB, chèque, espèces, virement), ignorez ce lien.
     </p>
 {% elif is_waitlist %}
     <p>Si une place se libère, vous recevrez automatiquement un email vous invitant à confirmer votre participation et à procéder au règlement.</p>
 {% endif %}
 
-<div style="height: 1px; background-color: #e2e8f0; margin: 25px 0;"></div>
+<div style="border-top: 1px solid #f1f5f9; height: 0; line-height: 0; font-size: 0; margin: 25px 0;"></div>
 
 <p>Vous pouvez retrouver vos évènements et gérer vos réservations depuis votre espace personnel.</p>
-<p style="text-align: center;">
-    <a href="{{ dashboard_url }}" style="color: {{ primary_color or '#0f172a' }}; font-weight: 600; text-decoration: none; font-size: 15px;">Accéder à mon espace →</a>
+<p style="text-align: center; margin-top: 25px; margin-bottom: 25px;">
+    <a href="{{ dashboard_url }}" style="display: inline-block; background-color: #0f172a; color: #ffffff !important; font-family: 'Livvic', sans-serif; font-size: 14px; font-weight: 500; text-decoration: none; padding: 10px 22px; border-radius: 6px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); text-align: center;">Accéder à mon espace</a>
 </p>
 
 <p style="margin-top: 40px;">Nous avons hâte de vous y voir !<br>L'équipe {{ tenant_name }}</p>

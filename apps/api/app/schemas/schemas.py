@@ -79,6 +79,8 @@ class UserUpdate(BaseModel):
     role: Optional[UserRole] = None
     is_active: Optional[bool] = None
     is_active_override: Optional[bool] = None
+    is_archived: Optional[bool] = None
+    status_override: Optional[str] = None
     is_blacklisted: Optional[bool] = None
     blacklist_reason: Optional[str] = None
     remind_before_session: Optional[bool] = None
@@ -103,6 +105,8 @@ class UserResponse(UserBase):
     created_at: datetime
     last_login: Optional[datetime] = None
     is_blacklisted: bool = False
+    is_archived: bool = False
+    status_override: Optional[str] = None
     blacklist_reason: Optional[str] = None
     remind_before_session: bool = True
     receive_marketing_emails: bool = True
@@ -368,6 +372,7 @@ class OfferBase(BaseModel):
     is_active: bool = True
     display_order: Optional[int] = 0
     category_display_order: Optional[int] = 0
+    engagement_type: str = "ponctuel"
 
 
 class OfferCreate(OfferBase):
@@ -396,6 +401,7 @@ class OfferUpdate(BaseModel):
     is_active: Optional[bool] = None
     display_order: Optional[int] = None
     category_display_order: Optional[int] = None
+    engagement_type: Optional[str] = None
 
 
 class OfferResponse(OfferBase):

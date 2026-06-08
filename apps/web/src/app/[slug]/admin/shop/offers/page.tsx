@@ -25,6 +25,7 @@ const emptyForm = {
     category: "",
     category_display_order: "1",
     offer_display_order: "1",
+    engagement_type: "ponctuel",
 };
 
 const formatPrice = (cents: number | null | undefined) => {
@@ -122,6 +123,7 @@ function AdminOffersContent() {
                 category: formData.category || null,
                 display_order: parseInt(formData.offer_display_order) || 1,
                 category_display_order: parseInt(formData.category_display_order) || 1,
+                engagement_type: formData.engagement_type,
             };
 
             if (editingId) {
@@ -172,6 +174,7 @@ function AdminOffersContent() {
             category: o.category || "",
             category_display_order: (o as any).category_display_order?.toString() || "1",
             offer_display_order: (o.display_order || 1).toString(),
+            engagement_type: o.engagement_type || "ponctuel",
         });
         setShowForm(true);
     };
@@ -462,13 +465,23 @@ function AdminOffersContent() {
                                             <input type="number" value={formData.offer_display_order} onChange={e => setFormData({...formData, offer_display_order: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" />
                                         </div>
                                     </div>
-                                    <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center gap-6 mt-4">
-                                        <div className="w-48">
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Statut de l'offre</label>
-                                            <select value={formData.is_active ? "true" : "false"} onChange={e => setFormData({...formData, is_active: e.target.value === "true"})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm bg-white">
-                                                <option value="true">Active</option>
-                                                <option value="false">Inactive</option>
-                                            </select>
+                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mt-4">
+                                        <div className="flex flex-col sm:flex-row gap-4 flex-1">
+                                            <div className="w-48">
+                                                <label className="block text-sm font-medium text-slate-700 mb-1">Statut de l'offre</label>
+                                                <select value={formData.is_active ? "true" : "false"} onChange={e => setFormData({...formData, is_active: e.target.value === "true"})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm bg-white">
+                                                    <option value="true">Active</option>
+                                                    <option value="false">Inactive</option>
+                                                </select>
+                                            </div>
+                                            <div className="w-48">
+                                                <label className="block text-sm font-medium text-slate-700 mb-1">Type d'engagement</label>
+                                                <select value={formData.engagement_type} onChange={e => setFormData({...formData, engagement_type: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm bg-white">
+                                                    <option value="essai">Essai</option>
+                                                    <option value="regulier">Régulier (Actif)</option>
+                                                    <option value="ponctuel">Ponctuel (Occasionnel)</option>
+                                                </select>
+                                            </div>
                                         </div>
                                         <div className="pt-0 sm:pt-6">
                                             <label className="flex items-center gap-2 cursor-pointer">

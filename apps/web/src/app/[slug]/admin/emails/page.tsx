@@ -84,12 +84,15 @@ function AdminEmailsContent() {
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const [segmentStats, setSegmentStats] = useState<{
-        explorateur: number;
-        decouverte: number;
-        regulier: number;
-        endormi: number;
-        flexible: number;
-        ancien: number;
+        prospect: number;
+        decouverte_1: number;
+        decouverte_2: number;
+        post_essai: number;
+        actif: number;
+        occasionnel: number;
+        distant: number;
+        inactif: number;
+        archive: number;
     } | null>(null);
     
     // Editor State
@@ -165,7 +168,7 @@ function AdminEmailsContent() {
             id: "convert_prospects",
             title: "Convertir vos prospects",
             description: "Cible les personnes qui ont créé un compte mais n'ont pas encore passé de commande.",
-            segment: "explorateur",
+            segment: "prospect",
             icon: "✨",
             defaultSubject: "Bienvenue chez {establishment} ! Bénéficiez de -10% sur votre première séance",
             defaultContent: `<p>Bonjour {first_name},</p><p>Votre compte a été créé avec succès, mais vous n'avez pas encore planifié votre première activité.</p><p>Pour vous souhaiter la bienvenue, voici un code promo exclusif de 10% sur votre première réservation : <b>BIENVENUE10</b></p><p>À très bientôt dans notre studio !</p>`
@@ -174,7 +177,7 @@ function AdminEmailsContent() {
             id: "fid_discovery",
             title: "Fidéliser les nouveaux venus",
             description: "Cible les personnes avec une seule commande passée et aucune réservation future programmée.",
-            segment: "decouverte",
+            segment: "decouverte_1",
             icon: "⭐",
             defaultSubject: "Comment s'est passée votre première séance ?",
             defaultContent: `<p>Bonjour {first_name},</p><p>Vous avez récemment effectué votre première séance chez nous et nous espérons que vous avez adoré l'expérience !</p><p>Pour continuer sur votre lancée, découvrez nos offres et formules régulières.</p><p>À bientôt !</p>`
@@ -183,7 +186,7 @@ function AdminEmailsContent() {
             id: "reactivate_distant",
             title: "Réactiver vos membres distants",
             description: "Cible les personnes avec une offre en cours mais absentes depuis plus de 21 jours.",
-            segment: "endormi",
+            segment: "distant",
             icon: "🚀",
             defaultSubject: "Nous pensons à vous !",
             defaultContent: `<p>Bonjour {first_name},</p><p>Nous avons remarqué que nous ne vous avions pas vu au studio ces derniers temps. Nous espérons que tout va bien de votre côté !</p><p>N'hésitez pas à nous faire un petit signe si vous avez besoin d'adapter vos séances...</p><p>À très bientôt,</p><p>L'équipe</p>`
@@ -192,16 +195,16 @@ function AdminEmailsContent() {
             id: "reward_actives",
             title: "Remercier vos membres actifs",
             description: "Cible les personnes les plus fidèles avec une offre active et des réservations régulières.",
-            segment: "regulier",
+            segment: "actif",
             icon: "💖",
             defaultSubject: "Merci pour votre fidélité ! Un petit cadeau pour vous 🎁",
             defaultContent: `<p>Bonjour {first_name},</p><p>Nous tenions tout particulièrement à vous remercier pour votre fidélité et votre énergie positive au studio ! C'est un réel plaisir de vous accompagner dans vos séances.</p><p>Pour vous remercier, voici un code cadeau offrant une invitation gratuite pour le proche de votre choix lors de votre prochain cours : <b>MERCIAMIS</b></p><p>À très bientôt sur les tapis !</p>`
         },
         {
             id: "engage_visitors",
-            title: "Engager vos visiteurs ponctuels",
+            title: "Engager vos membres occasionnels",
             description: "Cible les personnes de passage qui viennent ponctuellement sans offre régulière.",
-            segment: "flexible",
+            segment: "occasionnel",
             icon: "⚡",
             defaultSubject: "Passez à la vitesse supérieure chez {establishment}",
             defaultContent: `<p>Bonjour {first_name},</p><p>Vous venez nous voir de temps en temps et nous adorons votre présence ponctuelle au studio !</p><p>Saviez-vous que vous pourriez économiser sur vos séances en optant pour l'une de nos formules régulières ou cartes multi-séances ? Découvrez nos offres adaptées à votre rythme de vie.</p><p>À bientôt pour votre prochaine séance !</p>`
@@ -210,10 +213,10 @@ function AdminEmailsContent() {
             id: "winback_inactives",
             title: "Reconquérir vos anciens membres",
             description: "Cible les personnes inactives qui n'ont pas passé de commande depuis plus de 60 jours.",
-            segment: "ancien",
+            segment: "inactif",
             icon: "👋",
             defaultSubject: "Vous nous manquez... Venez tester nos nouveautés !",
-            defaultContent: `<p>Bonjour {first_name},</p><p>Cela fait plus de deux mois que nous ne vous avons pas vu au studio, et vous nous manquez beaucoup !</p><p>De nouveaux créneaux et de nouvelles activités viennent d'ouvrir. Pour vous encourager à revenir, nous serions ravis de vous offrir une séance d'essai gratuite avec le code : <b>RETOUR2026</b></p><p>À très vite,</p><p>L'équipe</p>`
+            defaultContent: `<p>Bonjour {first_name},</p><p>Cela fait plus de deux mois que nous ne vous avons pas vu au studio, et vous nous manquez beaucoup !</p><p>De nouveaux créneaux et de nouvelles activités viennent d'ouvrir. Pour vous encourager à revenir, nous serions ravis de vous offer une séance d'essai gratuite avec le code : <b>RETOUR2026</b></p><p>À très vite,</p><p>L'équipe</p>`
         }
     ], []);
 
@@ -983,12 +986,15 @@ function AdminEmailsContent() {
 
     // Noms des segments en Français
     const segmentLabels: Record<string, string> = {
-        explorateur: "Prospect (Compte créé - aucune commande)",
-        decouverte: "Découverte (Une commande passée - aucune réservation à venir)",
-        regulier: "Actif (Commande en cours - inscriptions régulières)",
-        endormi: "Distant (Commande en cours - absence prolongée (+21 jrs))",
-        flexible: "Visiteur (Aucune commande en cours - vient de temps en temps)",
-        ancien: "Inactif (N'a pas repris de commande depuis + de 60jrs)",
+        prospect: "Prospect (Compte créé - aucune commande)",
+        decouverte_1: "Découverte 1 (Offre achetée - aucune réservation)",
+        decouverte_2: "Découverte 2 (Débutant - max 3 séances)",
+        post_essai: "Post-Essai (Essai terminé - sans offre)",
+        actif: "Actif (Offre active régulière ou fidélité)",
+        occasionnel: "Occasionnel (Offre active ponctuelle ou visites)",
+        distant: "Distant (Offre active - sans activité +21 jrs)",
+        inactif: "Inactif (Offre terminée - sans activité)",
+        archive: "Archivé (Inactivité longue ou manuel)",
         participants: "Uniquement les participants"
     };
 

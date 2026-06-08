@@ -1,18 +1,19 @@
 {% extends "base_email.html" %}
 
 {% block content %}
-<h2 style="font-size: 20px; color: #0f172a; margin-bottom: 10px;">Merci pour votre commande !</h2>
+<h2 style="font-weight: 600; margin-top: 0; font-size: 20px; color: #0f172a; margin-bottom: 10px;">Merci pour votre commande !</h2>
+<div style="width: 60px; border-top: 1px solid #e2e8f0; height: 0; line-height: 0; font-size: 0; margin: 12px 0 20px 0;"></div>
 <p>Bonjour {{ first_name }},</p>
 <p>Nous vous confirmons la réception de votre commande chez <strong>{{ tenant_name }}</strong>.</p>
 
 <div style="background-color: #f8fafc; border-radius: 12px; padding: 20px; margin: 20px 0;">
     <p style="margin: 0; font-size: 14px; color: #64748b;">Récapitulatif :</p>
     <p style="margin: 5px 0; font-size: 16px; font-weight: 600;">{{ offer_name }}</p>
-    <p style="margin: 5px 0; font-size: 18px; font-weight: 700; color: {{ primary_color or '#0f172a' }};">
-        {{ price }}
+    <p style="margin: 5px 0; font-size: 14px; font-weight: 500; color: #475569;">
+        🏷️ {{ price }}
     </p>
     
-    <div style="height: 1px; background-color: #e2e8f0; margin: 15px 0;"></div>
+    <div style="border-top: 1px solid #f1f5f9; height: 0; line-height: 0; font-size: 0; margin: 15px 0;"></div>
     
     <p style="margin: 0; font-size: 13px;">
         Statut du paiement : 
@@ -30,15 +31,15 @@
     <p>Pour finaliser votre règlement, vous pouvez utiliser le lien suivant :</p>
     <a href="{{ payment_link }}" class="button" style="color: #ffffff;">Régler ma commande</a>
     <p style="font-size: 12px; color: #94a3b8; margin-top: 15px; font-style: italic;">
-        Si vous avez déjà effectué le règlement par un autre moyen (chèque, espèces, virement), ignorez ce lien.
+        Note : Si vous avez effectué le règlement récemment ou par un autre moyen (CB, chèque, espèces, virement), ignorez ce lien.
     </p>
 {% endif %}
 
-<div style="height: 1px; background-color: #e2e8f0; margin: 25px 0;"></div>
+<div style="border-top: 1px solid #f1f5f9; height: 0; line-height: 0; font-size: 0; margin: 25px 0;"></div>
 
 <p>Vous pouvez retrouver tous les détails de votre commande et vos crédits dans votre espace personnel.</p>
-<p style="text-align: center;">
-    <a href="{{ dashboard_url }}" style="color: {{ primary_color or '#0f172a' }}; font-weight: 600; text-decoration: none; font-size: 15px;">Accéder à mon espace →</a>
+<p style="text-align: center; margin-top: 25px; margin-bottom: 25px;">
+    <a href="{{ dashboard_url }}" style="display: inline-block; background-color: #0f172a; color: #ffffff !important; font-family: 'Livvic', sans-serif; font-size: 14px; font-weight: 500; text-decoration: none; padding: 10px 22px; border-radius: 6px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); text-align: center;">Accéder à mon espace</a>
 </p>
 
 <p style="margin-top: 40px;">À très vite,<br>L'équipe {{ tenant_name }}</p>

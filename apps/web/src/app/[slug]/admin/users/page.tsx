@@ -21,21 +21,27 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 const SEGMENT_LABELS: Record<string, string> = {
-    explorateur: "Prospect",
-    decouverte: "Découverte",
-    regulier: "Actif",
-    endormi: "Distant",
-    flexible: "Visiteur",
-    ancien: "Inactif",
+    prospect: "Prospect",
+    decouverte_1: "Découverte 1",
+    decouverte_2: "Découverte 2",
+    post_essai: "Post-Essai",
+    actif: "Actif",
+    occasionnel: "Occasionnel",
+    distant: "Distant",
+    inactif: "Inactif",
+    archive: "Archivé",
 };
 
 const SEGMENT_COLORS: Record<string, string> = {
-    explorateur: "bg-amber-50 text-amber-700 border-amber-200",
-    decouverte: "bg-orange-50 text-orange-700 border-orange-200",
-    regulier: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    endormi: "bg-rose-50 text-rose-700 border-rose-200",
-    flexible: "bg-sky-50 text-sky-700 border-sky-200",
-    ancien: "bg-slate-100 text-slate-600 border-slate-200",
+    prospect: "bg-amber-50 text-amber-700 border-amber-200",
+    decouverte_1: "bg-orange-50 text-orange-700 border-orange-200",
+    decouverte_2: "bg-orange-100 text-orange-800 border-orange-300",
+    post_essai: "bg-purple-50 text-purple-700 border-purple-200",
+    actif: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    occasionnel: "bg-sky-50 text-sky-700 border-sky-200",
+    distant: "bg-rose-50 text-rose-700 border-rose-200",
+    inactif: "bg-slate-100 text-slate-600 border-slate-200",
+    archive: "bg-gray-200 text-gray-700 border-gray-300",
 };
 
 export default function AdminUsersPage() {
@@ -191,6 +197,7 @@ export default function AdminUsersPage() {
                 "street", "zip_code", "city", "birth_date",
                 "instagram_handle", "facebook_handle", "role", "is_active",
                 "is_active_override", "is_blacklisted", "blacklist_reason",
+                "is_archived", "status_override",
             ];
             for (const field of editableFields) {
                 if ((data as any)[field] !== undefined) {
@@ -355,12 +362,15 @@ export default function AdminUsersPage() {
                                 <MultiSelect
                                     label="Statut(s)"
                                     options={[
-                                        { id: "explorateur", label: "Prospect" },
-                                        { id: "decouverte", label: "Découverte" },
-                                        { id: "regulier", label: "Actif" },
-                                        { id: "endormi", label: "Distant" },
-                                        { id: "flexible", label: "Visiteur" },
-                                        { id: "ancien", label: "Inactif" },
+                                        { id: "prospect", label: "Prospect" },
+                                        { id: "decouverte_1", label: "Découverte 1" },
+                                        { id: "decouverte_2", label: "Découverte 2" },
+                                        { id: "post_essai", label: "Post-Essai" },
+                                        { id: "actif", label: "Actif" },
+                                        { id: "occasionnel", label: "Occasionnel" },
+                                        { id: "distant", label: "Distant" },
+                                        { id: "inactif", label: "Inactif" },
+                                        { id: "archive", label: "Archivé" },
                                     ]}
                                     selected={segmentFilter}
                                     onChange={setSegmentFilter}
@@ -431,8 +441,8 @@ export default function AdminUsersPage() {
                                                     </span>
                                                 </td>
                                                 <td className="py-2.5 px-4 text-center">
-                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-normal border ${SEGMENT_COLORS[user.segment || "explorateur"]}`}>
-                                                        {SEGMENT_LABELS[user.segment || "explorateur"]}
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-normal border ${SEGMENT_COLORS[user.segment || "prospect"]}`}>
+                                                        {SEGMENT_LABELS[user.segment || "prospect"]}
                                                     </span>
                                                 </td>
                                                 <td className="py-2.5 px-4 text-slate-600 text-center">
@@ -675,7 +685,45 @@ export default function AdminUsersPage() {
                                 </div>
                             </div>
                             
-                            {/* Contrôle de statut supprimé pour simplicité */}
+                            {/* Archivage & Segment comportemental */}
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
+                                <h3 className="text-[10px] font-medium text-slate-500 lowercase tracking-widest flex items-center gap-2">
+                                    ⚙️ statut & archivage
+                                </h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Statut comportemental (Override)</label>
+                                        <select
+                                            value={editingUser.status_override || ""}
+                                            onChange={(e) => updateEditField("status_override", e.target.value || null)}
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                                        >
+                                            <option value="">Calculé automatiquement (par défaut)</option>
+                                            <option value="prospect">Prospect</option>
+                                            <option value="decouverte_1">Découverte 1</option>
+                                            <option value="decouverte_2">Découverte 2</option>
+                                            <option value="post_essai">Post-Essai</option>
+                                            <option value="actif">Actif</option>
+                                            <option value="occasionnel">Occasionnel</option>
+                                            <option value="distant">Distant</option>
+                                            <option value="inactif">Inactif</option>
+                                            <option value="archive">Archivé</option>
+                                        </select>
+                                    </div>
+                                    <div className="flex flex-col justify-end">
+                                        <label className="flex items-center gap-2 cursor-pointer pb-2">
+                                            <input
+                                                type="checkbox"
+                                                id="is_archived"
+                                                checked={editingUser.is_archived || false}
+                                                onChange={(e) => updateEditField("is_archived", e.target.checked)}
+                                                className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                                            />
+                                            <span className="text-sm font-medium text-slate-700">Archiver manuellement</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
                             
                             {/* Black List */}
                             <div className="bg-rose-50/50 border border-rose-100 rounded-xl p-4">

@@ -4,12 +4,18 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+        
+        body, table, td, p, a, h1, h2, h3, h4, span, div {
+            font-family: 'Livvic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+        }
+        
         body {
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             background-color: #f8fafc;
             margin: 0;
             padding: 0;
             -webkit-font-smoothing: antialiased;
+            font-weight: 300;
         }
         .container {
             max-width: 600px;
@@ -18,19 +24,21 @@
             border-radius: 16px;
             overflow: hidden;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border: 1px solid #f8fafc;
         }
         .header {
-            padding: 40px 20px;
+            padding: 30px 20px;
             text-align: center;
-            background-color: {{ primary_color or '#0f172a' }};
+            background-color: #ffffff;
         }
         .header img {
-            max-width: 120px;
-            height: auto;
+            max-height: 40px;
+            width: auto;
+            vertical-align: middle;
         }
         .content {
             padding: 40px;
-            color: #1e293b;
+            color: #334155;
             line-height: 1.6;
         }
         .footer {
@@ -59,8 +67,10 @@
             margin: 0 10px;
         }
         .divider {
-            height: 1px;
-            background-color: #e2e8f0;
+            border-top: 1px solid #f1f5f9;
+            height: 0;
+            line-height: 0;
+            font-size: 0;
             margin: 20px 0;
         }
     </style>
@@ -68,12 +78,17 @@
 <body>
     <div class="container">
         <div class="header">
-            {% if logo_url %}
-                <img src="{{ logo_url }}" alt="{{ tenant_name }}">
-            {% else %}
-                <h1 style="color: #ffffff; margin: 0; font-size: 24px;">{{ tenant_name }}</h1>
+            <div style="display: inline-flex; align-items: center; justify-content: center; gap: 12px;">
+                {% if logo_url %}
+                    <img src="{{ logo_url }}" alt="{{ tenant_name }}">
+                {% endif %}
+                <span style="font-family: 'Livvic', sans-serif; font-size: 22px; font-weight: 500; color: #0f172a; vertical-align: middle;">{{ tenant_name }}</span>
+            </div>
+            {% if slogan %}
+                <div style="font-family: 'Livvic', sans-serif; font-size: 13px; color: #64748b; margin-top: 8px; font-weight: 400;">{{ slogan }}</div>
             {% endif %}
         </div>
+        <div style="border-top: 1px solid #f1f5f9; height: 0; line-height: 0; font-size: 0; width: 100%;"></div>
         
         <div class="content">
             {% block content %}{% endblock %}

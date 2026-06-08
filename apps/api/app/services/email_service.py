@@ -35,6 +35,7 @@ class EmailService:
             # Base context shared by all templates
             base_context = {
                 "tenant_name": tenant.name,
+                "slogan": tenant.slogan,
                 "primary_color": tenant.primary_color,
                 "logo_url": tenant.logo_url,
                 "legal_address": tenant.legal_address,
@@ -179,6 +180,28 @@ class EmailService:
             to_name=f"{user.first_name} {user.last_name}",
             subject=f"Une place s'est libérée ! {event.title}",
             template_name="event_promotion.html",
+            tenant=tenant,
+            context=context
+        )
+
+    @classmethod
+    async def send_session_promotion(cls, user: User, tenant: Tenant, session: any):
+        """
+        Envoie un email de promotion (liste d'attente -> confirmé) pour une séance.
+        """
+        context = {
+            "first_name": user.first_name,
+            "session_title": session.title,
+            "session_date": session.start_time.strftime("%d/%m/%Y") if hasattr(session.start_time, "strftime") else "",
+            "session_time": session.start_time.strftime("%H:%M") if hasattr(session.start_time, "strftime") else "",
+            "location": session.location if hasattr(session, "location") else None
+        }
+        
+        return await cls._render_and_send(
+            to_email=user.email,
+            to_name=f"{user.first_name} {user.last_name}",
+            subject=f"Une place s'est libérée ! {session.title}",
+            template_name="session_promotion.html",
             tenant=tenant,
             context=context
         )

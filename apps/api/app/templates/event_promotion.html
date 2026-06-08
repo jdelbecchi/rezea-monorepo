@@ -1,12 +1,13 @@
 {% extends "base_email.html" %}
 
 {% block content %}
-<h2 style="font-size: 20px; color: #059669; margin-bottom: 10px;">Bonne nouvelle ! Une place s'est libérée</h2>
+<h2 style="font-weight: 600; margin-top: 0; font-size: 20px; color: #059669; margin-bottom: 10px;">Bonne nouvelle ! Une place s'est libérée</h2>
+<div style="width: 60px; border-top: 1px solid #e2e8f0; height: 0; line-height: 0; font-size: 0; margin: 12px 0 20px 0;"></div>
 <p>Bonjour {{ first_name }},</p>
 <p>Vous étiez sur liste d'attente pour l'évènement suivant chez <strong>{{ tenant_name }}</strong>, et une place vient de se libérer pour vous !</p>
 
 <div style="background-color: #ecfdf5; border-radius: 12px; padding: 25px; margin: 20px 0; border-left: 4px solid #059669;">
-    <h3 style="margin: 0 0 10px 0; font-size: 18px; color: #065f46;">{{ event_title }}</h3>
+    <h3 style="font-weight: 600; margin: 0 0 10px 0; font-size: 18px; color: #065f46;">{{ event_title }}</h3>
     <p style="margin: 5px 0; font-size: 14px; color: #065f46;">
         📅 <strong>{{ event_date }}</strong> à <strong>{{ event_time }}</strong>
     </p>
@@ -17,14 +18,17 @@
 {% if payment_status != 'paid' and payment_link %}
     <p><strong>Dernière étape :</strong> Pour confirmer définitivement votre participation, merci de procéder au règlement via le lien ci-dessous :</p>
     <p style="text-align: center;">
-        <a href="{{ payment_link }}" class="button" style="color: #ffffff;">Régler mon inscription</a>
+        <a href="{ payment_link }" class="button" style="color: #ffffff;">Régler mon inscription</a>
+    </p>
+    <p style="font-size: 12px; color: #94a3b8; margin-top: 15px; font-style: italic; text-align: center;">
+        Note : Si vous avez effectué le règlement récemment ou par un autre moyen (CB, chèque, espèces, virement), ignorez ce lien.
     </p>
 {% endif %}
 
-<div style="height: 1px; background-color: #e2e8f0; margin: 25px 0;"></div>
+<div style="border-top: 1px solid #f1f5f9; height: 0; line-height: 0; font-size: 0; margin: 25px 0;"></div>
 
-<p style="text-align: center;">
-    <a href="{{ dashboard_url }}" style="color: {{ primary_color or '#0f172a' }}; font-weight: 600; text-decoration: none; font-size: 15px;">Voir les détails dans mon espace →</a>
+<p style="text-align: center; margin-top: 25px; margin-bottom: 25px;">
+    <a href="{{ dashboard_url }}" style="display: inline-block; background-color: #0f172a; color: #ffffff !important; font-family: 'Livvic', sans-serif; font-size: 14px; font-weight: 500; text-decoration: none; padding: 10px 22px; border-radius: 6px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); text-align: center;">Voir les détails dans mon espace</a>
 </p>
 
 <p style="margin-top: 40px;">À très bientôt !<br>L'équipe {{ tenant_name }}</p>

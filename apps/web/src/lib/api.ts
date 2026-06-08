@@ -144,6 +144,8 @@ export interface User {
   created_at?: string;
   last_login?: string;
   is_blacklisted?: boolean;
+  is_archived?: boolean;
+  status_override?: string | null;
   blacklist_reason?: string;
   remind_before_session?: boolean;
   receive_marketing_emails?: boolean;
@@ -335,6 +337,7 @@ export interface Offer {
   is_active: boolean;
   display_order: number;
   category_display_order?: number;
+  engagement_type?: 'essai' | 'regulier' | 'ponctuel';
   created_at: string;
   updated_at: string;
 }
@@ -1153,12 +1156,15 @@ export const api = {
 
   // ==================== Satisfaction Surveys & Segmentation ====================
   getSegmentsStats: async (): Promise<{
-    explorateur: number;
-    decouverte: number;
-    regulier: number;
-    endormi: number;
-    flexible: number;
-    ancien: number;
+    prospect: number;
+    decouverte_1: number;
+    decouverte_2: number;
+    post_essai: number;
+    actif: number;
+    occasionnel: number;
+    distant: number;
+    inactif: number;
+    archive: number;
   }> => {
     const response = await apiClient.get('/api/admin/users/segments/stats');
     return response.data;

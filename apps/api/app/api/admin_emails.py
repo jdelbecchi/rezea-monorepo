@@ -288,6 +288,24 @@ async def send_admin_emails(
             detail="Une erreur est survenue lors de l'envoi de certains emails"
         )
     
+    # 4) Envoi d'une copie au manager pour traçabilité (dans son email externe)
+    try:
+        manager_subject = f"[Copie - Newsletter] {request_data.subject}"
+        await mailer.send_email(
+            to_email=current_user.email,
+            to_name=f"{current_user.first_name} {current_user.last_name}",
+            subject=manager_subject,
+            html_content=html_envelope
+        )
+    except Exception as e:
+        # On log l'erreur de la copie mais on ne bloque pas la requête car les membres ont bien reçu l'email
+        import structlog
+        structlog.get_logger().error(
+            "❌ Erreur lors de l'envoi de la copie au manager", 
+            error=str(e), 
+            manager_email=current_user.email
+        )
+
     return {
         "message": f"Email envoyé avec succès à {len(recipients)} destinataires",
         "count": len(recipients)
