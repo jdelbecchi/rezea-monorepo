@@ -210,6 +210,24 @@ async def event_checkout(
     tenant_id = request.state.tenant_id
     user_id = request.state.user_id
     
+    # Vérifier si l'utilisateur est suspendu
+    from app.models.models import User
+    user_res = await db.execute(select(User).where(User.id == user_id))
+    user = user_res.scalar_one_or_none()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Utilisateur non trouvé"
+        )
+    if user.is_suspended:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Vos crédits sont suspendus ou bloqués."
+        )
+
+    # Expirer les crédits expirés si nécessaire (obsolète avec FIFO dynamique)
+
+    
     # 1. Récupérer l'événement
     result = await db.execute(
         select(Event).where(and_(Event.id == event_id, Event.tenant_id == tenant_id))

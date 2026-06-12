@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
+import Link from "next/link";
 import { api, User, AdminBookingItem } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import MultiSelect from "@/components/MultiSelect";
@@ -362,7 +363,14 @@ export default function AdminBookingsPage() {
                                             </td>
                                             <td className="px-4 py-2.5 whitespace-nowrap">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-sm font-medium text-slate-900">{booking.user_name}</span>
+                                                    <Link 
+                                                        href={`/${params.slug}/admin/users?search=${encodeURIComponent(booking.user_name)}`} 
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-sm font-medium text-slate-900 hover:text-blue-600 hover:underline transition-colors"
+                                                    >
+                                                        {booking.user_name}
+                                                    </Link>
                                                     {booking.has_pending_order && (
                                                         <span title="Paiement en attente (Commande non réglée)" className="flex-shrink-0 w-4 h-4 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center text-[10px] font-bold border border-amber-200 shadow-sm">!</span>
                                                     )}

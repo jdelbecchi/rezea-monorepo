@@ -19,9 +19,14 @@ export default function TenantPortal() {
     // Auto-login check
     const token = localStorage.getItem("access_token");
     const savedSlug = localStorage.getItem("tenant_slug");
+    const defaultView = localStorage.getItem("default_view");
     
     if (token && savedSlug === slug) {
-      router.push(`/${slug}/home`);
+      if (defaultView === "admin") {
+        router.push(`/${slug}/admin`);
+      } else {
+        router.push(`/${slug}/home`);
+      }
       return;
     }
 
@@ -91,25 +96,37 @@ export default function TenantPortal() {
         {/* Branding Content: Always on white for max contrast */}
         <div className="relative z-30 max-w-2xl w-full mx-auto md:mx-0 space-y-6 md:space-y-10">
           {/* Logo & Name Header */}
-          <div className="flex flex-col md:flex-row items-center md:items-center gap-4 md:gap-8 text-center md:text-left">
-            {tenant.logo_url ? (
-              <img 
-                src={`${API_URL}${tenant.logo_url}`} 
-                alt={tenant.name} 
-                className="h-16 md:h-24 object-contain" 
-              />
-            ) : (
-                <div 
-                  className="h-16 w-16 md:h-20 md:w-20 rounded-2xl flex items-center justify-center text-white text-3xl font-bold shadow-sm"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                    {tenant.name.substring(0, 2).toUpperCase()}
-                </div>
+          <div className="flex flex-col gap-4 items-center justify-center text-center w-full">
+            {tenant.show_logo !== false && (
+              tenant.logo_url ? (
+                <img 
+                  src={`${API_URL}${tenant.logo_url}`} 
+                  alt={tenant.name} 
+                  className="h-16 md:h-24 object-contain" 
+                />
+              ) : (
+                  <div 
+                    className="h-16 w-16 md:h-20 md:w-20 rounded-2xl flex items-center justify-center text-white text-3xl font-bold shadow-sm"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                      {tenant.name.substring(0, 2).toUpperCase()}
+                  </div>
+              )
             )}
             
-            <h1 className="text-3xl md:text-5xl lg:text-7xl font-medium tracking-tight leading-none text-slate-900">
-              {tenant.name}
-            </h1>
+            <div className="flex flex-col gap-1 md:gap-1.5 items-center justify-center text-center w-full">
+              {tenant.show_name !== false && (
+                <h1 className="text-3xl md:text-5xl lg:text-7xl font-medium tracking-tight leading-none text-slate-900">
+                  {tenant.name}
+                </h1>
+              )}
+              
+              {tenant.show_slogan !== false && tenant.slogan && (
+                <p className="text-sm md:text-xl font-medium text-slate-400 italic">
+                  {tenant.slogan}
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Points Clés / Description Area */}

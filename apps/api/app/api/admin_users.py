@@ -104,11 +104,7 @@ async def create_user(
     await db.refresh(new_user)
 
     # Calculer le statut initial pour la réponse
-    from app.models.models import Order
-    order_result = await db.execute(
-        select(func.count(Order.id)).where(Order.user_id == new_user.id, Order.status == "active")
-    )
-    has_active_order = order_result.scalar() > 0
+    has_active_order = False
     new_user.is_active_member = has_active_order
     
     # Manager/Staff -> Actif
@@ -153,6 +149,8 @@ async def list_users(
                 User.first_name.ilike(search_term),
                 User.last_name.ilike(search_term),
                 User.email.ilike(search_term),
+                func.concat(User.first_name, " ", User.last_name).ilike(search_term),
+                func.concat(User.last_name, " ", User.first_name).ilike(search_term),
             )
         )
 
@@ -193,13 +191,30 @@ async def list_users(
     user_ids = [u.id for u in users]
     active_orders_map = {}
     if user_ids:
-        active_orders_query = (
-            select(Order.user_id, func.count(Order.id))
+        from app.models.models import Tenant
+        from app.services import orders as order_service
+        
+        tenant_res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+        tenant_obj = tenant_res.scalar_one_or_none()
+        grace_days = tenant_obj.grace_period_days if tenant_obj else 0
+        grace_mode = tenant_obj.grace_period_mode if tenant_obj else "days"
+
+        orders_result = await db.execute(
+            select(Order.user_id, Order.end_date, Order.is_validity_unlimited)
             .where(Order.user_id.in_(user_ids), Order.status == "active")
-            .group_by(Order.user_id)
         )
-        active_orders_res = await db.execute(active_orders_query)
-        active_orders_map = {row[0]: row[1] for row in active_orders_res.all()}
+        
+        from collections import defaultdict
+        active_orders_count = defaultdict(int)
+        today_val = date.today()
+        for row in orders_result.all():
+            u_id, end_d, is_unlim = row
+            eff_end = order_service.compute_effective_end_date(end_d, grace_days, grace_mode)
+            if not is_unlim and eff_end and eff_end < today_val:
+                continue
+            active_orders_count[u_id] += 1
+            
+        active_orders_map = active_orders_count
 
     for user in users:
         # 1. Manager/Staff -> Toujours Actif
@@ -245,6 +260,8 @@ async def count_users(
                 User.first_name.ilike(search_term),
                 User.last_name.ilike(search_term),
                 User.email.ilike(search_term),
+                func.concat(User.first_name, " ", User.last_name).ilike(search_term),
+                func.concat(User.last_name, " ", User.first_name).ilike(search_term),
             )
         )
 
@@ -337,11 +354,27 @@ async def get_user(
     user.balance = balance
 
     # Calcul dynamique du statut
-    from app.models.models import Order
-    order_result = await db.execute(
-        select(func.count(Order.id)).where(Order.user_id == user.id, Order.status == "active")
+    from app.models.models import Order, Tenant
+    from app.services import orders as order_service
+    tenant_res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant_obj = tenant_res.scalar_one_or_none()
+    grace_days = tenant_obj.grace_period_days if tenant_obj else 0
+    grace_mode = tenant_obj.grace_period_mode if tenant_obj else "days"
+
+    orders_res = await db.execute(
+        select(Order.end_date, Order.is_validity_unlimited)
+        .where(Order.user_id == user.id, Order.status == "active")
     )
-    has_active_order = order_result.scalar() > 0
+    has_active_order = False
+    today_val = date.today()
+    for row in orders_res.all():
+        end_d, is_unlim = row
+        eff_end = order_service.compute_effective_end_date(end_d, grace_days, grace_mode)
+        if not is_unlim and eff_end and eff_end < today_val:
+            continue
+        has_active_order = True
+        break
+
     user.is_active_member = has_active_order
     
     if user.role in (UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF):
@@ -407,11 +440,27 @@ async def update_user(
     await db.refresh(user)
 
     # Calcul dynamique du statut après mise à jour
-    from app.models.models import Order
-    order_result = await db.execute(
-        select(func.count(Order.id)).where(Order.user_id == user.id, Order.status == "active")
+    from app.models.models import Order, Tenant
+    from app.services import orders as order_service
+    tenant_res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant_obj = tenant_res.scalar_one_or_none()
+    grace_days = tenant_obj.grace_period_days if tenant_obj else 0
+    grace_mode = tenant_obj.grace_period_mode if tenant_obj else "days"
+
+    orders_res = await db.execute(
+        select(Order.end_date, Order.is_validity_unlimited)
+        .where(Order.user_id == user.id, Order.status == "active")
     )
-    has_active_order = order_result.scalar() > 0
+    has_active_order = False
+    today_val = date.today()
+    for row in orders_res.all():
+        end_d, is_unlim = row
+        eff_end = order_service.compute_effective_end_date(end_d, grace_days, grace_mode)
+        if not is_unlim and eff_end and eff_end < today_val:
+            continue
+        has_active_order = True
+        break
+
     user.is_active_member = has_active_order
     
     if user.role in (UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF):

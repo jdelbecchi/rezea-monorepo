@@ -131,6 +131,15 @@ function AdminEmailsContent() {
     const [templateToDelete, setTemplateToDelete] = useState<EmailTemplate | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
+    // Filtered templates per tab
+    const newsletterTemplates = useMemo(() => {
+        return templates.filter(t => t.content?.includes("<!-- NEWSLETTER_SECTIONS_JSON:"));
+    }, [templates]);
+
+    const operationalTemplates = useMemo(() => {
+        return templates.filter(t => !t.content?.includes("<!-- NEWSLETTER_SECTIONS_JSON:"));
+    }, [templates]);
+
     // Enquêtes (Surveys) State
     const [surveys, setSurveys] = useState<any[]>([]);
     const [events, setEvents] = useState<any[]>([]);
@@ -1088,15 +1097,15 @@ function AdminEmailsContent() {
                     {activeTab === "newsletter" && (
                         <div className="animate-in fade-in duration-300">
                             {/* Section Modèles de bibliothèque */}
-                            {templates.length > 0 && (
+                            {newsletterTemplates.length > 0 && (
                                 <>
                                     <section className="mb-6">
                                         <div className="flex items-center justify-between mb-4">
                                             <h2 className="text-xs font-medium text-slate-400 uppercase tracking-wider">Modèles enregistrés</h2>
-                                            <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-bold">{templates.length} modèles</span>
+                                            <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-bold">{newsletterTemplates.length} modèles</span>
                                         </div>
                                         <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">
-                                            {templates.map(t => (
+                                            {newsletterTemplates.map(t => (
                                                 <div 
                                                     key={t.id}
                                                     onClick={() => loadTemplate(t)}
@@ -1485,14 +1494,14 @@ function AdminEmailsContent() {
                     {activeTab === "operational" && (
                         <div className="grid grid-cols-1 gap-8 animate-in fade-in duration-300">
                             {/* Section Modèles de bibliothèque */}
-                            {templates.length > 0 && (
+                            {operationalTemplates.length > 0 && (
                                 <section className="animate-in fade-in duration-300">
                                     <div className="flex items-center justify-between mb-4">
                                         <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Modèles enregistrés</h2>
-                                        <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-bold">{templates.length} modèles</span>
+                                        <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-bold">{operationalTemplates.length} modèles</span>
                                     </div>
                                     <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">
-                                        {templates.map(t => (
+                                        {operationalTemplates.map(t => (
                                             <div 
                                                 key={t.id}
                                                 onClick={() => loadTemplate(t)}

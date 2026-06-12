@@ -156,12 +156,17 @@ class TenantSettingsUpdate(BaseModel):
     legal_vat_mention: Optional[str] = Field(None, max_length=255)
     registration_limit_mins: Optional[int] = Field(None, ge=0)
     cancellation_limit_mins: Optional[int] = Field(None, ge=0)
+    grace_period_days: Optional[int] = Field(None, ge=0)
+    grace_period_mode: Optional[str] = Field(None, max_length=50)
     confirmation_email_body: Optional[str] = None
     allow_pay_later_offers: Optional[bool] = None
     allow_pay_later_events: Optional[bool] = None
     payment_redirect_link: Optional[str] = None
     pay_now_instructions: Optional[str] = None
     locations: Optional[List[str]] = Field(default_factory=list)
+    show_logo: Optional[bool] = None
+    show_name: Optional[bool] = None
+    show_slogan: Optional[bool] = None
 
 
 class TenantResponse(TenantBase):
@@ -193,12 +198,17 @@ class TenantResponse(TenantBase):
     legal_vat_mention: Optional[str] = None
     registration_limit_mins: int = 0
     cancellation_limit_mins: int = 45
+    grace_period_days: int = 0
+    grace_period_mode: str = "days"
     confirmation_email_body: Optional[str] = None
     allow_pay_later_offers: bool = True
     allow_pay_later_events: bool = True
     payment_redirect_link: Optional[str] = None
     pay_now_instructions: Optional[str] = None
     locations: Optional[List[str]] = Field(default_factory=list)
+    show_logo: bool = True
+    show_name: bool = True
+    show_slogan: bool = True
     created_at: datetime
 
 
@@ -545,6 +555,7 @@ class OrderUpdate(BaseModel):
     user_note: Optional[str] = None
     invoice_number: Optional[str] = None
     invoice_url: Optional[str] = None
+    is_blocked: Optional[bool] = None
 
 
 class InstallmentResponse(BaseModel):
@@ -588,6 +599,7 @@ class OrderResponse(BaseModel):
     # Facturation
     invoice_number: Optional[str] = None
     invoice_url: Optional[str] = None
+    is_blocked: Optional[bool] = None
     # Champs calculés / joints
     user_name: str = ""
     user_email: str = ""
@@ -862,6 +874,7 @@ class FinanceDashboardResponse(BaseModel):
     
     income_by_category: List[dict] # {category: str, amount: int, color: str}
     expense_by_category: List[dict]
+    income_by_offer: List[dict] = [] # {rubrique: str, offer_name: str, amount: int}
     
     recent_transactions: List[FinanceTransactionResponse]
     

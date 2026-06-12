@@ -14,7 +14,7 @@ from app.db.session import get_db
 from app.models.models import (
     User, UserRole, Order, Offer, Booking, BookingStatus, OrderPaymentStatus, 
     Installment, CreditAccount, FinanceTransaction, FinanceTransactionType, 
-    FinanceCategory, FinancePaymentMethod
+    FinanceCategory, FinancePaymentMethod, Tenant
 )
 from app.schemas.schemas import OrderCreate, OrderUpdate, OrderResponse, InstallmentResponse
 from app.services import orders as order_service
@@ -52,33 +52,38 @@ async def require_manager(request: Request, db: AsyncSession = Depends(get_db)) 
 
 
 def generate_installments(order: Order, tenant_id) -> List[Installment]:
-    """Génère les échéances pour une commande échelonnée"""
+    """Génère les échéances pour une commande échelonnée.
+    
+    - 1ère échéance : à la date de début de la commande (paiement immédiat requis)
+    - Échéances suivantes : le 8 de chaque mois suivant
+    """
     installments = []
     
-    # On utilise les données de la commande (qui sont copiées de l'offre au départ)
     price = order.price_recurring_cents
     count = order.recurring_count
 
-    # Si pas de prix récurrent, rien à faire
     if not price:
         return installments
 
-    # Si pas de nombre d'occurrences (abonnement), on génère par défaut 12 mois
     if count is None:
         count = 12
 
     for i in range(count):
-        # Date d'anniversaire : le 8 du mois, à partir du mois suivant la commande
-        due_date = order.start_date + relativedelta(months=i + 1)
-        due_date = due_date.replace(day=8)
+        if i == 0:
+            # 1ère échéance : date de début de la commande
+            due_date = order.start_date
+        else:
+            # Échéances suivantes : le 8 du mois suivant (i mois après le début)
+            due_date = order.start_date + relativedelta(months=i)
+            due_date = due_date.replace(day=8)
 
         installments.append(Installment(
             tenant_id=tenant_id,
             order_id=order.id,
             due_date=due_date,
             amount_cents=price,
-            is_paid=False,  # Pas pointé par défaut
-            is_error=False, # Pas d'erreur par défaut
+            is_paid=False,
+            is_error=False,
         ))
 
     return installments
@@ -139,30 +144,32 @@ async def list_orders(
     )
     orders = result.unique().scalars().all()
 
-    # Fetch all credit accounts for these users to show global balance
-    user_ids = {o.user_id for o in orders}
-    accounts_map = {}
-    if user_ids:
-        accounts_result = await db.execute(
-            select(CreditAccount).where(
-                CreditAccount.user_id.in_(user_ids), 
-                CreditAccount.tenant_id == tenant_id
-            )
-        )
-        # Use string keys to avoid UUID object comparison issues
-        accounts_map = {str(a.user_id): a for a in accounts_result.scalars().all()}
+    tenant_res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = tenant_res.scalar_one_or_none()
+    grace_days = tenant.grace_period_days if tenant else 0
+    grace_mode = tenant.grace_period_mode if tenant else "days"
 
+    fifo_cache = {}
     responses = []
     for order in orders:
-        account = accounts_map.get(str(order.user_id))
-        global_balance = account.balance if account else None
-        global_used = int(account.total_used) if account else 0
+        u_id = str(order.user_id)
+        if u_id not in fifo_cache:
+            fifo_cache[u_id] = await order_service.compute_fifo_balances(db, order.user_id, tenant_id)
+            
+        user_fifo_balances, _, _ = fifo_cache[u_id]
+        order_fifo = user_fifo_balances.get(str(order.id), {})
+        order_balance = order_fifo.get("balance")
+        order_used = order_fifo.get("credits_used", 0)
+        is_blocked = order_fifo.get("is_blocked", False)
         
         responses.append(order_service.build_order_response(
             order, 
-            credits_used=0, 
-            global_balance=global_balance,
-            global_credits_used=global_used
+            credits_used=order_used, 
+            global_balance=order_balance,
+            global_credits_used=order_used,
+            grace_period_days=grace_days,
+            grace_period_mode=grace_mode,
+            is_blocked_val=is_blocked
         ))
 
     return responses
@@ -222,11 +229,17 @@ async def create_order(
     if not offer:
         raise HTTPException(status_code=404, detail="Offre non trouvée")
 
+    tenant_res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = tenant_res.scalar_one_or_none()
+    grace_days = tenant.grace_period_days if tenant else 0
+    grace_mode = tenant.grace_period_mode if tenant else "days"
+
     end_date = order_service.compute_end_date(offer, data.start_date)
     
     # Initial status calculation logic
     today = date.today()
-    is_past = not offer.is_validity_unlimited and end_date and end_date < today
+    effective_end = order_service.compute_effective_end_date(end_date, grace_days, grace_mode)
+    is_past = not offer.is_validity_unlimited and effective_end and effective_end < today
     has_credits = offer.is_unlimited or (offer.classes_included is not None and offer.classes_included > 0)
     
     if not has_credits:
@@ -277,19 +290,21 @@ async def create_order(
     )
     order = result.unique().scalar_one()
 
-    # Get global balance
-    account_res = await db.execute(
-        select(CreditAccount).where(CreditAccount.user_id == order.user_id, CreditAccount.tenant_id == tenant_id)
-    )
-    account = account_res.scalar_one_or_none()
-    global_balance = float(account.balance) if account else 0.0
-    global_used = int(account.total_used) if account else 0
+    # Get FIFO balances
+    user_fifo_balances, _, _ = await order_service.compute_fifo_balances(db, order.user_id, tenant_id)
+    order_fifo = user_fifo_balances.get(str(order.id), {})
+    order_balance = order_fifo.get("balance")
+    order_used = order_fifo.get("credits_used", 0)
+    is_blocked = order_fifo.get("is_blocked", False)
 
     return order_service.build_order_response(
         order, 
-        credits_used=0,
-        global_balance=global_balance,
-        global_credits_used=global_used
+        credits_used=order_used,
+        global_balance=order_balance,
+        global_credits_used=order_used,
+        grace_period_days=grace_days,
+        grace_period_mode=grace_mode,
+        is_blocked_val=is_blocked
     )
 
 
@@ -334,6 +349,9 @@ async def update_order(
     # Transition to INSTALLMENT: generate installments if they don't exist
     payment_is_installment = order.payment_status == OrderPaymentStatus.INSTALLMENT
     
+    # Force regenerate si demandé explicitement (switch vers échelonné sans changement de prix)
+    force_regenerate = update_data.get("force_regenerate_installments", False)
+    
     # Si on vient de passer en échelonné OU si on l'était déjà mais que les tarifs ont changé
     pricing_changed = "price_recurring_cents" in update_data or "recurring_count" in update_data or "featured_pricing" in update_data
     
@@ -347,9 +365,9 @@ async def update_order(
             installments = generate_installments(order, tenant_id)
             for inst in installments:
                 db.add(inst)
-        elif pricing_changed:
-            # Si le tarif a changé, on ne régénère que si AUCUNE échéance n'est encore payée ou en erreur
-            # (pour éviter de casser l'historique financier)
+        elif pricing_changed or force_regenerate:
+            # Si le tarif a changé ou si la régénération est forcée,
+            # on ne régénère que si AUCUNE échéance n'est encore payée ou en erreur
             can_regenerate = all(not inst.is_paid and not inst.is_error for inst in existing_installments)
             if can_regenerate:
                 # Supprimer les anciennes et recréer
@@ -360,6 +378,11 @@ async def update_order(
                 new_installments = generate_installments(order, tenant_id)
                 for inst in new_installments:
                     db.add(inst)
+            elif force_regenerate:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Impossible de régénérer l'échéancier : une ou plusieurs échéances ont déjà été payées ou marquées en erreur."
+                )
 
     await db.commit()
     await db.refresh(order)
@@ -372,19 +395,26 @@ async def update_order(
     )
     order = result.unique().scalar_one()
 
-    # Get global balance
-    account_res = await db.execute(
-        select(CreditAccount).where(CreditAccount.user_id == order.user_id, CreditAccount.tenant_id == tenant_id)
-    )
-    account = account_res.scalar_one_or_none()
-    global_balance = float(account.balance) if account else 0.0
-    global_used = int(account.total_used) if account else 0
+    # Get FIFO balances
+    user_fifo_balances, _, _ = await order_service.compute_fifo_balances(db, order.user_id, tenant_id)
+    order_fifo = user_fifo_balances.get(str(order.id), {})
+    order_balance = order_fifo.get("balance")
+    order_used = order_fifo.get("credits_used", 0)
+    is_blocked = order_fifo.get("is_blocked", False)
+
+    tenant_res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = tenant_res.scalar_one_or_none()
+    grace_days = tenant.grace_period_days if tenant else 0
+    grace_mode = tenant.grace_period_mode if tenant else "days"
 
     return order_service.build_order_response(
         order, 
-        credits_used=0,
-        global_balance=global_balance,
-        global_credits_used=global_used
+        credits_used=order_used,
+        global_balance=order_balance,
+        global_credits_used=order_used,
+        grace_period_days=grace_days,
+        grace_period_mode=grace_mode,
+        is_blocked_val=is_blocked
     )
 
 
@@ -404,6 +434,21 @@ async def delete_order(
     if not order:
         raise HTTPException(status_code=404, detail="Commande non trouvée")
 
+    # Supprimer d'abord les échéances liées
+    inst_result = await db.execute(
+        select(Installment).where(Installment.order_id == order_id, Installment.tenant_id == tenant_id)
+    )
+    for inst in inst_result.scalars().all():
+        await db.delete(inst)
+
+    # Supprimer les transactions financières liées (auto-générées)
+    tx_result = await db.execute(
+        select(FinanceTransaction).where(FinanceTransaction.order_id == order_id, FinanceTransaction.tenant_id == tenant_id)
+    )
+    for tx in tx_result.scalars().all():
+        await db.delete(tx)
+
+    await db.flush()
     await db.delete(order)
     await db.commit()
 

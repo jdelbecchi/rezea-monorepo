@@ -9,7 +9,7 @@ from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.models import Order, Offer, Booking, BookingStatus, OrderPaymentStatus
+from app.models.models import Order, Offer, Booking, BookingStatus, OrderPaymentStatus, Tenant, CreditAccount, CreditTransaction, CreditTransactionType
 from app.schemas.schemas import OrderResponse
 
 def compute_end_date(offer: Offer, start_date: date) -> Optional[date]:
@@ -22,6 +22,18 @@ def compute_end_date(offer: Offer, start_date: date) -> Optional[date]:
         return offer.deadline_date
     # Fallback: 1 year
     return start_date + timedelta(days=365)
+
+def compute_effective_end_date(end_date: Optional[date], grace_period_days: int = 0, grace_period_mode: str = "days") -> Optional[date]:
+    """Calculates the end date after applying the tenant's grace period/tolerance configuration."""
+    if not end_date:
+        return None
+    if grace_period_mode == "end_of_month":
+        import calendar
+        last_day = calendar.monthrange(end_date.year, end_date.month)[1]
+        return date(end_date.year, end_date.month, last_day)
+    elif grace_period_mode == "days" and grace_period_days > 0:
+        return end_date + timedelta(days=grace_period_days)
+    return end_date
 
 def normalize_status(status_str: Optional[str]) -> Optional[str]:
     """Normalizes statuses to avoid duplicates and handle legacy naming."""
@@ -60,7 +72,15 @@ async def compute_credits_used(db: AsyncSession, user_id, tenant_id, start_date:
     )
     return result.scalar() or 0
 
-def build_order_response(order: Order, credits_used: int, global_balance: Optional[float] = None, global_credits_used: Optional[int] = None) -> OrderResponse:
+def build_order_response(
+    order: Order, 
+    credits_used: int, 
+    global_balance: Optional[float] = None, 
+    global_credits_used: Optional[int] = None,
+    grace_period_days: int = 0,
+    grace_period_mode: str = "days",
+    is_blocked_val: Optional[bool] = None
+) -> OrderResponse:
     """
     Builds the OrderResponse with calculated balance and dynamic status.
     This logic MUST be shared between Admin and User Shop APIs.
@@ -77,16 +97,24 @@ def build_order_response(order: Order, credits_used: int, global_balance: Option
     display_status = order.status
     
     has_credits = order.is_unlimited or (balance is not None and balance > 0)
-    is_past = not order.is_validity_unlimited and order.end_date and order.end_date < today
+    effective_end_date = compute_effective_end_date(order.end_date, grace_period_days, grace_period_mode)
+    is_past = not order.is_validity_unlimited and effective_end_date and effective_end_date < today
+    
+    blocked = (order.is_blocked is True) or (is_past and order.is_blocked is not False)
+    if display_status in ["en_pause", "resiliee"]:
+        blocked = True
+        
+    effective_blocked = is_blocked_val if is_blocked_val is not None else blocked
 
     if display_status and display_status not in ["active"]:
         # Tout statut autre que "active" est considéré comme un choix manuel 
         # ou un état figé que l'on ne recalcule pas automatiquement.
         pass
-    elif not has_credits:
-        display_status = "termine"
     elif is_past:
-        display_status = "expiree"
+        if balance == 0:
+            display_status = "termine"
+        else:
+            display_status = "expiree"
     else:
         # L'ordre reste "active" ou le devient s'il n'avait pas de statut
         display_status = "active"
@@ -161,5 +189,291 @@ def build_order_response(order: Order, credits_used: int, global_balance: Option
         offer_snap_validity_days=order.offer_snap_validity_days,
         offer_snap_validity_unit=order.offer_snap_validity_unit,
         offer_snap_is_validity_unlimited=order.offer_snap_is_validity_unlimited or False,
-        installments=order.installments
+        installments=order.installments,
+        is_blocked=effective_blocked
     )
+
+
+async def expire_user_credits_if_needed(db: AsyncSession, user_id, tenant_id):
+    """
+    Checks all expired orders of the user.
+    If they have remaining credits, deducts them from CreditAccount.balance
+    and creates a CreditTransaction of type ADJUSTMENT.
+    Also restores credits if an order was extended/unexpired.
+    """
+    # 1. Fetch Tenant configuration for grace period
+    tenant_res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = tenant_res.scalar_one_or_none()
+    grace_days = tenant.grace_period_days if tenant else 0
+    grace_mode = tenant.grace_period_mode if tenant else "days"
+    
+    # 2. Get all orders for this user that are not unlimited
+    orders_res = await db.execute(
+        select(Order)
+        .where(
+            and_(
+                Order.user_id == user_id,
+                Order.tenant_id == tenant_id,
+                Order.is_validity_unlimited == False,
+                Order.end_date.isnot(None)
+            )
+        )
+    )
+    orders = orders_res.scalars().all()
+    today = date.today()
+    
+    # Get user's CreditAccount
+    account_res = await db.execute(
+        select(CreditAccount).where(
+            and_(
+                CreditAccount.user_id == user_id,
+                CreditAccount.tenant_id == tenant_id
+            )
+        )
+    )
+    account = account_res.scalar_one_or_none()
+    if not account:
+        return
+        
+    for order in orders:
+        effective_end_date = compute_effective_end_date(order.end_date, grace_days, grace_mode)
+        is_past = effective_end_date and effective_end_date < today
+        
+        # Check if an expiration transaction already exists for this order
+        exp_tx_res = await db.execute(
+            select(CreditTransaction).where(
+                and_(
+                    CreditTransaction.tenant_id == tenant_id,
+                    CreditTransaction.account_id == account.id,
+                    CreditTransaction.transaction_type == CreditTransactionType.ADJUSTMENT,
+                    CreditTransaction.reference == str(order.id)
+                )
+            )
+        )
+        exp_tx = exp_tx_res.scalar_one_or_none()
+        
+        if is_past:
+            # Order is expired! If not processed yet, process it.
+            if not exp_tx:
+                # Calculate unused credits for this order
+                credits_used = await compute_credits_used(db, user_id, tenant_id, order.start_date, order.end_date)
+                order_credits_total = order.credits_total or 0
+                unused = order_credits_total - credits_used
+                if unused > 0:
+                    amount_to_deduct = min(unused, float(account.balance))
+                    if amount_to_deduct > 0:
+                        account.balance -= amount_to_deduct
+                        tx = CreditTransaction(
+                            tenant_id=tenant_id,
+                            account_id=account.id,
+                            transaction_type=CreditTransactionType.ADJUSTMENT,
+                            amount=-amount_to_deduct,
+                            balance_after=account.balance,
+                            description=f"Expiration des crédits ({order.offer_snap_name or 'Offre'})",
+                            reference=str(order.id),
+                            consumed_at=datetime.utcnow()
+                        )
+                        db.add(tx)
+                        
+                        # Also, if order status is active or None, change it to expiree
+                        if order.status in ["active", None]:
+                            order.status = "expiree"
+                            
+                        await db.commit()
+        else:
+            # Order is NOT past (active or extended/unexpired).
+            # If an expiration transaction exists, it means the order was extended/restored!
+            if exp_tx:
+                # Restituer les crédits
+                amount_to_restore = abs(float(exp_tx.amount))
+                account.balance += amount_to_restore
+                
+                # Delete the expiration transaction to clean up
+                await db.delete(exp_tx)
+                
+                if order.status == "expiree":
+                    order.status = "active"
+                    
+                await db.commit()
+
+
+async def compute_fifo_balances(
+    db: AsyncSession, 
+    user_id, 
+    tenant_id, 
+    bookings_to_add: list = [],
+    exclude_booking_id = None
+):
+    """
+    Calculates remaining credits for each order of the user using FIFO.
+    Allocates bookings chronologically based on their session/event date.
+    Returns:
+      - orders_balances: dict mapping order_id -> {
+            "credits_total": int,
+            "credits_used": int,
+            "balance": int,
+            "is_blocked": bool
+        }
+      - global_balance: sum of balances of all active/non-blocked orders of the user.
+      - success: bool (whether all bookings, including bookings_to_add, were successfully allocated)
+    """
+    from datetime import date, datetime
+    from app.models.models import Order, Booking, Session, Tenant, BookingStatus
+    
+    # 1. Get grace period parameters
+    tenant_res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = tenant_res.scalar_one_or_none()
+    grace_days = tenant.grace_period_days if tenant else 0
+    grace_mode = tenant.grace_period_mode if tenant else "days"
+    
+    # 2. Load all orders of the user, ordered by start_date ascending, then created_at
+    orders_res = await db.execute(
+        select(Order)
+        .where(
+            and_(
+                Order.user_id == user_id,
+                Order.tenant_id == tenant_id,
+                Order.status != "resiliee"
+            )
+        )
+        .order_by(Order.start_date.asc(), Order.created_at.asc())
+    )
+    orders = orders_res.scalars().all()
+    
+    # 3. Load all existing bookings of the user
+    bookings_res = await db.execute(
+        select(Booking)
+        .join(Session)
+        .where(
+            and_(
+                Booking.user_id == user_id,
+                Booking.tenant_id == tenant_id,
+                Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.COMPLETED])
+            )
+        )
+        .order_by(Session.start_time.asc())
+    )
+    bookings = bookings_res.scalars().all()
+    
+    # Let's build the list of all allocations:
+    # Each item: {"id": uuid, "date": date, "credits": int}
+    items_to_allocate = []
+    for b in bookings:
+        if exclude_booking_id and b.id == exclude_booking_id:
+            continue
+        # Get session start date
+        session_res = await db.execute(select(Session.start_time).where(Session.id == b.session_id))
+        session_start = session_res.scalar()
+        if session_start:
+            items_to_allocate.append({
+                "id": str(b.id),
+                "date": session_start.date(),
+                "credits": int(b.credits_used or 1)
+            })
+            
+    # Add temporary bookings (to validate new booking request)
+    for temp in bookings_to_add:
+        items_to_allocate.append({
+            "id": temp.get("id"),
+            "date": temp.get("date"),
+            "credits": temp.get("credits", 1)
+        })
+        
+    # Sort all items to allocate by date ascending
+    items_to_allocate.sort(key=lambda x: x["date"])
+    
+    # Initialize allocation tracker for each order
+    # order_allocations maps str(order.id) -> credits_allocated
+    order_allocations = {str(o.id): 0 for o in orders}
+    
+    # Determine which orders are blocked *today*
+    today = date.today()
+    orders_blocked_status = {}
+    for o in orders:
+        effective_end = compute_effective_end_date(o.end_date, grace_days, grace_mode)
+        is_past = not o.is_validity_unlimited and effective_end and effective_end < today
+        
+        # An order is blocked if:
+        # 1. is_blocked is True
+        # 2. is_blocked is None/null AND the order is past
+        blocked = (o.is_blocked is True) or (o.is_blocked is None and is_past)
+        # If the order is explicitly paused/resigned, it's also blocked
+        if o.status in ["en_pause", "resiliee"]:
+            blocked = True
+        orders_blocked_status[str(o.id)] = blocked
+        
+    # Now simulate the allocation
+    success = True
+    for item in items_to_allocate:
+        allocated = False
+        item_date = item["date"]
+        item_credits = item["credits"]
+        
+        # Try to find a valid order for this item
+        for o in orders:
+            o_id = str(o.id)
+            effective_end = compute_effective_end_date(o.end_date, grace_days, grace_mode)
+            
+            # Check if order is valid at the item's date
+            if o.is_blocked is True:
+                is_valid = False
+            elif o.is_blocked is False:
+                is_valid = (o.start_date <= item_date)
+            else: # is_blocked is None
+                is_valid = (o.start_date <= item_date) and (o.is_validity_unlimited or not effective_end or item_date <= effective_end)
+                
+            # If valid, do we have enough remaining credits?
+            if is_valid:
+                # Unlimited credits orders have infinite capacity
+                if o.is_unlimited:
+                    allocated = True
+                    item_credits = 0
+                    break
+                else:
+                    credits_init = int(o.credits_total or 0)
+                    credits_used = order_allocations[o_id]
+                    if credits_used < credits_init:
+                        # Allocate as much as possible
+                        available = credits_init - credits_used
+                        if item_credits <= available:
+                            order_allocations[o_id] += item_credits
+                            item_credits = 0
+                            allocated = True
+                            break
+                        else:
+                            order_allocations[o_id] += available
+                            item_credits -= available
+                            # continue to next order for remaining item_credits
+                            
+        if item_credits > 0 and not allocated:
+            success = False
+            
+    # Compute balances for each order
+    orders_balances = {}
+    global_balance = 0
+    for o in orders:
+        o_id = str(o.id)
+        credits_init = int(o.credits_total or 0)
+        credits_used = order_allocations[o_id]
+        
+        if o.is_unlimited:
+            bal = None
+        else:
+            bal = max(0, credits_init - credits_used)
+            
+        is_blocked = orders_blocked_status[o_id]
+        
+        # Sum to global_balance if NOT blocked and NOT unlimited
+        if not is_blocked and bal is not None:
+            global_balance += bal
+            
+        orders_balances[o_id] = {
+            "credits_total": o.credits_total,
+            "credits_used": credits_used,
+            "balance": bal,
+            "is_blocked": is_blocked
+        }
+        
+    return orders_balances, global_balance, success
+
+

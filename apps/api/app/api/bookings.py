@@ -103,7 +103,8 @@ async def consume_credits_fifo(
     db: AsyncSession,
     tenant_id: UUID,
     user_id: UUID,
-    amount: float
+    amount: float,
+    new_balance: float
 ) -> UUID:
     """
     Consomme des crédits selon la logique FIFO
@@ -120,15 +121,19 @@ async def consume_credits_fifo(
     )
     account = result.scalar_one_or_none()
     
-    if not account or account.balance < amount:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Crédits insuffisants (requis: {amount}, disponibles: {account.balance if account else 0})"
+    if not account:
+        account = CreditAccount(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            balance=new_balance,
+            total_purchased=0,
+            total_used=amount
         )
-    
-    # Mettre à jour le solde
-    account.balance -= amount
-    account.total_used += amount
+        db.add(account)
+        await db.flush()
+    else:
+        account.balance = new_balance
+        account.total_used += amount
     
     # Créer la transaction
     transaction = CreditTransaction(
@@ -147,6 +152,7 @@ async def consume_credits_fifo(
     return transaction.id
 
 
+
 @router.post("", response_model=BookingResponse, status_code=status.HTTP_201_CREATED)
 async def create_booking(
     booking_data: BookingCreate,
@@ -163,6 +169,25 @@ async def create_booking(
     """
     tenant_id = request.state.tenant_id
     user_id = request.state.user_id
+    
+    # Vérifier si l'utilisateur est suspendu
+    from app.models.models import User
+    user_res = await db.execute(select(User).where(User.id == user_id))
+    user = user_res.scalar_one_or_none()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Utilisateur non trouvé"
+        )
+    if user.is_suspended:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Vos crédits sont suspendus ou bloqués."
+        )
+
+    # Charger le service des commandes
+    from app.services import orders as order_service
+
     
     # Récupérer la séance avec verrouillage
     result = await db.execute(
@@ -231,10 +256,28 @@ async def create_booking(
     booking_status = BookingStatus.CONFIRMED if not is_full else BookingStatus.PENDING
     
     try:
+        # Simuler la file d'attente FIFO en ajoutant la réservation demandée
+        orders_balances, global_balance, success = await order_service.compute_fifo_balances(
+            db,
+            user_id,
+            tenant_id,
+            bookings_to_add=[{
+                "id": "new_booking",
+                "date": session.start_time.date(),
+                "credits": session.credits_required
+            }]
+        )
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Crédits insuffisants ou expirés pour cette date"
+            )
+            
         # Consommer les crédits
         transaction_id = await consume_credits_fifo(
-            db, tenant_id, user_id, session.credits_required
+            db, tenant_id, user_id, session.credits_required, global_balance
         )
+
         
         # Créer la réservation
         booking = Booking(
@@ -289,6 +332,9 @@ async def list_bookings(
     
     # Restitution automatique des crédits pour les listes d'attente expirées
     await auto_restitute_expired_waitlist(db, tenant_id, user_id)
+    
+    # Expirer les crédits expirés si nécessaire (obsolète avec FIFO dynamique)
+
     
     query = select(Booking, Session).join(
         Session, Booking.session_id == Session.id
@@ -376,6 +422,9 @@ async def cancel_booking(
     booking.cancelled_at = datetime.utcnow()
     booking.cancellation_type = "user"
     
+    # Flusher pour que la simulation de solde lise le nouveau statut CANCELLED
+    await db.flush()
+    
     # Décrémenter le compteur si confirmé
     if was_confirmed:
         session.current_participants = max(0, session.current_participants - 1)
@@ -393,7 +442,11 @@ async def cancel_booking(
         account = result.scalar_one_or_none()
         
         if account:
-            account.balance += booking.credits_used
+            # Recompute global_balance dynamically
+            from app.services import orders as order_service
+            _, global_balance, _ = await order_service.compute_fifo_balances(db, user_id, tenant_id)
+            
+            account.balance = global_balance
             account.total_used -= booking.credits_used
             
             refund_transaction = CreditTransaction(
@@ -406,6 +459,7 @@ async def cancel_booking(
                 reference=str(booking.id)
             )
             db.add(refund_transaction)
+
     
     # Promotion automatique : promouvoir le 1er en liste d'attente
     if was_confirmed:

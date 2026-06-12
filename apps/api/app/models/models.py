@@ -103,6 +103,9 @@ class Tenant(Base):
     login_background_url = Column(String(500), nullable=True)
     login_description = Column(Text, nullable=True)
     welcome_message = Column(Text, nullable=True)
+    show_logo = Column(Boolean, default=True, server_default="true", nullable=False)
+    show_name = Column(Boolean, default=True, server_default="true", nullable=False)
+    show_slogan = Column(Boolean, default=True, server_default="true", nullable=False)
     
     # Réseaux sociaux & Site Web
     website_url = Column(String(500), nullable=True)
@@ -124,6 +127,8 @@ class Tenant(Base):
     # Paramètres de gestion
     registration_limit_mins = Column(Integer, default=0, nullable=False)  # 0 = pas de limite
     cancellation_limit_mins = Column(Integer, default=45, nullable=False)
+    grace_period_days = Column(Integer, default=0, nullable=False)
+    grace_period_mode = Column(String(50), default="days", nullable=False)
     
     # Emails
     confirmation_email_body = Column(Text, nullable=True)
@@ -623,6 +628,9 @@ class Order(Base):
 
     # Flag: créé par un manager
     created_by_admin = Column(Boolean, default=False)
+    
+    # Blocage manuel du solde de crédits (True=bloqué, False=débloqué, None=default)
+    is_blocked = Column(Boolean, default=None, nullable=True)
 
     # Snapshot des infos de l'offre au moment de l'achat (Contractuel)
     offer_snap_name = Column(String(100))

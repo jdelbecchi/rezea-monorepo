@@ -255,7 +255,7 @@ export default function AdminSettingsPage() {
                             <button
                                 onClick={handleSave}
                                 disabled={saving}
-                                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-semibold text-sm transition-all shadow-sm shadow-slate-200 disabled:opacity-50 flex items-center gap-2 active:scale-95"
+                                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium text-sm transition-all shadow-sm shadow-slate-200 disabled:opacity-50 flex items-center gap-2 active:scale-95"
                             >
                                 {saving ? "Enregistrement..." : "Enregistrer les modifications"}
                             </button>
@@ -504,11 +504,54 @@ export default function AdminSettingsPage() {
                                 <div className="space-y-8">
                                     <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm flex flex-col h-full">
                                         <div className="space-y-6 flex-1 mb-8">
+                                            {/* Cases à cocher pour l'affichage des éléments de branding */}
+                                            <div className="space-y-3">
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">
+                                                    Que souhaitez-vous afficher sur votre portail de connexion ?
+                                                </label>
+                                                <div className="flex flex-col gap-2.5 pl-1">
+                                                    {/* Logo visibility */}
+                                                    <label className="flex items-center gap-3 cursor-pointer group select-none">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={formData.show_logo !== false}
+                                                            onChange={e => setFormData({ ...formData, show_logo: e.target.checked })}
+                                                            className="w-4 h-4"
+                                                        />
+                                                        <span className="text-xs font-light text-slate-600 group-hover:text-slate-900 transition-colors">Logo de l&apos;établissement</span>
+                                                    </label>
+                                                    
+                                                    {/* Name visibility */}
+                                                    <label className="flex items-center gap-3 cursor-pointer group select-none">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={formData.show_name !== false}
+                                                            onChange={e => setFormData({ ...formData, show_name: e.target.checked })}
+                                                            className="w-4 h-4"
+                                                        />
+                                                        <span className="text-xs font-light text-slate-600 group-hover:text-slate-900 transition-colors">Nom de l&apos;établissement</span>
+                                                    </label>
+                                                    
+                                                    {/* Slogan visibility */}
+                                                    <label className="flex items-center gap-3 cursor-pointer group select-none">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={formData.show_slogan !== false}
+                                                            onChange={e => setFormData({ ...formData, show_slogan: e.target.checked })}
+                                                            className="w-4 h-4"
+                                                        />
+                                                        <span className="text-xs font-light text-slate-600 group-hover:text-slate-900 transition-colors">Phrase d&apos;accroche (signature)</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+
+                                            <div className="border-t border-slate-100 my-6" />
+
                                             <div>
                                                 <label className="block text-sm font-medium text-slate-700 mb-2">Image de fond du portail</label>
                                                 <div className="w-full h-48 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group mb-3 shadow-inner">
                                                     {previewLoginBg ? (
-                                                        <img src={previewLoginBg} className="w-full h-full object-cover" alt="Login Background" />
+                                                        <img src={previewLoginBg} className="w-full h-full object-contain bg-slate-900/[0.02]" alt="Login Background" />
                                                     ) : (
                                                         <div className="text-center space-y-2">
                                                             <span className="text-4xl block">🖼️</span>
@@ -556,7 +599,7 @@ export default function AdminSettingsPage() {
                                         <div className="pt-6 border-t border-slate-100 flex justify-end mt-auto">
                                             <button 
                                                 onClick={() => setShowPreview(true)}
-                                                className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-semibold text-sm transition-all shadow-lg shadow-slate-200 active:scale-95"
+                                                className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium text-sm transition-all shadow-lg shadow-slate-200 active:scale-95"
                                             >
                                                 Aperçu du portail
                                             </button>
@@ -637,35 +680,92 @@ export default function AdminSettingsPage() {
                                         <p className="text-xs text-slate-400 font-normal">Configurez les limites temporelles pour vos activités</p>
                                     </div>
 
-                                    <div className="space-y-6 flex-1">
-                                        <div className="space-y-3">
-                                            <label className="block text-sm font-medium text-slate-700">Délai limite d&apos;inscription</label>
+                                    <div className="space-y-4 flex-1">
+                                        <div className="space-y-1.5">
+                                            <label className="block text-sm font-medium text-slate-700 flex items-center gap-1.5">
+                                                <span>⏳</span>
+                                                <span>Délai limite d&apos;inscription</span>
+                                            </label>
                                             <div className="relative group">
                                                 <input
                                                     type="number"
                                                     value={formData.registration_limit_mins ?? 0}
                                                     onChange={e => setFormData({ ...formData, registration_limit_mins: parseInt(e.target.value) || 0 })}
-                                                    className="w-full pl-12 pr-20 py-4 bg-white border border-slate-200 rounded-2xl font-semibold focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                                                    className="w-full pl-6 pr-20 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-4 focus:ring-blue-100 transition-all outline-none"
                                                 />
-                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">⏳</span>
-                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-sm">minutes</span>
+                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-medium">minutes</span>
                                             </div>
                                             <p className="text-[10px] text-slate-400 font-normal">0 = possible jusqu&apos;au début du cours</p>
                                         </div>
 
-                                        <div className="space-y-3">
-                                            <label className="block text-sm font-medium text-slate-700">Délai limite d&apos;annulation</label>
+                                        <div className="space-y-1.5">
+                                            <label className="block text-sm font-medium text-slate-700 flex items-center gap-1.5">
+                                                <span>🚫</span>
+                                                <span>Délai limite d&apos;annulation</span>
+                                            </label>
                                             <div className="relative group">
                                                 <input
                                                     type="number"
                                                     value={formData.cancellation_limit_mins ?? 45}
                                                     onChange={e => setFormData({ ...formData, cancellation_limit_mins: parseInt(e.target.value) || 0 })}
-                                                    className="w-full pl-12 pr-20 py-4 bg-white border border-slate-200 rounded-2xl font-semibold focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                                                    className="w-full pl-6 pr-20 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-4 focus:ring-blue-100 transition-all outline-none"
                                                 />
-                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">🚫</span>
-                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-sm">minutes</span>
+                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-medium">minutes</span>
                                             </div>
                                             <p className="text-[10px] text-slate-400 font-normal">Passé ce délai, le crédit ne sera pas restitué</p>
+                                        </div>
+
+                                        {/* Grace period / Tolerance settings */}
+                                        <div className="pt-6 border-t border-slate-100 space-y-4">
+                                            <div className="space-y-1">
+                                                <label className="block text-sm font-medium text-slate-700 flex items-center gap-1.5">
+                                                    <span>🎁</span>
+                                                    <span>Délai de grâce (crédits & statut)</span>
+                                                </label>
+                                                <p className="text-xs text-slate-400 font-normal">
+                                                    Autoriser les utilisateurs à consommer leurs crédits après la fin théorique de leur commande d&apos;offre.
+                                                </p>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-[11px] font-light text-slate-400 uppercase tracking-wider mb-2 ml-1">Mode de tolérance</label>
+                                                    <select
+                                                        value={formData.grace_period_mode || "days"}
+                                                        onChange={e => {
+                                                            const mode = e.target.value;
+                                                            setFormData({ 
+                                                                ...formData, 
+                                                                grace_period_mode: mode,
+                                                                grace_period_days: mode === "end_of_month" ? 0 : (formData.grace_period_days || 0)
+                                                            });
+                                                        }}
+                                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all text-sm font-medium"
+                                                    >
+                                                        <option value="days">Nombre de jours après la fin</option>
+                                                        <option value="end_of_month">Jusqu&apos;à la fin du mois calendaire</option>
+                                                    </select>
+                                                </div>
+
+                                                {formData.grace_period_mode !== "end_of_month" && (
+                                                    <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                                                        <label className="block text-[11px] font-light text-slate-400 uppercase tracking-wider mb-2 ml-1">Nombre de jours</label>
+                                                        <div className="relative">
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                value={formData.grace_period_days ?? 0}
+                                                                onChange={e => setFormData({ ...formData, grace_period_days: parseInt(e.target.value) || 0 })}
+                                                                className="w-full pl-4 pr-12 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all text-sm font-semibold"
+                                                            />
+                                                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-medium">jours</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <p className="text-[10px] text-slate-400 font-normal italic leading-tight">
+                                                💡 Exemple : Pour une offre finissant le 10 juin, avec 15 jours de tolérance ou une fin de mois, l&apos;utilisateur pourra utiliser ses crédits restants jusqu&apos;au 25 juin ou 30 juin. Le statut passera à Expiré après cette date de tolérance.
+                                            </p>
                                         </div>
                                     </div>
                                 </section>
@@ -1046,49 +1146,78 @@ export default function AdminSettingsPage() {
                         {/* Modal Content - The actual Mock Portal */}
                         <div className="flex-1 overflow-auto p-4 md:p-12 flex items-center justify-center">
                             <div className={`bg-white shadow-2xl overflow-hidden transition-all duration-500 ${previewMode === "mobile" ? "w-[375px] h-[667px] rounded-3xl border-[8px] border-slate-900" : "w-full max-w-5xl h-[600px] rounded-3xl"}`}>
-                                <div className={`h-full flex ${previewMode === "mobile" ? "flex-col overflow-y-auto no-scrollbar" : "flex-row divide-x"} divide-slate-100`} style={{ "--primary-color": formData.login_primary_color || formData.primary_color || "#0f172a" } as any}>
+                                <div className={`h-full flex ${previewMode === "mobile" ? "flex-col overflow-y-auto no-scrollbar" : "flex-row"} bg-white`} style={{ "--primary-color": formData.login_primary_color || formData.primary_color || "#0f172a" } as any}>
                                     
                                     {/* Left Branding Panel */}
-                                    <div className={`${previewMode === "mobile" ? "w-full pt-12 pb-8 px-8 text-center" : "flex-1 p-12"} relative z-10 bg-white flex flex-col justify-center`}>
-                                        <div className={`space-y-6 ${previewMode === "mobile" ? "flex flex-col items-center" : ""}`}>
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white text-xl font-black shadow-lg">
-                                                    {previewLogo ? <img src={previewLogo} className="w-full h-full object-contain p-2" alt="" /> : "RZ"}
+                                    <div className={`${previewMode === "mobile" ? "w-full pt-10 pb-8 px-6 text-center" : "w-[40%] p-12 text-center"} relative z-20 bg-white flex flex-col justify-center`}>
+                                        <div className="flex flex-col items-center space-y-6 md:space-y-8 text-center w-full">
+                                            {/* Logo & Name Header */}
+                                            <div className="flex flex-col gap-4 items-center justify-center text-center w-full">
+                                                {formData.show_logo !== false && (
+                                                    previewLogo ? (
+                                                        <img 
+                                                            src={previewLogo} 
+                                                            alt={formData.name} 
+                                                            className={`${previewMode === "mobile" ? "h-12" : "h-16"} object-contain`} 
+                                                        />
+                                                    ) : (
+                                                        <div 
+                                                            className={`${previewMode === "mobile" ? "h-12 w-12 text-xl" : "h-16 w-16 text-2xl"} rounded-2xl flex items-center justify-center text-white font-bold shadow-sm`}
+                                                            style={{ backgroundColor: formData.login_primary_color || formData.primary_color || "#0f172a" }}
+                                                        >
+                                                            {(formData.name || "REZEA").substring(0, 2).toUpperCase()}
+                                                        </div>
+                                                    )
+                                                )}
+                                                
+                                                <div className="flex flex-col gap-1 items-center justify-center text-center w-full">
+                                                    {formData.show_name !== false && (
+                                                        <h1 className={`${previewMode === "mobile" ? "text-xl" : "text-3xl lg:text-4xl"} font-medium tracking-tight leading-none text-slate-900`}>
+                                                            {formData.name || "REZEA"}
+                                                        </h1>
+                                                    )}
+                                                    
+                                                    {formData.show_slogan !== false && formData.slogan && (
+                                                        <p className="text-[11px] md:text-xs font-medium text-slate-400 italic">
+                                                            {formData.slogan}
+                                                        </p>
+                                                    )}
                                                 </div>
-                                                <h1 className="text-2xl font-black tracking-tighter text-slate-900">
-                                                    {formData.name || "REZEA"}
-                                                </h1>
                                             </div>
-                                            <div 
-                                                className="portal-description text-sm md:text-base text-slate-500 font-medium leading-relaxed max-w-md pointer-events-none"
-                                                dangerouslySetInnerHTML={{ __html: formData.login_description || "<p>Votre description apparaîtra ici...</p>" }}
-                                            />
+
+                                            {/* Description */}
+                                            <div className={`${previewMode === "mobile" ? "text-center" : "text-left"} w-full`}>
+                                                <div 
+                                                    className="portal-description text-xs md:text-sm text-slate-500 font-medium leading-relaxed pointer-events-none"
+                                                    dangerouslySetInnerHTML={{ __html: formData.login_description || "<p>Votre description apparaîtra ici...</p>" }}
+                                                />
+                                            </div>
                                         </div>
                                     </div>
 
                                     {/* Right Panel (Image & Form) */}
-                                    <div className={`relative ${previewMode === "mobile" ? "w-full min-h-[450px] pb-12 px-6" : "flex-1"} flex items-center justify-center overflow-hidden bg-slate-50`}>
+                                    <div className={`relative ${previewMode === "mobile" ? "w-full min-h-[350px] flex-1 pb-10 px-4" : "flex-1"} flex items-center justify-center overflow-hidden bg-white`}>
                                         {/* Background Image logic mirror */}
                                         {previewLoginBg ? (
                                             <div className="absolute inset-0">
-                                                <img src={previewLoginBg} className="w-full h-full object-cover" alt="" />
-                                                <div className={`absolute top-0 left-0 w-full h-full ${previewMode === "mobile" ? "bg-gradient-to-b" : "bg-gradient-to-r"} from-white via-white/40 to-transparent`} />
-                                                <div className="absolute inset-0 bg-slate-900/10 backdrop-blur-[2px]" />
+                                                <img src={previewLoginBg} className="w-full h-full object-cover grayscale-[10%]" alt="" />
+                                                <div className={`absolute top-0 left-0 w-full h-full ${previewMode === "mobile" ? "bg-gradient-to-b from-white via-white/40 to-transparent" : "bg-gradient-to-r from-white via-white/10 to-transparent"} z-10`} />
+                                                <div className="absolute inset-0 bg-slate-900/10 z-0" />
                                             </div>
                                         ) : (
                                             <div className="absolute inset-0 opacity-10" style={{ background: `radial-gradient(circle at center, ${formData.primary_color}, transparent)` }} />
                                         )}
                                         
                                         {/* Mock Form */}
-                                        <div className="relative z-10 w-full max-w-[300px] scale-90 md:scale-100">
-                                            <div className="bg-white/95 backdrop-blur-sm p-6 rounded-3xl shadow-xl border border-white/50 space-y-4">
-                                                <h4 className="text-sm font-bold text-slate-900">Accédez à votre espace</h4>
-                                                <div className="space-y-2">
-                                                    <div className="h-9 bg-slate-100 rounded-lg animate-pulse" />
-                                                    <div className="h-9 bg-slate-100 rounded-lg animate-pulse" />
+                                        <div className="relative z-20 w-full max-w-[280px] scale-90 md:scale-95">
+                                            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6 space-y-4">
+                                                <h4 className="text-xs font-semibold text-slate-800">Accédez à votre espace</h4>
+                                                <div className="space-y-2.5">
+                                                    <div className="h-8 bg-slate-50 border border-slate-150 rounded-lg animate-pulse" />
+                                                    <div className="h-8 bg-slate-50 border border-slate-150 rounded-lg animate-pulse" />
                                                 </div>
-                                                <div className="h-9 rounded-lg" style={{ backgroundColor: formData.login_primary_color || formData.primary_color || "#0f172a" }} />
-                                                <div className="text-[10px] text-center text-slate-400">Pas encore de compte ? S&apos;inscrire</div>
+                                                <div className="h-8 rounded-lg" style={{ backgroundColor: formData.login_primary_color || formData.primary_color || "#0f172a" }} />
+                                                <div className="text-[9px] text-center text-slate-400 font-medium">Pas encore de compte ? S&apos;inscrire</div>
                                             </div>
                                         </div>
                                     </div>
@@ -1251,7 +1380,13 @@ export default function AdminSettingsPage() {
                 /* Portal Description Styles in Preview */
                 .portal-description p { margin-bottom: 0.75rem; }
                 .portal-description h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; }
-                .portal-description ul { list-style: none; padding: 0; margin-bottom: 0.75rem; }
+                .portal-description ul { 
+                    display: inline-block;
+                    text-align: left;
+                    list-style: none; 
+                    padding: 0; 
+                    margin-bottom: 0.75rem; 
+                }
                 .portal-description li { position: relative; padding-left: 1.25rem; margin-bottom: 0.4rem; }
                 .portal-description li::before {
                     content: "";

@@ -192,20 +192,27 @@ async def shop_checkout(
         message = tenant.pay_now_instructions or "Vous allez être redirigé vers l'interface de paiement."
         redirect_url = tenant.payment_redirect_link
 
-    # Get global balance
-    account_res = await db.execute(
-        select(CreditAccount).where(CreditAccount.user_id == order.user_id, CreditAccount.tenant_id == order.tenant_id)
-    )
-    account = account_res.scalar_one_or_none()
-    global_balance = float(account.balance) if account else 0.0
-    global_used = int(account.total_used) if account else 0
+    tenant_res = await db.execute(select(Tenant).where(Tenant.id == order.tenant_id))
+    tenant = tenant_res.scalar_one_or_none()
+    grace_days = tenant.grace_period_days if tenant else 0
+    grace_mode = tenant.grace_period_mode if tenant else "days"
+
+    # Get FIFO balances
+    user_fifo_balances, _, _ = await order_service.compute_fifo_balances(db, order.user_id, order.tenant_id)
+    order_fifo = user_fifo_balances.get(str(order.id), {})
+    order_balance = order_fifo.get("balance")
+    order_used = order_fifo.get("credits_used", 0)
+    is_blocked = order_fifo.get("is_blocked", False)
 
     # Use shared service to build response
     order_res = order_service.build_order_response(
         order, 
-        credits_used=0,
-        global_balance=global_balance,
-        global_credits_used=global_used
+        credits_used=order_used,
+        global_balance=order_balance,
+        global_credits_used=order_used,
+        grace_period_days=grace_days,
+        grace_period_mode=grace_mode,
+        is_blocked_val=is_blocked
     )
 
     return ShopCheckoutResponse(
@@ -239,23 +246,32 @@ async def list_my_orders(
     
     orders = result.unique().scalars().all()
     
-    # Get global balance for the user
-    account_res = await db.execute(
-        select(CreditAccount).where(CreditAccount.user_id == user_id, CreditAccount.tenant_id == tenant_id)
-    )
-    account = account_res.scalar_one_or_none()
-    global_balance = float(account.balance) if account else 0.0
-    global_used = int(account.total_used) if account else 0
+    tenant_res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = tenant_res.scalar_one_or_none()
+    grace_days = tenant.grace_period_days if tenant else 0
+    grace_mode = tenant.grace_period_mode if tenant else "days"
+
+    # Get FIFO balances
+    user_fifo_balances, _, _ = await order_service.compute_fifo_balances(db, user_id, tenant_id)
 
     # Mapper vers OrderResponse en utilisant le service partagé
-    res = [
-        order_service.build_order_response(
-            order, 
-            credits_used=0, 
-            global_balance=global_balance,
-            global_credits_used=global_used
+    res = []
+    for order in orders:
+        order_fifo = user_fifo_balances.get(str(order.id), {})
+        order_balance = order_fifo.get("balance")
+        order_used = order_fifo.get("credits_used", 0)
+        is_blocked = order_fifo.get("is_blocked", False)
+        
+        res.append(
+            order_service.build_order_response(
+                order, 
+                credits_used=order_used, 
+                global_balance=order_balance,
+                global_credits_used=order_used,
+                grace_period_days=grace_days,
+                grace_period_mode=grace_mode,
+                is_blocked_val=is_blocked
+            )
         )
-        for order in orders
-    ]
     
     return res

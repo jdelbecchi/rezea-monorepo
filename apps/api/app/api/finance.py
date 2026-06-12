@@ -13,7 +13,7 @@ from app.db.session import get_db
 from app.models.models import (
     User, UserRole, FinanceCategory, FinanceTransaction, 
     FinanceTransactionType, FinancePaymentMethod, Tenant,
-    Order, Installment, OrderPaymentStatus, FinanceAccount,
+    Order, Offer, Installment, OrderPaymentStatus, FinanceAccount,
     Event, EventRegistration, EventRegistrationStatus
 )
 from app.schemas.schemas import (
@@ -28,14 +28,59 @@ router = APIRouter()
 # ---- Helper: Sync Revenues ----
 async def sync_revenues_to_finance(db: AsyncSession, tenant_id: str):
     """Synchronise les paiements automatiques (échéances, événements, commandes comptant) vers le journal de trésorerie"""
-    # 1. Catégories par défaut
-    cat_ventes_res = await db.execute(select(FinanceCategory).where(FinanceCategory.tenant_id == tenant_id, FinanceCategory.name == "Ventes Offres"))
-    cat_ventes = cat_ventes_res.scalar_one_or_none()
-    
-    cat_events_res = await db.execute(select(FinanceCategory).where(FinanceCategory.tenant_id == tenant_id, FinanceCategory.name == "Événements"))
-    cat_events = cat_events_res.scalar_one_or_none()
 
-    # --- 2. GESTION DES ÉCHÉANCES (Installments) ---
+    # ----------------------------------------------------------------
+    # 1. Résolution des catégories système (INCOME offres + événements)
+    # ----------------------------------------------------------------
+    CANONICAL_OFFER_NAME = "Offres et forfaits de crédits"
+    LEGACY_OFFER_NAMES   = {"Ventes Offres", "Offre de cours", "Offres", "Ventes", CANONICAL_OFFER_NAME}
+    CANONICAL_EVENT_NAME = "Événements"
+    LEGACY_EVENT_NAMES   = {"Événements", "Évènements", "Evenements", "Events", "Evenement", "Événement", "Évènement"}
+
+    # Cherche parmi tous les noms connus en une seule requête
+    cats_res = await db.execute(
+        select(FinanceCategory).where(
+            FinanceCategory.tenant_id == tenant_id,
+            FinanceCategory.type == FinanceTransactionType.INCOME,
+            FinanceCategory.name.in_(LEGACY_OFFER_NAMES | LEGACY_EVENT_NAMES)
+        )
+    )
+    all_sys_cats = cats_res.scalars().all()
+
+    cat_ventes = next((c for c in all_sys_cats if c.name in LEGACY_OFFER_NAMES), None)
+    cat_events = next((c for c in all_sys_cats if c.name in LEGACY_EVENT_NAMES), None)
+
+    # Fallback cat_ventes : première catégorie INCOME non-événement
+    if not cat_ventes:
+        fb_res = await db.execute(
+            select(FinanceCategory).where(
+                FinanceCategory.tenant_id == tenant_id,
+                FinanceCategory.type == FinanceTransactionType.INCOME,
+                FinanceCategory.name.notin_(LEGACY_EVENT_NAMES)
+            ).limit(1)
+        )
+        cat_ventes = fb_res.scalar_one_or_none()
+
+    # Fallback cat_events : première catégorie INCOME qui contient "event" dans le nom
+    if not cat_events:
+        fb_res = await db.execute(
+            select(FinanceCategory).where(
+                FinanceCategory.tenant_id == tenant_id,
+                FinanceCategory.type == FinanceTransactionType.INCOME,
+                FinanceCategory.name.ilike("%event%")
+            ).limit(1)
+        )
+        cat_events = fb_res.scalar_one_or_none()
+
+    # Migration automatique des anciens noms
+    if cat_ventes and cat_ventes.name != CANONICAL_OFFER_NAME:
+        cat_ventes.name = CANONICAL_OFFER_NAME
+    if cat_events and cat_events.name != CANONICAL_EVENT_NAME:
+        cat_events.name = CANONICAL_EVENT_NAME
+
+    # ----------------------------------------------------------------
+    # 2. GESTION DES ÉCHÉANCES PAYÉES
+    # ----------------------------------------------------------------
     inst_query = (
         select(Installment)
         .options(joinedload(Installment.order).joinedload(Order.user), joinedload(Installment.order).joinedload(Order.offer))
@@ -44,22 +89,34 @@ async def sync_revenues_to_finance(db: AsyncSession, tenant_id: str):
     inst_res = await db.execute(inst_query)
     paid_installments = {inst.id: inst for inst in inst_res.scalars().all()}
 
-    tx_inst_query = select(FinanceTransaction).where(FinanceTransaction.tenant_id == tenant_id, FinanceTransaction.installment_id != None)
-    tx_inst_res = await db.execute(tx_inst_query)
-    existing_tx_inst = {tx.installment_id: tx for tx in tx_inst_res.scalars().all()}
+    tx_inst_res = await db.execute(
+        select(FinanceTransaction).where(
+            FinanceTransaction.tenant_id == tenant_id,
+            FinanceTransaction.installment_id != None
+        ).order_by(FinanceTransaction.created_at.asc())
+    )
+    # Supprimer les doublons : garder uniquement la plus ancienne transaction par installment
+    existing_tx_inst: dict = {}
+    for tx in tx_inst_res.scalars().all():
+        if tx.installment_id in existing_tx_inst:
+            await db.delete(tx)  # doublon
+        else:
+            existing_tx_inst[tx.installment_id] = tx
 
     for inst_id, inst in paid_installments.items():
         offer_code = inst.order.offer.offer_code if inst.order.offer.offer_code else inst.order.offer.name[:10]
         desc_text = f"Paiement échéance {offer_code}"
         if inst.order.user:
             desc_text += f" - {inst.order.user.first_name} {inst.order.user.last_name}"
-            
+
         if inst_id in existing_tx_inst:
             tx = existing_tx_inst[inst_id]
-            if tx.description != desc_text or tx.amount_cents != inst.amount_cents:
-                tx.description = desc_text
-                tx.amount_cents = inst.amount_cents
-                tx.date = inst.due_date
+            tx.description = desc_text
+            tx.amount_cents = inst.amount_cents
+            tx.date = inst.due_date
+            # Mise à jour de la catégorie si elle était None
+            if tx.category_id is None and cat_ventes:
+                tx.category_id = cat_ventes.id
         else:
             db.add(FinanceTransaction(
                 tenant_id=tenant_id,
@@ -77,8 +134,9 @@ async def sync_revenues_to_finance(db: AsyncSession, tenant_id: str):
         if inst_id not in paid_installments:
             await db.delete(tx)
 
-    # --- 3. GESTION DES COMMANDES COMPTANT (Lump Sum) ---
-    # Commandes payées qui n'ont PAS d'échéances associées
+    # ----------------------------------------------------------------
+    # 3. GESTION DES COMMANDES COMPTANT (Lump Sum, PAID, sans échéances)
+    # ----------------------------------------------------------------
     order_query = (
         select(Order)
         .outerjoin(Installment, Order.id == Installment.order_id)
@@ -86,31 +144,42 @@ async def sync_revenues_to_finance(db: AsyncSession, tenant_id: str):
         .where(
             Order.tenant_id == tenant_id,
             Order.payment_status == OrderPaymentStatus.PAID,
-            Installment.id == None # Pas d'échéances = paiement comptant
+            Installment.id == None
         )
     )
     order_res = await db.execute(order_query)
     paid_lump_orders = {o.id: o for o in order_res.scalars().all()}
 
-    tx_order_query = select(FinanceTransaction).where(
-        FinanceTransaction.tenant_id == tenant_id, 
-        FinanceTransaction.order_id != None,
-        FinanceTransaction.installment_id == None # Uniquement les commandes directes
+    # On ne prend que les transactions AUTO-générées (is_reconciled=True)
+    # pour ne pas interférer avec les saisies manuelles
+    tx_order_res = await db.execute(
+        select(FinanceTransaction).where(
+            FinanceTransaction.tenant_id == tenant_id,
+            FinanceTransaction.order_id != None,
+            FinanceTransaction.installment_id == None,
+            FinanceTransaction.is_reconciled == True
+        ).order_by(FinanceTransaction.created_at.asc())
     )
-    tx_order_res = await db.execute(tx_order_query)
-    existing_tx_order = {tx.order_id: tx for tx in tx_order_res.scalars().all()}
+    # Supprimer les doublons : garder uniquement la plus ancienne transaction par commande
+    existing_tx_order: dict = {}
+    for tx in tx_order_res.scalars().all():
+        if tx.order_id in existing_tx_order:
+            await db.delete(tx)  # doublon
+        else:
+            existing_tx_order[tx.order_id] = tx
 
     for order_id, order in paid_lump_orders.items():
         offer_code = order.offer.offer_code if order.offer.offer_code else order.offer.name[:10]
         desc_text = f"Paiement commande {offer_code}"
         if order.user:
             desc_text += f" - {order.user.first_name} {order.user.last_name}"
-            
+
         if order_id in existing_tx_order:
             tx = existing_tx_order[order_id]
-            if tx.description != desc_text or tx.amount_cents != order.price_cents:
-                tx.description = desc_text
-                tx.amount_cents = order.price_cents
+            tx.description = desc_text
+            tx.amount_cents = order.price_cents
+            if tx.category_id is None and cat_ventes:
+                tx.category_id = cat_ventes.id
         else:
             db.add(FinanceTransaction(
                 tenant_id=tenant_id,
@@ -125,11 +194,11 @@ async def sync_revenues_to_finance(db: AsyncSession, tenant_id: str):
 
     for order_id, tx in existing_tx_order.items():
         if order_id not in paid_lump_orders:
-            # On ne supprime que si c'était une transaction auto-générée (non manuelle)
-            # Pour l'instant on simplifie : on supprime
             await db.delete(tx)
 
-    # --- 4. GESTION DES ÉVÉNEMENTS (Registrations) ---
+    # ----------------------------------------------------------------
+    # 4. GESTION DES ÉVÉNEMENTS (Registrations payées)
+    # ----------------------------------------------------------------
     from app.models.models import EventRegistration
     reg_query = (
         select(EventRegistration)
@@ -139,19 +208,30 @@ async def sync_revenues_to_finance(db: AsyncSession, tenant_id: str):
     reg_res = await db.execute(reg_query)
     paid_regs = {reg.id: reg for reg in reg_res.scalars().all()}
 
-    tx_reg_query = select(FinanceTransaction).where(FinanceTransaction.tenant_id == tenant_id, FinanceTransaction.registration_id != None)
-    tx_reg_res = await db.execute(tx_reg_query)
-    existing_tx_reg = {tx.registration_id: tx for tx in tx_reg_res.scalars().all()}
+    tx_reg_res = await db.execute(
+        select(FinanceTransaction).where(
+            FinanceTransaction.tenant_id == tenant_id,
+            FinanceTransaction.registration_id != None
+        ).order_by(FinanceTransaction.created_at.asc())
+    )
+    # Supprimer les doublons : garder uniquement la plus ancienne transaction par inscription
+    existing_tx_reg: dict = {}
+    for tx in tx_reg_res.scalars().all():
+        if tx.registration_id in existing_tx_reg:
+            await db.delete(tx)  # doublon
+        else:
+            existing_tx_reg[tx.registration_id] = tx
 
     for reg_id, reg in paid_regs.items():
         desc_text = f"Inscription {reg.event.title}"
         if reg.user:
             desc_text += f" - {reg.user.first_name} {reg.user.last_name}"
-            
+
         if reg_id in existing_tx_reg:
             tx = existing_tx_reg[reg_id]
-            if tx.description != desc_text:
-                tx.description = desc_text
+            tx.description = desc_text
+            if tx.category_id is None and cat_events:
+                tx.category_id = cat_events.id
         else:
             db.add(FinanceTransaction(
                 tenant_id=tenant_id,
@@ -167,7 +247,7 @@ async def sync_revenues_to_finance(db: AsyncSession, tenant_id: str):
     for reg_id, tx in existing_tx_reg.items():
         if reg_id not in paid_regs:
             await db.delete(tx)
-    
+
     await db.commit()
 
 # ---- Auth Dependency ----
@@ -191,6 +271,26 @@ async def list_categories(
     current_user: User = Depends(require_manager)
 ):
     tenant_id = request.state.tenant_id
+
+    # Migration automatique des noms hérités vers les noms canoniques système
+    RENAMES = {
+        "Offre de cours": "Offres et forfaits de crédits",
+        "Ventes Offres": "Offres et forfaits de crédits",
+        "Evenements": "Événements",
+        "Évènements": "Événements",
+    }
+    for old_name, new_name in RENAMES.items():
+        res = await db.execute(
+            select(FinanceCategory).where(
+                FinanceCategory.tenant_id == tenant_id,
+                FinanceCategory.name == old_name
+            )
+        )
+        cat = res.scalar_one_or_none()
+        if cat:
+            cat.name = new_name
+    await db.commit()
+
     result = await db.execute(
         select(FinanceCategory)
         .where(FinanceCategory.tenant_id == tenant_id)
@@ -225,7 +325,7 @@ async def seed_categories(
         {"name": "Remboursement client", "type": FinanceTransactionType.EXPENSE, "color": "#ef4444"},
         
         # Recettes
-        {"name": "Ventes Offres", "type": FinanceTransactionType.INCOME, "color": "#3b82f6"},
+        {"name": "Offres et forfaits de crédits", "type": FinanceTransactionType.INCOME, "color": "#3b82f6"},
         {"name": "Évènements", "type": FinanceTransactionType.INCOME, "color": "#8b5cf6"},
         {"name": "Ventes Boutique", "type": FinanceTransactionType.INCOME, "color": "#10b981"},
         {"name": "Subventions", "type": FinanceTransactionType.INCOME, "color": "#ec4899"},
@@ -397,6 +497,114 @@ async def delete_category(
     await db.commit()
 
 # ==================== TRANSACTIONS ====================
+
+@router.get("/transactions/export")
+async def export_transactions(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_manager),
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    type: Optional[FinanceTransactionType] = Query(None),
+    category_id: Optional[UUID] = Query(None),
+    search: Optional[str] = Query(None),
+    show_future: bool = Query(False)
+):
+    """Exporte les transactions du journal de trésorerie en Excel"""
+    try:
+        import openpyxl
+    except ImportError:
+        raise HTTPException(status_code=500, detail="openpyxl non installé")
+
+    tenant_id = request.state.tenant_id
+    await sync_revenues_to_finance(db, tenant_id)
+
+    query = (
+        select(FinanceTransaction)
+        .where(FinanceTransaction.tenant_id == tenant_id)
+        .options(joinedload(FinanceTransaction.category), joinedload(FinanceTransaction.account))
+        .order_by(FinanceTransaction.date.desc(), FinanceTransaction.created_at.desc())
+    )
+
+    if not show_future:
+        query = query.where(FinanceTransaction.date <= date.today())
+
+    if start_date:
+        query = query.where(FinanceTransaction.date >= start_date)
+    if end_date:
+        query = query.where(FinanceTransaction.date <= end_date)
+    if type:
+        query = query.where(FinanceTransaction.type == type)
+    if category_id:
+        query = query.where(FinanceTransaction.category_id == category_id)
+    if search:
+        query = query.where(FinanceTransaction.description.ilike(f"%{search}%"))
+
+    result = await db.execute(query)
+    transactions = result.scalars().all()
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Journal de caisse"
+
+    # Headers
+    headers = [
+        "Date", "Type", "Libellé", "Catégorie", "Compte / Banque",
+        "Montant TTC (€)", "Taux TVA (%)", "Montant TVA (€)",
+        "Moyen de paiement", "Pointé"
+    ]
+    ws.append(headers)
+
+    # Style headers
+    from openpyxl.styles import Font
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num)
+        cell.font = Font(bold=True)
+
+    # Data
+    for tx in transactions:
+        tx_type_str = "Recette" if tx.type == FinanceTransactionType.INCOME else "Dépense"
+        
+        # Payment method mapping
+        pm_map = {
+            "card": "Carte bancaire",
+            "transfer": "Virement",
+            "cash": "Espèces",
+            "check": "Chèque",
+            "other": "Autre"
+        }
+        pm_str = pm_map.get(tx.payment_method.value if hasattr(tx.payment_method, 'value') else str(tx.payment_method), "Autre")
+        
+        ws.append([
+            tx.date.strftime("%d/%m/%Y") if tx.date else "",
+            tx_type_str,
+            tx.description or "",
+            tx.category.name if tx.category else "Non définie",
+            tx.account.name if tx.account else "Non défini",
+            tx.amount_cents / 100,
+            tx.vat_rate,
+            (tx.vat_amount_cents / 100) if tx.vat_amount_cents else 0.0,
+            pm_str,
+            "Oui" if tx.is_reconciled else "Non"
+        ])
+
+    # Auto-width
+    for col in ws.columns:
+        max_length = max(len(str(cell.value or "")) for cell in col)
+        ws.column_dimensions[col[0].column_letter].width = min(max_length + 2, 40)
+
+    from io import BytesIO
+    from fastapi.responses import StreamingResponse
+    
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=journal_de_caisse.xlsx"}
+    )
 
 @router.get("/transactions", response_model=List[FinanceTransactionResponse])
 async def list_transactions(
@@ -697,6 +905,71 @@ async def get_finance_dashboard(
             income_by_cat.append(item)
         else:
             expense_by_cat.append(item)
+
+    # 3b. Détail des recettes par rubrique et offre
+    #     Deux sources de recettes offres :
+    #       A) Commandes comptant payées (PAID, sans échéances)
+    #       B) Échéances payées (is_paid=True), dont la due_date tombe dans le mois
+    #     On lit directement les tables Order et Installment (sans passer par FinanceTransaction)
+    #     pour être toujours synchronisé, même si sync_revenues_to_finance n'a pas encore tourné.
+
+    # A) Commandes lump-sum payées dans le mois (start_date dans le mois, PAID, sans installments)
+    lump_query = (
+        select(
+            Offer.category,
+            Offer.name,
+            func.sum(Order.price_cents)
+        )
+        .join(Offer, Order.offer_id == Offer.id)
+        .outerjoin(Installment, Order.id == Installment.order_id)
+        .where(
+            Order.tenant_id == tenant_id,
+            Order.payment_status == OrderPaymentStatus.PAID,
+            Order.start_date >= target_start_date,
+            Order.start_date <= target_end_date,
+            Installment.id == None  # sans échéances = comptant
+        )
+        .group_by(Offer.category, Offer.name)
+    )
+    lump_res = await db.execute(lump_query)
+
+    # B) Échéances payées dont la due_date tombe dans le mois
+    inst_offer_query = (
+        select(
+            Offer.category,
+            Offer.name,
+            func.sum(Installment.amount_cents)
+        )
+        .join(Order, Installment.order_id == Order.id)
+        .join(Offer, Order.offer_id == Offer.id)
+        .where(
+            Installment.tenant_id == tenant_id,
+            Installment.is_paid == True,
+            Installment.due_date >= target_start_date,
+            Installment.due_date <= target_end_date
+        )
+        .group_by(Offer.category, Offer.name)
+    )
+    inst_offer_res = await db.execute(inst_offer_query)
+
+    # Fusionner les deux sources dans un dict (rubrique, offer_name) → total
+    offer_totals: dict[tuple, int] = {}
+    for row in lump_res.all():
+        key = (row[0] or "Sans rubrique", row[1])
+        offer_totals[key] = offer_totals.get(key, 0) + (row[2] or 0)
+    for row in inst_offer_res.all():
+        key = (row[0] or "Sans rubrique", row[1])
+        offer_totals[key] = offer_totals.get(key, 0) + (row[2] or 0)
+
+    income_by_offer = [
+        {
+            "rubrique": rubrique,
+            "offer_name": offer_name,
+            "amount": total
+        }
+        for (rubrique, offer_name), total in sorted(offer_totals.items())
+        if total > 0
+    ]
             
     # 4. Transactions récentes (globales, sans filtrer par mois)
     recent_query = (
@@ -854,6 +1127,7 @@ async def get_finance_dashboard(
         month_refund_cents=month_refund,
         income_by_category=income_by_cat,
         expense_by_category=expense_by_cat,
+        income_by_offer=income_by_offer,
         recent_transactions=recent_trans,
         monthly_trend=sorted_trend,
         projected_income_cents=projected_income,

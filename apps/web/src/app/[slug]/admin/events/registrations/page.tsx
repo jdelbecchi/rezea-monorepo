@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
+import Link from "next/link";
 import { api, User, AdminEventRegistrationItem, Tenant } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import MultiSelect from "@/components/MultiSelect";
@@ -663,7 +664,14 @@ export default function AdminEventRegistrationsPage() {
                                             </td>
                                             <td className="px-3 py-2.5 whitespace-nowrap text-sm font-livvic">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-medium text-slate-900">{reg.user_name}</span>
+                                                    <Link 
+                                                        href={`/${params.slug}/admin/users?search=${encodeURIComponent(reg.user_name)}`} 
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="font-medium text-slate-900 hover:text-blue-600 hover:underline transition-colors"
+                                                    >
+                                                        {reg.user_name}
+                                                    </Link>
                                                     {reg.created_by_admin && <span title="Ajouté par un manager" className="text-amber-500 text-xs">🛡️</span>}
                                                 </div>
                                             </td>

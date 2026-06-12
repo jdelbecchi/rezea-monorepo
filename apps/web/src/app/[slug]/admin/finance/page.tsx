@@ -20,6 +20,7 @@ export default function TreasuryPage() {
     const [transactions, setTransactions] = useState<FinanceTransaction[]>([]);
     const [activeTab, setActiveTab] = useState<"dashboard" | "journal" | "categories" | "accounts">("dashboard");
     const [searchTerm, setSearchTerm] = useState("");
+    const [isExporting, setIsExporting] = useState(false);
     const [selectedMonthStr, setSelectedMonthStr] = useState<string>(format(new Date(), "yyyy-MM"));
     const [trendPage, setTrendPage] = useState(0);
     const [confirmModal, setConfirmModal] = useState<{
@@ -193,6 +194,11 @@ export default function TreasuryPage() {
     };
 
     const openCatModal = (cat: FinanceCategory | null = null) => {
+        // Catégories système non modifiables (comparaison insensible aux accents)
+        const stripAccents = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        const SYSTEM_PATTERNS = ["offres et forfaits", "offre de cours", "ventes offres", "evenement"];
+        const isSystemCat = (name: string) => SYSTEM_PATTERNS.some(p => stripAccents(name).includes(p));
+        if (cat && isSystemCat(cat.name)) return;
         setEditingCat(cat);
         if (cat) {
             setNewCat({ name: cat.name, type: cat.type, color: cat.color });
@@ -276,6 +282,18 @@ export default function TreasuryPage() {
         return new Intl.NumberFormat('fr-FR', options).format(cents / 100);
     };
 
+    const handleExportJournal = async () => {
+        setIsExporting(true);
+        try {
+            await api.exportFinanceJournal({ search: searchTerm });
+        } catch (error) {
+            console.error("Export error:", error);
+            alert("Erreur lors de l'exportation du journal");
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     if (loading) {
         return <div className="p-8 text-center text-slate-500 bg-slate-50 min-h-screen">Chargement du portefeuille...</div>;
     }
@@ -303,11 +321,15 @@ export default function TreasuryPage() {
                                 </svg>
                                 Ajouter une opération
                             </button>
-                            <button className="flex items-center gap-2 px-4 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all font-medium shadow-sm text-sm active:scale-95">
+                            <button 
+                                onClick={handleExportJournal}
+                                disabled={isExporting}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all font-medium shadow-sm text-sm active:scale-95 disabled:opacity-55"
+                            >
                                 <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                 </svg>
-                                Exporter
+                                {isExporting ? "Export en cours..." : "Exporter le journal"}
                             </button>
                         </div>
                     </div>
@@ -480,6 +502,73 @@ export default function TreasuryPage() {
                                                     ))}
                                                 </div>
                                             )}
+                                        </div>
+                                        <div className="bg-white p-6 rounded-2xl border border-slate-200 lg:col-span-2">
+                                            <h3 className="text-sm font-semibold text-slate-900 mb-6 uppercase tracking-wider">Détail des recettes par Rubrique &amp; Offre</h3>
+                                            {!dashboard?.income_by_offer || dashboard.income_by_offer.length === 0 ? (
+                                                <div className="h-32 flex items-center justify-center text-slate-400 italic text-sm">Aucune donnée</div>
+                                            ) : (() => {
+                                                const palette = ["#6366f1","#0ea5e9","#10b981","#f59e0b","#ec4899","#8b5cf6","#14b8a6","#f97316"];
+                                                const grouped = Object.entries(
+                                                    dashboard.income_by_offer.reduce((acc, curr) => {
+                                                        const rub = curr.rubrique || 'Sans rubrique';
+                                                        if (!acc[rub]) acc[rub] = { total: 0, offers: [] };
+                                                        acc[rub].total += curr.amount;
+                                                        acc[rub].offers.push(curr);
+                                                        return acc;
+                                                    }, {} as Record<string, { total: number, offers: typeof dashboard.income_by_offer }>)
+                                                ).sort((a, b) => b[1].total - a[1].total);
+                                                const grandTotal = grouped.reduce((s, [, g]) => s + g.total, 0);
+                                                return (
+                                                    <div className="space-y-6">
+                                                        {grouped.map(([rub, data], rIdx) => {
+                                                            const color = palette[rIdx % palette.length];
+                                                            const rubriquePct = grandTotal > 0 ? (data.total / grandTotal) * 100 : 0;
+                                                            return (
+                                                                <div key={rub} className="space-y-2">
+                                                                    {/* Rubrique header row */}
+                                                                    <div className="flex justify-between items-center">
+                                                                        <span className="text-[13px] font-bold text-slate-800 flex items-center gap-2">
+                                                                            <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                                                                            {rub}
+                                                                        </span>
+                                                                        <span className="text-[13px] font-bold text-slate-700 flex items-center gap-1.5">
+                                                                            {formatCurrency(data.total)}
+                                                                            <span className="text-[10px] font-medium text-slate-400 bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded-md">
+                                                                                {rubriquePct.toFixed(0)}%
+                                                                            </span>
+                                                                        </span>
+                                                                    </div>
+                                                                    {/* Rubrique progress bar */}
+                                                                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                                                                        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${rubriquePct}%`, backgroundColor: color }} />
+                                                                    </div>
+                                                                    {/* Offers sub-list */}
+                                                                    <div className="pl-5 pt-1 space-y-2" style={{ borderLeft: `2px solid ${color}40` }}>
+                                                                        {[...data.offers].sort((a, b) => b.amount - a.amount).map((offer) => {
+                                                                            const offerPct = data.total > 0 ? (offer.amount / data.total) * 100 : 0;
+                                                                            return (
+                                                                                <div key={offer.offer_name} className="space-y-0.5">
+                                                                                    <div className="flex justify-between items-center">
+                                                                                        <span className="text-[12px] text-slate-600 font-medium truncate max-w-[60%]">{offer.offer_name}</span>
+                                                                                        <span className="text-[12px] text-slate-500 font-semibold shrink-0">
+                                                                                            {formatCurrency(offer.amount)}
+                                                                                            <span className="ml-1 text-[10px] font-normal text-slate-400">({offerPct.toFixed(0)}%)</span>
+                                                                                        </span>
+                                                                                    </div>
+                                                                                    <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                                                                                        <div className="h-full rounded-full transition-all duration-700 opacity-60" style={{ width: `${offerPct}%`, backgroundColor: color }} />
+                                                                                    </div>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
                                 </div>
@@ -678,10 +767,10 @@ export default function TreasuryPage() {
                                                             {t.type === 'income' ? '+' : '-'}{formatCurrency(t.amount_cents)}
                                                         </td>
                                                         <td className="py-2.5 px-4 text-right">
-                                                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                            <div className="flex items-center justify-end">
                                                                 <button 
                                                                     onClick={() => openTransModal(t)}
-                                                                    className="p-2 text-slate-300 hover:text-blue-600 transition-all rounded-lg"
+                                                                    className="p-1 text-slate-300 hover:text-blue-600 transition-all rounded-lg"
                                                                 >
                                                                     ✏️
                                                                 </button>
@@ -697,7 +786,7 @@ export default function TreasuryPage() {
                                                                             }
                                                                         });
                                                                     }}
-                                                                    className="p-2 text-slate-300 hover:text-rose-600 transition-all rounded-lg"
+                                                                    className="p-1 text-slate-300 hover:text-rose-600 transition-all rounded-lg"
                                                                 >
                                                                     🗑️
                                                                 </button>
@@ -801,42 +890,59 @@ export default function TreasuryPage() {
                                                                 <h4 className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Recettes (Entrées)</h4>
                                                             </div>
                                                             <div className="grid grid-cols-1 gap-3">
-                                                                {categories.filter(c => c.type === 'income').map(cat => (
+                                                                {categories.filter(c => c.type === 'income').map(cat => {
+                                                                    const stripAccents = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+                                                                    const SYSTEM_PATTERNS = ["offres et forfaits", "offre de cours", "ventes offres", "evenement"];
+                                                                    const isSystem = SYSTEM_PATTERNS.some(p => stripAccents(cat.name).includes(p));
+                                                                    return (
                                                                     <div 
                                                                         key={cat.id} 
-                                                                        onClick={() => openCatModal(cat)}
-                                                                        className="p-4 rounded-xl border border-slate-100 bg-white shadow-sm flex items-center justify-between group hover:border-slate-300 hover:shadow-md transition-all cursor-pointer"
+                                                                        onClick={() => !isSystem && openCatModal(cat)}
+                                                                        className={`p-4 rounded-xl border bg-white shadow-sm flex items-center justify-between transition-all ${
+                                                                            isSystem
+                                                                                ? "border-slate-100 cursor-default opacity-80"
+                                                                                : "border-slate-100 group hover:border-slate-300 hover:shadow-md cursor-pointer"
+                                                                        }`}
                                                                     >
                                                                         <div className="flex items-center gap-4">
                                                                             <div className="w-4 h-4 rounded-full shadow-inner" style={{ backgroundColor: cat.color }} />
                                                                             <span className="text-sm font-medium text-slate-700">{cat.name}</span>
+                                                                            {isSystem && (
+                                                                                <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                                                                    Système
+                                                                                </span>
+                                                                            )}
                                                                         </div>
-                                                                        <button 
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                setConfirmModal({
-                                                                                    isOpen: true,
-                                                                                    title: "Confirmer la suppression",
-                                                                                    message: `Voulez-vous vraiment supprimer la catégorie "${cat.name}" ?`,
-                                                                                    onConfirm: async () => {
-                                                                                        try {
-                                                                                            await api.deleteFinanceCategory(cat.id);
-                                                                                            refreshData();
-                                                                                        } catch (err: any) {
-                                                                                            alert(err.response?.data?.detail || "Erreur lors de la suppression");
+                                                                        {!isSystem && (
+                                                                            <button 
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    setConfirmModal({
+                                                                                        isOpen: true,
+                                                                                        title: "Confirmer la suppression",
+                                                                                        message: `Voulez-vous vraiment supprimer la catégorie "${cat.name}" ?`,
+                                                                                        onConfirm: async () => {
+                                                                                            try {
+                                                                                                await api.deleteFinanceCategory(cat.id);
+                                                                                                refreshData();
+                                                                                            } catch (err: any) {
+                                                                                                alert(err.response?.data?.detail || "Erreur lors de la suppression");
+                                                                                            }
+                                                                                            setConfirmModal(prev => ({ ...prev, isOpen: false }));
                                                                                         }
-                                                                                        setConfirmModal(prev => ({ ...prev, isOpen: false }));
-                                                                                    }
-                                                                                });
-                                                                            }}
-                                                                            className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                                                                        >
-                                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                                            </svg>
-                                                                        </button>
+                                                                                    });
+                                                                                }}
+                                                                                className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                                                                            >
+                                                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                                </svg>
+                                                                            </button>
+                                                                        )}
                                                                     </div>
-                                                                ))}
+                                                                    );
+                                                                })}
                                                                 <button 
                                                                     onClick={() => {
                                                                         setNewCat({ ...newCat, type: 'income' });

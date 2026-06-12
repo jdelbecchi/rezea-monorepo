@@ -240,6 +240,7 @@ export interface FinanceDashboard {
   month_refund_cents: number;
   income_by_category: Array<{category: string, amount: number, color: string}>;
   expense_by_category: Array<{category: string, amount: number, color: string}>;
+  income_by_offer: Array<{rubrique: string, offer_name: string, amount: number}>;
   recent_transactions: FinanceTransaction[];
   monthly_trend: Array<{month: string, income: number, expense: number}>;
   projected_income_cents: number;
@@ -304,6 +305,8 @@ export interface Tenant {
   legal_vat_mention?: string;
   registration_limit_mins: number;
   cancellation_limit_mins: number;
+  grace_period_days?: number;
+  grace_period_mode?: string;
   confirmation_email_body?: string;
   allow_pay_later_offers: boolean;
   allow_pay_later_events: boolean;
@@ -313,6 +316,9 @@ export interface Tenant {
   is_active: boolean;
   max_users: number;
   max_sessions_per_day: number;
+  show_logo?: boolean;
+  show_name?: boolean;
+  show_slogan?: boolean;
   created_at: string;
 }
 
@@ -386,6 +392,7 @@ export interface OrderItem {
   offer_snap_validity_unit: string | null;
   offer_snap_is_validity_unlimited: boolean;
   invoice_number?: string | null;
+  is_blocked?: boolean | null;
 }
 
 export interface InstallmentItem {
@@ -782,12 +789,17 @@ export const api = {
     legal_vat_mention: string;
     registration_limit_mins: number;
     cancellation_limit_mins: number;
+    grace_period_days?: number;
+    grace_period_mode?: string;
     confirmation_email_body: string;
     allow_pay_later_offers: boolean;
     allow_pay_later_events: boolean;
     payment_redirect_link: string;
     pay_now_instructions: string;
     locations: string[];
+    show_logo?: boolean;
+    show_name?: boolean;
+    show_slogan?: boolean;
   }>) => {
     const response = await apiClient.patch('/api/tenants/current/settings', data);
     return response.data;
@@ -954,6 +966,21 @@ export const api = {
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', 'evenements.xlsx');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
+
+  exportFinanceJournal: async (params?: { start_date?: string, end_date?: string, type?: string, category_id?: string, search?: string, show_future?: boolean }) => {
+    const response = await apiClient.get('/api/admin/finance/transactions/export', {
+      params,
+      responseType: 'blob',
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'journal_de_caisse.xlsx');
     document.body.appendChild(link);
     link.click();
     link.remove();

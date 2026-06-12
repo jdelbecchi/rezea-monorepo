@@ -21,6 +21,7 @@ export default function LoginForm({ initialTenantSlug = "", hideTenantField = fa
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showViewSelector, setShowViewSelector] = useState(false);
 
   // Load remembered credentials on mount
   useEffect(() => {
@@ -61,13 +62,19 @@ export default function LoginForm({ initialTenantSlug = "", hideTenantField = fa
       localStorage.setItem("user_id", response.user_id);
       localStorage.setItem("tenant_id", response.tenant_id);
       localStorage.setItem("tenant_slug", formData.tenant_slug);
+      localStorage.setItem("user_role", response.role);
 
       // Save email for next time if rememberMe is checked
       if (formData.rememberMe) {
         localStorage.setItem("remembered_email", formData.email);
       }
 
-      router.push(`/${formData.tenant_slug}/home`);
+      const isAdminOrStaff = response.role === "owner" || response.role === "manager" || response.role === "staff";
+      if (isAdminOrStaff) {
+        setShowViewSelector(true);
+      } else {
+        router.push(`/${formData.tenant_slug}/home`);
+      }
     } catch (err: any) {
       setError(
         err.response?.data?.detail || "Erreur de connexion. Vérifiez vos identifiants."
@@ -76,6 +83,62 @@ export default function LoginForm({ initialTenantSlug = "", hideTenantField = fa
       setLoading(false);
     }
   };
+
+  const handleViewChoice = (choice: "admin" | "user") => {
+    if (formData.rememberMe) {
+      localStorage.setItem("default_view", choice);
+    } else {
+      localStorage.removeItem("default_view");
+    }
+    
+    if (choice === "admin") {
+      router.push(`/${formData.tenant_slug}/admin`);
+    } else {
+      router.push(`/${formData.tenant_slug}/home`);
+    }
+  };
+
+  if (showViewSelector) {
+    return (
+      <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/40 border border-slate-100 px-8 py-8 md:px-10 md:py-10 w-full max-w-sm transition-all text-center space-y-6">
+        <div>
+          <h3 className="text-xl font-bold text-slate-900">Bienvenue !</h3>
+          <p className="text-sm text-slate-500 mt-2">Choisissez votre espace de destination :</p>
+        </div>
+
+        <div className="space-y-3.5">
+          <button
+            type="button"
+            onClick={() => handleViewChoice("admin")}
+            style={{ borderColor: 'var(--primary-color, #0f172a)' }}
+            className="w-full flex items-center gap-4 p-4 border-2 hover:bg-slate-50 rounded-2xl text-left transition-all active:scale-[0.98] focus:outline-none"
+          >
+            <div className="w-10 h-10 rounded-xl bg-slate-950/5 flex items-center justify-center text-xl">
+              📊
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-950">Interface de gestion</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">Accéder aux outils d'administration</p>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleViewChoice("user")}
+            className="w-full flex items-center gap-4 p-4 border border-slate-200 hover:bg-slate-50 rounded-2xl text-left transition-all active:scale-[0.98] focus:outline-none"
+          >
+            <div className="w-10 h-10 rounded-xl bg-slate-950/5 flex items-center justify-center text-xl">
+              👤
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-950">Portail utilisateur</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">Consulter mon espace personnel</p>
+            </div>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/40 border border-slate-100 px-8 py-6 md:px-10 md:py-8 w-full max-w-sm transition-all">

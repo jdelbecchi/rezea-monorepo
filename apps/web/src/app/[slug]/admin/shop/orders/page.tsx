@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
+import Link from "next/link";
 import { api, User, OrderItem, InstallmentItem, Tenant } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import { formatCredits } from "@/lib/formatters";
@@ -99,14 +100,15 @@ export default function AdminShopOrdersPage() {
         status: "",
         payment_status: "",
         comment: "",
-        user_note: ""
+        user_note: "",
+        is_blocked: false
     });
+
+    const [modalError, setModalError] = useState<string | null>(null);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
 
     // Delete confirm
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-
-    // Suspend confirm
-    const [showSuspendConfirm, setShowSuspendConfirm] = useState(false);
 
     // Invoice modal
     const [invoiceOrder, setInvoiceOrder] = useState<OrderItem | null>(null);
@@ -168,29 +170,7 @@ export default function AdminShopOrdersPage() {
         }
     };
 
-    const handleBulkSuspend = async () => {
-        setShowSuspendConfirm(true);
-    };
 
-    const confirmBulkSuspend = async () => {
-        setShowSuspendConfirm(false);
-        setLoading(true);
-        try {
-            const selectedOrders = orders.filter(o => selectedOrderIds.has(o.id));
-            const uniqueUserIds = Array.from(new Set(selectedOrders.map(o => o.user_id)));
-            for (const userId of uniqueUserIds) {
-                await api.toggleSuspendUser(userId);
-            }
-            setMessage({ type: "success", text: `${uniqueUserIds.length} client(s) mis à jour avec succès` });
-            setSelectedOrderIds(new Set());
-            const updatedOrders = await api.getAdminOrders();
-            setOrders(updatedOrders);
-        } catch (error) {
-            setMessage({ type: "error", text: "Erreur lors de la mise à jour des crédits" });
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const fetchData = async () => {
         try {
@@ -257,7 +237,7 @@ export default function AdminShopOrdersPage() {
             setMessage({ type: "success", text: "Commande créée avec succès !" });
             fetchData();
         } catch (err: any) {
-            setMessage({ type: "error", text: err.response?.data?.detail || "Erreur lors de la création." });
+            setModalError(err.response?.data?.detail || "Erreur lors de la création.");
         } finally {
             setSaving(false);
         }
@@ -265,6 +245,7 @@ export default function AdminShopOrdersPage() {
 
     const openEdit = (order: OrderItem) => {
         setEditOrder(order);
+        setModalError(null);
         setEditForm({
             start_date: order.start_date,
             end_date: order.end_date || "",
@@ -279,8 +260,9 @@ export default function AdminShopOrdersPage() {
             payment_status: order.payment_status,
             comment: order.comment || "",
             user_note: order.user_note || "",
+            is_blocked: order.is_blocked === true || (order.is_blocked === null && order.status === "expiree")
         });
-        const isStd = order.status === "active" || order.status === "termine" || order.status === "" || !order.status;
+        const isStd = ["active", "termine", "expiree", "en_pause", "resiliee", "", null, undefined].includes(order.status);
         setShowCustomStatus(!isStd);
         setShowErrors(false);
     };
@@ -315,7 +297,8 @@ export default function AdminShopOrdersPage() {
                 status: editForm.status,
                 payment_status: editForm.payment_status,
                 comment: editForm.comment,
-                user_note: editForm.user_note
+                user_note: editForm.user_note,
+                is_blocked: editForm.is_blocked
             };
 
             await api.updateAdminOrder(editOrder.id, payload);
@@ -323,7 +306,7 @@ export default function AdminShopOrdersPage() {
             setMessage({ type: "success", text: "Commande modifiée avec succès !" });
             fetchData();
         } catch (err: any) {
-            setMessage({ type: "error", text: err.response?.data?.detail || "Erreur lors de la modification." });
+            setModalError(err.response?.data?.detail || "Erreur lors de la modification.");
         } finally {
             setSaving(false);
         }
@@ -333,11 +316,13 @@ export default function AdminShopOrdersPage() {
         try {
             await api.deleteAdminOrder(id);
             setDeleteConfirmId(null);
+            setDeleteError(null);
             setMessage({ type: "success", text: "Commande supprimée." });
             const updated = await api.getAdminOrders();
             setOrders(updated);
         } catch (err: any) {
-            setMessage({ type: "error", text: "Erreur lors de la suppression." });
+            const detail = err.response?.data?.detail || "Erreur lors de la suppression.";
+            setDeleteError(detail);
         }
     };
 
@@ -629,8 +614,8 @@ export default function AdminShopOrdersPage() {
         if (filterExpiry) {
             const days = daysUntil(o.end_date);
             if (o.is_validity_unlimited) return false;
-            if (filterExpiry === "7" && (days === null || days > 7)) return false;
-            if (filterExpiry === "30" && (days === null || days > 30)) return false;
+            if (filterExpiry === "7" && (days === null || days < 0 || days > 7)) return false;
+            if (filterExpiry === "30" && (days === null || days < 0 || days > 30)) return false;
         }
         if (exportFrom && o.start_date < exportFrom) return false;
         if (exportTo && o.end_date && o.end_date > exportTo) return false;
@@ -678,7 +663,7 @@ export default function AdminShopOrdersPage() {
                             <p className="text-base font-normal text-slate-500 mt-1">Suivi des commandes et paiements</p>
                         </div>
                         <button
-                            onClick={() => { setShowCreate(true); setShowErrors(false); loadFormOptions(); }}
+                            onClick={() => { setShowCreate(true); setShowErrors(false); setModalError(null); loadFormOptions(); }}
                             className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-medium shadow-sm text-sm"
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -778,23 +763,7 @@ export default function AdminShopOrdersPage() {
                         )}
                     </div>
 
-                    {/* Bulk Actions Bar */}
-                    {selectedOrderIds.size > 0 && (
-                        <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-2">
-                            <div className="flex items-center gap-3">
-                                <span className="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-md">{selectedOrderIds.size}</span>
-                                <span className="text-sm font-medium text-blue-900">commande(s) sélectionnée(s)</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <button onClick={handleBulkEmail} className="px-3 py-1.5 bg-white text-blue-600 border border-blue-200 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors shadow-sm flex items-center gap-2">
-                                    📧 Envoyer un email
-                                </button>
-                                <button onClick={handleBulkSuspend} className="px-3 py-1.5 bg-white text-orange-600 border border-orange-200 rounded-lg text-sm font-medium hover:bg-orange-50 transition-colors shadow-sm flex items-center gap-2">
-                                    🚫 Suspendre/réactiver les crédits
-                                </button>
-                            </div>
-                        </div>
-                    )}
+
 
                     {/* Orders Table */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -802,15 +771,35 @@ export default function AdminShopOrdersPage() {
                             <table className="w-full">
                                 <thead className="bg-slate-100 border-b border-slate-200">
                                     <tr>
-                                        <th className="px-3 py-[10px] text-left w-10 whitespace-nowrap text-xs uppercase tracking-widest">
-                                            <input
-                                                type="checkbox"
-                                                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                                checked={filteredOrders.length > 0 && selectedOrderIds.size === filteredOrders.length}
-                                                onChange={() => toggleAll(filteredOrders)}
-                                            />
+                                        <th className="pl-3 pr-0 py-[10px] text-left w-16 whitespace-nowrap text-xs uppercase tracking-widest">
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                    checked={filteredOrders.length > 0 && selectedOrderIds.size === filteredOrders.length}
+                                                    onChange={() => toggleAll(filteredOrders)}
+                                                    title="Tout sélectionner"
+                                                />
+                                                <button
+                                                    onClick={handleBulkEmail}
+                                                    disabled={selectedOrderIds.size === 0}
+                                                    className={`p-1 rounded-lg transition-all ${
+                                                        selectedOrderIds.size > 0 
+                                                            ? "hover:bg-blue-50 hover:scale-110 active:scale-95 cursor-pointer" 
+                                                            : "cursor-not-allowed"
+                                                    }`}
+                                                    title={selectedOrderIds.size > 0 ? `Envoyer un e-mail aux ${selectedOrderIds.size} sélectionné(s)` : "Sélectionner des lignes pour envoyer un e-mail"}
+                                                >
+                                                    <svg className="w-5 h-5 select-none inline-block align-middle" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                        <rect x="2" y="5" width="20" height="14" rx="2" fill="#FBBF24" />
+                                                        <path d="M2 5l10 8 10-8" stroke="#D97706" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="#F59E0B" />
+                                                        <path d="M2 19l7-5.5" stroke="#D97706" strokeWidth="1.5" strokeLinecap="round" />
+                                                        <path d="M22 19l-7-5.5" stroke="#D97706" strokeWidth="1.5" strokeLinecap="round" />
+                                                    </svg>
+                                                </button>
+                                            </div>
                                         </th>
-                                        <th className="px-3 py-[10px] text-center text-xs font-medium text-slate-400 uppercase tracking-widest hidden md:table-cell whitespace-nowrap">date</th>
+                                        <th className="pl-0 pr-3 py-[10px] text-center text-xs font-medium text-slate-400 uppercase tracking-widest hidden md:table-cell whitespace-nowrap">date</th>
                                         <th className="px-3 py-[10px] text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">nom</th>
                                         <th className="px-3 py-[10px] text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">offre</th>
                                         <th className="px-3 py-[10px] text-center text-xs font-medium text-slate-400 uppercase tracking-widest hidden lg:table-cell whitespace-nowrap">début</th>
@@ -842,11 +831,11 @@ export default function AdminShopOrdersPage() {
                                             resiliee: "bg-red-50 text-red-500 border border-red-100",
                                         };
                                         const days = daysUntil(order.end_date);
-                                        const expiryWarning = !order.is_validity_unlimited && days !== null && days <= 30;
-                                        const expiryCritical = !order.is_validity_unlimited && days !== null && days <= 7;
+                                        const expiryWarning = !order.is_validity_unlimited && days !== null && days >= 0 && days <= 30;
+                                        const expiryCritical = !order.is_validity_unlimited && days !== null && days >= 0 && days <= 7;
                                         return (
                                             <tr key={order.id} className="hover:bg-slate-50 transition-colors group">
-                                                <td className="px-3 py-2.5 w-10">
+                                                <td className="pl-3 pr-0 py-2.5 w-10">
                                                     <input
                                                         type="checkbox"
                                                         className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
@@ -854,14 +843,19 @@ export default function AdminShopOrdersPage() {
                                                         onChange={() => toggleSelection(order.id)}
                                                     />
                                                 </td>
-                                                <td className="px-3 py-2.5 whitespace-nowrap text-sm text-slate-700 hidden md:table-cell text-center">
+                                                <td className="pl-0 pr-3 py-2.5 whitespace-nowrap text-sm text-slate-700 hidden md:table-cell text-center">
                                                     {order.created_at ? new Date(order.created_at).toLocaleDateString("fr-FR") : "—"}
                                                 </td>
                                                 <td className="px-3 py-2.5 whitespace-nowrap text-sm">
                                                     <div className="flex items-center gap-1">
-                                                        <span className="font-medium text-slate-900">
+                                                        <Link 
+                                                            href={`/${params.slug}/admin/users?search=${encodeURIComponent(order.user_email || order.user_name)}`} 
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="font-medium text-slate-900 hover:text-blue-600 hover:underline transition-colors"
+                                                        >
                                                             {order.user_name}
-                                                        </span>
+                                                        </Link>
                                                         {order.created_by_admin && (
                                                             <span title="Créé par le manager" className="text-amber-500">🛡️</span>
                                                         )}
@@ -919,6 +913,7 @@ export default function AdminShopOrdersPage() {
                                                                         "text-slate-700"
                                                             }`}>
                                                             <span>{formatCredits(order.balance)}</span>
+                                                            {order.is_blocked && <span title="Crédits bloqués" className="ml-0.5">🔒</span>}
                                                             {order.user_is_suspended && <span title="Crédits suspendus">🚫</span>}
                                                         </div>
                                                     )}
@@ -976,7 +971,7 @@ export default function AdminShopOrdersPage() {
                                 </svg>
                                 <h3 className="text-[17px] font-semibold text-slate-900 tracking-tight">Nouvelle commande</h3>
                             </div>
-                            <button onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-gray-600">
+                            <button onClick={() => { setShowCreate(false); setModalError(null); }} className="text-gray-400 hover:text-gray-600">
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
@@ -984,6 +979,17 @@ export default function AdminShopOrdersPage() {
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-8">
+                            {modalError && (
+                                <div className="mb-6 p-4 bg-rose-50 border border-rose-100 text-rose-700 rounded-xl flex items-start gap-2.5 text-sm animate-in slide-in-from-top-1 duration-200">
+                                    <span className="text-lg leading-none">⚠️</span>
+                                    <div className="flex-1 font-medium">{modalError}</div>
+                                    <button type="button" onClick={() => setModalError(null)} className="text-rose-400 hover:text-rose-600 transition-colors">
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            )}
                             <form id="createOrderForm" onSubmit={handleCreate} className="space-y-8">
                                 {/* Informations client */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1042,7 +1048,7 @@ export default function AdminShopOrdersPage() {
                         </div>
 
                         <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
-                            <button type="button" onClick={() => setShowCreate(false)}
+                            <button type="button" onClick={() => { setShowCreate(false); setModalError(null); }}
                                 className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
                                 Annuler
                             </button>
@@ -1067,7 +1073,7 @@ export default function AdminShopOrdersPage() {
                                 </svg>
                                 <h3 className="text-lg font-semibold text-slate-900 tracking-tight">Modifier la commande</h3>
                             </div>
-                            <button onClick={() => setEditOrder(null)} className="text-gray-400 hover:text-gray-600">
+                            <button onClick={() => { setEditOrder(null); setModalError(null); }} className="text-gray-400 hover:text-gray-600">
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
@@ -1075,6 +1081,17 @@ export default function AdminShopOrdersPage() {
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-8">
+                            {modalError && (
+                                <div className="mb-6 p-4 bg-rose-50 border border-rose-100 text-rose-700 rounded-xl flex items-start gap-2.5 text-sm animate-in slide-in-from-top-1 duration-200">
+                                    <span className="text-lg leading-none">⚠️</span>
+                                    <div className="flex-1 font-medium">{modalError}</div>
+                                    <button type="button" onClick={() => setModalError(null)} className="text-rose-400 hover:text-rose-600 transition-colors">
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            )}
                             <form id="editOrderForm" onSubmit={handleEditSubmit} className="space-y-8">
                                 {/* Période */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1233,7 +1250,7 @@ export default function AdminShopOrdersPage() {
 
                                 {/* Crédits */}
                                 <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-4 flex-wrap">
                                         <div className="w-32">
                                             <label className={`block text-sm font-medium mb-1 ${(showErrors && !editForm.is_unlimited && !editForm.credits_total) ? 'text-red-500' : 'text-slate-700'}`}>Crédits *</label>
                                             <input type="number" disabled={editForm.is_unlimited} value={editForm.credits_total}
@@ -1246,6 +1263,14 @@ export default function AdminShopOrdersPage() {
                                                     onChange={(e) => setEditForm({ ...editForm, is_unlimited: e.target.checked, credits_total: e.target.checked ? "" : editForm.credits_total })}
                                                     className="w-5 h-5 text-slate-900 border-gray-300 rounded-lg focus:ring-slate-500" />
                                                 <span className="text-lg font-medium text-slate-700 group-hover:text-slate-900 transition-colors">∞</span>
+                                            </label>
+                                        </div>
+                                        <div className="pt-6 pl-4 flex items-center">
+                                            <label className="flex items-center gap-2 cursor-pointer group">
+                                                <input type="checkbox" checked={editForm.is_blocked}
+                                                    onChange={(e) => setEditForm({ ...editForm, is_blocked: e.target.checked })}
+                                                    className="w-5 h-5 text-red-600 border-gray-300 rounded-lg focus:ring-red-500" />
+                                                <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">Bloquer le solde de crédits</span>
                                             </label>
                                         </div>
                                     </div>
@@ -1280,7 +1305,7 @@ export default function AdminShopOrdersPage() {
                         </div>
 
                         <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
-                            <button type="button" onClick={() => setEditOrder(null)}
+                            <button type="button" onClick={() => { setEditOrder(null); setModalError(null); }}
                                 className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
                                 Annuler
                             </button>
@@ -1300,45 +1325,33 @@ export default function AdminShopOrdersPage() {
                         <div className="p-10 pb-8">
                             <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">Confirmer la suppression</h3>
                             <p className="text-slate-500 text-base leading-relaxed">Cette commande sera définitivement supprimée. Les crédits associés seront retirés du compte client.</p>
+                            {deleteError && (
+                                <div className="mt-4 p-4 bg-rose-50 border border-rose-100 text-rose-700 rounded-xl flex items-start gap-2.5 text-sm animate-in slide-in-from-top-1 duration-200">
+                                    <span className="text-lg leading-none">⚠️</span>
+                                    <div className="flex-1 font-medium">{deleteError}</div>
+                                    <button type="button" onClick={() => setDeleteError(null)} className="text-rose-400 hover:text-rose-600 transition-colors">
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            )}
                         </div>
                         <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center">
-                                <button onClick={() => setDeleteConfirmId(null)}
-                                    className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
-                                    Annuler
-                                </button>
-                                <button onClick={() => handleDelete(deleteConfirmId)}
-                                    className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm active:scale-95">
-                                    Supprimer
-                                </button>
+                            <button onClick={() => { setDeleteConfirmId(null); setDeleteError(null); }}
+                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
+                                Annuler
+                            </button>
+                            <button onClick={() => handleDelete(deleteConfirmId)}
+                                className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm active:scale-95">
+                                Supprimer
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Suspend Confirmation */}
-            {showSuspendConfirm && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-10 pb-8">
-                            <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">Confirmer la suspension/réactivation</h3>
-                            <p className="text-slate-500 text-base leading-relaxed">
-                                Vous allez suspendre ou réactiver les crédits de <strong>{selectedOrderIds.size}</strong> commande(s).
-                                Les utilisateurs concernés ne pourront plus utiliser leurs crédits tant qu'ils sont suspendus.
-                            </p>
-                        </div>
-                        <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center">
-                                <button onClick={() => setShowSuspendConfirm(false)}
-                                    className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
-                                    Annuler
-                                </button>
-                                <button onClick={confirmBulkSuspend}
-                                    className="px-6 py-2.5 bg-orange-600 text-white rounded-xl font-medium hover:bg-orange-700 transition-all text-sm shadow-sm">
-                                    Confirmer
-                                </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+
 
             {/* Invoice Modal */}
             {invoiceOrder && (

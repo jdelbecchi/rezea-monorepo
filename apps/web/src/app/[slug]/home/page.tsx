@@ -182,7 +182,12 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
   };
 
   const handleLogout = () => {
-    localStorage.clear();
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("user_id");
+    localStorage.removeItem("tenant_id");
+    localStorage.removeItem("default_view");
+    localStorage.removeItem("user_role");
+    localStorage.removeItem("seenAlerts");
     router.push(`/${slug}`);
   };
 

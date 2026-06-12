@@ -196,15 +196,34 @@ async def login(
     elif user.is_active_override:
         is_effectively_active = True
     else:
-        # 2. Vérifier si membre actif par commande
+        # 2. Vérifier si membre actif par commande (en tenant compte de la date d'expiration + délai de grâce)
         from app.models.models import Order
-        order_result = await db.execute(
-            select(func.count(Order.id)).where(
+        from app.services import orders as order_service
+        from datetime import date
+        
+        # Expirer les crédits expirés si nécessaire (obsolète avec FIFO dynamique)
+
+
+        grace_days = tenant.grace_period_days if tenant else 0
+        grace_mode = tenant.grace_period_mode if tenant else "days"
+
+        order_res = await db.execute(
+            select(Order.end_date, Order.is_validity_unlimited).where(
                 Order.user_id == user.id,
                 Order.status == "active"
             )
         )
-        if order_result.scalar() > 0:
+        has_active = False
+        today_val = date.today()
+        for row in order_res.all():
+            end_d, is_unlim = row
+            eff_end = order_service.compute_effective_end_date(end_d, grace_days, grace_mode)
+            if not is_unlim and eff_end and eff_end < today_val:
+                continue
+            has_active = True
+            break
+
+        if has_active:
             is_effectively_active = True
 
     if not is_effectively_active:

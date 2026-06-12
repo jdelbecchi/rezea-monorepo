@@ -41,6 +41,11 @@ async def get_credit_account(
             detail="Compte de crédits non trouvé"
         )
     
+    # Calculer le solde global dynamiquement via FIFO
+    from app.services import orders as order_service
+    _, global_balance, _ = await order_service.compute_fifo_balances(db, user_id, tenant_id)
+    account.balance = global_balance
+    
     return account
 
 
@@ -55,6 +60,7 @@ async def list_transactions(
     user_id = request.state.user_id
     
     # Récupérer le compte
+
     result = await db.execute(
         select(CreditAccount).where(
             and_(
