@@ -194,6 +194,7 @@ export default function TenantPortal() {
           position: relative;
           padding-left: 1.75rem;
           margin-bottom: 0.75rem;
+          font-size: 0.9em;
         }
         .portal-description li::before {
           content: "";

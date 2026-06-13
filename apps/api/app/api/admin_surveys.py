@@ -448,8 +448,11 @@ async def send_survey_campaign_emails(
                     <!-- Footer -->
                     <div style="border-top: 1px solid #f1f5f9; padding-top: 20px; text-align: center;">
                         {socials_html}
-                        <p style="font-family: 'Livvic', sans-serif; color: #94a3b8; font-size: 12px; font-weight: 500; margin: 10px 0 0 0;">
-                            {tenant.name} - Propulsé par Rezea
+                        <p style="font-family: 'Livvic', sans-serif; color: #94a3b8; font-size: 12px; font-weight: 500; margin: 10px 0 5px 0;">
+                            {tenant.name}{f" | {tenant.email}" if tenant.email else ""}
+                        </p>
+                        <p style="font-family: 'Livvic', sans-serif; color: #cbd5e1; font-size: 11px; font-weight: 500; margin: 0;">
+                            Propulsé par Rezea
                         </p>
                     </div>
                 </div>

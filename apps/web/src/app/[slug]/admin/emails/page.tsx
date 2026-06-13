@@ -712,8 +712,11 @@ function AdminEmailsContent() {
                 
                 <div style="border-top: 1px solid #f1f5f9; margin-top: 15px; padding-top: 10px; text-align: center;">
                     ${socialsHtml}
-                    <p style="font-family: 'Livvic', sans-serif; color: #94a3b8; font-size: 12px; font-weight: 500; margin: 0;">
-                        © ${tenant?.name || "Zen Yoga"} - Propulsé par Rezea
+                    <p style="font-family: 'Livvic', sans-serif; color: #94a3b8; font-size: 12px; font-weight: 500; margin: 0 0 5px 0;">
+                        © ${tenant?.name || "Zen Yoga"}${tenant?.email ? ` | ${tenant.email}` : ""}
+                    </p>
+                    <p style="font-family: 'Livvic', sans-serif; color: #cbd5e1; font-size: 11px; font-weight: 500; margin: 0;">
+                        Propulsé par Rezea
                     </p>
                 </div>
             </div>
@@ -1109,23 +1112,20 @@ function AdminEmailsContent() {
                                                 <div 
                                                     key={t.id}
                                                     onClick={() => loadTemplate(t)}
-                                                    className="min-w-[220px] max-w-[220px] bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group relative"
+                                                    className="min-w-[180px] max-w-[180px] bg-white p-3 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group relative flex items-center gap-2"
                                                 >
                                                     <button 
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             setTemplateToDelete(t);
                                                         }}
-                                                        className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-white text-slate-400 hover:bg-rose-50 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all text-xs z-20"
+                                                        className="absolute top-1.5 right-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-rose-50 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all text-[10px] z-20"
                                                         title="Supprimer le modèle"
                                                     >
                                                         ✕
                                                     </button>
-                                                    <div className="w-10 h-10 bg-indigo-50/50 rounded-xl flex items-center justify-center text-indigo-600 transition-colors mb-4 font-bold text-lg">
-                                                        📄
-                                                    </div>
-                                                    <h3 className="font-semibold text-slate-900 text-sm truncate mb-1">{t.name}</h3>
-                                                    <p className="text-xs text-slate-500 truncate">{t.subject || "Pas d'objet"}</p>
+                                                    <span className="text-base select-none shrink-0">📄</span>
+                                                    <h3 className="font-medium text-slate-700 text-xs truncate pr-3 flex-1">{t.name}</h3>
                                                 </div>
                                             ))}
                                         </div>
@@ -1497,7 +1497,7 @@ function AdminEmailsContent() {
                             {operationalTemplates.length > 0 && (
                                 <section className="animate-in fade-in duration-300">
                                     <div className="flex items-center justify-between mb-4">
-                                        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Modèles enregistrés</h2>
+                                        <h2 className="text-xs font-medium text-slate-400 uppercase tracking-wider">Modèles enregistrés</h2>
                                         <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-bold">{operationalTemplates.length} modèles</span>
                                     </div>
                                     <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">
@@ -1505,23 +1505,20 @@ function AdminEmailsContent() {
                                             <div 
                                                 key={t.id}
                                                 onClick={() => loadTemplate(t)}
-                                                className="min-w-[220px] max-w-[220px] bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group relative"
+                                                className="min-w-[180px] max-w-[180px] bg-white p-3 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group relative flex items-center gap-2"
                                             >
                                                 <button 
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         setTemplateToDelete(t);
                                                     }}
-                                                    className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-white text-slate-400 hover:bg-rose-50 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all text-xs z-20"
+                                                    className="absolute top-1.5 right-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-rose-50 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all text-[10px] z-20"
                                                     title="Supprimer le modèle"
                                                 >
                                                     ✕
                                                 </button>
-                                                <div className="w-10 h-10 bg-indigo-50/50 rounded-xl flex items-center justify-center text-indigo-600 transition-colors mb-4 font-bold text-lg">
-                                                    📄
-                                                </div>
-                                                <h3 className="font-bold text-slate-900 text-sm truncate mb-1">{t.name}</h3>
-                                                <p className="text-xs text-slate-500 truncate">{t.subject || "Pas d'objet"}</p>
+                                                <span className="text-base select-none shrink-0">📄</span>
+                                                <h3 className="font-medium text-slate-700 text-xs truncate pr-3 flex-1">{t.name}</h3>
                                             </div>
                                         ))}
                                     </div>
@@ -1841,7 +1838,7 @@ function AdminEmailsContent() {
                                                     </div>
                                                     
                                                     <p className="font-normal text-[8px] text-slate-400">
-                                                        © {new Date().getFullYear()} Zen Yoga - Propulsé par Rezea
+                                                        © {new Date().getFullYear()} {tenant?.name || "Zen Yoga"}{tenant?.email ? ` | ${tenant.email}` : ""} - Propulsé par Rezea
                                                     </p>
                                                 </div>
                                             </div>
@@ -2540,7 +2537,7 @@ function AdminEmailsContent() {
                             ))}
                         </div>
 
-                        <div className="p-6 bg-gray-50 border-t border-slate-100 flex justify-between items-center">
+                        <div className="p-6 bg-white border-t border-slate-100 flex justify-between items-center">
                             <span className="text-sm font-semibold text-slate-600">{selectedUserIds.length} sélectionné(s)</span>
                             <button
                                 onClick={() => setShowUserSelector(false)}
@@ -2558,7 +2555,7 @@ function AdminEmailsContent() {
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-10 pb-8">
-                            <h3 className="text-xl font-semibold text-slate-900 mb-2">Enregistrer le modèle</h3>
+                            <h3 className="text-lg font-medium text-slate-900 mb-2">Enregistrer le modèle</h3>
                             <p className="text-sm text-slate-500 mb-8 leading-relaxed">Donnez un nom à ce modèle pour le retrouver facilement dans votre bibliothèque.</p>
                             
                             <div className="relative">
@@ -2568,12 +2565,12 @@ function AdminEmailsContent() {
                                     value={templateName}
                                     onChange={(e) => setTemplateName(e.target.value)}
                                     placeholder="ex: Annonce Stage Printemps"
-                                    className="w-full p-4 rounded-2xl border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 outline-none transition-all bg-slate-50/50 font-medium"
+                                    className="w-full p-3.5 rounded-2xl border border-slate-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 outline-none transition-all bg-slate-50/50 font-normal text-sm text-slate-700"
                                     onKeyDown={(e) => e.key === 'Enter' && handleSaveTemplate()}
                                 />
                             </div>
                         </div>
-                        <div className="p-6 bg-gray-50 border-t border-slate-100 flex gap-3 justify-end items-center">
+                        <div className="p-6 bg-white border-t border-slate-100 flex gap-3 justify-end items-center">
                             <button 
                                 onClick={() => setShowSaveModal(false)}
                                 className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-semibold hover:bg-gray-50 transition-all text-sm active:scale-95"
@@ -2600,7 +2597,7 @@ function AdminEmailsContent() {
                             <h3 className="text-xl font-bold text-slate-900 mb-2">Supprimer le modèle ?</h3>
                             <p className="text-sm text-slate-500 leading-relaxed font-medium">Cette action est définitive. Le modèle <b>&quot;{templateToDelete.name}&quot;</b> sera supprimé.</p>
                         </div>
-                        <div className="p-6 bg-gray-50 border-t border-slate-100 flex gap-3 justify-end items-center">
+                        <div className="p-6 bg-white border-t border-slate-100 flex gap-3 justify-end items-center">
                             <button 
                                 onClick={() => setTemplateToDelete(null)}
                                 className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-semibold hover:bg-gray-50 transition-all text-sm active:scale-95"

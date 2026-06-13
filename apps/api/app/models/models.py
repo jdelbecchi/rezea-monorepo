@@ -111,6 +111,7 @@ class Tenant(Base):
     website_url = Column(String(500), nullable=True)
     facebook_url = Column(String(500), nullable=True)
     instagram_url = Column(String(500), nullable=True)
+    email = Column(String(255), nullable=True)
     
     # Documents légaux
     cgv_url = Column(String(500), nullable=True)

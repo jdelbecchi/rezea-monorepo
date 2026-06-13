@@ -39,6 +39,7 @@ class EmailService:
                 "primary_color": tenant.primary_color,
                 "logo_url": tenant.logo_url,
                 "legal_address": tenant.legal_address,
+                "contact_email": tenant.email,
                 "instagram_handle": tenant.instagram_handle,
                 "facebook_handle": tenant.facebook_handle,
                 "dashboard_url": f"{settings.FRONTEND_URL}/{tenant.slug}/dashboard",

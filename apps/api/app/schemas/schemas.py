@@ -124,6 +124,7 @@ class TenantBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     slug: str = Field(..., min_length=3, max_length=100)
     description: Optional[str] = None
+    email: Optional[EmailStr] = None
 
 
 class TenantCreate(TenantBase):
@@ -135,6 +136,7 @@ class TenantSettingsUpdate(BaseModel):
     """Mise à jour des paramètres du tenant (admin club uniquement)"""
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
+    email: Optional[EmailStr] = None
     logo_url: Optional[str] = None
     banner_url: Optional[str] = None
     slogan: Optional[str] = Field(None, max_length=500)

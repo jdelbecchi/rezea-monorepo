@@ -387,6 +387,26 @@ export default function AdminSettingsPage() {
                                                     </div>
                                                 </div>
 
+                                                <div>
+                                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                                        Email de contact
+                                                    </label>
+                                                    <div className="relative">
+                                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 select-none">
+                                                            <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                            </svg>
+                                                        </span>
+                                                        <input
+                                                            type="email"
+                                                            value={formData.email || ""}
+                                                            onChange={e => setFormData({ ...formData, email: e.target.value })}
+                                                            placeholder="contact@votreclub.com"
+                                                            className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-sm"
+                                                        />
+                                                    </div>
+                                                </div>
+
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                     <div>
                                                         <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -609,7 +629,7 @@ export default function AdminSettingsPage() {
 
                                 <div className="space-y-8">
                                     <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6 h-full">
-                                        <h3 className="text-lg font-semibold flex items-center gap-2">✨ Textes personnalisés</h3>
+                                        <h3 className="text-base font-medium flex items-center gap-2 text-slate-800">✨ Textes personnalisés</h3>
                                         <div>
                                             <p className="text-xs text-slate-400 mb-6 font-medium leading-relaxed italic bg-slate-50 p-3 rounded-xl border border-slate-100">
                                                 💡 <b>le conseil Rezea :</b> une introduction courte suivie de 3 à 5 atouts majeurs est le format idéal pour convertir vos visiteurs !
@@ -650,7 +670,7 @@ export default function AdminSettingsPage() {
                                                                     value={item}
                                                                     onChange={e => handleUpdateAtout(idx, e.target.value)}
                                                                     placeholder={`Atout n°${idx + 1}...`}
-                                                                    className="flex-1 px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-50 focus:border-blue-400 outline-none transition-all font-normal text-slate-700"
+                                                                    className="flex-1 px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-50 focus:border-blue-400 outline-none transition-all font-normal text-sm text-slate-700"
                                                                 />
                                                                 <button 
                                                                     onClick={() => handleRemoveAtout(idx)}
@@ -936,8 +956,11 @@ export default function AdminSettingsPage() {
                                             {(formData.allow_pay_later_offers || formData.allow_pay_later_events) && (
                                                 <div className="pt-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300 border-t border-slate-100">
                                                     <div className="space-y-1">
-                                                        <label className="block text-sm font-medium text-slate-700">Instructions de paiement :</label>
-                                                        <p className="text-[11px] text-slate-400 italic">Ces instructions seront envoyées par email lors du choix du paiement différé.</p>
+                                                        <label className="block text-base font-medium text-slate-700 flex items-center gap-1.5">
+                                                            <span>✉️</span>
+                                                            <span>Instructions de paiement :</span>
+                                                        </label>
+                                                        <p className="text-[11px] text-slate-400 italic">Ces instructions seront envoyées par email par défaut si aucun moyen de paiement n&apos;est défini ou en cas de choix de paiement différé.</p>
                                                     </div>
                                                     <ReactQuill
                                                         theme="snow"
@@ -945,7 +968,7 @@ export default function AdminSettingsPage() {
                                                         onChange={(val) => setFormData({ ...formData, confirmation_email_body: val })}
                                                         placeholder="Ex: Merci de bien vouloir nous remettre votre règlement lors de votre premier cours..."
                                                         modules={quillModules}
-                                                        className="bg-white rounded-2xl overflow-hidden border border-slate-200"
+                                                        className="bg-white rounded-2xl overflow-hidden border border-slate-200 email-editor"
                                                     />
                                                 </div>
                                             )}
@@ -1374,6 +1397,7 @@ export default function AdminSettingsPage() {
                 .ql-container.ql-snow { border: none !important; font-family: inherit; }
                 .ql-toolbar.ql-snow { border: none !important; border-bottom: 1px solid #f1f5f9 !important; background: #f8fafc; padding: 12px 16px !important; }
                 .ql-editor { font-size: 16px; line-height: 1.6; color: #1e293b; min-height: 200px; padding: 24px !important; }
+                .email-editor .ql-editor { font-size: 14px !important; }
                 .no-scrollbar::-webkit-scrollbar { display: none; }
                 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
                 
@@ -1387,7 +1411,7 @@ export default function AdminSettingsPage() {
                     padding: 0; 
                     margin-bottom: 0.75rem; 
                 }
-                .portal-description li { position: relative; padding-left: 1.25rem; margin-bottom: 0.4rem; }
+                .portal-description li { position: relative; padding-left: 1.25rem; margin-bottom: 0.4rem; font-size: 0.9em; }
                 .portal-description li::before {
                     content: "";
                     position: absolute;

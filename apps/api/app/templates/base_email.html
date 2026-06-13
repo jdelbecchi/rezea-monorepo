@@ -99,6 +99,9 @@
             {% if legal_address %}
                 <p>{{ legal_address }}</p>
             {% endif %}
+            {% if contact_email %}
+                <p><a href="mailto:{{ contact_email }}" style="color: #64748b; text-decoration: none;">{{ contact_email }}</a></p>
+            {% endif %}
             <div class="footer-links">
                 {% if instagram_handle %}
                     <a href="https://instagram.com/{{ instagram_handle }}">Instagram</a>

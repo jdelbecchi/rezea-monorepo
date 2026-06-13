@@ -284,6 +284,7 @@ export interface Tenant {
   name: string;
   slug: string;
   description?: string;
+  email?: string;
   logo_url?: string;
   banner_url?: string;
   slogan?: string;
