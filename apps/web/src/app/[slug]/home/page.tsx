@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { api, User, CreditAccount, Tenant, Booking, Event, OrderItem, EventRegistration } from "@/lib/api";
+import { api, User, CreditAccount, Tenant, Booking, Event, OrderItem, EventRegistration, Vignette } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
 import { formatCredits } from "@/lib/formatters";
@@ -210,6 +210,17 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
   const showName = tenantSettings?.user_header_show_name !== false;
   const isLogoOnly = showLogo && !showName;
 
+  // Personnalisation de l'accueil utilisateur
+  const layout = tenantSettings?.user_home_layout || "both";
+  const showHeader = layout !== "vignettes";
+  const showVignettes = layout !== "header";
+
+  const posY = tenantSettings?.header_text_pos_y || "center";
+  const posX = tenantSettings?.header_text_pos_x || "center";
+  const alignY = posY === "top" ? "justify-start" : posY === "bottom" ? "justify-end" : "justify-center";
+  const alignX = posX === "left" ? "items-start text-left" : posX === "right" ? "items-end text-right" : "items-center text-center";
+  const animation = tenantSettings?.header_text_animation || "none";
+
   return (
     <div className="min-h-[100dvh] bg-white flex flex-col items-center overflow-x-hidden safe-top md:pb-0">
       
@@ -322,24 +333,161 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                 </div>
             )}
 
-            {/* Banner */}
-            <div className="relative shrink-0 mb-0 md:mb-8 lg:mb-0">
-                <div 
-                    className="aspect-video w-full shadow-xl shadow-blue-900/10 relative group bg-slate-50 border border-slate-100 overflow-hidden"
-                    style={{ 
-                        background: bannerUrl 
-                            ? `url(${bannerUrl}) center/cover no-repeat` 
-                            : `linear-gradient(135deg, ${primaryColor}20, ${primaryColor}40)` 
-                    }}
-                >
-                    {bannerUrl && <div className="absolute inset-0 bg-black/5 group-hover:bg-transparent transition-all duration-700" />}
-                    {!bannerUrl && (
-                        <div className="absolute inset-0 flex items-center justify-center text-slate-300">
-                            <span className="text-8xl opacity-20">✨</span>
-                        </div>
-                    )}
+            {/* 1. CSS styles override for animations & custom scrollbar */}
+            <style>{`
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(8px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                @keyframes flashGlow {
+                    0%, 100% { opacity: 1; transform: scale(1); }
+                    50% { opacity: 0.92; transform: scale(1.01); }
+                }
+                @keyframes typewriter {
+                    from { max-width: 0; }
+                    to { max-width: 100%; }
+                }
+                @keyframes blink {
+                    from, to { border-color: transparent }
+                    50% { border-color: currentColor }
+                }
+                .anim-fade { 
+                    opacity: 0;
+                    animation: fadeIn 0.8s ease-out forwards; 
+                }
+                .anim-flash { animation: flashGlow 2.5s ease-in-out infinite; }
+                .anim-typewriter { 
+                    display: inline-block;
+                    overflow: hidden;
+                    white-space: nowrap;
+                    border-right: 2px solid;
+                    max-width: 0;
+                    animation: typewriter 2s steps(25, end) forwards, blink 0.75s step-end infinite;
+                }
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+            `}</style>
+
+            {/* Banner (conditional) */}
+            {showHeader && (
+                <div className="relative shrink-0 mb-0 md:mb-8 lg:mb-0">
+                    <div 
+                        className="aspect-video w-full shadow-xl shadow-blue-900/10 relative group bg-slate-50 border border-slate-100 overflow-hidden"
+                        style={{ 
+                            background: bannerUrl 
+                                ? `url(${bannerUrl}) center/cover no-repeat` 
+                                : `linear-gradient(135deg, ${primaryColor}20, ${primaryColor}40)` 
+                        }}
+                    >
+                        {/* Background Overlay Styles */}
+                        {tenantSettings?.header_text_bg === "dark_overlay" && (
+                            <div className="absolute inset-0 bg-black/45" />
+                        )}
+                        {tenantSettings?.header_text_bg === "light_overlay" && (
+                            <div className="absolute inset-0 bg-white/45" />
+                        )}
+                        {bannerUrl && tenantSettings?.header_text_bg !== "dark_overlay" && tenantSettings?.header_text_bg !== "light_overlay" && (
+                            <div className="absolute inset-0 bg-black/5 group-hover:bg-transparent transition-all duration-700" />
+                        )}
+
+                        {/* Text Overlay Content */}
+                        {(tenantSettings?.header_title || tenantSettings?.header_subtitle) && (
+                            <div className={`absolute inset-0 p-6 flex flex-col ${alignY} ${alignX}`}>
+                                {tenantSettings?.header_text_bg === "pill_dark" || tenantSettings?.header_text_bg === "pill_light" ? (
+                                    <div className={`${
+                                        tenantSettings.header_text_bg === "pill_dark"
+                                            ? "bg-black/65 text-white border border-white/10"
+                                            : "bg-white/85 text-slate-800 border border-slate-100 shadow-lg"
+                                    } backdrop-blur-md px-6 py-4 rounded-3xl max-w-[90%] inline-flex flex-col gap-1 ${alignX}`}>
+                                        {tenantSettings.header_title && (
+                                            <h2 
+                                                className={`text-lg md:text-xl font-bold tracking-tight ${
+                                                    animation === "fade" ? "anim-fade" : animation === "flash" ? "anim-flash" : animation === "typewriter" ? "anim-typewriter" : ""
+                                                }`}
+                                                style={{ color: tenantSettings.header_text_bg === "pill_dark" ? undefined : tenantSettings.header_text_color }}
+                                            >
+                                                {tenantSettings.header_title}
+                                            </h2>
+                                        )}
+                                        {tenantSettings.header_subtitle && (
+                                            <p className={`text-xs md:text-sm font-medium opacity-90 ${animation === "fade" ? "anim-fade" : ""}`}>
+                                                {tenantSettings.header_subtitle}
+                                            </p>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className={`max-w-[90%] flex flex-col gap-1 ${alignX}`} style={{ color: tenantSettings.header_text_color || "#ffffff" }}>
+                                        {tenantSettings.header_title && (
+                                            <h2 
+                                                className={`text-lg md:text-xl font-bold tracking-tight ${
+                                                    animation === "fade" ? "anim-fade" : animation === "flash" ? "anim-flash" : animation === "typewriter" ? "anim-typewriter" : ""
+                                                }`}
+                                            >
+                                                {tenantSettings.header_title}
+                                            </h2>
+                                        )}
+                                        {tenantSettings.header_subtitle && (
+                                            <p className={`text-xs md:text-sm font-medium opacity-90 ${animation === "fade" ? "anim-fade" : ""}`}>
+                                                {tenantSettings.header_subtitle}
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        
+                        {!bannerUrl && !(tenantSettings?.header_title || tenantSettings?.header_subtitle) && (
+                            <div className="absolute inset-0 flex items-center justify-center text-slate-300">
+                                <span className="text-8xl opacity-20">✨</span>
+                            </div>
+                        )}
+                    </div>
                 </div>
-            </div>
+            )}
+
+            {/* Vignettes Carousel (conditional) */}
+            {showVignettes && tenantSettings?.vignettes && tenantSettings.vignettes.length > 0 && (
+                <div className="px-5 mt-4 mb-2 shrink-0">
+                    <h3 className="text-sm font-bold text-slate-800 mb-3 tracking-tight">À la une</h3>
+                    <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-3 -mx-5 px-5">
+                        {tenantSettings.vignettes.map((vig: Vignette) => {
+                            const CardContent = (
+                                <div className="relative w-full h-full">
+                                    <img 
+                                        src={`${API_URL}${vig.image_url}`} 
+                                        alt={vig.title || "Vignette"} 
+                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                                    />
+                                    {/* Dark overlay for text readability */}
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                                    {vig.title && (
+                                        <div className="absolute bottom-3 left-3 right-3 text-white">
+                                            <p className="text-xs font-bold leading-tight tracking-tight">{vig.title}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+
+                            return vig.link_url ? (
+                                <Link 
+                                    key={vig.id}
+                                    href={vig.link_url}
+                                    className="w-[42%] flex-shrink-0 snap-start aspect-[3/4] rounded-2xl overflow-hidden border border-slate-100 relative shadow-md shadow-blue-900/5 active:scale-[0.97] transition-all group"
+                                >
+                                    {CardContent}
+                                </Link>
+                            ) : (
+                                <div 
+                                    key={vig.id}
+                                    className="w-[42%] flex-shrink-0 snap-start aspect-[3/4] rounded-2xl overflow-hidden border border-slate-100 relative shadow-md shadow-blue-900/5 transition-all group"
+                                >
+                                    {CardContent}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
         </div>
 
         {/* Right Column (Desktop) / Bottom Section (Mobile): Menu Buttons */}

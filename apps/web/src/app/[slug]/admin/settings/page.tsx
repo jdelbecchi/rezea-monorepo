@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import { api, User, Tenant } from "@/lib/api";
+import { api, User, Tenant, Vignette } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 
 // Import dynamique de ReactQuill pour éviter les erreurs SSR
@@ -18,6 +18,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 const TABS = [
     { id: "identity", label: "Identité", icon: "🏢" },
+    { id: "home_design", label: "Accueil Client", icon: "📱" },
     { id: "portal", label: "Portail", icon: "🌐" },
     { id: "rules", label: "Règles", icon: "⚖️" },
     { id: "payment", label: "Paiements", icon: "💳" },
@@ -1160,6 +1161,186 @@ export default function AdminSettingsPage() {
                                 </section>
                             </div>
                         )}
+
+                        {activeTab === "home_design" && (
+                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                                {/* Configuration de la page d'accueil client */}
+                                <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
+                                    <h3 className="text-lg font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
+                                        <span>🎨</span> Disposition de l'accueil client
+                                    </h3>
+                                    
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-3">
+                                            Éléments à afficher sur la page d'accueil
+                                        </label>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            {[
+                                                { id: "both", label: "Bandeau + Vignettes", desc: "Affiche le grand bandeau supérieur et le carrousel de vignettes en dessous." },
+                                                { id: "header", label: "Bandeau uniquement", desc: "Affiche uniquement le grand bandeau supérieur de l'établissement." },
+                                                { id: "vignettes", label: "Vignettes uniquement", desc: "Affiche uniquement le carrousel horizontal des vignettes." }
+                                            ].map(opt => (
+                                                <label 
+                                                    key={opt.id}
+                                                    className={`flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                                                        (formData.user_home_layout || "both") === opt.id
+                                                            ? "border-blue-500 bg-blue-50/20"
+                                                            : "border-slate-200 hover:border-slate-300 bg-white"
+                                                    }`}
+                                                >
+                                                    <input 
+                                                        type="radio" 
+                                                        name="user_home_layout" 
+                                                        value={opt.id} 
+                                                        checked={(formData.user_home_layout || "both") === opt.id}
+                                                        onChange={() => setFormData({ ...formData, user_home_layout: opt.id })}
+                                                        className="sr-only"
+                                                    />
+                                                    <span className="text-sm font-bold text-slate-800 mb-1">{opt.label}</span>
+                                                    <span className="text-xs text-slate-500 leading-snug">{opt.desc}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Personnalisation du Bandeau */}
+                                {((formData.user_home_layout || "both") !== "vignettes") && (
+                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
+                                        <h3 className="text-lg font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
+                                            <span>🖼️</span> Accroche textuelle sur le bandeau
+                                        </h3>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Titre d'accroche principal</label>
+                                                <input 
+                                                    type="text"
+                                                    value={formData.header_title || ""}
+                                                    onChange={e => setFormData({ ...formData, header_title: e.target.value })}
+                                                    placeholder="Ex: Bienvenue dans votre club !"
+                                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-sm text-slate-700"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Sous-titre / Message secondaire</label>
+                                                <input 
+                                                    type="text"
+                                                    value={formData.header_subtitle || ""}
+                                                    onChange={e => setFormData({ ...formData, header_subtitle: e.target.value })}
+                                                    placeholder="Ex: Réservez votre séance du jour"
+                                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-sm text-slate-700"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Couleur du texte d'accroche</label>
+                                                <div className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-2xl border border-slate-200">
+                                                    <input 
+                                                        type="color"
+                                                        value={formData.header_text_color || "#ffffff"}
+                                                        onChange={e => setFormData({ ...formData, header_text_color: e.target.value })}
+                                                        className="w-9 h-9 rounded-xl border border-slate-300 cursor-pointer shadow-sm"
+                                                    />
+                                                    <input 
+                                                        type="text"
+                                                        value={formData.header_text_color || "#ffffff"}
+                                                        onChange={e => setFormData({ ...formData, header_text_color: e.target.value })}
+                                                        className="bg-transparent border-none p-0 font-mono font-semibold text-xs outline-none w-20 text-slate-700"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Style d'arrière-plan du texte</label>
+                                                <select
+                                                    value={formData.header_text_bg || "none"}
+                                                    onChange={e => setFormData({ ...formData, header_text_bg: e.target.value })}
+                                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all text-sm text-slate-700"
+                                                >
+                                                    <option value="none">Aucun (texte brut sur l'image)</option>
+                                                    <option value="dark_overlay">Voile sombre sur tout le bandeau</option>
+                                                    <option value="light_overlay">Voile clair sur tout le bandeau</option>
+                                                    <option value="pill_dark">Capsule sombre sous le texte</option>
+                                                    <option value="pill_light">Capsule claire sous le texte</option>
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Positionnement horizontal</label>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    {[
+                                                        { id: "left", label: "Gauche" },
+                                                        { id: "center", label: "Centre" },
+                                                        { id: "right", label: "Droite" }
+                                                    ].map(pos => (
+                                                        <button
+                                                            key={pos.id}
+                                                            type="button"
+                                                            onClick={() => setFormData({ ...formData, header_text_pos_x: pos.id })}
+                                                            className={`py-2 px-3 text-xs font-semibold rounded-xl border transition-all ${
+                                                                (formData.header_text_pos_x || "center") === pos.id
+                                                                    ? "bg-slate-900 text-white border-slate-900 shadow-sm"
+                                                                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                                                            }`}
+                                                        >
+                                                            {pos.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Positionnement vertical</label>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    {[
+                                                        { id: "top", label: "Haut" },
+                                                        { id: "center", label: "Milieu" },
+                                                        { id: "bottom", label: "Bas" }
+                                                    ].map(pos => (
+                                                        <button
+                                                            key={pos.id}
+                                                            type="button"
+                                                            onClick={() => setFormData({ ...formData, header_text_pos_y: pos.id })}
+                                                            className={`py-2 px-3 text-xs font-semibold rounded-xl border transition-all ${
+                                                                (formData.header_text_pos_y || "center") === pos.id
+                                                                    ? "bg-slate-900 text-white border-slate-900 shadow-sm"
+                                                                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                                                            }`}
+                                                        >
+                                                            {pos.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="md:col-span-2">
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Animation d'apparition</label>
+                                                <select
+                                                    value={formData.header_text_animation || "none"}
+                                                    onChange={e => setFormData({ ...formData, header_text_animation: e.target.value })}
+                                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all text-sm text-slate-700"
+                                                >
+                                                    <option value="none">Aucune (apparition statique)</option>
+                                                    <option value="fade">Fondu d'apparition (Fade-in)</option>
+                                                    <option value="typewriter">Machine à écrire (Typewriter)</option>
+                                                    <option value="flash">Effet Flash subtil</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Gestion des Vignettes */}
+                                {((formData.user_home_layout || "both") !== "header") && (
+                                    <VignettesEditor 
+                                        vignettes={formData.vignettes || []} 
+                                        onChange={(newVignettes) => setFormData({ ...formData, vignettes: newVignettes })} 
+                                    />
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -1460,6 +1641,168 @@ export default function AdminSettingsPage() {
                     -webkit-mask-position: center;
                 }
             `}</style>
+        </div>
+    );
+}
+
+interface VignettesEditorProps {
+    vignettes: Vignette[];
+    onChange: (vignettes: Vignette[]) => void;
+}
+
+function VignettesEditor({ vignettes, onChange }: VignettesEditorProps) {
+    const [uploadingId, setUploadingId] = useState<string | null>(null);
+
+    const handleAdd = () => {
+        if (vignettes.length >= 5) return;
+        const newVig: Vignette = {
+            id: `vig_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            image_url: "",
+            title: "",
+            link_url: ""
+        };
+        onChange([...vignettes, newVig]);
+    };
+
+    const handleRemove = (id: string) => {
+        onChange(vignettes.filter(v => v.id !== id));
+    };
+
+    const handleChange = (id: string, field: keyof Vignette, value: any) => {
+        onChange(vignettes.map(v => v.id === id ? { ...v, [field]: value } : v));
+    };
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, id: string) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploadingId(id);
+        try {
+            const res = await api.uploadImage(file);
+            handleChange(id, 'image_url', res.url);
+        } catch (err: any) {
+            alert(err.response?.data?.detail || "Erreur lors de l'upload de l'image");
+        } finally {
+            setUploadingId(null);
+        }
+    };
+
+    return (
+        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <span>📱</span> Carrousel de vignettes
+                </h3>
+                <span className="text-xs text-slate-500 font-medium">{vignettes.length} / 5 vignettes</span>
+            </div>
+
+            {vignettes.length === 0 ? (
+                <div className="text-center py-10 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50">
+                    <span className="text-3xl block mb-2">📱</span>
+                    <p className="text-sm font-semibold text-slate-600 mb-1">Aucune vignette configurée</p>
+                    <p className="text-xs text-slate-400 max-w-sm mx-auto mb-4 leading-relaxed">
+                        Ajoutez jusqu'à 5 vignettes avec des images au format vertical qui s'afficheront sur l'accueil client.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={handleAdd}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 transition-all shadow-md shadow-blue-100"
+                    >
+                        + Ajouter une première vignette
+                    </button>
+                </div>
+            ) : (
+                <div className="space-y-6">
+                    {vignettes.map((v, index) => (
+                        <div key={v.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col md:flex-row gap-4 items-start relative group">
+                            
+                            {/* Number label */}
+                            <div className="absolute left-4 -top-3 px-2 py-0.5 bg-slate-200 text-slate-700 text-[10px] font-bold rounded-full border border-slate-300">
+                                Vignette {index + 1}
+                            </div>
+
+                            {/* Image upload box */}
+                            <div className="w-full md:w-32 aspect-[3/4] bg-white border border-slate-300 rounded-xl overflow-hidden relative flex flex-col items-center justify-center shrink-0">
+                                {v.image_url ? (
+                                    <>
+                                        <img src={`${API_URL}${v.image_url}`} className="w-full h-full object-cover" alt={`Vignette ${index + 1}`} />
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                            <label className="p-2 bg-white rounded-full text-slate-900 shadow-lg cursor-pointer hover:scale-105 transition-all">
+                                                <span>📷</span>
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*" 
+                                                    className="hidden" 
+                                                    onChange={e => handleFileChange(e, v.id)} 
+                                                />
+                                            </label>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-slate-50 transition-colors p-2 text-center">
+                                        <span className="text-xl mb-1">🖼️</span>
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                            {uploadingId === v.id ? "Upload..." : "Ajouter image"}
+                                        </span>
+                                        <input 
+                                            type="file" 
+                                            accept="image/*" 
+                                            className="hidden" 
+                                            onChange={e => handleFileChange(e, v.id)} 
+                                            disabled={uploadingId !== null}
+                                        />
+                                    </label>
+                                )}
+                            </div>
+
+                            {/* Fields */}
+                            <div className="flex-1 w-full space-y-3 pt-2">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Titre de la vignette (affiché sur l'image)</label>
+                                    <input 
+                                        type="text"
+                                        value={v.title || ""}
+                                        onChange={e => handleChange(v.id, 'title', e.target.value)}
+                                        placeholder="Ex: Nouveaux cours de Yoga"
+                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all text-xs text-slate-700"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Lien de redirection (URL ou route interne)</label>
+                                    <input 
+                                        type="text"
+                                        value={v.link_url || ""}
+                                        onChange={e => handleChange(v.id, 'link_url', e.target.value)}
+                                        placeholder="Ex: /home/booking ou URL externe"
+                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all text-xs text-slate-700"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="w-full md:w-auto self-stretch flex md:flex-col justify-end pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => handleRemove(v.id)}
+                                    className="px-3 py-1.5 md:py-2 text-[10px] font-bold text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100 rounded-xl transition-all uppercase tracking-wider"
+                                >
+                                    Supprimer
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+
+                    {vignettes.length < 5 && (
+                        <button
+                            type="button"
+                            onClick={handleAdd}
+                            className="w-full py-3 border-2 border-dashed border-slate-200 hover:border-slate-300 rounded-2xl text-xs font-semibold text-slate-600 hover:text-slate-700 bg-white hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+                        >
+                            + Ajouter une vignette ({vignettes.length} / 5)
+                        </button>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

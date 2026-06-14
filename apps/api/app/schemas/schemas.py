@@ -119,6 +119,13 @@ class UserResponse(UserBase):
 
 
 # ==================== Tenant ====================
+class VignetteSchema(BaseModel):
+    id: str
+    image_url: str
+    title: Optional[str] = None
+    link_url: Optional[str] = None
+
+
 class TenantBase(BaseModel):
     """Base tenant"""
     name: str = Field(..., min_length=1, max_length=255)
@@ -127,6 +134,15 @@ class TenantBase(BaseModel):
     email: Optional[EmailStr] = None
     user_header_show_logo: Optional[bool] = True
     user_header_show_name: Optional[bool] = True
+    user_home_layout: Optional[str] = "both"
+    header_title: Optional[str] = None
+    header_subtitle: Optional[str] = None
+    header_text_color: Optional[str] = "#ffffff"
+    header_text_bg: Optional[str] = "none"
+    header_text_pos_y: Optional[str] = "center"
+    header_text_pos_x: Optional[str] = "center"
+    header_text_animation: Optional[str] = "none"
+    vignettes: Optional[List[VignetteSchema]] = Field(default_factory=list)
 
 
 class TenantCreate(TenantBase):
@@ -176,6 +192,17 @@ class TenantSettingsUpdate(BaseModel):
     enable_review_prompts: Optional[bool] = None
     google_review_url: Optional[str] = None
     review_prompt_threshold: Optional[int] = Field(None, ge=1)
+    
+    # Personnalisation de l'accueil utilisateur
+    user_home_layout: Optional[str] = None
+    header_title: Optional[str] = None
+    header_subtitle: Optional[str] = None
+    header_text_color: Optional[str] = None
+    header_text_bg: Optional[str] = None
+    header_text_pos_y: Optional[str] = None
+    header_text_pos_x: Optional[str] = None
+    header_text_animation: Optional[str] = None
+    vignettes: Optional[List[VignetteSchema]] = None
 
 
 class TenantResponse(TenantBase):

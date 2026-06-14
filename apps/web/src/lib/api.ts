@@ -279,6 +279,13 @@ export interface Event {
   updated_at?: string;
 }
 
+export interface Vignette {
+  id: string;
+  image_url: string;
+  title?: string;
+  link_url?: string;
+}
+
 export interface Tenant {
   id: string;
   name: string;
@@ -326,6 +333,17 @@ export interface Tenant {
   google_review_url?: string;
   review_prompt_threshold: number;
   created_at: string;
+  
+  // Personnalisation de l'accueil utilisateur
+  user_home_layout?: string;
+  header_title?: string;
+  header_subtitle?: string;
+  header_text_color?: string;
+  header_text_bg?: string;
+  header_text_pos_y?: string;
+  header_text_pos_x?: string;
+  header_text_animation?: string;
+  vignettes?: Vignette[];
 }
 
 export interface Offer {

@@ -109,6 +109,17 @@ class Tenant(Base):
     user_header_show_logo = Column(Boolean, default=True, server_default="true", nullable=False)
     user_header_show_name = Column(Boolean, default=True, server_default="true", nullable=False)
     
+    # Personnalisation de l'accueil utilisateur
+    user_home_layout = Column(String(50), default="both", server_default="'both'", nullable=False)
+    header_title = Column(String(255), nullable=True)
+    header_subtitle = Column(String(500), nullable=True)
+    header_text_color = Column(String(7), default="#ffffff", server_default="'#ffffff'", nullable=False)
+    header_text_bg = Column(String(50), default="none", server_default="'none'", nullable=False)
+    header_text_pos_y = Column(String(50), default="center", server_default="'center'", nullable=False)
+    header_text_pos_x = Column(String(50), default="center", server_default="'center'", nullable=False)
+    header_text_animation = Column(String(50), default="none", server_default="'none'", nullable=False)
+    vignettes = Column(JSON, default=list, server_default="'[]'", nullable=False)
+    
     # Réseaux sociaux & Site Web
     website_url = Column(String(500), nullable=True)
     facebook_url = Column(String(500), nullable=True)
