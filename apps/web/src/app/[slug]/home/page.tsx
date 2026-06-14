@@ -206,6 +206,10 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
 
 
   // --- VIEW: PWA HOME (Default for everyone) ---
+  const showLogo = tenantSettings?.user_header_show_logo !== false;
+  const showName = tenantSettings?.user_header_show_name !== false;
+  const isLogoOnly = showLogo && !showName;
+
   return (
     <div className="min-h-[100dvh] bg-white flex flex-col items-center overflow-x-hidden safe-top md:pb-0">
       
@@ -215,21 +219,27 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
         {/* Left Column (Desktop) / Top Section (Mobile): Banner & Identity */}
         <div className="flex flex-col h-full">
             {/* 1. Header - Club identity + Credits */}
-            <header className="px-5 py-3 flex items-center justify-between shrink-0 mb-3 md:mb-10">
+            <header className={`px-5 py-3 flex items-center shrink-0 mb-2 md:mb-5 ${
+                isLogoOnly ? 'justify-center relative' : 'justify-between'
+            }`}>
                 <div className="flex items-center gap-3">
-                    {tenantSettings?.logo_url ? (
-                        <img src={`${API_URL}${tenantSettings.logo_url}`} className="h-8 w-8 object-contain" alt="Logo" />
-                    ) : (
-                        <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-[10px] font-medium text-white">
-                            {tenantSettings?.name?.[0]?.toUpperCase() || 'R'}
-                        </div>
+                    {showLogo && (
+                        tenantSettings?.logo_url ? (
+                            <img src={`${API_URL}${tenantSettings.logo_url}`} className="h-14 w-14 object-contain" alt="Logo" />
+                        ) : (
+                            <div className="w-14 h-14 rounded-2xl bg-slate-900 flex items-center justify-center text-sm font-semibold text-white">
+                                {tenantSettings?.name?.[0]?.toUpperCase() || 'R'}
+                            </div>
+                        )
                     )}
-                    <span className="text-sm font-medium tracking-tight text-slate-800 truncate max-w-[200px]">
-                        {tenantSettings?.name || "rezea"}
-                    </span>
+                    {showName && (
+                        <span className="text-sm font-medium tracking-tight text-slate-800 truncate max-w-[200px]">
+                            {tenantSettings?.name || "rezea"}
+                        </span>
+                    )}
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className={isLogoOnly ? 'absolute right-5 flex items-center gap-2' : 'flex items-center gap-2'}>
                   {/* Desktop Profile Access */}
                   <Link href={`${basePath}/profile`} className="hidden md:flex items-center group">
                       <div className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center shadow-sm border border-slate-200 group-hover:bg-white group-hover:shadow-md transition-all">
@@ -244,26 +254,72 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                   <button 
                       onClick={handleLogout}
                       className="flex items-center gap-2 px-3 py-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all duration-300 active:scale-[0.95]"
-                      title="Déconnexion"
                   >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                          <polyline points="16 17 21 12 16 7"></polyline>
-                          <line x1="21" y1="12" x2="9" y2="12"></line>
+                      <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M12 15L15 12M15 12L12 9M15 12H4M9 20h9a2 2 0 002-2V6a2 2 0 00-2-2H9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
+                      <span className="text-xs font-semibold hidden md:inline">Se déconnecter</span>
                   </button>
                 </div>
             </header>
 
-            {/* Admin Button - Black card style */}
-            {(user?.role === "owner" || user?.role === "manager") && (
-                <button 
-                    onClick={() => router.push(`${basePath}/admin`)}
-                    className="mx-5 mb-2 flex items-center justify-center gap-3 px-4 py-3.5 bg-slate-900 text-white rounded-2xl shadow-xl shadow-slate-900/20 active:scale-[0.98] transition-all duration-300 hover:bg-slate-800"
-                >
-                    <span className="text-base">⚙️</span>
-                    <span className="text-sm font-medium">Accès administration</span>
-                </button>
+            {/* Alert Hub - Compact centered pill layout */}
+            {allAlerts.length > 0 && (
+                <div className="flex flex-col items-center w-full px-5 mb-4">
+                    <button 
+                        onClick={() => setIsAlertsExpanded(!isAlertsExpanded)}
+                        className={`inline-flex items-center gap-2 py-1.5 px-4 rounded-full border transition-all text-xs font-semibold shadow-sm active:scale-[0.98]
+                            ${allAlerts[0].priority === 1 ? 'bg-orange-50/90 border-orange-200/60 text-orange-800 hover:bg-orange-100/90' : 
+                              allAlerts[0].priority === 2 ? 'bg-[#FFF2B9]/50 border-amber-200/50 text-amber-900 hover:bg-[#FFF2B9]/70' : 'bg-sky-50/90 border-sky-200/60 text-sky-800 hover:bg-sky-100/90'}`}
+                    >
+                        <span className="text-[13px] shrink-0 animate-pulse">🔔</span>
+                        <span>
+                            {allAlerts.length === 1 
+                                ? "1 notification en attente" 
+                                : `${allAlerts.length} notifications en attente`}
+                        </span>
+                        <svg 
+                            xmlns="http://www.w3.org/2000/svg" 
+                            className={`h-3 w-3 shrink-0 ml-1 transition-transform duration-500 ${isAlertsExpanded ? 'rotate-180' : ''}`} 
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                        >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                    
+                    {/* Expanded Alert List - Matches pill background color */}
+                    {isAlertsExpanded && (
+                        <div className={`w-full max-w-md mt-2 flex flex-col gap-2 p-3 border rounded-2xl animate-in fade-in zoom-in-95 duration-500 origin-top shadow-md
+                            ${allAlerts[0].priority === 1 ? 'bg-orange-50/90 border-orange-200/60' : 
+                              allAlerts[0].priority === 2 ? 'bg-[#FFF2B9]/50 border-amber-200/50' : 'bg-sky-50/90 border-sky-200/60'}`}
+                        >
+                            {allAlerts.map(alert => (
+                                <div key={alert.id} className="flex items-start gap-2.5 p-2.5 bg-white rounded-xl border border-slate-100 shadow-sm transition-all hover:shadow-md">
+                                    <div className="mt-0.5 shrink-0">
+                                        {alert.priority === 1 && (
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            </svg>
+                                        )}
+                                        {alert.priority === 2 && (
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        )}
+                                        {alert.priority === 3 && (
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-sky-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        )}
+                                    </div>
+                                    <p className="text-xs font-medium text-slate-700 leading-snug">
+                                        {alert.message}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             )}
 
             {/* Banner */}
@@ -284,83 +340,6 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                     )}
                 </div>
             </div>
-
-            {/* Alert Hub - Full width below banner */}
-            {allAlerts.length > 0 && (
-                <button 
-                    onClick={() => setIsAlertsExpanded(!isAlertsExpanded)}
-                    className={`w-full flex items-center justify-center gap-3 py-3 px-6 transition-all
-                        ${allAlerts[0].priority === 1 ? 'bg-orange-50' : 
-                          allAlerts[0].priority === 2 ? 'bg-[#FFF2B9]/80' : 'bg-sky-50'}`}
-                >
-                    <span 
-                        className={`text-sm shrink-0 transition-colors duration-300 ${
-                            allAlerts[0].priority === 1 ? 'text-orange-500 [filter:drop-shadow(0_0_5px_rgba(249,115,22,0.4))]' : 
-                            allAlerts[0].priority === 2 ? 'text-yellow-500' : 'text-sky-500'
-                        }`}
-                    >
-                        🔔
-                    </span>
-                    <div className="flex items-center justify-center gap-4 flex-1 px-1 text-center">
-                        <p className={`text-xs font-medium tracking-tight leading-tight
-                            ${allAlerts[0].priority === 1 ? 'text-orange-800' : 
-                            allAlerts[0].priority === 2 ? 'text-amber-900' : 'text-sky-800'}`}
-                        >
-                            {allAlerts[0].message}
-                        </p>
-                        {allAlerts.length > 1 && (
-                            <span className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full font-medium
-                                ${allAlerts[0].priority === 1 ? 'bg-orange-200 text-orange-900' : 
-                                allAlerts[0].priority === 2 ? 'bg-amber-200 text-amber-900' : 'bg-sky-200 text-sky-900'}`}
-                            >
-                                +{allAlerts.length - 1}
-                            </span>
-                        )}
-                    </div>
-                    <svg 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        className={`h-3.5 w-3.5 shrink-0 transition-transform duration-500 ${isAlertsExpanded ? 'rotate-180' : ''}
-                            ${allAlerts[0].priority === 1 ? 'text-orange-300' : 
-                              allAlerts[0].priority === 2 ? 'text-yellow-300' : 'text-sky-300'}`} 
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                    >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-                    </svg>
-                </button>
-            )}
-
-            {/* Expanded Alert List */}
-            {isAlertsExpanded && allAlerts.length > 0 && (
-                <div className={`px-5 pb-3 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-500 origin-top
-                    ${allAlerts[0].priority === 1 ? 'bg-orange-50/50' : 
-                      allAlerts[0].priority === 2 ? 'bg-[#FFF2B9]/80' : 'bg-sky-50/50'}`}
-                >
-                    {allAlerts.map(alert => (
-                        <div key={alert.id} className="flex items-start gap-3 p-3 bg-white/90 backdrop-blur-sm rounded-xl hover:bg-white transition-all border border-black/5 shadow-sm active:scale-[0.99]">
-                            <div className="mt-0.5 shrink-0">
-                                {alert.priority === 1 && (
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                    </svg>
-                                )}
-                                {alert.priority === 2 && (
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                )}
-                                {alert.priority === 3 && (
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-sky-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                )}
-                            </div>
-                            <p className="text-xs font-medium text-slate-700 leading-snug">
-                                {alert.message}
-                            </p>
-                        </div>
-                    ))}
-                </div>
-            )}
         </div>
 
         {/* Right Column (Desktop) / Bottom Section (Mobile): Menu Buttons */}
@@ -370,8 +349,8 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
             {credits && (credits.balance > 0 || myOrders.length > 0) && (
                 <div className="flex items-center justify-end gap-2 px-1 my-4">
                     <div className="w-px h-5 bg-slate-300" />
-                    <span className="text-xs font-medium text-slate-900">Crédits</span>
-                    <span className="text-sm">💎</span>
+                    <span className="text-sm font-medium text-slate-900">Crédits</span>
+                    <span className="text-base">💎</span>
                     <p className="text-lg font-medium leading-none text-slate-900">{formatCredits(credits.balance)}</p>
                 </div>
             )}
@@ -465,6 +444,29 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                         </div>
                     </div>
                 </Link>
+
+                {/* Separator for Admin Section */}
+                {(user?.role === "owner" || user?.role === "manager") && (
+                    <div className="col-span-2 my-3 w-1/3 mx-auto border-t border-slate-300" />
+                )}
+
+                {/* Admin Button - Styled with slate-gray background and neutral border */}
+                {(user?.role === "owner" || user?.role === "manager") && (
+                    <Link 
+                        href={`${basePath}/admin`}
+                        className="col-span-2 mt-1 relative flex items-center justify-between px-6 py-3.5 bg-slate-100 hover:bg-slate-200/80 border border-slate-300/80 rounded-2xl transition-all duration-500 active:scale-[0.98] group overflow-hidden"
+                        style={{ 
+                            boxShadow: '3px 4px 14px -2px rgba(100, 116, 139, 0.22)'
+                        }}
+                    >
+                        <div className="flex items-center gap-4 relative z-10">
+                            <div className="text-3xl shrink-0 group-hover:scale-110 transition-transform duration-500">⚙️</div>
+                            <span className="text-base font-medium text-slate-800 group-hover:text-slate-900 transition-colors tracking-tight">
+                                Basculer sur l&apos;interface de gestion
+                            </span>
+                        </div>
+                    </Link>
+                )}
 
             </div>
 

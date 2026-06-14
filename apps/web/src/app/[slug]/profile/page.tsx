@@ -124,16 +124,20 @@ export default function ProfilePage() {
             {/* Header Desktop - Branding & Context */}
             <header className="hidden md:flex fixed top-0 left-0 right-0 h-16 bg-white/80 backdrop-blur-lg border-b border-slate-100 z-50 px-12 items-center justify-between">
                 <div className="flex items-center gap-3">
-                    {tenantSettings?.logo_url ? (
-                        <img src={`${API_URL}${tenantSettings.logo_url}`} className="h-8 w-8 object-contain" alt="Logo" />
-                    ) : (
-                        <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-[10px] font-medium text-white">
-                            {tenantSettings?.name?.[0]?.toUpperCase() || 'R'}
-                        </div>
+                    {tenantSettings?.user_header_show_logo !== false && (
+                        tenantSettings?.logo_url ? (
+                            <img src={`${API_URL}${tenantSettings.logo_url}`} className="h-14 w-14 object-contain" alt="Logo" />
+                        ) : (
+                            <div className="w-14 h-14 rounded-2xl bg-slate-900 flex items-center justify-center text-sm font-semibold text-white">
+                                {tenantSettings?.name?.[0]?.toUpperCase() || 'R'}
+                            </div>
+                        )
                     )}
-                    <span className="text-sm font-medium tracking-tight text-slate-800">
-                        {tenantSettings?.name || "rezea"}
-                    </span>
+                    {tenantSettings?.user_header_show_name !== false && (
+                        <span className="text-sm font-medium tracking-tight text-slate-800">
+                            {tenantSettings?.name || "rezea"}
+                        </span>
+                    )}
                 </div>
             </header>
 

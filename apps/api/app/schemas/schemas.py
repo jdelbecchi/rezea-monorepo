@@ -125,6 +125,8 @@ class TenantBase(BaseModel):
     slug: str = Field(..., min_length=3, max_length=100)
     description: Optional[str] = None
     email: Optional[EmailStr] = None
+    user_header_show_logo: Optional[bool] = True
+    user_header_show_name: Optional[bool] = True
 
 
 class TenantCreate(TenantBase):
@@ -169,6 +171,8 @@ class TenantSettingsUpdate(BaseModel):
     show_logo: Optional[bool] = None
     show_name: Optional[bool] = None
     show_slogan: Optional[bool] = None
+    user_header_show_logo: Optional[bool] = None
+    user_header_show_name: Optional[bool] = None
     enable_review_prompts: Optional[bool] = None
     google_review_url: Optional[str] = None
     review_prompt_threshold: Optional[int] = Field(None, ge=1)
@@ -214,6 +218,8 @@ class TenantResponse(TenantBase):
     show_logo: bool = True
     show_name: bool = True
     show_slogan: bool = True
+    user_header_show_logo: bool = True
+    user_header_show_name: bool = True
     enable_review_prompts: bool = False
     google_review_url: Optional[str] = None
     review_prompt_threshold: int = 5

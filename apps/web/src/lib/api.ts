@@ -320,6 +320,8 @@ export interface Tenant {
   show_logo?: boolean;
   show_name?: boolean;
   show_slogan?: boolean;
+  user_header_show_logo?: boolean;
+  user_header_show_name?: boolean;
   enable_review_prompts: boolean;
   google_review_url?: string;
   review_prompt_threshold: number;

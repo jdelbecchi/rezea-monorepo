@@ -344,7 +344,7 @@ export default function AdminSettingsPage() {
                                                         <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'logo')} />
                                                         <button 
                                                             onClick={() => logoInputRef.current?.click()}
-                                                            className="px-6 py-2 bg-white hover:bg-slate-50 text-slate-900 border border-slate-200 rounded-xl font-bold text-xs transition-all shadow-sm"
+                                                            className="px-6 py-2 bg-white hover:bg-slate-50 text-slate-900 border border-slate-200 rounded-xl font-medium text-xs transition-all shadow-sm"
                                                         >
                                                             Changer le logo
                                                         </button>
@@ -456,6 +456,33 @@ export default function AdminSettingsPage() {
                                 <div className="space-y-8 flex flex-col">
                                     <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6 flex-1">
                                         <div className="space-y-6">
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">
+                                                    Affichage de l&apos;en-tête de l&apos;interface utilisateur
+                                                </label>
+                                                <div className="flex flex-col gap-2.5 pl-1 mb-4">
+                                                    <label className="flex items-center gap-3 cursor-pointer group select-none">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={formData.user_header_show_logo !== false}
+                                                            onChange={e => setFormData({ ...formData, user_header_show_logo: e.target.checked })}
+                                                            className="w-4 h-4"
+                                                        />
+                                                        <span className="text-xs font-light text-slate-600 group-hover:text-slate-900 transition-colors">Logo de l&apos;établissement</span>
+                                                    </label>
+                                                    
+                                                    <label className="flex items-center gap-3 cursor-pointer group select-none">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={formData.user_header_show_name !== false}
+                                                            onChange={e => setFormData({ ...formData, user_header_show_name: e.target.checked })}
+                                                            className="w-4 h-4"
+                                                        />
+                                                        <span className="text-xs font-light text-slate-600 group-hover:text-slate-900 transition-colors">Nom de l&apos;établissement</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            
                                             <div>
                                                 <label className="block text-sm font-medium text-slate-700 mb-2">Header utilisateur</label>
                                                 <div className="w-full h-64 rounded-3xl bg-white border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group mb-3">

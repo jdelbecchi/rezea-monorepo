@@ -106,6 +106,8 @@ class Tenant(Base):
     show_logo = Column(Boolean, default=True, server_default="true", nullable=False)
     show_name = Column(Boolean, default=True, server_default="true", nullable=False)
     show_slogan = Column(Boolean, default=True, server_default="true", nullable=False)
+    user_header_show_logo = Column(Boolean, default=True, server_default="true", nullable=False)
+    user_header_show_name = Column(Boolean, default=True, server_default="true", nullable=False)
     
     # Réseaux sociaux & Site Web
     website_url = Column(String(500), nullable=True)
