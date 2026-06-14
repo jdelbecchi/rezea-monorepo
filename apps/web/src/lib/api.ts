@@ -344,6 +344,7 @@ export interface Tenant {
   header_text_pos_x?: string;
   header_text_animation?: string;
   vignettes?: Vignette[];
+  vignettes_title?: string;
 }
 
 export interface Offer {

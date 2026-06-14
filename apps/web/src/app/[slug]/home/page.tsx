@@ -212,8 +212,8 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
 
   // Personnalisation de l'accueil utilisateur
   const layout = tenantSettings?.user_home_layout || "both";
-  const showHeader = layout !== "vignettes";
-  const showVignettes = layout !== "header";
+  const showHeader = layout === "both" || layout === "header";
+  const showVignettes = layout === "both" || layout === "vignettes";
 
   const posY = tenantSettings?.header_text_pos_y || "center";
   const posX = tenantSettings?.header_text_pos_x || "center";
@@ -448,7 +448,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
             {/* Vignettes Carousel (conditional) */}
             {showVignettes && tenantSettings?.vignettes && tenantSettings.vignettes.length > 0 && (
                 <div className="px-5 mt-4 mb-2 shrink-0">
-                    <h3 className="text-sm font-bold text-slate-800 mb-3 tracking-tight">À la une</h3>
+                    <h3 className="text-sm font-bold text-slate-800 mb-3 tracking-tight">{tenantSettings.vignettes_title || "À la une"}</h3>
                     <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-3 -mx-5 px-5">
                         {tenantSettings.vignettes.map((vig: Vignette) => {
                             const CardContent = (

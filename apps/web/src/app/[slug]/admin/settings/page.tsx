@@ -1076,279 +1076,322 @@ export default function AdminSettingsPage() {
                             </div>
                         )}
 
-                        {activeTab === "home_design" && (
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-in fade-in slide-in-from-bottom-2 duration-500">
-                                {/* Colonne de gauche (Rapatriée de l'onglet Identité) */}
-                                <div className="space-y-8 flex flex-col">
-                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6 flex-1">
-                                        <div className="space-y-6">
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                    Affichage de l&apos;en-tête de l&apos;interface utilisateur
+                        {activeTab === "home_design" && (() => {
+                            const layoutVal = formData.user_home_layout || "both";
+                            const isHeaderEnabled = layoutVal === "both" || layoutVal === "header";
+                            const isVignettesEnabled = layoutVal === "both" || layoutVal === "vignettes";
+
+                            const handleToggleHeader = (checked: boolean) => {
+                                let nextLayout = "none";
+                                if (checked && isVignettesEnabled) {
+                                    nextLayout = "both";
+                                } else if (checked && !isVignettesEnabled) {
+                                    nextLayout = "header";
+                                } else if (!checked && isVignettesEnabled) {
+                                    nextLayout = "vignettes";
+                                }
+                                setFormData({ ...formData, user_home_layout: nextLayout });
+                            };
+
+                            const handleToggleVignettes = (checked: boolean) => {
+                                let nextLayout = "none";
+                                if (isHeaderEnabled && checked) {
+                                    nextLayout = "both";
+                                } else if (isHeaderEnabled && !checked) {
+                                    nextLayout = "header";
+                                } else if (!isHeaderEnabled && checked) {
+                                    nextLayout = "vignettes";
+                                }
+                                setFormData({ ...formData, user_home_layout: nextLayout });
+                            };
+
+                            return (
+                                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                                    {/* Configuration de base de l'interface */}
+                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+                                        {/* 1. Affichage de l'en-tête de l'écran d'accueil */}
+                                        <div className="pb-6 border-b md:border-b-0 md:border-r border-slate-100 pr-0 md:pr-8">
+                                            <label className="block text-sm font-semibold text-slate-900 mb-2">
+                                                Affichage de l&apos;en-tête de l&apos;écran d&apos;accueil *
+                                            </label>
+                                            <div className="flex flex-col gap-2.5 pl-1 mb-4">
+                                                <label className="flex items-center gap-3 cursor-pointer group select-none">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={formData.user_header_show_logo !== false}
+                                                        onChange={e => {
+                                                            const newChecked = e.target.checked;
+                                                            if (!newChecked && formData.user_header_show_name === false) {
+                                                                return;
+                                                            }
+                                                            setFormData({ ...formData, user_header_show_logo: newChecked });
+                                                        }}
+                                                        className="w-4 h-4"
+                                                    />
+                                                    <span className="text-xs font-light text-slate-600 group-hover:text-slate-900 transition-colors">Logo de l&apos;établissement</span>
                                                 </label>
-                                                <div className="flex flex-col gap-2.5 pl-1 mb-4">
-                                                    <label className="flex items-center gap-3 cursor-pointer group select-none">
-                                                        <input 
-                                                            type="checkbox" 
-                                                            checked={formData.user_header_show_logo !== false}
-                                                            onChange={e => setFormData({ ...formData, user_header_show_logo: e.target.checked })}
-                                                            className="w-4 h-4"
-                                                        />
-                                                        <span className="text-xs font-light text-slate-600 group-hover:text-slate-900 transition-colors">Logo de l&apos;établissement</span>
-                                                    </label>
-                                                    
-                                                    <label className="flex items-center gap-3 cursor-pointer group select-none">
-                                                        <input 
-                                                            type="checkbox" 
-                                                            checked={formData.user_header_show_name !== false}
-                                                            onChange={e => setFormData({ ...formData, user_header_show_name: e.target.checked })}
-                                                            className="w-4 h-4"
-                                                        />
-                                                        <span className="text-xs font-light text-slate-600 group-hover:text-slate-900 transition-colors">Nom de l&apos;établissement</span>
-                                                    </label>
-                                                </div>
+                                                
+                                                <label className="flex items-center gap-3 cursor-pointer group select-none">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={formData.user_header_show_name !== false}
+                                                        onChange={e => {
+                                                            const newChecked = e.target.checked;
+                                                            if (!newChecked && formData.user_header_show_logo === false) {
+                                                                return;
+                                                            }
+                                                            setFormData({ ...formData, user_header_show_name: newChecked });
+                                                        }}
+                                                        className="w-4 h-4"
+                                                    />
+                                                    <span className="text-xs font-light text-slate-600 group-hover:text-slate-900 transition-colors">Nom de l&apos;établissement</span>
+                                                </label>
                                             </div>
-                                            
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">Header utilisateur</label>
-                                                <div className="w-full h-64 rounded-3xl bg-white border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group mb-3">
-                                                    {previewBanner ? (
-                                                        <img src={previewBanner} className="w-full h-full object-cover" alt="Banner" />
-                                                    ) : (
-                                                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 group-hover:text-slate-400 transition-colors">
-                                                            <span className="text-3xl mb-1">🏞️</span>
-                                                            <span className="text-[10px] font-bold uppercase tracking-wider">Aucun header</span>
-                                                        </div>
-                                                    )}
-                                                    <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                        <button 
+                                        </div>
+
+                                        {/* 2. Personnalisation de la couleur */}
+                                        <div className="pb-6 border-b md:border-b-0 md:border-r border-slate-100 px-0 md:px-8">
+                                            <label className="block text-sm font-semibold text-slate-900 mb-1">
+                                                Personnalisation de la couleur
+                                            </label>
+                                            <span className="block text-slate-400 text-[10px] font-normal mb-3">
+                                                Choisissez une couleur foncée à médium pour la visibilité de l&apos;interface utilisateur
+                                            </span>
+                                            <div className="flex items-center gap-3 p-2.5 bg-white rounded-2xl border border-slate-200 shadow-sm max-w-[200px]">
+                                                <input
+                                                    type="color"
+                                                    value={formData.primary_color || "#7c3aed"}
+                                                    onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
+                                                    className="w-9 h-9 rounded-xl border-2 border-white shadow-sm cursor-pointer"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={formData.primary_color || "#7c3aed"}
+                                                    onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
+                                                    className="bg-transparent border-none p-0 font-mono font-bold text-xs outline-none w-20 text-slate-600"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* 3. Aperçu de l'écran d'accueil */}
+                                        <div className="pl-0 md:pl-8">
+                                            <label className="block text-sm font-semibold text-slate-900 mb-1">
+                                                Aperçu de l&apos;écran d&apos;accueil
+                                            </label>
+                                            <span className="block text-slate-400 text-[10px] font-normal mb-3">
+                                                Visualisez le rendu final de l&apos;interface utilisateur en temps réel
+                                            </span>
+                                            <button 
+                                                onClick={() => setShowHomePreview(true)}
+                                                className="w-full max-w-[200px] py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium text-xs transition-all shadow-md flex items-center justify-center active:scale-95"
+                                            >
+                                                Visualiser le rendu
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Description de la Personnalisation Visuelle en Bandeau d'information */}
+                                    <div className="bg-blue-50/70 rounded-3xl p-6 border border-blue-100 shadow-sm flex items-start gap-4 animate-in fade-in duration-300">
+                                        <span className="text-2xl text-blue-600 select-none mt-0.5">ℹ️</span>
+                                        <div className="space-y-2 flex-1">
+                                            <h4 className="text-sm font-bold text-slate-900">
+                                                Personnalisation visuelle de l&apos;accueil
+                                            </h4>
+                                            <p className="text-xs text-slate-600 font-normal leading-relaxed">
+                                                Rezea vous permet d&apos;intégrer des visuels optionnels pour enrichir l&apos;expérience quotidienne de vos utilisateurs, promouvoir des événements ou mettre en avant des offres spéciales :
+                                            </p>
+                                            <ul className="text-xs text-slate-600 font-normal list-disc pl-5 space-y-1.5">
+                                                <li>Une image en format horizontal toute largeur à laquelle vous pouvez ajouter un texte court dynamique</li>
+                                                <li>Un carrousel d&apos;images en format vignettes verticales (jusqu&apos;à 5 visuels)</li>
+                                            </ul>
+                                            <p className="text-xs text-slate-500 italic font-normal pt-1">
+                                                Le carrousel s&apos;affiche sous le bandeau lorsque les deux options sont activées.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Grille Side-by-Side */}
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                                        {/* Configuration du Bandeau Supérieur */}
+                                        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
+                                            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                                                <div className="space-y-0.5">
+                                                    <h3 className="text-sm font-semibold text-slate-900">Bandeau supérieur</h3>
+                                                    <p className="text-[10px] text-slate-400 font-normal">Afficher une image format paysage en toute largeur</p>
+                                                </div>
+                                                <label className="relative inline-flex items-center cursor-pointer select-none">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={isHeaderEnabled} 
+                                                        onChange={e => handleToggleHeader(e.target.checked)} 
+                                                        className="sr-only peer" 
+                                                    />
+                                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                                </label>
+                                            </div>
+
+                                            {isHeaderEnabled && (
+                                                <div className="space-y-6 pt-2 animate-in fade-in duration-200">
+                                                    {/* Image à afficher dans le bandeau */}
+                                                    <div className="space-y-3">
+                                                        <div 
                                                             onClick={() => bannerInputRef.current?.click()}
-                                                            className="p-3 bg-white rounded-2xl text-slate-900 shadow-2xl scale-90 group-hover:scale-100 transition-transform"
+                                                            className="w-full h-64 rounded-3xl bg-white border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group cursor-pointer"
                                                         >
-                                                            <span className="text-lg">📸</span>
-                                                        </button>
+                                                            {previewBanner ? (
+                                                                <>
+                                                                    <img src={previewBanner} className="w-full h-full object-cover" alt="Banner" />
+                                                                    <button 
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setPreviewBanner(null);
+                                                                            setFormData({ ...formData, banner_url: "" });
+                                                                        }}
+                                                                        className="absolute top-4 right-4 p-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-700 rounded-xl transition-all shadow-sm z-20"
+                                                                        title="Supprimer l'image"
+                                                                    >
+                                                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                        </svg>
+                                                                    </button>
+                                                                </>
+                                                            ) : (
+                                                                <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 group-hover:text-slate-500 transition-colors">
+                                                                    <span className="text-3xl mb-1">🏞️</span>
+                                                                    <span className="text-[11px] font-medium text-slate-500">Charger un visuel</span>
+                                                                    <span className="text-[10px] text-slate-400 mt-0.5">(max. 5 Mo)</span>
+                                                                </div>
+                                                            )}
+                                                            <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                                <button 
+                                                                    type="button"
+                                                                    className="p-3 bg-white rounded-2xl text-slate-900 shadow-2xl scale-90 group-hover:scale-100 transition-transform"
+                                                                >
+                                                                    <span className="text-lg">📸</span>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <input type="file" ref={bannerInputRef} className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'banner')} />
+                                                    </div>
+
+                                                    {/* Accroche textuelle sous l'image */}
+                                                    <div className="space-y-4 pt-4 border-t border-slate-100">
+                                                        <label className="block text-sm font-semibold text-slate-700">Accroche textuelle sur le bandeau</label>
+                                                        
+                                                        <div className="space-y-4">
+                                                            <div className="grid grid-cols-[180px_1fr] items-center gap-4">
+                                                                <label className="text-[11px] font-medium text-slate-500">Titre d'accroche principal :</label>
+                                                                <input 
+                                                                    type="text"
+                                                                    value={formData.header_title || ""}
+                                                                    onChange={e => setFormData({ ...formData, header_title: e.target.value })}
+                                                                    placeholder="Ex: Bienvenue dans votre club !"
+                                                                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-xs text-slate-700"
+                                                                />
+                                                            </div>
+
+                                                            <div className="grid grid-cols-[180px_1fr] items-center gap-4">
+                                                                <label className="text-[11px] font-medium text-slate-500">Sous-titre / Message secondaire :</label>
+                                                                <input 
+                                                                    type="text"
+                                                                    value={formData.header_subtitle || ""}
+                                                                    onChange={e => setFormData({ ...formData, header_subtitle: e.target.value })}
+                                                                    placeholder="Ex: Réservez votre séance du jour"
+                                                                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-xs text-slate-700"
+                                                                />
+                                                            </div>
+
+                                                            <div className="grid grid-cols-[180px_1fr] items-center gap-4">
+                                                                <label className="text-[11px] font-medium text-slate-500">Couleur du texte d'accroche :</label>
+                                                                <div className="flex items-center gap-2.5 p-2 bg-slate-50 rounded-2xl border border-slate-200 max-w-[200px]">
+                                                                    <input 
+                                                                        type="color"
+                                                                        value={formData.header_text_color || "#ffffff"}
+                                                                        onChange={e => setFormData({ ...formData, header_text_color: e.target.value })}
+                                                                        className="w-8 h-8 rounded-lg border border-slate-300 cursor-pointer shadow-sm"
+                                                                    />
+                                                                    <input 
+                                                                        type="text"
+                                                                        value={formData.header_text_color || "#ffffff"}
+                                                                        onChange={e => setFormData({ ...formData, header_text_color: e.target.value })}
+                                                                        className="bg-transparent border-none p-0 font-mono font-semibold text-[10px] outline-none w-16 text-slate-700"
+                                                                    />
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="grid grid-cols-[180px_1fr] items-center gap-4">
+                                                                <label className="text-[11px] font-medium text-slate-500">Arrière-plan du texte :</label>
+                                                                <select
+                                                                    value={formData.header_text_bg || "none"}
+                                                                    onChange={e => setFormData({ ...formData, header_text_bg: e.target.value })}
+                                                                    className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all text-xs text-slate-700"
+                                                                >
+                                                                    <option value="none">Aucun (texte brut)</option>
+                                                                    <option value="dark_overlay">Voile sombre complet</option>
+                                                                    <option value="light_overlay">Voile clair complet</option>
+                                                                    <option value="pill_dark">Capsule sombre</option>
+                                                                    <option value="pill_light">Capsule claire</option>
+                                                                </select>
+                                                            </div>
+
+                                                            <div className="grid grid-cols-[180px_1fr] items-center gap-4">
+                                                                <label className="text-[11px] font-medium text-slate-500">Positionnement horizontal :</label>
+                                                                <select
+                                                                    value={formData.header_text_pos_x || "center"}
+                                                                    onChange={e => setFormData({ ...formData, header_text_pos_x: e.target.value })}
+                                                                    className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all text-xs text-slate-700"
+                                                                >
+                                                                    <option value="left">Gauche</option>
+                                                                    <option value="center">Centre</option>
+                                                                    <option value="right">Droite</option>
+                                                                </select>
+                                                            </div>
+
+                                                            <div className="grid grid-cols-[180px_1fr] items-center gap-4">
+                                                                <label className="text-[11px] font-medium text-slate-500">Positionnement vertical :</label>
+                                                                <select
+                                                                    value={formData.header_text_pos_y || "center"}
+                                                                    onChange={e => setFormData({ ...formData, header_text_pos_y: e.target.value })}
+                                                                    className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all text-xs text-slate-700"
+                                                                >
+                                                                    <option value="top">Haut</option>
+                                                                    <option value="center">Milieu</option>
+                                                                    <option value="bottom">Bas</option>
+                                                                </select>
+                                                            </div>
+
+                                                            <div className="grid grid-cols-[180px_1fr] items-center gap-4">
+                                                                <label className="text-[11px] font-medium text-slate-500">Animation d'apparition :</label>
+                                                                <select
+                                                                    value={formData.header_text_animation || "none"}
+                                                                    onChange={e => setFormData({ ...formData, header_text_animation: e.target.value })}
+                                                                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all text-xs text-slate-700"
+                                                                >
+                                                                    <option value="none">Aucune (apparition statique)</option>
+                                                                    <option value="fade">Fondu d'apparition (Fade-in)</option>
+                                                                    <option value="typewriter">Machine à écrire (Typewriter)</option>
+                                                                    <option value="flash">Effet Flash subtil</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <input type="file" ref={bannerInputRef} className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'banner')} />
-                                                <button 
-                                                    onClick={() => bannerInputRef.current?.click()}
-                                                    className="w-full py-2.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 rounded-xl font-medium text-xs transition-all shadow-sm"
-                                                >
-                                                    Changer la bannière
-                                                </button>
-                                            </div>
-                                            
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                    Couleur d&apos;accentuation <span className="text-slate-400 text-[10px] font-normal ml-1">(Choisissez une couleur foncée à médium pour la visibilité de l&apos;interface utilisateur)</span>
-                                                </label>
-                                                <div className="flex items-center justify-between gap-3 p-2.5 bg-white rounded-2xl border border-slate-100 shadow-sm">
-                                                    <div className="flex items-center gap-3">
-                                                        <input
-                                                            type="color"
-                                                            value={formData.primary_color || "#7c3aed"}
-                                                            onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
-                                                            className="w-9 h-9 rounded-xl border-2 border-white shadow-sm cursor-pointer"
-                                                        />
-                                                        <input
-                                                            type="text"
-                                                            value={formData.primary_color || "#7c3aed"}
-                                                            onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
-                                                            className="bg-transparent border-none p-0 font-mono font-bold text-xs outline-none w-20 text-slate-600"
-                                                        />
-                                                    </div>
-                                                    <button 
-                                                        onClick={() => setShowHomePreview(true)}
-                                                        className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-[9px] uppercase tracking-wider transition-all shadow-md"
-                                                    >
-                                                        Aperçu
-                                                    </button>
-                                                </div>
-                                            </div>
+                                            )}
                                         </div>
+
+                                        {/* Gestion des Vignettes */}
+                                        <VignettesEditor 
+                                            vignettes={formData.vignettes || []} 
+                                            onChange={(newVignettes) => setFormData({ ...formData, vignettes: newVignettes })} 
+                                            isEnabled={isVignettesEnabled}
+                                            onToggle={handleToggleVignettes}
+                                            title={formData.vignettes_title || "À la une"}
+                                            onTitleChange={(newTitle) => setFormData({ ...formData, vignettes_title: newTitle })}
+                                        />
                                     </div>
                                 </div>
-
-                                {/* Colonne de droite (visual layout options) */}
-                                <div className="space-y-8 flex flex-col">
-                                {/* Configuration de la page d'accueil client */}
-                                <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
-                                    <h3 className="text-lg font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
-                                        <span>🎨</span> Disposition de l'accueil client
-                                    </h3>
-                                    
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-3">
-                                            Éléments à afficher sur la page d'accueil
-                                        </label>
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            {[
-                                                { id: "both", label: "Bandeau + Vignettes", desc: "Affiche le grand bandeau supérieur et le carrousel de vignettes en dessous." },
-                                                { id: "header", label: "Bandeau uniquement", desc: "Affiche uniquement le grand bandeau supérieur de l'établissement." },
-                                                { id: "vignettes", label: "Vignettes uniquement", desc: "Affiche uniquement le carrousel horizontal des vignettes." }
-                                            ].map(opt => (
-                                                <label 
-                                                    key={opt.id}
-                                                    className={`flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all ${
-                                                        (formData.user_home_layout || "both") === opt.id
-                                                            ? "border-blue-500 bg-blue-50/20"
-                                                            : "border-slate-200 hover:border-slate-300 bg-white"
-                                                    }`}
-                                                >
-                                                    <input 
-                                                        type="radio" 
-                                                        name="user_home_layout" 
-                                                        value={opt.id} 
-                                                        checked={(formData.user_home_layout || "both") === opt.id}
-                                                        onChange={() => setFormData({ ...formData, user_home_layout: opt.id })}
-                                                        className="sr-only"
-                                                    />
-                                                    <span className="text-sm font-bold text-slate-800 mb-1">{opt.label}</span>
-                                                    <span className="text-xs text-slate-500 leading-snug">{opt.desc}</span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Personnalisation du Bandeau */}
-                                {((formData.user_home_layout || "both") !== "vignettes") && (
-                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
-                                        <h3 className="text-lg font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
-                                            <span>🖼️</span> Accroche textuelle sur le bandeau
-                                        </h3>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">Titre d'accroche principal</label>
-                                                <input 
-                                                    type="text"
-                                                    value={formData.header_title || ""}
-                                                    onChange={e => setFormData({ ...formData, header_title: e.target.value })}
-                                                    placeholder="Ex: Bienvenue dans votre club !"
-                                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-sm text-slate-700"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">Sous-titre / Message secondaire</label>
-                                                <input 
-                                                    type="text"
-                                                    value={formData.header_subtitle || ""}
-                                                    onChange={e => setFormData({ ...formData, header_subtitle: e.target.value })}
-                                                    placeholder="Ex: Réservez votre séance du jour"
-                                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-sm text-slate-700"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">Couleur du texte d'accroche</label>
-                                                <div className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-2xl border border-slate-200">
-                                                    <input 
-                                                        type="color"
-                                                        value={formData.header_text_color || "#ffffff"}
-                                                        onChange={e => setFormData({ ...formData, header_text_color: e.target.value })}
-                                                        className="w-9 h-9 rounded-xl border border-slate-300 cursor-pointer shadow-sm"
-                                                    />
-                                                    <input 
-                                                        type="text"
-                                                        value={formData.header_text_color || "#ffffff"}
-                                                        onChange={e => setFormData({ ...formData, header_text_color: e.target.value })}
-                                                        className="bg-transparent border-none p-0 font-mono font-semibold text-xs outline-none w-20 text-slate-700"
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">Style d'arrière-plan du texte</label>
-                                                <select
-                                                    value={formData.header_text_bg || "none"}
-                                                    onChange={e => setFormData({ ...formData, header_text_bg: e.target.value })}
-                                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all text-sm text-slate-700"
-                                                >
-                                                    <option value="none">Aucun (texte brut sur l'image)</option>
-                                                    <option value="dark_overlay">Voile sombre sur tout le bandeau</option>
-                                                    <option value="light_overlay">Voile clair sur tout le bandeau</option>
-                                                    <option value="pill_dark">Capsule sombre sous le texte</option>
-                                                    <option value="pill_light">Capsule claire sous le texte</option>
-                                                </select>
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">Positionnement horizontal</label>
-                                                <div className="grid grid-cols-3 gap-2">
-                                                    {[
-                                                        { id: "left", label: "Gauche" },
-                                                        { id: "center", label: "Centre" },
-                                                        { id: "right", label: "Droite" }
-                                                    ].map(pos => (
-                                                        <button
-                                                            key={pos.id}
-                                                            type="button"
-                                                            onClick={() => setFormData({ ...formData, header_text_pos_x: pos.id })}
-                                                            className={`py-2 px-3 text-xs font-semibold rounded-xl border transition-all ${
-                                                                (formData.header_text_pos_x || "center") === pos.id
-                                                                    ? "bg-slate-900 text-white border-slate-900 shadow-sm"
-                                                                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                                                            }`}
-                                                        >
-                                                            {pos.label}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">Positionnement vertical</label>
-                                                <div className="grid grid-cols-3 gap-2">
-                                                    {[
-                                                        { id: "top", label: "Haut" },
-                                                        { id: "center", label: "Milieu" },
-                                                        { id: "bottom", label: "Bas" }
-                                                    ].map(pos => (
-                                                        <button
-                                                            key={pos.id}
-                                                            type="button"
-                                                            onClick={() => setFormData({ ...formData, header_text_pos_y: pos.id })}
-                                                            className={`py-2 px-3 text-xs font-semibold rounded-xl border transition-all ${
-                                                                (formData.header_text_pos_y || "center") === pos.id
-                                                                    ? "bg-slate-900 text-white border-slate-900 shadow-sm"
-                                                                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                                                            }`}
-                                                        >
-                                                            {pos.label}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            <div className="md:col-span-2">
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">Animation d'apparition</label>
-                                                <select
-                                                    value={formData.header_text_animation || "none"}
-                                                    onChange={e => setFormData({ ...formData, header_text_animation: e.target.value })}
-                                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all text-sm text-slate-700"
-                                                >
-                                                    <option value="none">Aucune (apparition statique)</option>
-                                                    <option value="fade">Fondu d'apparition (Fade-in)</option>
-                                                    <option value="typewriter">Machine à écrire (Typewriter)</option>
-                                                    <option value="flash">Effet Flash subtil</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Gestion des Vignettes */}
-                                {((formData.user_home_layout || "both") !== "header") && (
-                                    <VignettesEditor 
-                                        vignettes={formData.vignettes || []} 
-                                        onChange={(newVignettes) => setFormData({ ...formData, vignettes: newVignettes })} 
-                                    />
-                                )}
-                            </div>
-                        </div>
-                    )}
+                            );
+                        })()}
                 </div>
             </div>
 
@@ -1467,146 +1510,255 @@ export default function AdminSettingsPage() {
                 )}
                 
                 {/* HOME PREVIEW MODAL */}
-                {showHomePreview && (
-                    <div className="fixed inset-0 z-[100] flex flex-col bg-slate-950/40 backdrop-blur-md animate-in fade-in duration-300">
-                        {/* Modal Header */}
-                        <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm">
-                            <div className="flex items-center gap-4">
-                                <h2 className="text-lg font-bold text-slate-900">Aperçu Home Utilisateur</h2>
-                                <div className="flex items-center bg-slate-100 p-1 rounded-xl">
-                                    <button 
-                                        onClick={() => setPreviewMode("desktop")}
-                                        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${previewMode === "desktop" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
-                                    >
-                                        Ordinateur
-                                    </button>
-                                    <button 
-                                        onClick={() => setPreviewMode("mobile")}
-                                        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${previewMode === "mobile" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
-                                    >
-                                        Mobile
-                                    </button>
+                {showHomePreview && (() => {
+                    const layoutVal = formData.user_home_layout || "both";
+                    const isHeaderEnabled = layoutVal === "both" || layoutVal === "header";
+                    const isVignettesEnabled = layoutVal === "both" || layoutVal === "vignettes";
+
+                    const posY = formData.header_text_pos_y || "center";
+                    const posX = formData.header_text_pos_x || "center";
+                    const alignY = posY === "top" ? "justify-start" : posY === "bottom" ? "justify-end" : "justify-center";
+                    const alignX = posX === "left" ? "items-start text-left" : posX === "right" ? "items-end text-right" : "items-center text-center";
+                    const animation = formData.header_text_animation || "none";
+
+                    return (
+                        <div className="fixed inset-0 z-[100] flex flex-col bg-slate-950/40 backdrop-blur-md animate-in fade-in duration-300">
+                            {/* Modal Header */}
+                            <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm">
+                                <div className="flex items-center gap-4">
+                                    <h2 className="text-lg font-bold text-slate-900">Aperçu du Portail Client (Home)</h2>
+                                    <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+                                        <button 
+                                            onClick={() => setPreviewMode("desktop")}
+                                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${previewMode === "desktop" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                                        >
+                                            Ordinateur
+                                        </button>
+                                        <button 
+                                            onClick={() => setPreviewMode("mobile")}
+                                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${previewMode === "mobile" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                                        >
+                                            Mobile
+                                        </button>
+                                    </div>
                                 </div>
+                                <button 
+                                    onClick={() => setShowHomePreview(false)}
+                                    className="w-10 h-10 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full transition-all font-bold"
+                                >
+                                    ✕
+                                </button>
                             </div>
-                            <button 
-                                onClick={() => setShowHomePreview(false)}
-                                className="w-10 h-10 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full transition-all font-bold"
-                            >
-                                ✕
-                            </button>
-                        </div>
 
-                        {/* Modal Body */}
-                        <div className="flex-1 overflow-auto p-4 md:p-8 flex justify-center items-start bg-slate-100/50">
-                            <div className={`bg-white shadow-2xl transition-all duration-500 overflow-hidden relative ${previewMode === "desktop" ? "w-full max-w-5xl rounded-2xl" : "w-[375px] h-[667px] rounded-[3rem] border-[8px] border-slate-900 shadow-black/20"}`}>
-                                <div className={`h-full overflow-y-auto no-scrollbar flex flex-col bg-white ${previewMode === "mobile" ? "pt-8" : ""}`}>
-                                    <div className={`w-full mx-auto flex flex-col bg-white ${previewMode === "desktop" ? "max-w-4xl px-8 pt-8" : ""}`}>
-                                        <div className={`${previewMode === "desktop" ? "lg:grid lg:grid-cols-2 lg:gap-12 lg:items-start" : ""}`}>
-                                            <div className="flex flex-col">
-                                                <header className="px-5 py-3 flex items-center justify-between mb-3">
-                                                    <div className="flex items-center gap-3">
-                                                        {previewLogo ? (
-                                                            <img src={previewLogo} className="h-6 w-6 object-contain" alt="Logo" />
-                                                        ) : (
-                                                            <div className="w-6 h-6 rounded-lg bg-slate-900 flex items-center justify-center text-white text-[8px] font-medium">
-                                                                {formData.name?.[0]?.toUpperCase() || 'R'}
+                            {/* Modal Body */}
+                            <div className="flex-1 overflow-auto p-4 md:p-8 flex justify-center items-start bg-slate-100/50">
+                                <div className={`bg-white shadow-2xl transition-all duration-500 overflow-hidden relative ${previewMode === "desktop" ? "w-full max-w-5xl rounded-2xl" : "w-[375px] h-[667px] rounded-[3rem] border-[8px] border-slate-900 shadow-black/20"}`}>
+                                    <div className={`h-full overflow-y-auto no-scrollbar flex flex-col bg-white ${previewMode === "mobile" ? "pt-8" : ""}`}>
+                                        <div className={`w-full mx-auto flex flex-col bg-white ${previewMode === "desktop" ? "max-w-4xl px-8 pt-8" : ""}`}>
+                                            <div className={`${previewMode === "desktop" ? "lg:grid lg:grid-cols-2 lg:gap-12 lg:items-start" : ""}`}>
+                                                <div className="flex flex-col">
+                                                    <header className={`px-5 py-3 flex items-center justify-between mb-3`}>
+                                                        <div className="flex items-center gap-3">
+                                                            {formData.user_header_show_logo !== false && (
+                                                                previewLogo ? (
+                                                                    <img src={previewLogo} className="h-6 w-6 object-contain" alt="Logo" />
+                                                                ) : (
+                                                                    <div className="w-6 h-6 rounded-lg bg-slate-900 flex items-center justify-center text-white text-[8px] font-semibold">
+                                                                        {formData.name?.[0]?.toUpperCase() || 'R'}
+                                                                    </div>
+                                                                )
+                                                            )}
+                                                            {formData.user_header_show_name !== false && (
+                                                                <span className="text-xs font-semibold tracking-tight text-slate-800">
+                                                                    {formData.name || "rezea"}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </header>
+
+                                                    {/* Banner */}
+                                                    {isHeaderEnabled && (
+                                                        <div className="relative mb-6 px-5">
+                                                            <div 
+                                                                className="aspect-video w-full shadow-lg relative bg-slate-50 border border-slate-100 overflow-hidden rounded-xl group"
+                                                                style={{ 
+                                                                    background: previewBanner 
+                                                                        ? `url(${previewBanner}) center/cover no-repeat` 
+                                                                        : `linear-gradient(135deg, ${formData.primary_color}20, ${formData.primary_color}40)` 
+                                                                }}
+                                                            >
+                                                                {/* Background Overlay Styles */}
+                                                                {formData.header_text_bg === "dark_overlay" && (
+                                                                    <div className="absolute inset-0 bg-black/45" />
+                                                                )}
+                                                                {formData.header_text_bg === "light_overlay" && (
+                                                                    <div className="absolute inset-0 bg-white/45" />
+                                                                )}
+                                                                {previewBanner && formData.header_text_bg !== "dark_overlay" && formData.header_text_bg !== "light_overlay" && (
+                                                                    <div className="absolute inset-0 bg-black/5 group-hover:bg-transparent transition-all duration-700" />
+                                                                )}
+
+                                                                {/* Text Overlay Content */}
+                                                                {(formData.header_title || formData.header_subtitle) && (
+                                                                    <div className={`absolute inset-0 p-4 flex flex-col ${alignY} ${alignX}`}>
+                                                                        {formData.header_text_bg === "pill_dark" || formData.header_text_bg === "pill_light" ? (
+                                                                            <div className={`${
+                                                                                formData.header_text_bg === "pill_dark"
+                                                                                    ? "bg-black/65 text-white border border-white/10"
+                                                                                    : "bg-white/85 text-slate-800 border border-slate-100 shadow-lg"
+                                                                            } backdrop-blur-md px-4 py-2.5 rounded-2xl max-w-[90%] inline-flex flex-col gap-0.5 ${alignX}`}>
+                                                                                {formData.header_title && (
+                                                                                    <h2 
+                                                                                        className={`text-xs md:text-sm font-bold tracking-tight ${
+                                                                                            animation === "fade" ? "anim-fade" : animation === "flash" ? "anim-flash" : animation === "typewriter" ? "anim-typewriter" : ""
+                                                                                        }`}
+                                                                                        style={{ color: formData.header_text_bg === "pill_dark" ? undefined : formData.header_text_color }}
+                                                                                    >
+                                                                                        {formData.header_title}
+                                                                                    </h2>
+                                                                                )}
+                                                                                {formData.header_subtitle && (
+                                                                                    <p className={`text-[10px] md:text-xs font-medium opacity-90 ${animation === "fade" ? "anim-fade" : ""}`}>
+                                                                                        {formData.header_subtitle}
+                                                                                    </p>
+                                                                                )}
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div className={`max-w-[90%] flex flex-col gap-0.5 ${alignX}`} style={{ color: formData.header_text_color || "#ffffff" }}>
+                                                                                {formData.header_title && (
+                                                                                    <h2 
+                                                                                        className={`text-xs md:text-sm font-bold tracking-tight ${
+                                                                                            animation === "fade" ? "anim-fade" : animation === "flash" ? "anim-flash" : animation === "typewriter" ? "anim-typewriter" : ""
+                                                                                        }`}
+                                                                                    >
+                                                                                        {formData.header_title}
+                                                                                    </h2>
+                                                                                )}
+                                                                                {formData.header_subtitle && (
+                                                                                    <p className={`text-[10px] md:text-xs font-medium opacity-90 ${animation === "fade" ? "anim-fade" : ""}`}>
+                                                                                        {formData.header_subtitle}
+                                                                                    </p>
+                                                                                )}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                                
+                                                                {!previewBanner && !(formData.header_title || formData.header_subtitle) && (
+                                                                    <div className="absolute inset-0 flex items-center justify-center text-slate-300">
+                                                                        <span className="text-4xl opacity-20">✨</span>
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        )}
-                                                        <span className="text-xs font-semibold tracking-tight text-slate-800">
-                                                            {formData.name || "rezea"}
-                                                        </span>
-                                                    </div>
-                                                </header>
+                                                        </div>
+                                                    )}
 
-                                                <div className="relative mb-6">
+                                                    {/* Vignettes Carousel */}
+                                                    {isVignettesEnabled && formData.vignettes && formData.vignettes.length > 0 && (
+                                                        <div className="px-5 mb-6">
+                                                            <h3 className="text-xs font-bold text-slate-800 mb-2 tracking-tight">{formData.vignettes_title || "À la une"}</h3>
+                                                            <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-1">
+                                                                {formData.vignettes.map((vig) => (
+                                                                    <div 
+                                                                        key={vig.id}
+                                                                        className="w-[38%] flex-shrink-0 snap-start aspect-[3/4] rounded-xl overflow-hidden border border-slate-100 relative shadow-sm transition-all group"
+                                                                    >
+                                                                        <div className="relative w-full h-full">
+                                                                            {vig.image_url ? (
+                                                                                <img 
+                                                                                    src={vig.image_url.startsWith('http') ? vig.image_url : `${API_URL}${vig.image_url}`} 
+                                                                                    alt={vig.title || "Vignette"} 
+                                                                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                                                                                />
+                                                                            ) : (
+                                                                                <div className="w-full h-full bg-slate-100 flex items-center justify-center text-xs text-slate-400">🏞️</div>
+                                                                            )}
+                                                                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                                                                            {vig.title && (
+                                                                                <div className="absolute bottom-2 left-2 right-2 text-white">
+                                                                                    <p className="text-[10px] font-bold leading-tight tracking-tight">{vig.title}</p>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex flex-col px-5 pb-8 gap-3">
                                                     <div 
-                                                        className="aspect-video w-full shadow-lg relative bg-slate-50 border border-slate-100 overflow-hidden rounded-xl"
+                                                        className="w-full flex items-center justify-between px-5 py-4 bg-white border rounded-xl shadow-sm"
                                                         style={{ 
-                                                            background: previewBanner 
-                                                                ? `url(${previewBanner}) center/cover no-repeat` 
-                                                                : `linear-gradient(135deg, ${formData.primary_color}20, ${formData.primary_color}40)` 
+                                                            boxShadow: `0 4px 12px -2px ${formData.primary_color}25`,
+                                                            borderColor: `${formData.primary_color}20`
                                                         }}
                                                     >
-                                                        {!previewBanner && (
-                                                            <div className="absolute inset-0 flex items-center justify-center text-slate-300">
-                                                                <span className="text-4xl opacity-20">✨</span>
-                                                            </div>
-                                                        )}
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="text-xl">🗓️</span>
+                                                            <span className="text-xs font-bold text-slate-800">Planning & réservations</span>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </div>
+                                                    <div 
+                                                        className="w-full flex items-center justify-between px-5 py-4 bg-white border rounded-xl shadow-sm"
+                                                        style={{ 
+                                                            boxShadow: `0 4px 12px -2px ${formData.primary_color}20`,
+                                                            borderColor: `${formData.primary_color}15`
+                                                        }}
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="text-xl">🛍️</span>
+                                                            <span className="text-xs font-bold text-slate-800">Boutique</span>
+                                                        </div>
+                                                    </div>
 
-                                            <div className="flex flex-col px-5 pb-8 gap-3">
-                                                <div 
-                                                    className="w-full flex items-center justify-between px-5 py-4 bg-white border rounded-xl shadow-sm"
-                                                    style={{ 
-                                                        boxShadow: `0 4px 12px -2px ${formData.primary_color}25`,
-                                                        borderColor: `${formData.primary_color}20`
-                                                    }}
-                                                >
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="text-xl">🗓️</span>
-                                                        <span className="text-xs font-bold text-slate-800">Planning & réservations</span>
-                                                    </div>
-                                                </div>
-                                                <div 
-                                                    className="w-full flex items-center justify-between px-5 py-4 bg-white border rounded-xl shadow-sm"
-                                                    style={{ 
-                                                        boxShadow: `0 4px 12px -2px ${formData.primary_color}20`,
-                                                        borderColor: `${formData.primary_color}15`
-                                                    }}
-                                                >
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="text-xl">🛍️</span>
-                                                        <span className="text-xs font-bold text-slate-800">Boutique</span>
-                                                    </div>
-                                                </div>
-
-                                                <div 
-                                                    className="w-full flex items-center justify-between px-5 py-4 bg-white border rounded-xl shadow-sm"
-                                                    style={{ 
-                                                        boxShadow: `0 4px 12px -2px ${formData.primary_color}20`,
-                                                        borderColor: `${formData.primary_color}15`
-                                                    }}
-                                                >
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="text-xl">📦</span>
-                                                        <span className="text-xs font-bold text-slate-800">Mes commandes</span>
+                                                    <div 
+                                                        className="w-full flex items-center justify-between px-5 py-4 bg-white border rounded-xl shadow-sm"
+                                                        style={{ 
+                                                            boxShadow: `0 4px 12px -2px ${formData.primary_color}20`,
+                                                            borderColor: `${formData.primary_color}15`
+                                                        }}
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="text-xl">📦</span>
+                                                            <span className="text-xs font-bold text-slate-800">Mes commandes</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
+
+                                        {previewMode === "mobile" && (
+                                            <div className="mt-auto border-t border-slate-100 flex items-center justify-around py-3 px-4 bg-white/80 backdrop-blur-sm">
+                                                <div className="flex flex-col items-center gap-1 opacity-40">
+                                                    <span className="text-sm">🏠</span>
+                                                    <span className="text-[8px] font-bold">Home</span>
+                                                </div>
+                                                <div className="flex flex-col items-center gap-1 opacity-40">
+                                                    <span className="text-sm">🗓️</span>
+                                                    <span className="text-[8px] font-bold">Planning</span>
+                                                </div>
+                                                <div className="flex flex-col items-center gap-1 opacity-40">
+                                                    <span className="text-sm">🛍️</span>
+                                                    <span className="text-[8px] font-bold">Shop</span>
+                                                </div>
+                                                <div className="flex flex-col items-center gap-1 opacity-40">
+                                                    <span className="text-sm">👤</span>
+                                                    <span className="text-[8px] font-bold">Profil</span>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-
-                                    {previewMode === "mobile" && (
-                                        <div className="mt-auto border-t border-slate-100 flex items-center justify-around py-3 px-4 bg-white/80 backdrop-blur-sm">
-                                            <div className="flex flex-col items-center gap-1 opacity-40">
-                                                <span className="text-sm">🏠</span>
-                                                <span className="text-[8px] font-bold">Home</span>
-                                            </div>
-                                            <div className="flex flex-col items-center gap-1 opacity-40">
-                                                <span className="text-sm">🗓️</span>
-                                                <span className="text-[8px] font-bold">Planning</span>
-                                            </div>
-                                            <div className="flex flex-col items-center gap-1 opacity-40">
-                                                <span className="text-sm">🛍️</span>
-                                                <span className="text-[8px] font-bold">Shop</span>
-                                            </div>
-                                            <div className="flex flex-col items-center gap-1 opacity-40">
-                                                <span className="text-sm">👤</span>
-                                                <span className="text-[8px] font-bold">Profil</span>
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="bg-white border-t border-slate-200 px-8 py-4 flex items-center justify-center gap-2">
-                            <p className="text-xs text-slate-400 italic">Ceci est une simulation basée sur vos réglages actuels</p>
+                            <div className="bg-white border-t border-slate-200 px-8 py-4 flex items-center justify-center gap-2">
+                                <p className="text-xs text-slate-400 italic">Ceci est une simulation basée sur vos réglages actuels</p>
+                            </div>
                         </div>
-                    </div>
-                )}
+                    );
+                })()}
             </main>
 
             <style jsx global>{`
@@ -1656,9 +1808,13 @@ export default function AdminSettingsPage() {
 interface VignettesEditorProps {
     vignettes: Vignette[];
     onChange: (vignettes: Vignette[]) => void;
+    isEnabled: boolean;
+    onToggle: (checked: boolean) => void;
+    title: string;
+    onTitleChange: (title: string) => void;
 }
 
-function VignettesEditor({ vignettes, onChange }: VignettesEditorProps) {
+function VignettesEditor({ vignettes, onChange, isEnabled, onToggle, title, onTitleChange }: VignettesEditorProps) {
     const [uploadingId, setUploadingId] = useState<string | null>(null);
 
     const handleAdd = () => {
@@ -1698,116 +1854,147 @@ function VignettesEditor({ vignettes, onChange }: VignettesEditorProps) {
     return (
         <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                    <span>📱</span> Carrousel de vignettes
-                </h3>
-                <span className="text-xs text-slate-500 font-medium">{vignettes.length} / 5 vignettes</span>
+                <div className="space-y-0.5">
+                    <label className="block text-sm font-semibold text-slate-900 cursor-default">
+                        Carrousel de vignettes
+                    </label>
+                    <p className="text-[10px] text-slate-400 font-normal">Afficher un carrousel d&apos;images format portrait</p>
+                </div>
+                <div className="flex items-center gap-4">
+                    {isEnabled && (
+                        <span className="text-xs text-slate-500 font-medium">{vignettes.length} / 5 vignettes</span>
+                    )}
+                    <label className="relative inline-flex items-center cursor-pointer select-none">
+                        <input 
+                            type="checkbox" 
+                            checked={isEnabled} 
+                            onChange={e => onToggle(e.target.checked)} 
+                            className="sr-only peer" 
+                        />
+                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                </div>
             </div>
 
-            {vignettes.length === 0 ? (
-                <div className="text-center py-10 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50">
-                    <span className="text-3xl block mb-2">📱</span>
-                    <p className="text-sm font-semibold text-slate-600 mb-1">Aucune vignette configurée</p>
-                    <p className="text-xs text-slate-400 max-w-sm mx-auto mb-4 leading-relaxed">
-                        Ajoutez jusqu'à 5 vignettes avec des images au format vertical qui s'afficheront sur l'accueil client.
-                    </p>
-                    <button
-                        type="button"
-                        onClick={handleAdd}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 transition-all shadow-md shadow-blue-100"
-                    >
-                        + Ajouter une première vignette
-                    </button>
-                </div>
-            ) : (
-                <div className="space-y-6">
-                    {vignettes.map((v, index) => (
-                        <div key={v.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col md:flex-row gap-4 items-start relative group">
-                            
-                            {/* Number label */}
-                            <div className="absolute left-4 -top-3 px-2 py-0.5 bg-slate-200 text-slate-700 text-[10px] font-bold rounded-full border border-slate-300">
-                                Vignette {index + 1}
-                            </div>
+            {isEnabled && (
+                <div className="pt-2 space-y-6">
+                    <div className="grid grid-cols-[180px_1fr] items-center gap-4 border-b border-slate-100 pb-4">
+                        <label className="text-[11px] font-medium text-slate-500">Titre du carrousel :</label>
+                        <input 
+                            type="text"
+                            value={title || ""}
+                            onChange={e => onTitleChange(e.target.value)}
+                            placeholder="Ex: À la une, Actualités, Offres..."
+                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-xs text-slate-700"
+                        />
+                    </div>
 
-                            {/* Image upload box */}
-                            <div className="w-full md:w-32 aspect-[3/4] bg-white border border-slate-300 rounded-xl overflow-hidden relative flex flex-col items-center justify-center shrink-0">
-                                {v.image_url ? (
-                                    <>
-                                        <img src={`${API_URL}${v.image_url}`} className="w-full h-full object-cover" alt={`Vignette ${index + 1}`} />
-                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                            <label className="p-2 bg-white rounded-full text-slate-900 shadow-lg cursor-pointer hover:scale-105 transition-all">
-                                                <span>📷</span>
+                    {vignettes.length === 0 ? (
+                        <div className="text-center py-10 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50">
+                            <span className="text-3xl block mb-2">📱</span>
+                            <p className="text-sm font-semibold text-slate-600 mb-1">Aucune vignette configurée</p>
+                            <p className="text-xs text-slate-400 max-w-sm mx-auto mb-4 leading-relaxed">
+                                Ajoutez jusqu'à 5 vignettes avec des images au format vertical qui s'afficheront sur l'accueil client.
+                            </p>
+                            <button
+                                type="button"
+                                onClick={handleAdd}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 transition-all shadow-md shadow-blue-100"
+                            >
+                                + Ajouter une première vignette
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="space-y-6">
+                            {vignettes.map((v, index) => (
+                                <div key={v.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col md:flex-row gap-4 items-start relative group">
+                                    
+                                    {/* Number label */}
+                                    <div className="absolute left-4 -top-3 px-2 py-0.5 bg-slate-200 text-slate-700 text-[10px] font-bold rounded-full border border-slate-300">
+                                        Vignette {index + 1}
+                                    </div>
+
+                                    {/* Image upload box */}
+                                    <div className="w-full md:w-32 aspect-[3/4] bg-white border border-slate-300 rounded-xl overflow-hidden relative flex flex-col items-center justify-center shrink-0">
+                                        {v.image_url ? (
+                                            <>
+                                                <img src={`${API_URL}${v.image_url}`} className="w-full h-full object-cover" alt={`Vignette ${index + 1}`} />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <label className="p-2 bg-white rounded-full text-slate-900 shadow-lg cursor-pointer hover:scale-105 transition-all">
+                                                        <span>📷</span>
+                                                        <input 
+                                                            type="file" 
+                                                            accept="image/*" 
+                                                            className="hidden" 
+                                                            onChange={e => handleFileChange(e, v.id)} 
+                                                        />
+                                                    </label>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-slate-50 transition-colors p-2 text-center">
+                                                <span className="text-xl mb-1">🖼️</span>
+                                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                                    {uploadingId === v.id ? "Upload..." : "Ajouter image"}
+                                                </span>
                                                 <input 
                                                     type="file" 
                                                     accept="image/*" 
                                                     className="hidden" 
                                                     onChange={e => handleFileChange(e, v.id)} 
+                                                    disabled={uploadingId !== null}
                                                 />
                                             </label>
+                                        )}
+                                    </div>
+
+                                    {/* Fields */}
+                                    <div className="flex-1 w-full space-y-3 pt-2">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-600 mb-1">Titre de la vignette (affiché sur l'image)</label>
+                                            <input 
+                                                type="text"
+                                                value={v.title || ""}
+                                                onChange={e => handleChange(v.id, 'title', e.target.value)}
+                                                placeholder="Ex: Nouveaux cours de Yoga"
+                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all text-xs text-slate-700"
+                                            />
                                         </div>
-                                    </>
-                                ) : (
-                                    <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-slate-50 transition-colors p-2 text-center">
-                                        <span className="text-xl mb-1">🖼️</span>
-                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                                            {uploadingId === v.id ? "Upload..." : "Ajouter image"}
-                                        </span>
-                                        <input 
-                                            type="file" 
-                                            accept="image/*" 
-                                            className="hidden" 
-                                            onChange={e => handleFileChange(e, v.id)} 
-                                            disabled={uploadingId !== null}
-                                        />
-                                    </label>
-                                )}
-                            </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-600 mb-1">Lien de redirection (URL ou route interne)</label>
+                                            <input 
+                                                type="text"
+                                                value={v.link_url || ""}
+                                                onChange={e => handleChange(v.id, 'link_url', e.target.value)}
+                                                placeholder="Ex: /home/booking ou URL externe"
+                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all text-xs text-slate-700"
+                                            />
+                                        </div>
+                                    </div>
 
-                            {/* Fields */}
-                            <div className="flex-1 w-full space-y-3 pt-2">
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Titre de la vignette (affiché sur l'image)</label>
-                                    <input 
-                                        type="text"
-                                        value={v.title || ""}
-                                        onChange={e => handleChange(v.id, 'title', e.target.value)}
-                                        placeholder="Ex: Nouveaux cours de Yoga"
-                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all text-xs text-slate-700"
-                                    />
+                                    {/* Actions */}
+                                    <div className="w-full md:w-auto self-stretch flex md:flex-col justify-end pt-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemove(v.id)}
+                                            className="px-3 py-1.5 md:py-2 text-[10px] font-bold text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100 rounded-xl transition-all uppercase tracking-wider"
+                                        >
+                                            Supprimer
+                                        </button>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">Lien de redirection (URL ou route interne)</label>
-                                    <input 
-                                        type="text"
-                                        value={v.link_url || ""}
-                                        onChange={e => handleChange(v.id, 'link_url', e.target.value)}
-                                        placeholder="Ex: /home/booking ou URL externe"
-                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all text-xs text-slate-700"
-                                    />
-                                </div>
-                            </div>
+                            ))}
 
-                            {/* Actions */}
-                            <div className="w-full md:w-auto self-stretch flex md:flex-col justify-end pt-2">
+                            {vignettes.length < 5 && (
                                 <button
                                     type="button"
-                                    onClick={() => handleRemove(v.id)}
-                                    className="px-3 py-1.5 md:py-2 text-[10px] font-bold text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100 rounded-xl transition-all uppercase tracking-wider"
+                                    onClick={handleAdd}
+                                    className="w-full py-3 border-2 border-dashed border-slate-200 hover:border-slate-300 rounded-2xl text-xs font-semibold text-slate-600 hover:text-slate-700 bg-white hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
                                 >
-                                    Supprimer
+                                    + Ajouter une vignette ({vignettes.length} / 5)
                                 </button>
-                            </div>
+                            )}
                         </div>
-                    ))}
-
-                    {vignettes.length < 5 && (
-                        <button
-                            type="button"
-                            onClick={handleAdd}
-                            className="w-full py-3 border-2 border-dashed border-slate-200 hover:border-slate-300 rounded-2xl text-xs font-semibold text-slate-600 hover:text-slate-700 bg-white hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
-                        >
-                            + Ajouter une vignette ({vignettes.length} / 5)
-                        </button>
                     )}
                 </div>
             )}

@@ -143,6 +143,7 @@ class TenantBase(BaseModel):
     header_text_pos_x: Optional[str] = "center"
     header_text_animation: Optional[str] = "none"
     vignettes: Optional[List[VignetteSchema]] = Field(default_factory=list)
+    vignettes_title: Optional[str] = "À la une"
 
 
 class TenantCreate(TenantBase):
@@ -203,6 +204,7 @@ class TenantSettingsUpdate(BaseModel):
     header_text_pos_x: Optional[str] = None
     header_text_animation: Optional[str] = None
     vignettes: Optional[List[VignetteSchema]] = None
+    vignettes_title: Optional[str] = None
 
 
 class TenantResponse(TenantBase):

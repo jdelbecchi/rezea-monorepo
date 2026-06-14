@@ -119,6 +119,7 @@ class Tenant(Base):
     header_text_pos_x = Column(String(50), default="center", server_default="'center'", nullable=False)
     header_text_animation = Column(String(50), default="none", server_default="'none'", nullable=False)
     vignettes = Column(JSON, default=list, server_default="'[]'", nullable=False)
+    vignettes_title = Column(String(255), default="À la une", server_default="'À la une'", nullable=False)
     
     # Réseaux sociaux & Site Web
     website_url = Column(String(500), nullable=True)
