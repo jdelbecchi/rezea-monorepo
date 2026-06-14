@@ -18,7 +18,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 const TABS = [
     { id: "identity", label: "Identité", icon: "🏢" },
-    { id: "home_design", label: "Accueil Client", icon: "📱" },
+    { id: "home_design", label: "Interface utilisateur", icon: "📱" },
     { id: "portal", label: "Portail", icon: "🌐" },
     { id: "rules", label: "Règles", icon: "⚖️" },
     { id: "payment", label: "Paiements", icon: "💳" },
@@ -294,10 +294,9 @@ export default function AdminSettingsPage() {
                     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
                         {/* IDENTITY TAB */}
                         {activeTab === "identity" && (
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
-                                <div className="space-y-8 flex flex-col">
-                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6 flex-1">
-                                        <div className="grid grid-cols-1 gap-4">
+                            <div className="max-w-3xl mx-auto space-y-8">
+                                <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
+                                    <div className="grid grid-cols-1 gap-4">
                                             <div>
                                                 <label className={`block text-sm font-medium mb-2 ${!formData.name ? 'text-red-500' : 'text-slate-700'}`}>Nom de l&apos;établissement *</label>
                                                 <input
@@ -453,98 +452,7 @@ export default function AdminSettingsPage() {
                                         </div>
                                     </div>
                                 </div>
-
-                                <div className="space-y-8 flex flex-col">
-                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6 flex-1">
-                                        <div className="space-y-6">
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                    Affichage de l&apos;en-tête de l&apos;interface utilisateur
-                                                </label>
-                                                <div className="flex flex-col gap-2.5 pl-1 mb-4">
-                                                    <label className="flex items-center gap-3 cursor-pointer group select-none">
-                                                        <input 
-                                                            type="checkbox" 
-                                                            checked={formData.user_header_show_logo !== false}
-                                                            onChange={e => setFormData({ ...formData, user_header_show_logo: e.target.checked })}
-                                                            className="w-4 h-4"
-                                                        />
-                                                        <span className="text-xs font-light text-slate-600 group-hover:text-slate-900 transition-colors">Logo de l&apos;établissement</span>
-                                                    </label>
-                                                    
-                                                    <label className="flex items-center gap-3 cursor-pointer group select-none">
-                                                        <input 
-                                                            type="checkbox" 
-                                                            checked={formData.user_header_show_name !== false}
-                                                            onChange={e => setFormData({ ...formData, user_header_show_name: e.target.checked })}
-                                                            className="w-4 h-4"
-                                                        />
-                                                        <span className="text-xs font-light text-slate-600 group-hover:text-slate-900 transition-colors">Nom de l&apos;établissement</span>
-                                                    </label>
-                                                </div>
-                                            </div>
-                                            
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">Header utilisateur</label>
-                                                <div className="w-full h-64 rounded-3xl bg-white border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group mb-3">
-                                                    {previewBanner ? (
-                                                        <img src={previewBanner} className="w-full h-full object-cover" alt="Banner" />
-                                                    ) : (
-                                                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 group-hover:text-slate-400 transition-colors">
-                                                            <span className="text-3xl mb-1">🏞️</span>
-                                                            <span className="text-[10px] font-bold uppercase tracking-wider">Aucun header</span>
-                                                        </div>
-                                                    )}
-                                                    <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                        <button 
-                                                            onClick={() => bannerInputRef.current?.click()}
-                                                            className="p-3 bg-white rounded-2xl text-slate-900 shadow-2xl scale-90 group-hover:scale-100 transition-transform"
-                                                        >
-                                                            <span className="text-lg">📸</span>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                <input type="file" ref={bannerInputRef} className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'banner')} />
-                                                <button 
-                                                    onClick={() => bannerInputRef.current?.click()}
-                                                    className="w-full py-2.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 rounded-xl font-medium text-xs transition-all shadow-sm"
-                                                >
-                                                    Changer la bannière
-                                                </button>
-                                            </div>
-                                            
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                    Couleur d&apos;accentuation <span className="text-slate-400 text-[10px] font-normal ml-1">(Choisissez une couleur foncée à médium pour la visibilité de l&apos;interface utilisateur)</span>
-                                                </label>
-                                                <div className="flex items-center justify-between gap-3 p-2.5 bg-white rounded-2xl border border-slate-100 shadow-sm">
-                                                    <div className="flex items-center gap-3">
-                                                        <input
-                                                            type="color"
-                                                            value={formData.primary_color || "#7c3aed"}
-                                                            onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
-                                                            className="w-9 h-9 rounded-xl border-2 border-white shadow-sm cursor-pointer"
-                                                        />
-                                                        <input
-                                                            type="text"
-                                                            value={formData.primary_color || "#7c3aed"}
-                                                            onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
-                                                            className="bg-transparent border-none p-0 font-mono font-bold text-xs outline-none w-20 text-slate-600"
-                                                        />
-                                                    </div>
-                                                    <button 
-                                                        onClick={() => setShowHomePreview(true)}
-                                                        className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-[9px] uppercase tracking-wider transition-all shadow-md"
-                                                    >
-                                                        Aperçu
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+                            )}
 
                         {/* PORTAL TAB */}
                         {activeTab === "portal" && (
@@ -1163,7 +1071,100 @@ export default function AdminSettingsPage() {
                         )}
 
                         {activeTab === "home_design" && (
-                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-in fade-in slide-in-from-bottom-2 duration-500">
+                                {/* Colonne de gauche (Rapatriée de l'onglet Identité) */}
+                                <div className="space-y-8 flex flex-col">
+                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6 flex-1">
+                                        <div className="space-y-6">
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">
+                                                    Affichage de l&apos;en-tête de l&apos;interface utilisateur
+                                                </label>
+                                                <div className="flex flex-col gap-2.5 pl-1 mb-4">
+                                                    <label className="flex items-center gap-3 cursor-pointer group select-none">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={formData.user_header_show_logo !== false}
+                                                            onChange={e => setFormData({ ...formData, user_header_show_logo: e.target.checked })}
+                                                            className="w-4 h-4"
+                                                        />
+                                                        <span className="text-xs font-light text-slate-600 group-hover:text-slate-900 transition-colors">Logo de l&apos;établissement</span>
+                                                    </label>
+                                                    
+                                                    <label className="flex items-center gap-3 cursor-pointer group select-none">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={formData.user_header_show_name !== false}
+                                                            onChange={e => setFormData({ ...formData, user_header_show_name: e.target.checked })}
+                                                            className="w-4 h-4"
+                                                        />
+                                                        <span className="text-xs font-light text-slate-600 group-hover:text-slate-900 transition-colors">Nom de l&apos;établissement</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">Header utilisateur</label>
+                                                <div className="w-full h-64 rounded-3xl bg-white border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group mb-3">
+                                                    {previewBanner ? (
+                                                        <img src={previewBanner} className="w-full h-full object-cover" alt="Banner" />
+                                                    ) : (
+                                                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 group-hover:text-slate-400 transition-colors">
+                                                            <span className="text-3xl mb-1">🏞️</span>
+                                                            <span className="text-[10px] font-bold uppercase tracking-wider">Aucun header</span>
+                                                        </div>
+                                                    )}
+                                                    <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                        <button 
+                                                            onClick={() => bannerInputRef.current?.click()}
+                                                            className="p-3 bg-white rounded-2xl text-slate-900 shadow-2xl scale-90 group-hover:scale-100 transition-transform"
+                                                        >
+                                                            <span className="text-lg">📸</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <input type="file" ref={bannerInputRef} className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'banner')} />
+                                                <button 
+                                                    onClick={() => bannerInputRef.current?.click()}
+                                                    className="w-full py-2.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 rounded-xl font-medium text-xs transition-all shadow-sm"
+                                                >
+                                                    Changer la bannière
+                                                </button>
+                                            </div>
+                                            
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">
+                                                    Couleur d&apos;accentuation <span className="text-slate-400 text-[10px] font-normal ml-1">(Choisissez une couleur foncée à médium pour la visibilité de l&apos;interface utilisateur)</span>
+                                                </label>
+                                                <div className="flex items-center justify-between gap-3 p-2.5 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                                                    <div className="flex items-center gap-3">
+                                                        <input
+                                                            type="color"
+                                                            value={formData.primary_color || "#7c3aed"}
+                                                            onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
+                                                            className="w-9 h-9 rounded-xl border-2 border-white shadow-sm cursor-pointer"
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            value={formData.primary_color || "#7c3aed"}
+                                                            onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
+                                                            className="bg-transparent border-none p-0 font-mono font-bold text-xs outline-none w-20 text-slate-600"
+                                                        />
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => setShowHomePreview(true)}
+                                                        className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-[9px] uppercase tracking-wider transition-all shadow-md"
+                                                    >
+                                                        Aperçu
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Colonne de droite (visual layout options) */}
+                                <div className="space-y-8 flex flex-col">
                                 {/* Configuration de la page d'accueil client */}
                                 <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
                                     <h3 className="text-lg font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
@@ -1340,9 +1341,10 @@ export default function AdminSettingsPage() {
                                     />
                                 )}
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
                 </div>
+            </div>
 
                 {/* PORTAL PREVIEW MODAL */}
                 {showPreview && (
