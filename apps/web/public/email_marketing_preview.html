@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aperçu E-mail Marketing - Rezea</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Livvic:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+        
+        /* Dashboard Container & UI */
+        body {
+            background-color: #f1f5f9;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+            color: #1e293b;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .dashboard-header {
+            width: 100%;
+            max-width: 680px;
+            margin: 40px auto 20px auto;
+            text-align: center;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+
+        .dashboard-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 0 0 8px 0;
+            letter-spacing: -0.02em;
+        }
+
+        .dashboard-header p {
+            font-size: 14px;
+            color: #64748b;
+            margin: 0 0 24px 0;
+        }
+
+        /* Toggle Button Container */
+        .toggle-container {
+            display: inline-flex;
+            background-color: #e2e8f0;
+            padding: 4px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .toggle-btn {
+            border: none;
+            outline: none;
+            background: none;
+            font-family: 'Outfit', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: #64748b;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .toggle-btn.active {
+            background-color: #ffffff;
+            color: #0f172a;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+        }
+
+        /* Email Outer Frame */
+        .email-outer-frame {
+            width: 100%;
+            max-width: 600px;
+            background-color: #ffffff;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 16px -6px rgba(15, 23, 42, 0.04);
+            border: 1px solid #e2e8f0;
+            margin-bottom: 60px;
+            transition: all 0.3s ease;
+        }
+
+        /* Email Content & Inline-ish Styles */
+        .email-container {
+            font-family: 'Livvic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+            padding: 10px 24px 24px 24px;
+            background-color: #ffffff;
+        }
+
+        .email-header {
+            padding: 8px 20px 10px 20px;
+            text-align: center;
+        }
+
+        /* Logo wrapper styling corresponding to is_marketing adjustments */
+        .email-logo-wrapper {
+            text-align: center;
+            margin-bottom: 6px; /* reduced margin under logo */
+            line-height: 1.2;
+            transition: all 0.2s ease;
+        }
+
+        /* Logo icon size increased (max-height: 160px desktop, 110px mobile) */
+        .email-logo-svg {
+            width: 64px;
+            height: 64px;
+            color: #a7825d;
+            display: block;
+            margin: 0 auto;
+            transition: all 0.2s ease;
+        }
+
+        .email-logo-text {
+            font-size: 24px;
+            font-weight: 700;
+            color: #0f172a;
+            letter-spacing: -0.02em;
+            margin-top: 8px;
+            display: block;
+        }
+
+        /* Slogan under logo with reduced margin */
+        .email-slogan {
+            text-align: center;
+            font-size: 15px;
+            font-weight: 300;
+            color: #475569;
+            margin-top: 4px;
+            margin-bottom: 12px; /* reduced margin under slogan */
+        }
+
+        /* Full-width separator line when no images present */
+        .full-width-separator {
+            border-top: 1px solid #e2e8f0;
+            margin: 12px -24px 24px -24px;
+            display: none; /* toggled dynamically */
+        }
+
+        /* Full bleed cover image */
+        .cover-image-wrapper {
+            margin: 0 -24px 10px -24px;
+            transition: opacity 0.2s ease;
+        }
+
+        .cover-image {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .email-body-content {
+            padding: 20px 16px;
+            color: #334155;
+            font-size: 16px;
+            line-height: 1.6;
+            font-weight: 300;
+            text-align: center;
+        }
+
+        .email-greeting {
+            font-size: 18px;
+            font-weight: 600;
+            color: #0f172a;
+            margin-top: 0;
+            margin-bottom: 12px;
+        }
+
+        /* Promo Coupon Style */
+        .promo-box {
+            margin: 24px auto;
+            max-width: 180px;
+            border: 3px double #a7825d;
+            background-color: #fbf2eb;
+            padding: 10px 20px;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .promo-code {
+            font-size: 15px;
+            font-weight: 700;
+            color: #a7825d;
+            letter-spacing: 0.1em;
+        }
+
+        /* Button Style */
+        .cta-container {
+            margin: 24px 0;
+        }
+
+        .cta-button {
+            display: inline-block;
+            background-color: #0f172a;
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 13px;
+            padding: 10px 22px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Footer Style */
+        .email-footer {
+            border-top: 1px solid #f1f5f9;
+            margin-top: 15px;
+            padding-top: 20px;
+            text-align: center;
+        }
+
+        .footer-links {
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .footer-links a {
+            text-decoration: none;
+            color: #64748b;
+            font-size: 13px;
+            margin: 0 10px;
+            font-weight: 500;
+        }
+
+        .footer-copyright {
+            color: #94a3b8;
+            font-size: 12px;
+            font-weight: 500;
+            margin: 0 0 5px 0;
+        }
+
+        .footer-powered {
+            color: #cbd5e1;
+            font-size: 11px;
+            font-weight: 500;
+            margin: 0;
+        }
+
+        /* Responsive */
+        @media only screen and (max-width: 480px) {
+            .email-outer-frame {
+                border-radius: 0;
+                border: none;
+                margin-bottom: 0;
+            }
+
+            .email-container {
+                padding: 8px 16px 16px 16px !important;
+            }
+
+            .email-logo-svg {
+                width: 50px !important;
+                height: 50px !important;
+            }
+
+            .email-logo-text {
+                font-size: 20px !important;
+            }
+
+            .email-slogan {
+                font-size: 13px !important;
+            }
+
+            .cover-image-wrapper {
+                margin-left: -16px !important;
+                margin-right: -16px !important;
+            }
+
+            .full-width-separator {
+                margin-left: -16px !important;
+                margin-right: -16px !important;
+            }
+
+            .email-body-content {
+                font-size: 14px !important;
+                padding: 10px 8px;
+            }
+
+            .footer-links a {
+                font-size: 11px !important;
+                margin: 0 4px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-header">
+        <h1>Aperçu Cible : E-mail Marketing</h1>
+        <p>Visualisez le comportement de l'en-tête, la taille du logo augmentée, les marges réduites, et le séparateur automatique.</p>
+        
+        <div class="toggle-container">
+            <button id="btn-with-img" class="toggle-btn active" onclick="setViewState(true)">Avec Image de Couverture</button>
+            <button id="btn-no-img" class="toggle-btn" onclick="setViewState(false)">Sans Image (Séparateur Auto)</button>
+        </div>
+    </div>
+
+    <!-- Email Card Mockup -->
+    <div class="email-outer-frame">
+        <div class="email-container">
+            
+            <!-- Email Header -->
+            <div class="email-header">
+                <div class="email-logo-wrapper">
+                    <svg viewBox="0 0 100 100" class="email-logo-svg" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M50 20 C40 38 40 68 50 80 C60 68 60 38 50 20 Z" />
+                        <path d="M50 35 C25 45 25 70 50 80" />
+                        <path d="M50 35 C75 45 75 70 50 80" />
+                        <path d="M50 50 C10 58 15 78 50 80" />
+                        <path d="M50 50 C90 58 85 78 50 80" />
+                    </svg>
+                    <span class="email-logo-text">Zen Yoga</span>
+                </div>
+                
+                <div class="email-slogan">Le bien-être à chaque respiration | À vos côtés depuis 2005</div>
+            </div>
+
+            <!-- Intelligent Separator (toggled dynamically) -->
+            <div id="marketing-separator" class="full-width-separator"></div>
+
+            <!-- Full Bleed Cover Image (toggled dynamically) -->
+            <div id="marketing-cover" class="cover-image-wrapper">
+                <img src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=600&auto=format&fit=crop" class="cover-image" alt="Yoga Cover">
+            </div>
+
+            <!-- Email Body Content -->
+            <div class="email-body-content">
+                <h2 class="email-greeting">Bonjour Julie,</h2>
+                <p>
+                    Nous tenions tout particulièrement à vous remercier pour votre fidélité et votre énergie positive au studio ! C'est un réel plaisir de vous accompagner dans vos séances.
+                </p>
+                <p>
+                    Pour vous remercier, voici un code cadeau offrant une invitation gratuite pour le proche de votre choix lors de votre prochain cours :
+                </p>
+
+                <!-- Promo Coupon -->
+                <div class="promo-box">
+                    <span class="promo-code">MERCIAMIS</span>
+                </div>
+
+                <p style="margin-top: 24px; margin-bottom: 2px; font-weight: 600; color: #0f172a;">À très bientôt sur les tapis !</p>
+                <p style="margin-bottom: 20px; font-size: 13px; color: #94a3b8;">L'équipe Zen Yoga</p>
+
+                <!-- CTA Button -->
+                <div class="cta-container">
+                    <a href="#" class="cta-button">Réserver votre séance</a>
+                </div>
+            </div>
+
+            <!-- Email Footer -->
+            <div class="email-footer">
+                <div class="footer-links">
+                    <a href="#">Notre Site</a>
+                    <a href="#">Insta</a>
+                    <a href="#">Facebook</a>
+                    <a href="#">Se désabonner</a>
+                </div>
+                <p class="footer-copyright">
+                    © 2026 Zen Yoga | contact@zenyoga.fr
+                </p>
+                <p class="footer-powered">
+                    Propulsé par Rezea
+                </p>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        function setViewState(hasImage) {
+            const separator = document.getElementById('marketing-separator');
+            const cover = document.getElementById('marketing-cover');
+            const btnWithImg = document.getElementById('btn-with-img');
+            const btnNoImg = document.getElementById('btn-no-img');
+
+            if (hasImage) {
+                // Show cover image, hide separator
+                cover.style.display = 'block';
+                separator.style.display = 'none';
+                btnWithImg.classList.add('active');
+                btnNoImg.classList.remove('active');
+            } else {
+                // Hide cover image, show separator
+                cover.style.display = 'none';
+                separator.style.display = 'block';
+                btnWithImg.classList.remove('active');
+                btnNoImg.classList.add('active');
+            }
+        }
+    </script>
+</body>
+</html>

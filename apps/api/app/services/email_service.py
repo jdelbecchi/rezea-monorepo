@@ -40,8 +40,8 @@ class EmailService:
                 "logo_url": tenant.logo_url,
                 "legal_address": tenant.legal_address,
                 "contact_email": tenant.email,
-                "instagram_handle": tenant.instagram_handle,
-                "facebook_handle": tenant.facebook_handle,
+                "instagram_handle": tenant.instagram_url.split("instagram.com/")[-1].strip("/") if tenant.instagram_url else None,
+                "facebook_handle": tenant.facebook_url.split("facebook.com/")[-1].strip("/") if tenant.facebook_url else None,
                 "dashboard_url": f"{settings.FRONTEND_URL}/{tenant.slug}/dashboard",
                 "settings_url": f"{settings.FRONTEND_URL}/{tenant.slug}/profile"
             }
@@ -53,7 +53,9 @@ class EmailService:
                 to_email=to_email,
                 to_name=to_name,
                 subject=f"[{tenant.name}] {subject}",
-                html_content=html_content
+                html_content=html_content,
+                from_email=f"{tenant.slug}-noreply@rezea.app",
+                from_name=tenant.name
             )
         except Exception as e:
             logger.error("❌ Erreur lors de la génération/envoi de l'email", error=str(e), template=template_name)
@@ -226,6 +228,27 @@ class EmailService:
             to_name=f"{user.first_name} {user.last_name}",
             subject=f"Rappel : {title} demain !",
             template_name="reminder_h24.html",
+            tenant=tenant,
+            context=context
+        )
+
+    @classmethod
+    async def send_google_review_prompt(cls, user: User, tenant: Tenant):
+        """
+        Envoie un e-mail d'incitation aux avis Google après un certain seuil de séances complétées.
+        """
+        context = {
+            "first_name": user.first_name,
+            "threshold": tenant.review_prompt_threshold,
+            "google_review_url": tenant.google_review_url,
+            "slogan": None
+        }
+        
+        return await cls._render_and_send(
+            to_email=user.email,
+            to_name=f"{user.first_name} {user.last_name}",
+            subject="Votre avis compte pour nous !",
+            template_name="google_review_prompt.html",
             tenant=tenant,
             context=context
         )

@@ -169,6 +169,9 @@ class TenantSettingsUpdate(BaseModel):
     show_logo: Optional[bool] = None
     show_name: Optional[bool] = None
     show_slogan: Optional[bool] = None
+    enable_review_prompts: Optional[bool] = None
+    google_review_url: Optional[str] = None
+    review_prompt_threshold: Optional[int] = Field(None, ge=1)
 
 
 class TenantResponse(TenantBase):
@@ -211,6 +214,9 @@ class TenantResponse(TenantBase):
     show_logo: bool = True
     show_name: bool = True
     show_slogan: bool = True
+    enable_review_prompts: bool = False
+    google_review_url: Optional[str] = None
+    review_prompt_threshold: int = 5
     created_at: datetime
 
 
@@ -737,6 +743,7 @@ class EmailSendRequest(BaseModel):
     force_operational: bool = False
     custom_color: Optional[str] = None
     custom_image_url: Optional[str] = None
+    campaign_type: Optional[str] = None
 
 
 class EmailTemplateBase(BaseModel):

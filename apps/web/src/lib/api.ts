@@ -320,6 +320,9 @@ export interface Tenant {
   show_logo?: boolean;
   show_name?: boolean;
   show_slogan?: boolean;
+  enable_review_prompts: boolean;
+  google_review_url?: string;
+  review_prompt_threshold: number;
   created_at: string;
 }
 
@@ -801,6 +804,9 @@ export const api = {
     show_logo?: boolean;
     show_name?: boolean;
     show_slogan?: boolean;
+    enable_review_prompts?: boolean;
+    google_review_url?: string;
+    review_prompt_threshold?: number;
   }>) => {
     const response = await apiClient.patch('/api/tenants/current/settings', data);
     return response.data;
@@ -1128,6 +1134,7 @@ export const api = {
     force_operational?: boolean; 
     custom_color?: string;
     custom_image_url?: string;
+    campaign_type?: string;
   }): Promise<{ message: string; count: number }> => {
     const response = await apiClient.post('/api/admin/emails/send', data);
     return response.data;

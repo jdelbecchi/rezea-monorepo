@@ -101,6 +101,61 @@ async def process_reminders():
         
         await db.commit()
 
+async def process_google_review_prompts():
+    """
+    Tâche de fond pour envoyer les demandes d'avis Google.
+    Scanne les utilisateurs n'ayant pas reçu l'e-mail et qui ont atteint le seuil de séances complétées.
+    """
+    logger.info("⭐ Scan des demandes d'avis Google en cours...")
+    
+    from sqlalchemy import func
+    
+    async with AsyncSessionLocal() as db:
+        # Sélectionner les utilisateurs éligibles (ceux qui n'ont pas encore reçu l'e-mail
+        # et dont le club a activé la fonctionnalité avec un lien configuré)
+        query = (
+            select(User)
+            .join(Tenant)
+            .where(
+                and_(
+                    User.review_prompt_sent_at.is_(None),
+                    Tenant.enable_review_prompts == True,
+                    Tenant.google_review_url.isnot(None),
+                    Tenant.google_review_url != ""
+                )
+            )
+            .options(joinedload(User.tenant))
+        )
+        
+        result = await db.execute(query)
+        users = result.scalars().all()
+        
+        for u in users:
+            try:
+                # Compter les réservations complétées de cet utilisateur
+                booking_count_query = (
+                    select(func.count(Booking.id))
+                    .where(
+                        and_(
+                            Booking.user_id == u.id,
+                            Booking.status == BookingStatus.COMPLETED
+                        )
+                    )
+                )
+                count_res = await db.execute(booking_count_query)
+                completed_count = count_res.scalar() or 0
+                
+                # Si le nombre dépasse ou égale le seuil du club, on envoie
+                if completed_count >= u.tenant.review_prompt_threshold:
+                    logger.info(f"Sending Google Review prompt to {u.email} (Completed: {completed_count}/{u.tenant.review_prompt_threshold})")
+                    success = await EmailService.send_google_review_prompt(user=u, tenant=u.tenant)
+                    if success:
+                        u.review_prompt_sent_at = datetime.utcnow()
+            except Exception as e:
+                logger.error("Error sending Google Review prompt", error=str(e), user_id=str(u.id))
+                
+        await db.commit()
+
 async def run_background_tasks():
     """
     Boucle infinie pour les tâches de fond.
@@ -114,7 +169,13 @@ async def run_background_tasks():
         try:
             await process_reminders()
         except Exception as e:
-            logger.error("Background task execution failed", error=str(e))
+            logger.error("Background task execution failed for reminders", error=str(e))
+        
+        try:
+            await process_google_review_prompts()
+        except Exception as e:
+            logger.error("Background task execution failed for google review prompts", error=str(e))
         
         # On tourne toutes les 30 minutes
         await asyncio.sleep(30 * 60)
+

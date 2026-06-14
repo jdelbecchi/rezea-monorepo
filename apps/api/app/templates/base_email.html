@@ -32,7 +32,7 @@
             background-color: #ffffff;
         }
         .header img {
-            max-height: 40px;
+            max-height: 80px;
             width: auto;
             vertical-align: middle;
         }
@@ -78,14 +78,10 @@
 <body>
     <div class="container">
         <div class="header">
-            <div style="display: inline-flex; align-items: center; justify-content: center; gap: 12px;">
-                {% if logo_url %}
-                    <img src="{{ logo_url }}" alt="{{ tenant_name }}">
-                {% endif %}
-                <span style="font-family: 'Livvic', sans-serif; font-size: 22px; font-weight: 500; color: #0f172a; vertical-align: middle;">{{ tenant_name }}</span>
-            </div>
-            {% if slogan %}
-                <div style="font-family: 'Livvic', sans-serif; font-size: 13px; color: #64748b; margin-top: 8px; font-weight: 400;">{{ slogan }}</div>
+            {% if logo_url %}
+                <img src="{{ logo_url }}" alt="{{ tenant_name }}" style="max-height: 80px; max-width: 100%; height: auto; width: auto; display: block; margin: 0 auto;">
+            {% else %}
+                <span style="font-family: 'Livvic', sans-serif; font-size: 24px; font-weight: 700; color: #0f172a; vertical-align: middle; letter-spacing: -0.02em;">{{ tenant_name }}</span>
             {% endif %}
         </div>
         <div style="border-top: 1px solid #f1f5f9; height: 0; line-height: 0; font-size: 0; width: 100%;"></div>

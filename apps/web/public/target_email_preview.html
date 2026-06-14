@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aperçu du Rendu de l'E-mail</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+        
+        body, table, td, p, a, h1, h2, h3, h4, span, div {
+            font-family: 'Livvic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+        }
+        
+        body {
+            background-color: #f8fafc;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+            font-weight: 300;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background-color: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e2e8f0;
+        }
+        .header {
+            padding: 30px 20px;
+            text-align: center;
+            background-color: #ffffff;
+        }
+        .content {
+            padding: 40px;
+            color: #334155;
+            line-height: 1.6;
+        }
+        .footer {
+            padding: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #64748b;
+            background-color: #f1f5f9;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #0f172a;
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            margin-top: 20px;
+        }
+        .footer-links {
+            margin-top: 15px;
+        }
+        .footer-links a {
+            color: #64748b;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+        .divider {
+            border-top: 1px solid #e2e8f0;
+            height: 0;
+            line-height: 0;
+            font-size: 0;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- En-tête avec Logo et Slogan -->
+        <div class="header">
+            <div style="display: inline-flex; align-items: center; justify-content: center; gap: 12px;">
+                <!-- SVG représentant le logo Zen Yoga -->
+                <svg viewBox="0 0 100 100" style="width: 36px; height: 36px; color: #a7825d;" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M50 20 C40 38 40 68 50 80 C60 68 60 38 50 20 Z" />
+                    <path d="M50 35 C25 45 25 70 50 80" />
+                    <path d="M50 35 C75 45 75 70 50 80" />
+                    <path d="M50 50 C10 58 15 78 50 80" />
+                    <path d="M50 50 C90 58 85 78 50 80" />
+                </svg>
+                <span style="font-family: 'Livvic', sans-serif; font-size: 22px; font-weight: 700; color: #0f172a; vertical-align: middle; letter-spacing: -0.02em;">Zen Yoga</span>
+            </div>
+            <div style="font-family: 'Livvic', sans-serif; font-size: 13px; color: #64748b; margin-top: 8px; font-weight: 400;">Le bien-être à chaque respiration | À vos côtés depuis 2005</div>
+        </div>
+        <div style="border-top: 1px solid #f1f5f9; height: 0; line-height: 0; font-size: 0; width: 100%;"></div>
+        
+        <!-- Corps de l'E-mail -->
+        <div class="content">
+            <h2 style="font-size: 18px; font-weight: 600; color: #0f172a; margin-top: 0; margin-bottom: 16px;">Bonjour Julie,</h2>
+            <p style="margin-bottom: 16px; font-weight: 300; font-size: 15px;">Nous tenions tout particulièrement à vous remercier pour votre fidélité et votre énergie positive au studio ! C'est un réel plaisir de vous accompagner dans vos séances.</p>
+            <p style="margin-bottom: 24px; font-weight: 300; font-size: 15px;">Pour vous remercier, voici un code cadeau offrant une invitation gratuite pour le proche de votre choix lors de votre prochain cours :</p>
+            
+            <!-- Code Promo Cadeau -->
+            <div style="margin: 24px auto; max-width: 180px; padding: 12px; background-color: #fbf2eb; border: 3px double #a7825d; border-radius: 8px; text-align: center;">
+                <span style="font-weight: 700; font-size: 16px; color: #a7825d; tracking-widest: 0.1em; text-transform: uppercase; letter-spacing: 2px;">
+                    MERCIAMIS
+                </span>
+            </div>
+            
+            <p style="margin-top: 24px; margin-bottom: 4px; font-weight: 600; font-size: 15px; color: #0f172a;">À très bientôt sur les tapis !</p>
+            <p style="margin-bottom: 24px; font-weight: 400; font-size: 14px; color: #64748b;">L'équipe Zen Yoga</p>
+            
+            <!-- Bouton CTA -->
+            <div style="text-align: center; margin-top: 30px;">
+                <a href="#" class="button">Réserver votre séance</a>
+            </div>
+        </div>
+        
+        <!-- Pied de page (Footer) avec l'adresse e-mail de contact intégrée -->
+        <div class="footer">
+            <p style="margin: 0 0 8px 0; font-weight: 600;">Zen Yoga</p>
+            
+            <!-- Lien d'email de contact dynamique ajouté -->
+            <p style="margin: 0 0 12px 0;">
+                <a href="mailto:contact@zenyoga.fr" style="color: #64748b; text-decoration: none; font-weight: 500;">
+                    contact@zenyoga.fr
+                </a>
+            </p>
+            
+            <!-- Liens réseaux sociaux et préférences -->
+            <div class="footer-links">
+                <a href="https://instagram.com/zenyoga">Instagram</a>
+                <span style="color: #cbd5e1;">|</span>
+                <a href="https://facebook.com/zenyoga">Facebook</a>
+            </div>
+            <div class="divider"></div>
+            <p style="font-size: 11px; opacity: 0.8; margin: 0; line-height: 1.5;">
+                Vous recevez cet e-mail car vous êtes membre de Zen Yoga.<br>
+                <a href="#" style="color: #64748b; text-decoration: underline;">Gérer mes préférences de communication</a> ou <a href="#" style="color: #64748b; text-decoration: underline;">se désabonner</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

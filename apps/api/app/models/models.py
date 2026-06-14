@@ -134,6 +134,11 @@ class Tenant(Base):
     # Emails
     confirmation_email_body = Column(Text, nullable=True)
     
+    # Avis Google
+    enable_review_prompts = Column(Boolean, default=False, server_default="false", nullable=False)
+    google_review_url = Column(String(500), nullable=True)
+    review_prompt_threshold = Column(Integer, default=5, server_default="5", nullable=False)
+    
     # Lieux et Espaces
     locations = Column(JSON, default=list) # Liste des noms de salles autorisées
     
@@ -233,6 +238,7 @@ class User(Base):
     # Préférences (Notifications & Marketing)
     remind_before_session = Column(Boolean, default=True)
     receive_marketing_emails = Column(Boolean, default=True)
+    review_prompt_sent_at = Column(DateTime, nullable=True)
     
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

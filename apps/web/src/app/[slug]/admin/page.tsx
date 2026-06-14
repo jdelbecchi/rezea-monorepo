@@ -533,7 +533,7 @@ export default function AdminDashboardPage() {
                             {/* Vue Globale Toggle button */}
                             <button
                                 onClick={() => setIsGlobalView(!isGlobalView)}
-                                className={`px-4 py-2.5 text-xs font-bold rounded-2xl border transition-all active:scale-95 flex items-center gap-1.5 ${
+                                className={`px-4 py-2.5 text-xs font-semibold rounded-2xl border transition-all active:scale-95 flex items-center gap-1.5 ${
                                     isGlobalView 
                                         ? "bg-slate-900 text-white border-slate-950 shadow-md shadow-slate-900/10 hover:bg-slate-800" 
                                         : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"

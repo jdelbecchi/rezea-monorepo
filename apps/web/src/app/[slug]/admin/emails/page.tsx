@@ -10,7 +10,7 @@ import dynamic from "next/dynamic";
 import "react-quill/dist/quill.snow.css";
 
 // Dynamic import of ReactQuill to avoid SSR issues
-const ReactQuill = dynamic(() => import("react-quill"), { 
+const ReactQuill = dynamic(() => import("react-quill"), {
     ssr: false,
     loading: () => <div className="h-64 bg-slate-50 border border-slate-200 rounded-xl animate-pulse flex items-center justify-center text-slate-400">Chargement de l'éditeur...</div>
 });
@@ -73,8 +73,161 @@ function AdminEmailsContent() {
     const searchParams = useSearchParams();
     const [user, setUser] = useState<User | null>(null);
     const [tenant, setTenant] = useState<any | null>(null);
-    const [activeTab, setActiveTab] = useState<"newsletter" | "operational" | "marketing" | "surveys">("newsletter");
-    
+    const [activeTab, setActiveTab] = useState<"newsletter" | "operational" | "marketing" | "surveys" | "google_review">("newsletter");
+    const [showSurveyPreviewModal, setShowSurveyPreviewModal] = useState(false);
+    const [marketingMockupHasImage, setMarketingMockupHasImage] = useState(true);
+
+    // Paramètres Avis Google
+    const [enableReviewPrompts, setEnableReviewPrompts] = useState(false);
+    const [googleReviewUrl, setGoogleReviewUrl] = useState("");
+    const [reviewPromptThreshold, setReviewPromptThreshold] = useState(5);
+    const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+    useEffect(() => {
+        if (tenant) {
+            setEnableReviewPrompts(tenant.enable_review_prompts ?? false);
+            setGoogleReviewUrl(tenant.google_review_url ?? "");
+            setReviewPromptThreshold(tenant.review_prompt_threshold ?? 5);
+        }
+    }, [tenant]);
+
+    const handleSaveReviewSettings = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSavingSettings(true);
+        try {
+            const updatedTenant = await api.updateTenantSettings({
+                enable_review_prompts: enableReviewPrompts,
+                google_review_url: googleReviewUrl,
+                review_prompt_threshold: reviewPromptThreshold
+            });
+            setTenant(updatedTenant);
+            setMessage({ type: "success", text: "Paramètres d'avis Google enregistrés avec succès." });
+        } catch (err: any) {
+            console.error(err);
+            setMessage({
+                type: "error",
+                text: err.response?.data?.detail || "Une erreur est survenue lors de l'enregistrement."
+            });
+        } finally {
+            setIsSavingSettings(false);
+        }
+    };
+
+    const generateSurveyHtml = () => {
+        const titleText = surveyTitle.trim() || "Votre avis sur notre éétablissement";
+
+        let descriptionHtml = "";
+        if (surveyDescription.trim()) {
+            descriptionHtml = `
+            <div align="center" style="text-align: center;">
+                <p style="font-family: 'Livvic', sans-serif; color: #64748b; font-size: 12px; font-weight: 400; margin: 8px 0 20px 0; line-height: 1.5; max-width: 440px; text-align: center; display: inline-block;">
+                    ${surveyDescription.trim()}
+                </p>
+            </div>`;
+        } else {
+            descriptionHtml = '<div style="height: 20px;"></div>';
+        }
+
+        // Build social links
+        let links = [];
+        if (tenant?.website_url) {
+            links.push(`<a href="${tenant.website_url}" style="text-decoration: none; color: #64748b; font-size: 10px; margin: 0 6px; font-weight: 500; white-space: nowrap;">Notre Site</a>`);
+        }
+        if (tenant?.instagram_url) {
+            links.push(`<a href="${tenant.instagram_url}" style="text-decoration: none; color: #64748b; font-size: 10px; margin: 0 6px; font-weight: 500; white-space: nowrap;">Insta</a>`);
+        }
+        if (tenant?.facebook_url) {
+            links.push(`<a href="${tenant.facebook_url}" style="text-decoration: none; color: #64748b; font-size: 10px; margin: 0 6px; font-weight: 500; white-space: nowrap;">Facebook</a>`);
+        }
+        links.push(`<a href="#" style="text-decoration: none; color: #64748b; font-size: 10px; margin: 0 6px; font-weight: 500; white-space: nowrap;">Se désabonner</a>`);
+        const socialsHtml = `<div style="margin-bottom: 15px; text-align: center;">${links.join(" ")}</div>`;
+
+        return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Livvic:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+                body, table, td, p, a, h2 {
+                    font-family: 'Livvic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+                }
+            </style>
+        </head>
+        <body style="margin: 0; padding: 20px 10px; background-color: #f8fafc;">
+            <div style="font-family: 'Livvic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; width: 100%; max-width: 550px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 24px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); overflow: hidden;">
+                <!-- Bandeau haut (Header Banner) - Sur fond blanc -->
+                <div style="background-color: #ffffff; border-bottom: 1px solid #e2e8f0; padding: 30px 24px; text-align: center;">
+                    <h2 style="font-family: 'Livvic', sans-serif; color: #0f172a; font-size: 20px; font-weight: 500; margin: 0; tracking: -0.02em;">✨ Votre avis nous intéresse !</h2>
+                </div>
+
+                <!-- Corps de l'email (Body Content) -->
+                <div style="padding: 30px 16px;">
+                    <div align="center" style="text-align: center; margin-bottom: 24px;">
+                        <p style="font-family: 'Livvic', sans-serif; color: #475569; font-size: 14px; line-height: 1.5; text-align: center; margin: 0;">
+                            Bonjour Julie,<br><br>
+                            Votre avis est précieux !<br>
+                            Partagez-le avec nous en 2 clics 😊
+                        </p>
+                    </div>
+
+                    <!-- Encart enquête (Enclosed Survey Card) -->
+                    <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px 10px; text-align: center; margin-bottom: 24px;">
+                        <p style="font-family: 'Livvic', sans-serif; color: #1e293b; font-size: 14px; font-weight: 500; margin: 0 0 16px 0; line-height: 1.4;">
+                            ${titleText}
+                        </p>
+                        ${descriptionHtml}
+
+                        <table align="center" style="margin: 0 auto; border-collapse: collapse;">
+                            <tr>
+                                <td align="center" style="padding: 0 4px; width: 64px; vertical-align: top;">
+                                    <a href="#" style="text-decoration: none; font-size: 24px; display: inline-block; line-height: 1;" title="Pas du tout satisfait">😔</a>
+                                    <div style="font-family: 'Livvic', sans-serif; font-size: 9px; color: #64748b; margin-top: 6px; line-height: 1.2; font-weight: 500;">Pas du tout satisfait</div>
+                                </td>
+                                <td align="center" style="padding: 0 4px; width: 64px; vertical-align: top;">
+                                    <a href="#" style="text-decoration: none; font-size: 24px; display: inline-block; line-height: 1;" title="Peu satisfait">🙁</a>
+                                    <div style="font-family: 'Livvic', sans-serif; font-size: 9px; color: #64748b; margin-top: 6px; line-height: 1.2; font-weight: 500;">Peu satisfait</div>
+                                </td>
+                                <td align="center" style="padding: 0 4px; width: 64px; vertical-align: top;">
+                                    <a href="#" style="text-decoration: none; font-size: 24px; display: inline-block; line-height: 1;" title="Moyen">😐</a>
+                                    <div style="font-family: 'Livvic', sans-serif; font-size: 9px; color: #64748b; margin-top: 6px; line-height: 1.2; font-weight: 500;">Moyen</div>
+                                </td>
+                                <td align="center" style="padding: 0 4px; width: 64px; vertical-align: top;">
+                                    <a href="#" style="text-decoration: none; font-size: 24px; display: inline-block; line-height: 1;" title="Satisfait">🙂</a>
+                                    <div style="font-family: 'Livvic', sans-serif; font-size: 9px; color: #64748b; margin-top: 6px; line-height: 1.2; font-weight: 500;">Satisfait</div>
+                                </td>
+                                <td align="center" style="padding: 0 4px; width: 64px; vertical-align: top;">
+                                    <a href="#" style="text-decoration: none; font-size: 24px; display: inline-block; line-height: 1;" title="Très satisfait">😍</a>
+                                    <div style="font-family: 'Livvic', sans-serif; font-size: 9px; color: #64748b; margin-top: 6px; line-height: 1.2; font-weight: 500;">Très satisfait</div>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <div style="border-top: 1px solid #e2e8f0; margin: 20px 0;"></div>
+
+                        <p style="font-family: 'Livvic', sans-serif; color: #64748b; font-size: 13px; text-align: center; margin: 0; line-height: 1.5; font-style: italic;">
+                            Merci de nous aider à nous améliorer.
+                        </p>
+                    </div>
+
+                    <!-- Footer -->
+                    <div style="border-top: 1px solid #f1f5f9; padding-top: 20px; text-align: center;">
+                        ${socialsHtml}
+                        <p style="font-family: 'Livvic', sans-serif; color: #94a3b8; font-size: 12px; font-weight: 500; margin: 10px 0 5px 0;">
+                            ${tenant?.name || "Zen Yoga"}${tenant?.email ? ` | ${tenant.email}` : ""}
+                        </p>
+                        <p style="font-family: 'Livvic', sans-serif; color: #cbd5e1; font-size: 11px; font-weight: 500; margin: 0;">
+                            Propulsé par Rezea
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        `;
+    };
+
     // Destinataires & Segments
     const [recipientType, setRecipientType] = useState<"all" | "selected" | "segment">("all");
     const [selectedSegment, setSelectedSegment] = useState<string>("");
@@ -94,7 +247,7 @@ function AdminEmailsContent() {
         inactif: number;
         archive: number;
     } | null>(null);
-    
+
     // Editor State
     const [subject, setSubject] = useState("");
     const [content, setContent] = useState("");
@@ -103,7 +256,7 @@ function AdminEmailsContent() {
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
     const [showUserSelector, setShowUserSelector] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
-    
+
     // Switch Urgence Opérationnelle
     const [forceOperational, setForceOperational] = useState(false);
 
@@ -148,7 +301,7 @@ function AdminEmailsContent() {
     const [showSurveyDetailsModal, setShowSurveyDetailsModal] = useState(false);
     const [surveyToDelete, setSurveyToDelete] = useState<any | null>(null);
     const [isDeletingSurvey, setIsDeletingSurvey] = useState(false);
-    
+
     // Form Enquêtes
     const [surveyTitle, setSurveyTitle] = useState("");
     const [surveyDescription, setSurveyDescription] = useState("");
@@ -233,12 +386,12 @@ function AdminEmailsContent() {
         setSelectedMarketingCard(card);
         const segmentUsers = allUsers.filter(u => u.segment === card.segment);
         setSelectedMarketingUserIds(segmentUsers.map(u => u.id));
-        
+
         // Dynamically replace establishment/tenant name
         const estName = tenant?.name || "votre établissement";
         const subject = card.defaultSubject.replace(/{establishment}/g, estName).replace(/Rezea/g, estName).replace(/rezea/g, estName);
         const content = card.defaultContent.replace(/{establishment}/g, estName).replace(/Rezea/g, estName).replace(/rezea/g, estName);
-        
+
         setMarketingSubject(subject);
         setMarketingContent(content);
         setMarketingColor(tenant?.primary_color || "#7c3aed");
@@ -366,7 +519,7 @@ function AdminEmailsContent() {
                 api.getAdminSessions().catch(() => []),
                 api.getTenantSettings().catch(() => null),
             ]);
-            
+
             setAllUsers(users);
             setTemplates(templatesData);
             setSegmentStats(stats);
@@ -380,7 +533,7 @@ function AdminEmailsContent() {
             });
             setSessions(filteredSessions);
             setTenant(tenantData);
-            
+
             // Pré-sélection des destinataires via query params
             const recipientIds = searchParams.get("recipientIds");
             if (recipientIds) {
@@ -498,7 +651,7 @@ function AdminEmailsContent() {
                 // Trait de séparateur entre chaque section
                 html += '<hr style="border: 0; border-top: 1px solid #cbd5e1; margin: 24px 0;" />';
             }
-            
+
             // Section Title color band - FULL WIDTH
             if (sec.title) {
                 html += `
@@ -507,7 +660,7 @@ function AdminEmailsContent() {
                 </div>
                 `;
             }
-            
+
             // Image (NOT full width by default, with slight rounding 6px, and adjustable size)
             if (sec.imageUrl) {
                 let imgWidth = "100%";
@@ -519,20 +672,20 @@ function AdminEmailsContent() {
                     imgWidth = "320";
                     imgMaxWidth = "320px";
                 }
-                
+
                 html += `
                 <div style="text-align: center; margin-bottom: 12px;">
                     <img src="${sec.imageUrl}" alt="${sec.title || 'Image'}" class="newsletter-image" data-newsletter="true" width="${imgWidth}" style="width: ${imgWidth === "100%" ? "100%" : imgMaxWidth}; max-width: 100%; height: auto; display: inline-block; border-radius: 6px;" />
                 </div>
                 `;
             }
-            
+
             // Content text (NO forced text-align center)
             if (sec.content && sec.content !== "<p><br></p>") {
                 html += `<div style="font-family: 'Livvic', sans-serif; font-size: 16px; font-weight: 300; line-height: 1.6; color: #334155; margin-bottom: 12px;">${sec.content}</div>`;
             }
         });
-        
+
         // Append logical JSON state as HTML comment
         html += `\n<!-- NEWSLETTER_SECTIONS_JSON: ${JSON.stringify(sections)} -->`;
         return html;
@@ -542,16 +695,16 @@ function AdminEmailsContent() {
     const generateRealisticHtml = () => {
         let rawContent = activeTab === "newsletter" ? compileNewsletterHtml(newsletterSections) : content;
         let processed = rawContent;
-        
+
         // 1. Tag first_name
         processed = processed.replace(/{first_name}/g, user?.first_name || "Julie");
-        
+
         // 2. Salutation
         processed = processed.replace(
             /(Bonjour\s+[^,<\n\r]+,?)/g,
             '<strong style="font-weight: 600; color: #0f172a;">$1</strong>'
         );
-        
+
         // 3. Promos (double-border styled box)
         processed = processed.replace(
             /<(strong|b)(?:\s+[^>]*)?>\s*([A-Z0-9_-]{4,15})\s*<\/\1>/g,
@@ -563,7 +716,7 @@ function AdminEmailsContent() {
                 `;
             }
         );
-        
+
         // 4. Standalone CTA button formatting
         processed = processed.replace(
             /<p([^>]*)>\s*<a\s+(?:[^>]*?\s+)?href="([^"]+)"[^>]*?>\s*([^<]+?)\s*<\/a>\s*<\/p>/g,
@@ -581,7 +734,7 @@ function AdminEmailsContent() {
                 `;
             }
         );
-        
+
         // 5. Images full width
         processed = processed.replace(/<img[^>]+>/g, (imgTag) => {
             // Ne pas toucher aux images des sections de newsletter
@@ -596,30 +749,46 @@ function AdminEmailsContent() {
             }
             return `<div class="full-width-image-wrapper" style="margin: 0 -24px 10px -24px;">${cleanImg}</div>`;
         });
-        
+
+        const isMarketing = activeTab === "marketing";
+        const logoMaxHeight = isMarketing ? "160px" : "140px";
+        const logoMarginBottom = isMarketing ? "6px" : "0px";
+        const sloganMarginBottom = isMarketing ? "12px" : "24px";
+
         // Slogan/phrase d'accroche sous le logo (toujours sous le logo dans le template)
         let sloganHtml = "";
         const sloganText = tenant?.slogan;
         if (sloganText) {
             sloganHtml = `
-            <div class="email-slogan" style="text-align: center; font-size: 16px; font-weight: 300; color: #0f172a; margin-top: 0px; margin-bottom: 24px; font-family: 'Livvic', sans-serif;">
+            <div class="email-slogan" style="text-align: center; font-size: 16px; font-weight: 300; color: #0f172a; margin-top: 0px; margin-bottom: ${sloganMarginBottom}; font-family: 'Livvic', sans-serif;">
                 ${sloganText}
             </div>
             `;
         }
-        
+
         // Logo
         let logoHtml = "";
         if (tenant?.logo_url) {
             logoHtml = `
-            <div class="email-logo-wrapper" style="text-align: center; margin-bottom: 0px; line-height: 1.2;">
-                <img src="${API_URL}${tenant.logo_url}" alt="${tenant.name}" class="email-logo" style="max-height: 140px; max-width: 100%; width: auto; display: block; margin: 0 auto; vertical-align: middle;">
+            <div class="email-logo-wrapper" style="text-align: center; margin-bottom: ${logoMarginBottom}; line-height: 1.2;">
+                <img src="${API_URL}${tenant.logo_url}" alt="${tenant.name}" class="email-logo" style="max-height: ${logoMaxHeight}; max-width: 100%; width: auto; display: block; margin: 0 auto; vertical-align: middle;">
             </div>
             `;
         } else {
-            logoHtml = `<div style="text-align: center; margin-bottom: 0px;"><span style="font-size: 24px; font-weight: 700; color: #0f172a; font-family: 'Livvic', sans-serif; letter-spacing: -0.02em;">${tenant?.name || "Zen Yoga"}</span></div>`;
+            logoHtml = `<div style="text-align: center; margin-bottom: ${logoMarginBottom};"><span style="font-size: 24px; font-weight: 700; color: #0f172a; font-family: 'Livvic', sans-serif; letter-spacing: -0.02em;">${tenant?.name || "Zen Yoga"}</span></div>`;
         }
-        
+
+        // Separator (marketing only when no image in rawContent)
+        let separatorHtml = "";
+        if (isMarketing) {
+            const hasImage = rawContent.includes("<img");
+            if (!hasImage) {
+                separatorHtml = `
+                <div class="full-width-separator" style="border-top: 1px solid #e2e8f0; margin: 12px -24px 24px -24px;"></div>
+                `;
+            }
+        }
+
         // Social links
         let links = [];
         if (tenant?.website_url) {
@@ -633,7 +802,7 @@ function AdminEmailsContent() {
         }
         links.push(`<a href="#" class="email-footer-link" style="text-decoration: none; color: #64748b; font-size: 13px; margin: 0 10px; font-weight: 500;">Se désabonner</a>`);
         const socialsHtml = `<div style="margin-bottom: 15px; text-align: center;">${links.join(" ")}</div>`;
-        
+
         return `
         <!DOCTYPE html>
         <html>
@@ -656,6 +825,10 @@ function AdminEmailsContent() {
                     margin-left: -24px !important;
                     margin-right: -24px !important;
                 }
+                .full-width-separator {
+                    margin-left: -24px;
+                    margin-right: -24px;
+                }
                 @media only screen and (max-width: 480px) {
                     .email-body {
                         padding: 8px !important;
@@ -673,8 +846,12 @@ function AdminEmailsContent() {
                         margin-left: -16px !important;
                         margin-right: -16px !important;
                     }
+                    .full-width-separator {
+                        margin-left: -16px !important;
+                        margin-right: -16px !important;
+                    }
                     .email-logo {
-                        max-height: 90px !important;
+                        max-height: ${isMarketing ? "110px" : "90px"} !important;
                     }
                     .email-logo-wrapper {
                         margin-bottom: 0px !important;
@@ -701,15 +878,17 @@ function AdminEmailsContent() {
             </style>
         </head>
         <body class="email-body" style="margin: 0; padding: 20px; background-color: #f8fafc;">
-            <div class="email-container" style="font-family: 'Livvic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 16px 24px; border: 1px solid #e2e8f0; border-radius: 24px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+            <div class="email-container" style="font-family: 'Livvic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: ${isMarketing ? "10px" : "16px"} 24px 24px 24px; border: 1px solid #e2e8f0; border-radius: 24px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
                 ${logoHtml}
-                
+
                 ${sloganHtml}
-                
+
+                ${separatorHtml}
+
                 <div class="email-content" style="color: #334155; font-size: 16px; line-height: 1.6; font-weight: 300;">
                     ${processed}
                 </div>
-                
+
                 <div style="border-top: 1px solid #f1f5f9; margin-top: 15px; padding-top: 10px; text-align: center;">
                     ${socialsHtml}
                     <p style="font-family: 'Livvic', sans-serif; color: #94a3b8; font-size: 12px; font-weight: 500; margin: 0 0 5px 0;">
@@ -746,11 +925,11 @@ function AdminEmailsContent() {
     const handleSend = async () => {
         setShowValidation(true);
         const finalContent = activeTab === "newsletter" ? compileNewsletterHtml(newsletterSections) : content;
-        
+
         // Validation check
         const isNewsletterEmpty = activeTab === "newsletter" && newsletterSections.every(s => !s.title && !s.imageUrl && (!s.content || s.content === "<p><br></p>"));
         const isClassicEmpty = activeTab !== "newsletter" && (!content || content === "<p><br></p>");
-        
+
         if (!subject || (activeTab === "newsletter" ? isNewsletterEmpty : isClassicEmpty)) {
             setMessage({ type: "error", text: "Veuillez remplir l'objet et le contenu de l'email." });
             return;
@@ -775,11 +954,11 @@ function AdminEmailsContent() {
         } else if (selectedTargets.length > 1) {
             resolvedRecipientType = "selected";
             // Filter users belonging to any of the selected segments
-            const targetedUsers = allUsers.filter(u => 
+            const targetedUsers = allUsers.filter(u =>
                 u.segment && selectedTargets.map(t => t.toLowerCase()).includes(u.segment.toLowerCase())
             );
             resolvedUserIds = targetedUsers.map(u => u.id);
-            
+
             if (resolvedUserIds.length === 0) {
                 setMessage({ type: "error", text: "Aucun utilisateur ne correspond aux statuts sélectionnés." });
                 return;
@@ -795,11 +974,12 @@ function AdminEmailsContent() {
         try {
             const result = await api.sendAdminEmail({
                 subject,
-                content: finalContent, 
+                content: finalContent,
                 recipient_type: resolvedRecipientType,
                 selected_user_ids: resolvedUserIds,
                 segment: resolvedSegment,
-                force_operational: activeTab === "operational" ? forceOperational : false
+                force_operational: activeTab === "operational" ? forceOperational : false,
+                campaign_type: activeTab
             });
             setMessage({ type: "success", text: result.message });
             setSubject("");
@@ -820,10 +1000,10 @@ function AdminEmailsContent() {
     const handleSaveTemplate = async () => {
         if (!templateName.trim()) return;
         const finalContent = activeTab === "newsletter" ? compileNewsletterHtml(newsletterSections) : content;
-        
+
         const isNewsletterEmpty = activeTab === "newsletter" && newsletterSections.every(s => !s.title && !s.imageUrl && (!s.content || s.content === "<p><br></p>"));
         const isClassicEmpty = activeTab !== "newsletter" && (!content || content === "<p><br></p>");
-        
+
         if (!subject || (activeTab === "newsletter" ? isNewsletterEmpty : isClassicEmpty)) {
             setMessage({ type: "error", text: "Veuillez remplir l'objet et le contenu avant d'enregistrer." });
             return;
@@ -849,7 +1029,7 @@ function AdminEmailsContent() {
 
     const handleDeleteTemplate = async () => {
         if (!templateToDelete) return;
-        
+
         setIsDeleting(true);
         try {
             await api.deleteEmailTemplate(templateToDelete.id);
@@ -866,7 +1046,7 @@ function AdminEmailsContent() {
 
     const loadTemplate = (template: EmailTemplate) => {
         setSubject(template.subject);
-        
+
         // Try to parse newsletter sections JSON
         const sections = parseNewsletterHtml(template.content);
         if (sections && (sections.length > 1 || sections[0].title || sections[0].imageUrl)) {
@@ -984,14 +1164,14 @@ function AdminEmailsContent() {
     };
 
     // Filtres sélection utilisateurs manuelle
-    const filteredUsers = allUsers.filter(u => 
+    const filteredUsers = allUsers.filter(u =>
         u.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const toggleUserSelection = (id: string) => {
-        setSelectedUserIds(prev => 
+        setSelectedUserIds(prev =>
             prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]
         );
     };
@@ -1025,7 +1205,7 @@ function AdminEmailsContent() {
             <Sidebar user={user} />
             <main className="flex-1 p-8">
                 <div className="max-w-7xl mx-auto">
-                    
+
                     {/* Header */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
                         <div>
@@ -1076,6 +1256,15 @@ function AdminEmailsContent() {
                         >
                             <span className="text-base">📊</span> Enquêtes
                         </button>
+                        <button
+                            onClick={() => { setActiveTab("google_review"); setMessage(null); }}
+                            className={`flex items-center gap-2 px-8 py-4 text-sm font-semibold transition-all border-b-2 whitespace-nowrap ${activeTab === "google_review"
+                                ? "border-blue-600 text-blue-600"
+                                : "border-transparent text-slate-500 hover:text-slate-700"
+                                }`}
+                        >
+                            <span className="text-base">⭐</span> Avis Google
+                        </button>
                     </div>
 
                     {/* Alertes de retour */}
@@ -1085,8 +1274,8 @@ function AdminEmailsContent() {
                                 <span className="text-lg">{message.type === "success" ? "✅" : "❌"}</span>
                                 <p className="text-sm font-medium">{message.text}</p>
                             </div>
-                            <button 
-                                onClick={() => setMessage(null)} 
+                            <button
+                                onClick={() => setMessage(null)}
                                 className="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-white/40 rounded-lg ml-auto shrink-0"
                                 title="Fermer"
                             >
@@ -1109,12 +1298,12 @@ function AdminEmailsContent() {
                                         </div>
                                         <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">
                                             {newsletterTemplates.map(t => (
-                                                <div 
+                                                <div
                                                     key={t.id}
                                                     onClick={() => loadTemplate(t)}
                                                     className="min-w-[180px] max-w-[180px] bg-white p-3 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group relative flex items-center gap-2"
                                                 >
-                                                    <button 
+                                                    <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             setTemplateToDelete(t);
@@ -1137,7 +1326,7 @@ function AdminEmailsContent() {
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                                 {/* Left Column: Editor & Inputs */}
                                 <div className="space-y-6">
-                                    
+
                                     {/* 1. Destinataires */}
                                     <section className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 relative">
                                         <div className="relative" ref={dropdownRef}>
@@ -1150,7 +1339,7 @@ function AdminEmailsContent() {
                                                 className="w-full p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all outline-none flex items-center justify-between text-sm font-semibold text-slate-800 shadow-sm"
                                             >
                                                 <span className="flex items-center gap-2">
-                                                    👥 {selectedTargets.includes("all") ? "Tous les utilisateurs" : 
+                                                    👥 {selectedTargets.includes("all") ? "Tous les utilisateurs" :
                                                         selectedTargets.includes("selected") ? `Sélection manuelle (${selectedUserIds.length} cible(s))` :
                                                         `Statuts : ${selectedTargets.map(t => {
                                                             const label = segmentLabels[t];
@@ -1165,7 +1354,7 @@ function AdminEmailsContent() {
                                             {dropdownOpen && (
                                                 <div className="absolute left-0 right-0 mt-2 bg-white border border-slate-150 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in duration-200">
                                                     <div className="p-2.5 max-h-80 overflow-y-auto space-y-1 bg-slate-50/30">
-                                                        
+
                                                         {/* Option: Tous les utilisateurs */}
                                                         <label className="flex items-center justify-between p-3.5 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors border border-transparent hover:border-slate-100">
                                                             <div className="flex items-center gap-3">
@@ -1219,7 +1408,7 @@ function AdminEmailsContent() {
                                                 </div>
                                             )}
                                         </div>
-                                        
+
                                         <div className="text-slate-400 text-xs font-normal leading-relaxed mt-2.5 flex items-start gap-1.5">
                                             <span>ℹ️</span>
                                             <span>
@@ -1465,7 +1654,7 @@ function AdminEmailsContent() {
                                                 🔍 Rendu Réel
                                             </button>
                                         </div>
-                                        
+
                                         <div className="border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm bg-slate-50">
                                             <div className="bg-slate-100 px-3.5 py-2.5 flex items-center gap-2 border-b border-slate-200">
                                                 <div className="flex gap-1.5 shrink-0">
@@ -1478,8 +1667,8 @@ function AdminEmailsContent() {
                                                 </div>
                                             </div>
                                             <div className="bg-white">
-                                                <iframe 
-                                                    srcDoc={generateRealisticHtml()} 
+                                                <iframe
+                                                    srcDoc={generateRealisticHtml()}
                                                     className="w-full h-[540px] border-0 block bg-white"
                                                     title="Live Email Preview"
                                                 />
@@ -1502,12 +1691,12 @@ function AdminEmailsContent() {
                                     </div>
                                     <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">
                                         {operationalTemplates.map(t => (
-                                            <div 
+                                            <div
                                                 key={t.id}
                                                 onClick={() => loadTemplate(t)}
                                                 className="min-w-[180px] max-w-[180px] bg-white p-3 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group relative flex items-center gap-2"
                                             >
-                                                <button 
+                                                <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         setTemplateToDelete(t);
@@ -1527,7 +1716,7 @@ function AdminEmailsContent() {
 
                             {/* Cadre Unique de Composition */}
                             <section className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 z-30 relative space-y-6">
-                                
+
                                 {/* 1. Destinataires */}
                                 <div className="relative mb-2" ref={dropdownRef}>
                                     <label className="block text-sm font-medium text-slate-700 mb-1.5">
@@ -1564,7 +1753,7 @@ function AdminEmailsContent() {
                                     {dropdownOpen && (
                                         <div className="absolute left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                                             <div className="p-4 max-h-[350px] overflow-y-auto space-y-2">
-                                                
+
                                                 {/* Tous les utilisateurs */}
                                                 <label className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-all cursor-pointer border border-slate-100">
                                                     <div className="flex items-center gap-3">
@@ -1613,7 +1802,7 @@ function AdminEmailsContent() {
                                                     const count = segmentStats ? (segmentStats as any)[key] || 0 : 0;
                                                     const cleanLabel = label.split(" (")[0];
                                                     const subLabel = label.includes(" (") ? label.substring(label.indexOf(" (") + 2, label.lastIndexOf(")")) : "";
-                                                    
+
                                                     return (
                                                         <label key={key} className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-all cursor-pointer border border-slate-100">
                                                             <div className="flex items-center gap-3">
@@ -1643,11 +1832,11 @@ function AdminEmailsContent() {
                                         <div className="flex items-center justify-end gap-4">
                                             <span className="text-sm font-semibold text-slate-700">Forcer l&apos;envoi</span>
                                             <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                                                <input 
-                                                    type="checkbox" 
+                                                <input
+                                                    type="checkbox"
                                                     checked={forceOperational}
                                                     onChange={(e) => setForceOperational(e.target.checked)}
-                                                    className="sr-only peer" 
+                                                    className="sr-only peer"
                                                 />
                                                 <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
                                             </label>
@@ -1738,11 +1927,24 @@ function AdminEmailsContent() {
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                                     {/* 1/3 Left Column: Visual Email Preview Mockup */}
                                     <div className="lg:col-span-1 bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4">
-                                        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Aperçu du visuel cible</h3>
-                                            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
+                                        <div className="flex items-center justify-between pb-3 border-b border-slate-100 gap-2">
+                                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Aperçu cible</h3>
+                                            <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200 select-none shrink-0">
+                                                <button
+                                                    onClick={() => setMarketingMockupHasImage(true)}
+                                                    className={`px-2 py-0.5 text-[9px] font-semibold rounded-md transition-all ${marketingMockupHasImage ? "bg-white text-slate-800 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
+                                                >
+                                                    Avec image
+                                                </button>
+                                                <button
+                                                    onClick={() => setMarketingMockupHasImage(false)}
+                                                    className={`px-2 py-0.5 text-[9px] font-semibold rounded-md transition-all ${!marketingMockupHasImage ? "bg-white text-slate-800 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
+                                                >
+                                                    Sans image
+                                                </button>
+                                            </div>
                                         </div>
-                                        
+
                                         {/* Mock Email Client Container */}
                                         <div className="border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm bg-slate-50 text-[10px]">
                                             {/* Browser Header Bar */}
@@ -1756,12 +1958,12 @@ function AdminEmailsContent() {
                                                     apercu-zenstudio-mockup
                                                 </div>
                                             </div>
-                                            
+
                                             {/* Email Client Content */}
                                             <div className="bg-white text-slate-700">
                                                 {/* Brand Logo & Name */}
-                                                <div className="p-4 pb-2 flex flex-col items-center justify-center">
-                                                    <svg viewBox="0 0 100 100" className="w-9 h-9 text-[#a7825d]" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg">
+                                                <div className="pt-2 flex flex-col items-center justify-center">
+                                                    <svg viewBox="0 0 100 100" className="w-14 h-14 text-[#a7825d]" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg">
                                                         <path d="M50 20 C40 38 40 68 50 80 C60 68 60 38 50 20 Z" />
                                                         <path d="M50 35 C25 45 25 70 50 80" />
                                                         <path d="M50 35 C75 45 75 70 50 80" />
@@ -1772,21 +1974,24 @@ function AdminEmailsContent() {
 
                                                 {/* Slogan */}
                                                 <div className="px-4 text-center">
-                                                    <div className="border-t border-slate-200 w-10 mx-auto my-1.5" />
-                                                    <div className="text-[10px] font-light text-[#475569] mb-2" style={{ fontFamily: "'Livvic', sans-serif" }}>
+                                                    <div className="text-[10px] font-light text-[#475569] mb-3" style={{ fontFamily: "'Livvic', sans-serif" }}>
                                                         Le bien-être à chaque respiration | A vos côtés depuis 2005
                                                     </div>
                                                 </div>
 
-                                                {/* Premium Yoga Cover Image - Full Width / Edge-to-Edge */}
-                                                <div className="w-full">
-                                                    <img 
-                                                        src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=600&auto=format&fit=crop" 
-                                                        className="w-full h-auto block" 
-                                                        alt="Zen Yoga Studio Preview" 
-                                                    />
-                                                </div>
-                                                
+                                                {/* Premium Yoga Cover Image or Separator - Full Width / Edge-to-Edge */}
+                                                {marketingMockupHasImage ? (
+                                                    <div className="w-full">
+                                                        <img
+                                                            src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=600&auto=format&fit=crop"
+                                                            className="w-full h-auto block"
+                                                            alt="Zen Yoga Studio Preview"
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <div className="border-t border-slate-200 w-full" />
+                                                )}
+
                                                 {/* Elegant Centered Content */}
                                                 <div className="p-5 pt-3.5 space-y-3 text-center" style={{ fontFamily: "'Livvic', sans-serif" }}>
                                                     <p className="font-bold text-slate-900 leading-normal text-[11px]">Bonjour Julie,</p>
@@ -1796,7 +2001,7 @@ function AdminEmailsContent() {
                                                     <p className="text-slate-500 font-normal leading-relaxed text-[9px] max-w-xs mx-auto">
                                                         Pour vous remercier, voici un code cadeau offrant une invitation gratuite pour le proche de votre choix lors de votre prochain cours :
                                                     </p>
-                                                    
+
                                                     {/* Double Border Coupon Box */}
                                                     <div className="my-3.5 mx-auto max-w-[140px] p-2 bg-[#fbf2eb] border-[3px] border-double border-[#a7825d] rounded text-center">
                                                         <span className="font-bold text-[10px] text-[#a7825d] tracking-widest uppercase" style={{ fontFamily: "'Livvic', sans-serif" }}>
@@ -1810,20 +2015,20 @@ function AdminEmailsContent() {
                                                     <p className="text-slate-400 font-medium text-[8px]">
                                                         L&apos;équipe Zen Yoga
                                                     </p>
-                                                    
+
                                                     {/* Soft Rounded CTA Button */}
                                                     <div className="py-2">
-                                                        <span 
-                                                            className="inline-block px-4 py-1.5 text-[9px] font-medium text-white bg-[#0f172a] rounded shadow-sm hover:bg-slate-800 tracking-wider uppercase select-none transition-all active:scale-95 cursor-pointer" 
-                                                            style={{ 
-                                                                fontFamily: "'Livvic', sans-serif" 
+                                                        <span
+                                                            className="inline-block px-4 py-1.5 text-[9px] font-medium text-white bg-[#0f172a] rounded shadow-sm hover:bg-slate-800 tracking-wider uppercase select-none transition-all active:scale-95 cursor-pointer"
+                                                            style={{
+                                                                fontFamily: "'Livvic', sans-serif"
                                                             }}
                                                         >
                                                             Réserver votre séance
                                                         </span>
                                                     </div>
                                                 </div>
-                                                
+
                                                 {/* Newsletter Footer Menu & Social Links */}
                                                 <div className="pt-4 border-t border-slate-100 text-center space-y-2 pb-2">
                                                     {/* Links Menu */}
@@ -1836,7 +2041,7 @@ function AdminEmailsContent() {
                                                         <span className="text-slate-200 font-normal select-none">•</span>
                                                         <span>Se désabonner</span>
                                                     </div>
-                                                    
+
                                                     <p className="font-normal text-[8px] text-slate-400">
                                                         © {new Date().getFullYear()} {tenant?.name || "Zen Yoga"}{tenant?.email ? ` | ${tenant.email}` : ""} - Propulsé par Rezea
                                                     </p>
@@ -1868,7 +2073,7 @@ function AdminEmailsContent() {
                                             {marketingCards.map(card => {
                                                 const count = segmentStats ? (segmentStats as any)[card.segment] || 0 : 0;
                                                 return (
-                                                    <div 
+                                                    <div
                                                         key={card.id}
                                                         onClick={() => handleSelectMarketingCard(card)}
                                                         className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer flex flex-col justify-between group h-full relative overflow-hidden"
@@ -1903,20 +2108,29 @@ function AdminEmailsContent() {
                     {/* ==================== TAB 3 : SATISFACTION SURVEYS ==================== */}
                     {activeTab === "surveys" && (
                         <div className="space-y-10">
-                            
+
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                
+
                                 {/* 1. Créateur d'enquêtes */}
                                 <div className="lg:col-span-1 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm self-start">
-                                    <h3 className="text-lg font-semibold text-slate-950 mb-5 pb-3 border-b border-slate-100 flex items-center gap-2 tracking-tight">
-                                        <span>📊</span> Créer une enquête
-                                    </h3>
-                                    
+                                    <div className="flex items-center justify-between mb-5 pb-3 border-b border-slate-100">
+                                        <h3 className="text-lg font-semibold text-slate-950 flex items-center gap-2 tracking-tight">
+                                            <span>📊</span> Créer une enquête
+                                        </h3>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowSurveyPreviewModal(true)}
+                                            className="text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition-all active:scale-[0.98]"
+                                        >
+                                            Visuel type
+                                        </button>
+                                    </div>
+
                                     <form onSubmit={handleCreateSurvey} className="space-y-4">
                                         <div>
                                             <label className="block text-sm font-medium text-slate-700 mb-1.5">Titre</label>
-                                            <input 
-                                                type="text" 
+                                            <input
+                                                type="text"
                                                 required
                                                 value={surveyTitle}
                                                 onChange={(e) => setSurveyTitle(e.target.value)}
@@ -1927,7 +2141,7 @@ function AdminEmailsContent() {
 
                                         <div>
                                             <label className="block text-sm font-medium text-slate-700 mb-1.5">Description <span className="text-[10px] text-slate-400 font-normal ml-1 lowercase">(optionnel)</span></label>
-                                            <textarea 
+                                            <textarea
                                                 value={surveyDescription}
                                                 onChange={(e) => setSurveyDescription(e.target.value)}
                                                 placeholder="Ex : Avez-vous aimé les activités proposées ?"
@@ -2025,7 +2239,7 @@ function AdminEmailsContent() {
                                                     </span>
                                                     <span className="text-slate-400 text-[10px]">▼</span>
                                                 </button>
-                                                
+
                                                 {isDropdownOpen && (
                                                     <>
                                                         <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
@@ -2075,16 +2289,16 @@ function AdminEmailsContent() {
                                                                     />
                                                                     Toute la base utilisateur
                                                                 </label>
-                                                                
+
                                                                 <div className="border-t border-slate-100 my-1" />
-                                                                
+
                                                                 {/* Options individuelles */}
                                                                 {segmentStats && Object.entries(segmentStats).map(([key, val]) => {
                                                                     if (key === "participants") return null;
                                                                     const isChecked = surveyTargetSegment.split(",").includes(key) || surveyTargetSegment.split(",").includes("tous");
                                                                     return (
-                                                                        <label 
-                                                                            key={key} 
+                                                                        <label
+                                                                            key={key}
                                                                             className={`flex items-center gap-2.5 p-2 rounded-lg cursor-pointer transition-all select-none hover:bg-slate-50 ${isChecked ? 'bg-blue-50/20' : ''}`}
                                                                         >
                                                                             <input
@@ -2095,7 +2309,7 @@ function AdminEmailsContent() {
                                                                                     if (surveyTargetSegment.split(",").includes("tous") && segmentStats) {
                                                                                         current = Object.keys(segmentStats).filter(k => k !== "participants");
                                                                                     }
-                                                                                    
+
                                                                                     if (e.target.checked) {
                                                                                         if (!current.includes(key)) {
                                                                                             current.push(key);
@@ -2167,7 +2381,7 @@ function AdminEmailsContent() {
                                     ) : (
                                         <div className="grid grid-cols-1 gap-4">
                                             {surveys.map(c => (
-                                                <div 
+                                                <div
                                                     key={c.id}
                                                     className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all space-y-4"
                                                 >
@@ -2232,6 +2446,187 @@ function AdminEmailsContent() {
                             </div>
                         </div>
                     )}
+
+                    {/* ==================== TAB 4 : GOOGLE REVIEWS ==================== */}
+                    {activeTab === "google_review" && (
+                        <div className="animate-in fade-in duration-300">
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+                                {/* 1. Formulaire de configuration */}
+                                <div className="lg:col-span-5 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                                    <form onSubmit={handleSaveReviewSettings} className="space-y-6">
+                                        <div>
+                                            <h3 className="text-lg font-semibold text-slate-900 tracking-tight flex items-center gap-2">
+                                                <span>⭐</span> Avis Google automatiques
+                                            </h3>
+                                            <p className="text-sm text-slate-500 mt-1">
+                                                Activez et configurez l'envoi d'e-mails pour inciter vos membres à laisser une évaluation.
+                                            </p>
+                                        </div>
+
+                                        <div className="h-px bg-slate-100" />
+
+                                        {/* Toggle Activation */}
+                                        <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                            <div>
+                                                <label className="text-sm font-semibold text-slate-900 block cursor-pointer">
+                                                    Activer l'automatisation
+                                                </label>
+                                                <span className="text-xs text-slate-500">
+                                                    Envoi automatique après validation de présence.
+                                                </span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setEnableReviewPrompts(!enableReviewPrompts)}
+                                                className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out focus:outline-none ${
+                                                    enableReviewPrompts ? "bg-blue-600" : "bg-slate-300"
+                                                }`}
+                                            >
+                                                <div
+                                                    className={`w-4 h-4 rounded-full bg-white shadow-md transform transition-transform duration-200 ease-in-out ${
+                                                        enableReviewPrompts ? "translate-x-6" : "translate-x-0"
+                                                    }`}
+                                                />
+                                            </button>
+                                        </div>
+
+                                        {/* Seuil de séances */}
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-semibold text-slate-700">
+                                                Seuil de séances complétées
+                                            </label>
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="number"
+                                                    min={1}
+                                                    max={100}
+                                                    required
+                                                    value={reviewPromptThreshold}
+                                                    onChange={(e) => setReviewPromptThreshold(parseInt(e.target.value) || 1)}
+                                                    className="w-24 p-3 border border-slate-200 bg-white hover:border-slate-300 rounded-xl text-sm font-medium outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20"
+                                                />
+                                                <span className="text-sm text-slate-500">séances complétées</span>
+                                            </div>
+                                            <p className="text-xs text-slate-400">
+                                                L'e-mail partira dès que l'utilisateur aura effectué ce nombre de réservations passées.
+                                            </p>
+                                        </div>
+
+                                        {/* Lien Google My Business */}
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-semibold text-slate-700">
+                                                Lien d'avis Google My Business
+                                            </label>
+                                            <input
+                                                type="url"
+                                                required={enableReviewPrompts}
+                                                value={googleReviewUrl}
+                                                onChange={(e) => setGoogleReviewUrl(e.target.value)}
+                                                placeholder="https://g.page/r/..."
+                                                className="w-full p-3 border border-slate-200 bg-white hover:border-slate-300 rounded-xl text-sm font-medium outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 placeholder:text-sm placeholder:font-normal placeholder:text-slate-400"
+                                            />
+                                            <p className="text-xs text-slate-400 leading-normal">
+                                                Pour obtenir ce lien : rendez-vous sur votre fiche Google Business Profile, cliquez sur "Demander des avis" et copiez le lien court.
+                                            </p>
+                                        </div>
+
+                                         <div className="pt-4">
+                                             <button
+                                                 type="submit"
+                                                 disabled={isSavingSettings}
+                                                 className="px-8 py-3 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-medium rounded-2xl text-sm transition-all active:scale-95 shadow-lg"
+                                             >
+                                                 {isSavingSettings ? "Enregistrement..." : "Enregistrer"}
+                                             </button>
+                                         </div>
+                                    </form>
+                                </div>
+
+                                {/* 2. Live Preview */}
+                                <div className="lg:col-span-7 bg-slate-900/5 p-8 rounded-3xl border border-slate-200/60 flex flex-col justify-start items-center">
+                                    <div className="w-full max-w-[500px] bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden text-slate-800 flex flex-col">
+                                        {/* Email Client Header */}
+                                        <div className="bg-slate-50 border-b border-slate-200 px-5 py-4 flex flex-col gap-1.5">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="w-2.5 h-2.5 rounded-full bg-rose-400" />
+                                                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                                                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                                                </div>
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Aperçu E-mail</span>
+                                            </div>
+                                            <div className="h-px bg-slate-200/80 my-1" />
+                                             <div className="grid grid-cols-[50px_1fr] text-xs gap-y-1 text-slate-500">
+                                                 <span className="font-light">De :</span>
+                                                 <span className="font-medium text-slate-800">{tenant?.name || "Votre Club"} &lt;{tenant?.slug || "votre-club"}-noreply@rezea.app&gt;</span>
+                                                 <span className="font-light">À :</span>
+                                                 <span className="font-medium text-slate-800">Jean Dupont &lt;jean.dupont@gmail.com&gt;</span>
+                                                 <span className="font-light">Objet :</span>
+                                                 <span className="font-medium text-slate-900">[{tenant?.name || "Votre Club"}] Vos {reviewPromptThreshold} séances avec nous ! 🎉</span>
+                                             </div>
+                                        </div>
+
+                                        {/* Email Body */}
+                                        <div className="p-6 bg-slate-100/40 flex justify-center">
+                                            <div className="w-full bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 flex flex-col gap-4 font-sans text-sm">
+                                                 {/* Header Logo */}
+                                                 <div className="flex justify-center items-center py-4 border-b border-slate-100">
+                                                     {tenant?.logo_url ? (
+                                                         <img
+                                                             src={`${API_URL}${tenant.logo_url}`}
+                                                             alt={tenant?.name}
+                                                             className="max-h-16 w-auto object-contain"
+                                                         />
+                                                     ) : (
+                                                         <span className="font-bold text-slate-900 text-base tracking-tight">{tenant?.name || "Votre Club"}</span>
+                                                     )}
+                                                 </div>
+
+                                                 <h4 className="font-semibold text-base text-slate-900 leading-tight text-center mt-1">
+                                                    Déjà {reviewPromptThreshold} séances chez {tenant?.name || "Votre Club"} !
+                                                </h4>
+
+                                                <div className="w-10 h-0.5 mx-auto bg-slate-200" />
+
+                                                <div className="text-xs text-slate-600 leading-relaxed space-y-3">
+                                                    <p>Bonjour Jean,</p>
+                                                    <p>
+                                                         Vous venez de passer le cap des <span className="font-semibold">{reviewPromptThreshold} séances</span> chez <span className="font-semibold">{tenant?.name || "Votre Club"}</span> 🎉
+                                                    </p>
+                                                    <p>
+                                                        On espère que l'expérience vous plaît ! Pourriez-vous prendre une minute pour partager votre avis sur Google ? Ce retour nous permet de nous améliorer, de faire connaître notre éétablissement et d'augmenter notre visibilité 😉
+                                                    </p>
+                                                </div>
+
+                                                <div className="text-center py-2">
+                                                    <div
+                                                        style={{ backgroundColor: tenant?.primary_color || "#7c3aed" }}
+                                                        className="inline-flex items-center gap-2 text-white font-medium text-[11px] py-2.5 px-4 rounded-xl shadow-md cursor-pointer"
+                                                    >
+                                                        <span>⭐</span>
+                                                        <span>Partager mon avis sur Google</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="text-xs text-slate-500 leading-normal">
+                                                    Merci pour votre confiance et votre soutien. A très vite !
+                                                    <br />
+                                                     L'équipe <span className="font-semibold text-slate-800">{tenant?.name || "Votre Club"}</span>
+                                                </div>
+
+                                                 <div className="border-t border-slate-100 pt-4 mt-2 text-center text-[9px] text-slate-400">
+                                                     <p className="pt-1">
+                                                         © 2026 {tenant?.name} | Cet e-mail est envoyé automatiquement suite à vos séances.
+                                                     </p>
+                                                 </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </main>
 
@@ -2258,7 +2653,7 @@ function AdminEmailsContent() {
 
                         {/* Modal Content */}
                         <div className="flex-1 overflow-y-auto p-4 md:p-5 pt-3 space-y-4">
-                            
+
                             {/* Premium Encart de ciblage & conseils marketing */}
                             {(() => {
                                 const info = marketingCampaignTips[selectedMarketingCard.id] || {
@@ -2267,7 +2662,7 @@ function AdminEmailsContent() {
                                 };
                                 return (
                                     <div className="bg-gradient-to-r from-blue-50/70 to-indigo-50/50 border border-blue-100/80 rounded-2xl p-4 shadow-sm text-sm">
-                                        <button 
+                                        <button
                                              type="button"
                                              onClick={() => setShowTips(!showTips)}
                                              className="w-full flex items-center justify-between font-semibold text-slate-700 outline-none select-none"
@@ -2281,7 +2676,7 @@ function AdminEmailsContent() {
                                                  {showTips ? "Masquer ▲" : "Afficher les conseils ▼"}
                                              </span>
                                          </button>
-                                        
+
                                         {showTips && (
                                             <div className="mt-3 pt-3 border-t border-blue-100/40 animate-in slide-in-from-top-2 duration-200">
                                                 <ul className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -2496,7 +2891,7 @@ function AdminEmailsContent() {
                                 </svg>
                             </button>
                         </div>
-                        
+
                         <div className="p-6 border-b border-slate-100">
                             <div className="relative">
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
@@ -2557,7 +2952,7 @@ function AdminEmailsContent() {
                         <div className="p-10 pb-8">
                             <h3 className="text-lg font-medium text-slate-900 mb-2">Enregistrer le modèle</h3>
                             <p className="text-sm text-slate-500 mb-8 leading-relaxed">Donnez un nom à ce modèle pour le retrouver facilement dans votre bibliothèque.</p>
-                            
+
                             <div className="relative">
                                 <input
                                     type="text"
@@ -2571,7 +2966,7 @@ function AdminEmailsContent() {
                             </div>
                         </div>
                         <div className="p-6 bg-white border-t border-slate-100 flex gap-3 justify-end items-center">
-                            <button 
+                            <button
                                 onClick={() => setShowSaveModal(false)}
                                 className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-semibold hover:bg-gray-50 transition-all text-sm active:scale-95"
                             >
@@ -2598,7 +2993,7 @@ function AdminEmailsContent() {
                             <p className="text-sm text-slate-500 leading-relaxed font-medium">Cette action est définitive. Le modèle <b>&quot;{templateToDelete.name}&quot;</b> sera supprimé.</p>
                         </div>
                         <div className="p-6 bg-white border-t border-slate-100 flex gap-3 justify-end items-center">
-                            <button 
+                            <button
                                 onClick={() => setTemplateToDelete(null)}
                                 className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-semibold hover:bg-gray-50 transition-all text-sm active:scale-95"
                             >
@@ -2627,7 +3022,7 @@ function AdminEmailsContent() {
                             </p>
                         </div>
                         <div className="p-6 bg-white border-t border-slate-100 flex gap-3 justify-end items-center">
-                            <button 
+                            <button
                                 onClick={() => setSurveyToDelete(null)}
                                 className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm active:scale-95"
                             >
@@ -2649,7 +3044,7 @@ function AdminEmailsContent() {
             {showSurveyDetailsModal && selectedSurveyDetails && (
                 <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[9999] flex items-center justify-end animate-in fade-in duration-300">
                     <div className="bg-white w-full max-w-2xl h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-                        
+
                         {/* Header details */}
                         <div className="p-8 border-b border-slate-100 flex items-center justify-between">
                             <div>
@@ -2661,7 +3056,7 @@ function AdminEmailsContent() {
                                     <p className="text-xs text-slate-400 mt-0.5">Contexte : {selectedSurveyDetails.context_title}</p>
                                 )}
                             </div>
-                            <button 
+                            <button
                                 onClick={() => setShowSurveyDetailsModal(false)}
                                 className="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-50 rounded-xl transition-colors"
                             >
@@ -2696,7 +3091,7 @@ function AdminEmailsContent() {
                         {/* Responses list */}
                         <div className="flex-1 overflow-y-auto p-6 space-y-4">
                             <h4 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Retours Individuels</h4>
-                            
+
                             {selectedSurveyDetails.responses.length === 0 ? (
                                 <div className="text-center text-slate-400 text-sm py-12">Aucun retour enregistré pour le moment.</div>
                             ) : (
@@ -2768,7 +3163,7 @@ function AdminEmailsContent() {
                                     <p className="text-xs text-slate-400">Visualisez le rendu final de l&apos;e-mail tel qu&apos;il sera reçu.</p>
                                 </div>
                             </div>
-                            
+
                             {/* Device Mode Selectors */}
                             <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200/50">
                                 <button
@@ -2842,6 +3237,65 @@ function AdminEmailsContent() {
                                 className="px-6 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-semibold hover:bg-slate-800 transition-all shadow-sm active:scale-95"
                             >
                                 Fermer l&apos;aperçu
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Modal de prévisualisation de l'enquête */}
+            {showSurveyPreviewModal && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl w-full max-w-2xl flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-5 flex items-center justify-between border-b border-slate-100 bg-white">
+                            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                                <span>📊</span> Aperçu de l&apos;e-mail d&apos;enquête
+                            </h3>
+                            <button
+                                onClick={() => setShowSurveyPreviewModal(false)}
+                                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto max-h-[70vh] bg-slate-100/60 flex items-center justify-center">
+                            <div className="w-full max-w-[500px] bg-white rounded-3xl shadow-lg border border-slate-200/80 overflow-hidden text-slate-800 flex flex-col my-2">
+                                {/* Email Client Header */}
+                                <div className="bg-slate-50 border-b border-slate-200 px-5 py-4 flex flex-col gap-1.5 shrink-0 text-left">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="w-2.5 h-2.5 rounded-full bg-rose-400" />
+                                            <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                                        </div>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Aperçu E-mail</span>
+                                    </div>
+                                    <div className="h-px bg-slate-200/80 my-1" />
+                                    <div className="grid grid-cols-[50px_1fr] text-xs gap-y-1 text-slate-500">
+                                        <span className="font-light">De :</span>
+                                        <span className="font-medium text-slate-800">{tenant?.name || "Votre Club"} &lt;{tenant?.slug || "votre-club"}-noreply@rezea.app&gt;</span>
+                                        <span className="font-light">À :</span>
+                                        <span className="font-medium text-slate-800">Julie Dupont &lt;julie.dupont@gmail.com&gt;</span>
+                                        <span className="font-light">Objet :</span>
+                                        <span className="font-medium text-slate-900">✨ Votre avis nous intéresse !</span>
+                                    </div>
+                                </div>
+
+                                {/* Email Body */}
+                                <div className="bg-white">
+                                    <iframe
+                                        srcDoc={generateSurveyHtml()}
+                                        className="w-full h-[480px] border-0 block bg-white"
+                                        title="Survey Email Preview"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-4 bg-white border-t border-slate-100 flex justify-end">
+                            <button
+                                onClick={() => setShowSurveyPreviewModal(false)}
+                                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold tracking-wide transition-colors"
+                            >
+                                Fermer
                             </button>
                         </div>
                     </div>

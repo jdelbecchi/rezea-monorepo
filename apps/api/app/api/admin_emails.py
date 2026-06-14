@@ -103,14 +103,18 @@ async def send_admin_emails(
 
     # Logo personnalisé uniquement (plus gros) s'il existe, sinon nom textuel
     logo_html = ""
+    is_marketing = request_data.campaign_type == "marketing"
+    logo_max_height = "160px" if is_marketing else "140px"
+    logo_margin_bottom = "6px" if is_marketing else "0px"
+    
     if tenant.logo_url:
         logo_html = f"""
-        <div class="email-logo-wrapper" style="text-align: center; margin-bottom: 0px; line-height: 1.2;">
-            <img src="http://localhost:8000{tenant.logo_url}" alt="{tenant.name}" class="email-logo" style="max-height: 140px; max-width: 100%; width: auto; display: block; margin: 0 auto; vertical-align: middle;">
+        <div class="email-logo-wrapper" style="text-align: center; margin-bottom: {logo_margin_bottom}; line-height: 1.2;">
+            <img src="http://localhost:8000{tenant.logo_url}" alt="{tenant.name}" class="email-logo" style="max-height: {logo_max_height}; max-width: 100%; width: auto; display: block; margin: 0 auto; vertical-align: middle;">
         </div>
         """
     else:
-        logo_html = f'<div style="text-align: center; margin-bottom: 0px;"><span style="font-size: 24px; font-weight: 700; color: #0f172a; font-family: \'Livvic\', sans-serif; letter-spacing: -0.02em;">{tenant.name}</span></div>'
+        logo_html = f'<div style="text-align: center; margin-bottom: {logo_margin_bottom};"><span style="font-size: 24px; font-weight: 700; color: #0f172a; font-family: \'Livvic\', sans-serif; letter-spacing: -0.02em;">{tenant.name}</span></div>'
 
     # Liens sociaux du footer (sans adresse physique)
     links = []
@@ -180,12 +184,22 @@ async def send_admin_emails(
 
     # Slogan/phrase d'accroche sous le logo (toujours sous le logo dans le template)
     slogan_html = ""
+    slogan_margin_bottom = "12px" if is_marketing else "24px"
     if tenant.slogan:
         slogan_html = f"""
-        <div class="email-slogan" style="text-align: center; font-size: 16px; font-weight: 300; color: #0f172a; margin-top: 0px; margin-bottom: 24px; font-family: 'Livvic', sans-serif;">
+        <div class="email-slogan" style="text-align: center; font-size: 16px; font-weight: 300; color: #0f172a; margin-top: 0px; margin-bottom: {slogan_margin_bottom}; font-family: 'Livvic', sans-serif;">
             {tenant.slogan}
         </div>
         """
+
+    # Détecter si le manager ne charge aucune image pour ajouter le séparateur (marketing seulement)
+    separator_html = ""
+    if is_marketing:
+        has_image = "<img" in processed_content
+        if not has_image:
+            separator_html = """
+            <div class="full-width-separator" style="border-top: 1px solid #e2e8f0; margin: 12px -24px 24px -24px;"></div>
+            """
 
     # Envelopper dans l'enveloppe HTML master
     html_envelope = f"""
@@ -210,6 +224,10 @@ async def send_admin_emails(
                 margin-left: -24px !important;
                 margin-right: -24px !important;
             }}
+            .full-width-separator {{
+                margin-left: -24px;
+                margin-right: -24px;
+            }}
             @media only screen and (max-width: 480px) {{
                 .email-body {{
                     padding: 8px !important;
@@ -227,8 +245,12 @@ async def send_admin_emails(
                     margin-left: -16px !important;
                     margin-right: -16px !important;
                 }}
+                .full-width-separator {{
+                    margin-left: -16px !important;
+                    margin-right: -16px !important;
+                }}
                 .email-logo {{
-                    max-height: 90px !important;
+                    max-height: {"110px" if is_marketing else "90px"} !important;
                 }}
                 .email-logo-wrapper {{
                     margin-bottom: 0px !important;
@@ -255,10 +277,12 @@ async def send_admin_emails(
         </style>
     </head>
     <body class="email-body" style="margin: 0; padding: 20px; background-color: #f8fafc;">
-        <div class="email-container" style="font-family: 'Livvic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 16px 24px; border: 1px solid #e2e8f0; border-radius: 24px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+        <div class="email-container" style="font-family: 'Livvic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: {"10px" if is_marketing else "16px"} 24px 24px 24px; border: 1px solid #e2e8f0; border-radius: 24px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
             {logo_html}
             
             {slogan_html}
+            
+            {separator_html}
             
             <div class="email-content" style="color: #334155; font-size: 16px; line-height: 1.6; font-weight: 300;">
                 {processed_content}
@@ -282,7 +306,9 @@ async def send_admin_emails(
     success = await mailer.send_bulk_email(
         recipients=recipients,
         subject=request_data.subject,
-        html_content=html_envelope
+        html_content=html_envelope,
+        from_email=f"{tenant.slug}-noreply@rezea.app",
+        from_name=tenant.name
     )
     
     if not success:
@@ -298,7 +324,9 @@ async def send_admin_emails(
             to_email=current_user.email,
             to_name=f"{current_user.first_name} {current_user.last_name}",
             subject=manager_subject,
-            html_content=html_envelope
+            html_content=html_envelope,
+            from_email=f"{tenant.slug}-noreply@rezea.app",
+            from_name=tenant.name
         )
     except Exception as e:
         # On log l'erreur de la copie mais on ne bloque pas la requête car les membres ont bien reçu l'email

@@ -465,7 +465,9 @@ async def send_survey_campaign_emails(
             recipient_email=usr.email,
             recipient_name=f"{usr.first_name} {usr.last_name}",
             subject=f"Votre avis sur : {campaign.title} ✨",
-            html_content=html_body
+            html_content=html_body,
+            from_email=f"{tenant.slug}-noreply@rezea.app",
+            from_name=tenant.name
         )
         if success:
             sent_count += 1

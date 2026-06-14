@@ -1,0 +1,36 @@
+{% extends "base_email.html" %}
+
+{% block content %}
+<h2 style="font-weight: 600; margin-top: 0; font-size: 20px; color: #0f172a; margin-bottom: 10px; text-align: center;">
+    Déjà {{ threshold }} séances chez {{ tenant_name }} !
+</h2>
+<div style="width: 60px; border-top: 1px solid #e2e8f0; height: 0; line-height: 0; font-size: 0; margin: 12px auto 20px auto;"></div>
+
+<p>Bonjour {{ first_name }},</p>
+
+<p>
+    Vous venez de passer le cap des <strong style="font-weight: 600;">{{ threshold }} séances</strong> chez <strong style="font-weight: 600;">{{ tenant_name }}</strong> 🎉
+</p>
+
+<p>
+    On espère que l'expérience vous plaît ! Pourriez-vous prendre une minute pour partager votre avis sur Google ? Ce retour nous permet de nous améliorer, de faire connaître notre établissement et d'augmenter notre visibilité 😉
+</p>
+
+<div style="border-top: 1px solid #f1f5f9; height: 0; line-height: 0; font-size: 0; margin: 25px 0;"></div>
+
+<p style="text-align: center; margin-top: 25px; margin-bottom: 25px;">
+    <a href="{{ google_review_url }}" target="_blank" style="display: inline-block; background-color: {{ primary_color or '#0f172a' }}; color: #ffffff !important; font-family: 'Livvic', sans-serif; font-size: 13px; font-weight: 500; text-decoration: none; padding: 12px 24px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); text-align: center;">
+        ⭐ Partager mon avis sur Google
+    </a>
+</p>
+
+<p style="margin-top: 40px;">
+    Merci pour votre confiance et votre soutien. A très vite !
+    <br>
+    L'équipe <strong style="font-weight: 600; color: #1e293b;">{{ tenant_name }}</strong>
+</p>
+
+<p style="font-size: 10px; color: #94a3b8; margin-top: 20px; border-top: 1px solid #f1f5f9; padding-top: 10px; font-style: italic; text-align: center;">
+    Note : Cet e-mail est envoyé automatiquement suite à vos séances.
+</p>
+{% endblock %}
