@@ -2751,12 +2751,12 @@ function AdminEmailsContent() {
                                 {/* Colonne Droite : Message */}
                                 <div className="lg:col-span-3 flex flex-col gap-5">
                                     <div>
-                                        <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">objet du message</label>
+                                        <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">objet du message</label>
                                         <input
                                             type="text"
                                             value={marketingSubject}
                                             onChange={(e) => setMarketingSubject(e.target.value)}
-                                            className="w-full p-4 border border-slate-200/80 rounded-2xl text-sm font-semibold outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 bg-slate-55"
+                                            className="w-full p-4 border border-slate-200/80 rounded-2xl text-sm font-medium outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 bg-slate-55"
                                         />
                                     </div>
 
