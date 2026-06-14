@@ -294,9 +294,10 @@ export default function AdminSettingsPage() {
                     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
                         {/* IDENTITY TAB */}
                         {activeTab === "identity" && (
-                            <div className="max-w-3xl mx-auto space-y-8">
-                                <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
-                                    <div className="grid grid-cols-1 gap-4">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+                                <div className="space-y-8 flex flex-col">
+                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6 flex-1">
+                                        <div className="grid grid-cols-1 gap-4">
                                             <div>
                                                 <label className={`block text-sm font-medium mb-2 ${!formData.name ? 'text-red-500' : 'text-slate-700'}`}>Nom de l&apos;établissement *</label>
                                                 <input
@@ -365,8 +366,13 @@ export default function AdminSettingsPage() {
                                                     className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal resize-none"
                                                 />
                                             </div>
+                                        </div>
+                                    </div>
+                                </div>
 
-                                            <div className="pt-4 border-t border-slate-100/50 space-y-4">
+                                <div className="space-y-8 flex flex-col">
+                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6 flex-1">
+                                        <div className="space-y-4">
                                                 <div>
                                                     <label className="block text-sm font-medium text-slate-700 mb-2">
                                                         Site internet de l&apos;établissement
@@ -452,7 +458,7 @@ export default function AdminSettingsPage() {
                                         </div>
                                     </div>
                                 </div>
-                            )}
+                        )}
 
                         {/* PORTAL TAB */}
                         {activeTab === "portal" && (
