@@ -1336,7 +1336,7 @@ function AdminEmailsContent() {
                                             <button
                                                 type="button"
                                                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                                                className="w-full p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all outline-none flex items-center justify-between text-sm font-semibold text-slate-800 shadow-sm"
+                                                className="w-full p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all outline-none flex items-center justify-between text-sm font-medium text-slate-800 shadow-sm"
                                             >
                                                 <span className="flex items-center gap-2">
                                                     👥 {selectedTargets.includes("all") ? "Tous les utilisateurs" :
@@ -1725,7 +1725,7 @@ function AdminEmailsContent() {
                                     <button
                                         type="button"
                                         onClick={() => setDropdownOpen(!dropdownOpen)}
-                                        className="w-full p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all outline-none flex items-center justify-between text-sm font-semibold text-slate-800 shadow-sm"
+                                        className="w-full p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all outline-none flex items-center justify-between text-sm font-medium text-slate-800 shadow-sm"
                                     >
                                         <span className="flex items-center gap-2">
                                             {selectedTargets.includes("all") ? (
