@@ -775,7 +775,7 @@ function AdminEmailsContent() {
             </div>
             `;
         } else {
-            logoHtml = `<div style="text-align: center; margin-bottom: ${logoMarginBottom};"><span style="font-size: 24px; font-weight: 700; color: #0f172a; font-family: 'Livvic', sans-serif; letter-spacing: -0.02em;">${tenant?.name || "Zen Yoga"}</span></div>`;
+            logoHtml = `<div style="text-align: center; margin-bottom: ${logoMarginBottom};"><span style="font-size: 24px; font-weight: 500; color: #0f172a; font-family: 'Livvic', sans-serif; letter-spacing: -0.02em;">${tenant?.name || "Zen Yoga"}</span></div>`;
         }
 
         // Separator (marketing only when no image in rawContent)
