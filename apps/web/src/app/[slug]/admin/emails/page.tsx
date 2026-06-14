@@ -1365,7 +1365,7 @@ function AdminEmailsContent() {
                                                                     className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
                                                                 />
                                                                 <div className="flex flex-col">
-                                                                    <span className="text-sm font-semibold text-slate-800">Tous les utilisateurs</span>
+                                                                    <span className="text-sm font-medium text-slate-800">Tous les utilisateurs</span>
                                                                     <span className="text-xs text-slate-400 font-normal">Envoyer à toute la base</span>
                                                                 </div>
                                                             </div>
@@ -1394,7 +1394,7 @@ function AdminEmailsContent() {
                                                                             className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
                                                                         />
                                                                         <div className="flex flex-col">
-                                                                            <span className="text-sm font-semibold text-slate-800">{cleanLabel}</span>
+                                                                            <span className="text-sm font-medium text-slate-800">{cleanLabel}</span>
                                                                             {subLabel && <span className="text-xs text-slate-400 font-normal">{subLabel}</span>}
                                                                         </div>
                                                                     </div>
@@ -1764,7 +1764,7 @@ function AdminEmailsContent() {
                                                             className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
                                                         />
                                                         <div className="flex flex-col">
-                                                            <span className="text-sm font-semibold text-slate-800">👥 Tous les utilisateurs</span>
+                                                            <span className="text-sm font-medium text-slate-800">👥 Tous les utilisateurs</span>
                                                             <span className="text-xs text-slate-400 font-normal">Envoyer à toute la base</span>
                                                         </div>
                                                     </div>
@@ -1783,7 +1783,7 @@ function AdminEmailsContent() {
                                                                 className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
                                                             />
                                                             <div className="flex flex-col">
-                                                                <span className="text-sm font-semibold text-slate-800">✏️ Sélection manuelle</span>
+                                                                <span className="text-sm font-medium text-slate-800">✏️ Sélection manuelle</span>
                                                                 <span className="text-xs text-slate-400 font-normal">Membres pré-sélectionnés dans la liste</span>
                                                             </div>
                                                         </div>
@@ -1813,7 +1813,7 @@ function AdminEmailsContent() {
                                                                     className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
                                                                 />
                                                                 <div className="flex flex-col">
-                                                                    <span className="text-sm font-semibold text-slate-800">{cleanLabel}</span>
+                                                                    <span className="text-sm font-medium text-slate-800">{cleanLabel}</span>
                                                                     {subLabel && <span className="text-xs text-slate-400 font-normal">{subLabel}</span>}
                                                                 </div>
                                                             </div>
