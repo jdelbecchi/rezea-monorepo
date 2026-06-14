@@ -111,13 +111,15 @@ export default function LoginForm({ initialTenantSlug = "", hideTenantField = fa
             type="button"
             onClick={() => handleViewChoice("admin")}
             style={{ borderColor: 'var(--primary-color, #0f172a)' }}
-            className="w-full flex items-center gap-4 p-4 border-2 hover:bg-slate-50 rounded-2xl text-left transition-all active:scale-[0.98] focus:outline-none"
+             className="w-full flex items-center gap-4 p-4 border-2 hover:bg-slate-50 rounded-2xl text-left transition-all active:scale-[0.98] focus:outline-none"
           >
-            <div className="w-10 h-10 rounded-xl bg-slate-950/5 flex items-center justify-center text-xl">
-              📊
+            <div className="w-10 h-10 rounded-xl bg-slate-950/5 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-950">Interface de gestion</p>
+              <p className="text-sm font-semibold text-slate-950">Interface de gestion</p>
               <p className="text-[11px] text-slate-500 mt-0.5">Accéder aux outils d'administration</p>
             </div>
           </button>
@@ -127,11 +129,13 @@ export default function LoginForm({ initialTenantSlug = "", hideTenantField = fa
             onClick={() => handleViewChoice("user")}
             className="w-full flex items-center gap-4 p-4 border border-slate-200 hover:bg-slate-50 rounded-2xl text-left transition-all active:scale-[0.98] focus:outline-none"
           >
-            <div className="w-10 h-10 rounded-xl bg-slate-950/5 flex items-center justify-center text-xl">
-              👤
+            <div className="w-10 h-10 rounded-xl bg-slate-950/5 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-950">Portail utilisateur</p>
+              <p className="text-sm font-semibold text-slate-950">Portail utilisateur</p>
               <p className="text-[11px] text-slate-500 mt-0.5">Consulter mon espace personnel</p>
             </div>
           </button>

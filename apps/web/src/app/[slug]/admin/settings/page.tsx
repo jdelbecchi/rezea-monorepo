@@ -1175,7 +1175,7 @@ export default function AdminSettingsPage() {
                                     <div className={`${previewMode === "mobile" ? "w-full pt-10 pb-8 px-6 text-center" : "w-[40%] p-12 text-center"} relative z-20 bg-white flex flex-col justify-center`}>
                                         <div className="flex flex-col items-center space-y-6 md:space-y-8 text-center w-full">
                                             {/* Logo & Name Header */}
-                                            <div className="flex flex-col gap-4 items-center justify-center text-center w-full">
+                                            <div className={`flex flex-col ${previewMode === "mobile" ? "gap-4" : "gap-8"} items-center justify-center text-center w-full`}>
                                                 {formData.show_logo !== false && (
                                                     previewLogo ? (
                                                         <img 
@@ -1195,7 +1195,7 @@ export default function AdminSettingsPage() {
                                                 
                                                 <div className="flex flex-col gap-1 items-center justify-center text-center w-full">
                                                     {formData.show_name !== false && (
-                                                        <h1 className={`${previewMode === "mobile" ? "text-xl" : "text-3xl lg:text-4xl"} font-medium tracking-tight leading-none text-slate-900`}>
+                                                        <h1 className={`${previewMode === "mobile" ? "text-xl" : "text-2xl lg:text-3xl"} font-medium tracking-tight leading-none text-slate-900`}>
                                                             {formData.name || "REZEA"}
                                                         </h1>
                                                     )}
@@ -1209,7 +1209,7 @@ export default function AdminSettingsPage() {
                                             </div>
 
                                             {/* Description */}
-                                            <div className={`${previewMode === "mobile" ? "text-center" : "text-left"} w-full`}>
+                                            <div className="text-center w-full">
                                                 <div 
                                                     className="portal-description text-xs md:text-sm text-slate-500 font-medium leading-relaxed pointer-events-none"
                                                     dangerouslySetInnerHTML={{ __html: formData.login_description || "<p>Votre description apparaîtra ici...</p>" }}
@@ -1402,7 +1402,10 @@ export default function AdminSettingsPage() {
                 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
                 
                 /* Portal Description Styles in Preview */
-                .portal-description p { margin-bottom: 0.75rem; }
+                .portal-description p { margin-bottom: 0.75rem; color: var(--primary-color); }
+                @media (min-width: 768px) {
+                    .portal-description p { margin-bottom: 1.5rem; }
+                }
                 .portal-description h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; }
                 .portal-description ul { 
                     display: inline-block;

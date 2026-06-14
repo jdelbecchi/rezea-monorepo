@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
+import Link from "next/link";
 import { api, User, Session } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import MultiSelect from "@/components/MultiSelect";
@@ -477,7 +478,7 @@ export default function AdminAgendaPage() {
                     {/* Integrated Navigation and Filter Bar */}
                     <div className="bg-white rounded-2xl border border-slate-100 p-3 shadow-[0_10px_30px_rgba(0,0,0,0.02)] flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex items-center gap-6 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
-                            <div className="text-base font-bold text-slate-800 tracking-tight whitespace-nowrap min-w-[140px]">
+                            <div className="text-base font-semibold text-slate-800 tracking-tight whitespace-nowrap min-w-[140px]">
                                 {view === 'week' ? (
                                     <>
                                         {weekDays[0].toLocaleDateString("fr-FR", { day: 'numeric', month: 'short' })} — {weekDays[6].toLocaleDateString("fr-FR", { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -721,75 +722,100 @@ export default function AdminAgendaPage() {
 
             {showDetails && selectedItem && (
                 <div className="fixed inset-0 bg-[#0f172a]/60 backdrop-blur-md flex items-center justify-center z-[100] p-4 animate-in fade-in zoom-in duration-300">
-                    <div className="bg-white rounded-3xl p-10 max-w-4xl w-full shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
+                    <div className="bg-white rounded-3xl px-8 pt-7 pb-6 max-w-4xl w-full shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
                         {/* Header */}
-                        <div className="flex justify-between items-start mb-8">
+                        <div className="flex justify-between items-center mb-5">
                             <div className="flex-1">
-                                <div className="flex items-center gap-3 mb-6">
-                                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${selectedItem.type === 'session' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-amber-50 text-amber-600 border-amber-100'
-                                        }`}>
-                                        {selectedItem.type === 'session' ? 'Séance' : 'Évènement'}
-                                    </span>
-                                    {selectedItem.is_active === false && (
-                                        <span className="bg-rose-50 text-rose-500 border border-rose-100 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">
-                                            Annulé
-                                        </span>
-                                    )}
-                                    <span className="text-slate-500 text-sm font-medium">{selectedItem.time}-{selectedItem.endTime}</span>
-                                </div>
-                                <h2 className={`text-2xl font-semibold text-slate-900 tracking-tight mb-4 ${!selectedItem.is_active ? 'line-through opacity-50' : ''}`}>
+                                <h2 className={`text-2xl font-semibold text-slate-900 tracking-tight ${!selectedItem.is_active ? 'line-through opacity-50' : ''}`}>
                                     {selectedItem.title}
                                 </h2>
-                                <div className="flex items-center gap-5 text-slate-600 font-medium text-[13px] mt-8">
-                                    <div className="flex items-center gap-2 whitespace-nowrap"><span>👤</span> {selectedItem.instructor_name || "N/A"}</div>
-                                    <div className="flex items-center gap-2 whitespace-nowrap"><span>📍</span> {selectedItem.location || "Aucun lieu"}</div>
-                                    <div className="flex items-center gap-2 whitespace-nowrap">
-                                        <span>⏳</span> {selectedItem.type === 'event' ? formatDuration(selectedItem.duration_minutes) : formatDuration(calculateDuration(selectedItem.start_time, selectedItem.end_time))}
-                                    </div>
-                                    <div className="flex items-center gap-2 whitespace-nowrap">
-                                        <span>👥</span> 
-                                        {(() => {
-                                            const current = selectedItem.current_participants ?? 0;
-                                            const max = selectedItem.max_participants ?? 0;
-                                            const percent = max > 0 ? (current / max) * 100 : 0;
-                                            const badgeStyle = current === 0 
-                                                ? "bg-slate-50 text-slate-400 border-slate-100" 
-                                                : percent >= 100
-                                                    ? "bg-emerald-100 text-emerald-900 border-emerald-200 font-black"
-                                                    : percent > 70 
-                                                        ? "bg-emerald-50 text-emerald-600 border-emerald-100 font-bold" 
-                                                        : percent >= 40 
-                                                            ? "bg-blue-50 text-blue-500 border-blue-100 font-bold"
-                                                            : "bg-amber-50 text-amber-600 border-amber-100 font-bold";
-                                            return (
-                                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs border ${badgeStyle}`}>
-                                                    {current}/{max} inscrit{current > 1 ? 's' : ''}
-                                                </span>
-                                            );
-                                        })()}
-                                    </div>
-                                    <div className="flex items-center gap-2 whitespace-nowrap">
-                                        <span>💎</span> {selectedItem.credits_required || (selectedItem.price_cents ? selectedItem.price_cents / 100 : 0)} crédits
-                                    </div>
-                                </div>
                             </div>
-                            <div className="flex items-center gap-3 shrink-0 ml-4">
-                                <button
-                                    onClick={() => setAttendanceTab(attendanceTab === 'edit' ? 'registered' : 'edit')}
-                                    className="bg-slate-900 text-white px-6 py-3 rounded-2xl text-sm font-medium transition-all hover:bg-slate-800 flex items-center gap-2 shadow-xl shadow-slate-900/10 active:scale-95"
-                                >
-                                    <span>{attendanceTab === 'edit' ? '← Retour' : '⚙️ Modifier'}</span>
-                                </button>
-                                <button onClick={() => setShowDetails(false)} className="h-14 w-14 bg-slate-50 hover:bg-slate-100 text-slate-400 rounded-full transition-all text-3xl flex items-center justify-center shrink-0">×</button>
+                            <div className="flex items-center gap-4 shrink-0 ml-4">
+                                <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${selectedItem.type === 'session' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                                    {selectedItem.type === 'session' ? 'Séance' : 'Évènement'}
+                                </span>
+                                {selectedItem.is_active === false && (
+                                    <span className="bg-rose-50 text-rose-500 border border-rose-100 px-3 py-1 rounded-full text-xs font-semibold">
+                                        Annulé
+                                    </span>
+                                )}
+                                <span className="text-slate-500 text-sm font-medium">{selectedItem.time}-{selectedItem.endTime}</span>
                             </div>
                         </div>
 
                         {/* Body - Tabs & Content */}
-                        <div className="flex-1 overflow-auto bg-slate-50/50 rounded-2xl border border-slate-200 p-8 mb-4">
-                            {attendanceTab !== 'edit' ? (
-                                <>
-                                    <div className="mb-8 border-b border-slate-100">
-                                        <div className="flex gap-10">
+                        {attendanceTab !== 'edit' ? (
+                            <div className="flex-1 overflow-hidden flex flex-col md:flex-row gap-4 mb-2">
+                                {/* Left Info Column */}
+                                <div className="w-full md:w-72 shrink-0 bg-white rounded-2xl border border-slate-200 p-5">
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                                            <h3 className="text-sm font-medium text-slate-700">Informations</h3>
+                                            <button
+                                                onClick={() => setAttendanceTab('edit')}
+                                                className="text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200 transition-all active:scale-95"
+                                            >
+                                                Modifier
+                                            </button>
+                                        </div>
+                                        
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-3">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-slate-400 fill-current shrink-0" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                                                </svg>
+                                                <span className="text-sm font-medium text-slate-700">{selectedItem.instructor_name || "Non assigné"}</span>
+                                            </div>
+
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-lg leading-none shrink-0" title="Lieu / Salle">📍</span>
+                                                <span className="text-sm font-medium text-slate-700">{selectedItem.location || "Aucun lieu spécifique"}</span>
+                                            </div>
+
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-lg leading-none shrink-0" title="Durée">⏳</span>
+                                                <span className="text-sm font-medium text-slate-700">
+                                                    {selectedItem.type === 'event' ? formatDuration(selectedItem.duration_minutes) : formatDuration(calculateDuration(selectedItem.start_time, selectedItem.end_time))}
+                                                </span>
+                                            </div>
+
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-lg leading-none shrink-0" title="Tarification">💎</span>
+                                                <span className="text-sm font-medium text-slate-700">{selectedItem.credits_required || (selectedItem.price_cents ? selectedItem.price_cents / 100 : 0)} crédits</span>
+                                            </div>
+
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-lg leading-none shrink-0" title="Capacité">👥</span>
+                                                <div>
+                                                    {(() => {
+                                                        const current = selectedItem.current_participants ?? 0;
+                                                        const max = selectedItem.max_participants ?? 0;
+                                                        const percent = max > 0 ? (current / max) * 100 : 0;
+                                                        const badgeStyle = current === 0 
+                                                            ? "bg-slate-100 text-slate-500 border-slate-200" 
+                                                            : percent >= 100
+                                                                ? "bg-emerald-100 text-emerald-900 border-emerald-200 font-bold"
+                                                                : percent > 70 
+                                                                    ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
+                                                                    : percent >= 40 
+                                                                        ? "bg-blue-50 text-blue-500 border-blue-100"
+                                                                        : "bg-amber-50 text-amber-600 border-amber-100";
+                                                        return (
+                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-sm border font-semibold ${badgeStyle}`}>
+                                                                {current}/{max} inscrit{current > 1 ? 's' : ''}
+                                                            </span>
+                                                        );
+                                                    })()}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Right Lists Column */}
+                                <div className="flex-1 overflow-hidden bg-slate-50/50 border border-slate-200 rounded-2xl p-5 flex flex-col">
+                                    <div className="mb-4 border-b border-slate-100">
+                                        <div className="flex gap-8">
                                             {(() => {
                                                 const pts = selectedItem?.registered_users || [];
                                                 const counts = {
@@ -818,7 +844,7 @@ export default function AdminAgendaPage() {
                                         </div>
                                     </div>
 
-                                    <div className="space-y-4">
+                                    <div className="space-y-4 flex-1 overflow-y-auto overflow-x-hidden">
                                         {(() => {
                                             const participants = selectedItem.registered_users || [];
                                             const filtered = participants.filter((p: any) => {
@@ -833,9 +859,9 @@ export default function AdminAgendaPage() {
                                             }
 
                                             return (
-                                                <div className="divide-y divide-slate-100 bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+                                                <div className="space-y-1">
                                                     {filtered.map((u: any) => (
-                                                        <div key={u.id} className="px-6 py-3 flex items-center justify-between group hover:bg-slate-50 transition-all">
+                                                        <div key={u.id} className="py-1.5 flex items-center justify-between">
                                                             <div className="flex items-center gap-4 flex-1">
                                                                 {attendanceTab === 'registered' ? (
                                                                     <button
@@ -856,21 +882,19 @@ export default function AdminAgendaPage() {
                                                                 )}
                                                                 <div className="flex-1">
                                                                     <div className="flex items-center gap-2">
-                                                                        <span className="text-sm font-medium text-slate-900">{u.first_name} {u.last_name}</span>
+                                                                        <Link
+                                                                            href={`/${params.slug}/admin/users?search=${encodeURIComponent(`${u.first_name} ${u.last_name}`)}`}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="text-sm font-medium text-slate-900 hover:text-blue-600 hover:underline transition-colors"
+                                                                        >
+                                                                            {u.first_name} {u.last_name}
+                                                                        </Link>
                                                                         {u.has_pending_order && (
-                                                                            <span title="Paiement à régulariser" className="text-amber-500 animate-pulse text-base">⚠️</span>
+                                                                            <span title="Paiement à régulariser" className="text-amber-500 animate-pulse text-xs">⚠️</span>
                                                                         )}
                                                                     </div>
                                                                 </div>
-                                                            </div>
-
-                                                            <div className="flex items-center gap-2">
-                                                                <button
-                                                                    onClick={(e) => { e.stopPropagation(); setContactUser(u); }}
-                                                                    className="h-10 w-10 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-full flex items-center justify-center transition-all hover:scale-110"
-                                                                >
-                                                                    <svg className="w-5 h-5 fill-current" viewBox="0 0 20 20"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" /></svg>
-                                                                </button>
                                                             </div>
                                                         </div>
                                                     ))}
@@ -878,8 +902,45 @@ export default function AdminAgendaPage() {
                                             );
                                         })()}
                                     </div>
-                                </>
-                            ) : (
+                                    {(selectedItem.registered_users || []).length > 0 && (
+                                        <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-end gap-6">
+                                            <div className="text-right">
+                                                <div className="text-[11px] font-medium text-slate-400 italic mb-1">Envoyer un e-mail groupé</div>
+                                                <label className="flex items-center gap-2 cursor-pointer group justify-end">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={includeWaitlistInEmail}
+                                                        onChange={(e) => setIncludeWaitlistInEmail(e.target.checked)}
+                                                        className="w-4 h-4 rounded border-slate-300 text-blue-500 focus:ring-blue-500"
+                                                    />
+                                                    <span className="text-[10px] font-medium text-slate-400 group-hover:text-slate-600 transition-colors">Inclure la liste d'attente</span>
+                                                </label>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    const participants = selectedItem.registered_users || [];
+                                                    let targetUsers = participants.filter((p: any) => p.status === 'confirmed');
+                                                    if (includeWaitlistInEmail) {
+                                                        const wl = participants.filter((p: any) => ['pending', 'waiting_list', 'pending_payment'].includes(p.status));
+                                                        targetUsers = [...targetUsers, ...wl];
+                                                    }
+                                                    const emails = targetUsers.map((u: any) => u.email).join(',');
+                                                    window.location.href = `mailto:?bcc=${emails}&subject=Information sur votre séance : ${selectedItem.title}`;
+                                                }}
+                                                className="h-12 w-12 bg-white shadow-lg shadow-slate-200/50 border border-slate-100 rounded-full flex items-center justify-center text-blue-500 hover:scale-110 transition-all hover:shadow-xl active:scale-95"
+                                                title="Envoyer l'email groupé"
+                                            >
+                                                <div className="relative">
+                                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                                    <span className="absolute inset-0 flex items-center justify-center text-[8px] font-black mt-0.5 ml-0.5">E</span>
+                                                </div>
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex-1 overflow-auto bg-slate-50/50 rounded-2xl border border-slate-200 p-8 mb-4">
                                 <div className="space-y-10 py-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
                                     {/* Section: Détails */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1010,47 +1071,11 @@ export default function AdminAgendaPage() {
                                         </div>
                                     </div>
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
 
                         {/* Footer - Harmonized */}
-                        <div className="p-8 bg-white border-t border-gray-100 flex flex-col gap-8 sticky bottom-0 z-10">
-                            {/* Email Section */}
-                            {attendanceTab !== 'edit' && (selectedItem.registered_users || []).length > 0 && (
-                                <div className="flex items-center justify-end gap-6">
-                                    <div className="text-right">
-                                        <div className="text-[11px] font-medium text-slate-400 italic mb-1">Envoyer un e-mail groupé</div>
-                                        <label className="flex items-center gap-2 cursor-pointer group justify-end">
-                                            <input
-                                                type="checkbox"
-                                                checked={includeWaitlistInEmail}
-                                                onChange={(e) => setIncludeWaitlistInEmail(e.target.checked)}
-                                                className="w-4 h-4 rounded border-slate-300 text-blue-500 focus:ring-blue-500"
-                                            />
-                                            <span className="text-[10px] font-medium text-slate-400 group-hover:text-slate-600 transition-colors">Inclure la liste d'attente</span>
-                                        </label>
-                                    </div>
-                                    <button
-                                        onClick={() => {
-                                            const participants = selectedItem.registered_users || [];
-                                            let targetUsers = participants.filter((p: any) => p.status === 'confirmed');
-                                            if (includeWaitlistInEmail) {
-                                                const wl = participants.filter((p: any) => ['pending', 'waiting_list', 'pending_payment'].includes(p.status));
-                                                targetUsers = [...targetUsers, ...wl];
-                                            }
-                                            const emails = targetUsers.map((u: any) => u.email).join(',');
-                                            window.location.href = `mailto:?bcc=${emails}&subject=Information sur votre séance : ${selectedItem.title}`;
-                                        }}
-                                        className="h-12 w-12 bg-white shadow-lg shadow-slate-200/50 border border-slate-100 rounded-full flex items-center justify-center text-blue-500 hover:scale-110 transition-all hover:shadow-xl active:scale-95"
-                                        title="Envoyer l'email groupé"
-                                    >
-                                        <div className="relative">
-                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                                            <span className="absolute inset-0 flex items-center justify-center text-[8px] font-black mt-0.5 ml-0.5">E</span>
-                                        </div>
-                                    </button>
-                                </div>
-                            )}
+                        <div className="pt-5 pb-0 bg-white sticky bottom-0 z-10">
 
                             {/* Action Buttons */}
                             <div className="flex items-end justify-between">
@@ -1083,13 +1108,30 @@ export default function AdminAgendaPage() {
                                     </div>
                                 </div>
 
-                                <button
-                                    onClick={handleEditSubmit}
-                                    disabled={saving}
-                                    className="px-8 py-2.5 bg-slate-900 border border-transparent text-white rounded-xl font-medium text-sm hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 active:scale-95 disabled:opacity-50"
-                                >
-                                    {saving ? "Chargement..." : "Enregistrer"}
-                                </button>
+                                {attendanceTab === 'edit' ? (
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={() => setAttendanceTab('registered')}
+                                            className="px-6 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl font-medium text-sm hover:bg-slate-50 transition-all active:scale-95"
+                                        >
+                                            Retour
+                                        </button>
+                                        <button
+                                            onClick={handleEditSubmit}
+                                            disabled={saving}
+                                            className="px-8 py-2.5 bg-slate-900 border border-transparent text-white rounded-xl font-medium text-sm hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 active:scale-95 disabled:opacity-50"
+                                        >
+                                            {saving ? "Chargement..." : "Enregistrer"}
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => setShowDetails(false)}
+                                        className="px-8 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium text-sm transition-all active:scale-95"
+                                    >
+                                        Fermer
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>

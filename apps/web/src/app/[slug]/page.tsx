@@ -96,7 +96,7 @@ export default function TenantPortal() {
         {/* Branding Content: Always on white for max contrast */}
         <div className="relative z-30 max-w-2xl w-full mx-auto md:mx-0 space-y-6 md:space-y-10">
           {/* Logo & Name Header */}
-          <div className="flex flex-col gap-4 items-center justify-center text-center w-full">
+          <div className="flex flex-col gap-4 md:gap-8 items-center justify-center text-center w-full">
             {tenant.show_logo !== false && (
               tenant.logo_url ? (
                 <img 
@@ -116,7 +116,7 @@ export default function TenantPortal() {
             
             <div className="flex flex-col gap-1 md:gap-1.5 items-center justify-center text-center w-full">
               {tenant.show_name !== false && (
-                <h1 className="text-3xl md:text-5xl lg:text-7xl font-medium tracking-tight leading-none text-slate-900">
+                <h1 className="text-3xl md:text-4xl lg:text-5xl font-medium tracking-tight leading-none text-slate-900">
                   {tenant.name}
                 </h1>
               )}
@@ -130,14 +130,17 @@ export default function TenantPortal() {
           </div>
 
           {/* Points Clés / Description Area */}
-          <div className="space-y-4 max-w-lg mx-auto md:mx-0">
+          <div className="space-y-4 max-w-lg mx-auto">
             {tenant.login_description ? (
               <div 
-                className="text-[15px] md:text-xl font-medium leading-relaxed portal-description text-slate-500 text-center md:text-left opacity-90"
+                className="text-[15px] md:text-xl font-medium leading-relaxed portal-description text-slate-500 text-center opacity-90"
                 dangerouslySetInnerHTML={{ __html: tenant.login_description }}
               />
             ) : tenant.description ? (
-              <p className="text-base md:text-xl font-medium leading-relaxed opacity-80 text-slate-500 text-center md:text-left">
+              <p 
+                className="text-base md:text-xl font-medium leading-relaxed opacity-80 text-center"
+                style={{ color: "var(--primary-color, #0f172a)" }}
+              >
                 {tenant.description}
               </p>
             ) : null}
@@ -179,7 +182,10 @@ export default function TenantPortal() {
       </div>
 
       <style jsx global>{`
-        .portal-description p { margin-bottom: 1rem; }
+        .portal-description p { margin-bottom: 1rem; color: var(--primary-color, #0f172a); }
+        @media (min-width: 768px) {
+          .portal-description p { margin-bottom: 2rem; }
+        }
         .portal-description h1 { font-size: 1.875rem; font-weight: 800; margin-bottom: 1rem; color: #0f172a; }
         .portal-description h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.75rem; color: #1e293b; }
         .portal-description h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; color: #334155; }
