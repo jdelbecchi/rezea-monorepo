@@ -241,6 +241,19 @@ export default function GestionInscriptionsPage() {
         }
     };
 
+    const handleCancelSessionFromModal = async () => {
+        if (!selectedItem || !selectedItem.data) return;
+        if (window.confirm("Êtes-vous sûr de vouloir annuler cette séance ? Les inscriptions liées seront également annulées.")) {
+            try {
+                await api.cancelSession(selectedItem.data.id);
+                setShowEditSessionModal(false);
+                await loadMonthData(currentMonth);
+            } catch (err) {
+                alert("Erreur lors de l'annulation");
+            }
+        }
+    };
+
     const handleCancelSession = async (item: any) => {
         // Au premier clic, on passe en mode confirmation inline
         if (confirmingSessionId !== item.id) {
@@ -342,38 +355,23 @@ export default function GestionInscriptionsPage() {
     return (
         <div className="bg-white flex flex-col min-h-screen pb-20 md:pb-0 overflow-x-hidden">
 
-            {/* Header Mobile - PWA Style */}
-            <header className="fixed top-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-lg border-b border-slate-100 flex items-center justify-between px-4 h-14 safe-top shadow-sm md:hidden">
-                <Link href={`/${params.slug}/home`} className="flex items-center gap-2 group text-slate-400 active:scale-95 transition-all">
-                    <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 ml-0.5" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    <span className="text-[13px] font-medium leading-none">Retour</span>
-                </Link>
-                <div className="w-10" /> {/* Spacer */}
-            </header>
-
-            <main className="flex-1 px-5 pb-5 md:p-12 pt-16 md:pt-14">
+            <main className="flex-1 px-5 pb-5 md:p-12 pt-4 md:pt-12">
                 <div className="max-w-6xl mx-auto">
-                    {/* Header Desktop - Breadcrumb Style */}
-                    <div className="hidden md:flex items-center justify-between mb-10">
-                        <Link href={`/${params.slug}/home`} className="flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-slate-800 transition-colors group">
-                            <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 transition-transform group-hover:-translate-x-1" xmlns="http://www.w3.org/2000/svg">
+                    <header className="flex items-center justify-between pb-3 border-b border-slate-200 mb-6 gap-4">
+                        <h1 className="text-lg md:text-xl font-medium text-slate-900 tracking-tight flex items-center gap-2">
+                            <span className="text-xl md:text-2xl">📝</span> Gestion des inscriptions
+                        </h1>
+                        <Link href={`/${params.slug}/home`} className="flex items-center gap-1 text-[10px] md:text-xs font-medium text-slate-400 hover:text-slate-800 transition-colors group border border-slate-200 rounded-full px-2.5 py-1 hover:border-slate-300">
+                            <svg viewBox="0 0 24 24" fill="none" className="w-3 h-3 transition-transform group-hover:-translate-x-0.5" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                             </svg>
-                            <span className="leading-none">Retour</span>
+                            <span>Retour</span>
                         </Link>
-                    </div>
+                    </header>
 
                     <div className="md:grid md:grid-cols-[320px_1fr] md:gap-10 items-start">
                         {/* Colonne Gauche: Calendrier */}
-                        <aside className="md:sticky md:top-14 space-y-6 mb-8 md:mb-0">
-                            <header className="px-1 space-y-1">
-                                <h1 className="text-xl md:text-2xl font-medium text-slate-900 tracking-tight flex items-center gap-2">
-                                    <span className="text-2xl md:text-3xl">📝</span> Gestion des inscriptions
-                                </h1>
-                                <p className="text-slate-500 font-medium text-[11px] md:text-xs">Gérez vos séances et participants</p>
-                            </header>
+                        <aside className="md:sticky md:top-14 space-y-6">
 
                             <div className="bg-white -mx-5 md:mx-0 rounded-none md:rounded-3xl shadow-xl shadow-blue-900/10 border-b md:border border-slate-200 p-4 md:p-2">
                                 <div className="flex items-center justify-between mb-1 px-2">
@@ -523,88 +521,77 @@ export default function GestionInscriptionsPage() {
                                                 {/* Entête Séance */}
                                                 <div className="p-3 md:p-4">
                                                     <div className={`flex flex-col gap-1 min-w-0 flex-1 ${session.is_active === false ? 'opacity-50' : ''}`}>
-                                                        {/* Ligne 1: Heure + Titre */}
-                                                        <div className="flex items-center gap-3 min-w-0">
-                                                            <span className="text-slate-900 font-semibold text-sm md:text-base shrink-0">
-                                                                {format(new Date(session.start_time), "HH:mm")}
-                                                            </span>
-                                                            <div className="flex items-center gap-1.5 min-w-0">
-                                                                <h4 className="font-medium text-sm md:text-base text-slate-800 first-letter:uppercase leading-tight">
-                                                                    {session.title}
-                                                                </h4>
-                                                                {!session.is_active && (
-                                                                  <span className="text-[10px] bg-rose-50 text-rose-500 px-2 py-0.5 rounded-lg font-medium shrink-0 border border-rose-100">Annulée</span>
-                                                                )}
-                                                            </div>
-                                                        </div>
+                                                         {/* Ligne 1: Heure + Titre + Actions */}
+                                                         <div className="flex items-center justify-between gap-3 w-full">
+                                                             <div className="flex items-center gap-3 min-w-0">
+                                                                 <span className="text-slate-900 font-semibold text-sm md:text-base shrink-0">
+                                                                     {format(new Date(session.start_time), "HH:mm")}
+                                                                 </span>
+                                                                 <div className="flex items-center gap-1.5 min-w-0">
+                                                                     <h4 className="font-medium text-sm md:text-base text-slate-800 first-letter:uppercase leading-tight">
+                                                                         {session.title}
+                                                                     </h4>
+                                                                     {!session.is_active && (
+                                                                       <span className="text-[10px] bg-rose-50 text-rose-500 px-2 py-0.5 rounded-lg font-medium shrink-0 border border-rose-100">Annulée</span>
+                                                                     )}
+                                                                 </div>
+                                                             </div>
 
-                                                        {/* Ligne 2: Attribution + Salle + Actions */}
-                                                        <div className="flex items-center justify-between gap-4 w-full mt-0.5">
-                                                            <div className="flex items-center gap-2 text-slate-600 text-sm font-normal min-w-0">
-                                                                <div className="flex items-center gap-1.5 truncate">
-                                                                    <svg className="w-5 h-5 flex-shrink-0 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                                                    </svg>
-                                                                    <span className="truncate">{session.instructor_name || "Coach"}</span>
-                                                                </div>
-                                                                {session.location && (
-                                                                    <>
-                                                                        <span className="text-slate-300">•</span>
-                                                                        <span className="truncate flex items-center gap-1">
-                                                                            <span className="text-base opacity-60">📍</span> {session.location}
-                                                                        </span>
-                                                                    </>
-                                                                )}
-                                                            </div>
+                                                             <div className="flex items-center shrink-0">
+                                                                 {session.is_active ? (
+                                                                     <div className="flex items-center gap-0">
+                                                                         <button 
+                                                                             type="button"
+                                                                             onClick={() => handleOpenEditSession(session)}
+                                                                             className="p-1 hover:bg-slate-50 rounded-lg text-slate-300 hover:text-slate-600 transition-colors"
+                                                                             title="Modifier"
+                                                                         >
+                                                                             <span className="text-sm">✏️</span>
+                                                                         </button>
+                                                                     </div>
+                                                                 ) : (
+                                                                     <div className="flex items-center">
+                                                                         {confirmingReactivateId === session.id ? (
+                                                                             <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right-2 duration-300">
+                                                                                 <span className="text-[10px] font-medium text-violet-600 tracking-tight">Rétablir ?</span>
+                                                                                 <div className="flex items-center gap-2">
+                                                                                     <button onClick={() => setConfirmingReactivateId(null)} className="text-[10px] font-medium text-slate-400">Non</button>
+                                                                                     <button onClick={() => handleReactivateSession(session)} className="px-3 py-1 bg-violet-600 text-white rounded-full text-[9px] font-medium active:scale-95">Oui</button>
+                                                                                 </div>
+                                                                             </div>
+                                                                         ) : (
+                                                                             <button 
+                                                                                 type="button"
+                                                                                 onClick={() => handleReactivateSession(session)}
+                                                                                 className="p-1 hover:bg-violet-50 rounded-lg text-slate-300 hover:text-violet-600 transition-colors"
+                                                                                 title="Rétablir la séance"
+                                                                             >
+                                                                                 <span className="text-sm">🔄</span>
+                                                                             </button>
+                                                                         )}
+                                                                     </div>
+                                                                 )}
+                                                             </div>
+                                                         </div>
 
-                                                            <div className="flex items-center">
-                                                                {confirmingSessionId === session.id ? (
-                                                                    <div className="flex items-center gap-3 shrink-0 animate-in fade-in slide-in-from-right-2 duration-300">
-                                                                        <span className="text-[10px] font-medium text-rose-500 tracking-tight">Annuler ?</span>
-                                                                        <div className="flex items-center gap-2">
-                                                                            <button onClick={() => setConfirmingSessionId(null)} className="px-2 py-1 text-[10px] font-medium text-slate-400">Non</button>
-                                                                            <button onClick={() => handleCancelSession(session)} className="px-3 py-1 bg-rose-500 text-white rounded-full text-[9px] font-medium transition-all shadow-sm active:scale-95">Oui</button>
-                                                                        </div>
-                                                                    </div>
-                                                                ) : session.is_active ? (
-                                                                    <div className="flex items-center gap-0 shrink-0">
-                                                                        <button 
-                                                                            onClick={() => handleOpenEditSession(session)}
-                                                                            className="p-0.5 hover:bg-slate-50 rounded-lg text-slate-300 hover:text-slate-600 transition-colors"
-                                                                            title="Modifier"
-                                                                        >
-                                                                            <span className="text-sm">✏️</span>
-                                                                        </button>
-                                                                        <button 
-                                                                            onClick={() => handleCancelSession(session)}
-                                                                            className="p-0.5 hover:bg-rose-50 rounded-lg text-slate-300 hover:text-rose-500 transition-colors"
-                                                                            title="Annuler"
-                                                                        >
-                                                                            <span className="text-sm">🚫</span>
-                                                                        </button>
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="flex items-center">
-                                                                        {confirmingReactivateId === session.id ? (
-                                                                            <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right-2 duration-300">
-                                                                                <span className="text-[10px] font-medium text-violet-600 tracking-tight">Rétablir ?</span>
-                                                                                <div className="flex items-center gap-2">
-                                                                                    <button onClick={() => setConfirmingReactivateId(null)} className="text-[10px] font-medium text-slate-400">Non</button>
-                                                                                    <button onClick={() => handleReactivateSession(session)} className="px-3 py-1 bg-violet-600 text-white rounded-full text-[9px] font-medium active:scale-95">Oui</button>
-                                                                                </div>
-                                                                            </div>
-                                                                        ) : (
-                                                                            <button 
-                                                                                onClick={() => handleReactivateSession(session)}
-                                                                                className="p-0.5 hover:bg-violet-50 rounded-lg text-slate-300 hover:text-violet-600 transition-colors"
-                                                                                title="Rétablir la séance"
-                                                                            >
-                                                                                <span className="text-sm">🔄</span>
-                                                                            </button>
-                                                                        )}
-                                                                    </div>
-                                                                )}
-                                                            </div>
+                                                         {/* Ligne 2: Attribution + Salle */}
+                                                         <div className="flex items-center justify-between gap-4 w-full mt-0.5">
+                                                             <div className="flex items-center gap-2 text-slate-500 text-xs font-normal min-w-0">
+                                                                 <div className="flex items-center gap-1.5 truncate">
+                                                                     <svg className="w-4 h-4 flex-shrink-0 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                                     </svg>
+                                                                     <span className="truncate">{session.instructor_name || "Coach"}</span>
+                                                                 </div>
+                                                                 {session.location && (
+                                                                     <>
+                                                                         <span className="text-slate-300">•</span>
+                                                                         <span className="truncate flex items-center gap-1">
+                                                                             <span className="text-xs opacity-60">📍</span> {session.location}
+                                                                         </span>
+                                                                     </>
+                                                                 )}
+                                                             </div>
                                                          </div>
  
                                                         {/* Ligne 3: Inscriptions + Voir les participants (Hors du bloc d'opacité) */}
@@ -681,10 +668,10 @@ export default function GestionInscriptionsPage() {
                                                                                                 {/* Appel (Présence) */}
                                                                                                 <button 
                                                                                                     onClick={() => handleMarkAbsent(p, 'session')}
-                                                                                                    className={`w-7 h-7 flex items-center justify-center rounded-full transition-all active:scale-95 ${isAbsent ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-500'}`}
+                                                                                                    className={`w-7 h-7 flex items-center justify-center rounded-full transition-all active:scale-95 ${isAbsent ? 'opacity-30 grayscale' : ''}`}
                                                                                                     title={isAbsent ? "Marquer présent" : "Signaler absent"}
                                                                                                 >
-                                                                                                    <span className="text-xs">{isAbsent ? '❌' : '✅'}</span>
+                                                                                                    <span className="text-xs">✅</span>
                                                                                                 </button>
 
                                                                                                 <span className="truncate text-xs tracking-tight text-slate-600 font-medium">
@@ -843,10 +830,10 @@ export default function GestionInscriptionsPage() {
                                                                                                 {/* Appel (Présence) */}
                                                                                                 <button 
                                                                                                     onClick={() => handleMarkAbsent(p, 'event')}
-                                                                                                    className={`w-7 h-7 flex items-center justify-center rounded-full transition-all active:scale-95 ${isAbsent ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-500'}`}
+                                                                                                    className={`w-7 h-7 flex items-center justify-center rounded-full transition-all active:scale-95 ${isAbsent ? 'opacity-30 grayscale' : ''}`}
                                                                                                     title={isAbsent ? "Marquer présent" : "Signaler absent"}
                                                                                                 >
-                                                                                                    <span className="text-xs">{isAbsent ? '❌' : '✅'}</span>
+                                                                                                    <span className="text-xs">✅</span>
                                                                                                 </button>
 
                                                                                                 <span className="truncate text-xs tracking-tight text-slate-600 font-medium">
@@ -906,7 +893,7 @@ export default function GestionInscriptionsPage() {
                             <div className="space-y-4 mb-8">
 
                                 <div>
-                                    <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1.5 px-1">Titre</label>
+                                    <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1.5 px-1">Intitulé</label>
                                     <input 
                                         type="text" 
                                         required
@@ -1085,6 +1072,18 @@ export default function GestionInscriptionsPage() {
                                         className="w-11 h-11 flex items-center justify-center rounded-full transition-all active:scale-95 shadow-md bg-white border border-slate-100 hover:bg-slate-50 text-[11px]"
                                     >
                                         <span className="text-xl">📧</span>
+                                    </button>
+                                </div>
+                            )}
+
+                            {selectedItem?.data?.is_active && (
+                                <div className="mb-6 pt-4 border-t border-slate-100 flex justify-center">
+                                    <button
+                                        type="button"
+                                        onClick={handleCancelSessionFromModal}
+                                        className="py-2.5 px-4 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                                    >
+                                        Annuler la séance
                                     </button>
                                 </div>
                             )}
