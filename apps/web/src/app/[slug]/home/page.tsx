@@ -401,7 +401,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                                     } backdrop-blur-md px-6 py-4 rounded-3xl max-w-[90%] inline-flex flex-col gap-1 ${alignX}`}>
                                         {tenantSettings.header_title && (
                                             <h2 
-                                                className={`text-lg md:text-xl font-bold tracking-tight ${
+                                                className={`text-lg md:text-xl font-semibold tracking-tight ${
                                                     animation === "fade" ? "anim-fade" : animation === "flash" ? "anim-flash" : animation === "typewriter" ? "anim-typewriter" : ""
                                                 }`}
                                                 style={{ color: tenantSettings.header_text_bg === "pill_dark" ? undefined : tenantSettings.header_text_color }}
@@ -410,7 +410,9 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                                             </h2>
                                         )}
                                         {tenantSettings.header_subtitle && (
-                                            <p className={`text-xs md:text-sm font-medium opacity-90 ${animation === "fade" ? "anim-fade" : ""}`}>
+                                            <p className={`text-xs md:text-sm font-medium opacity-90 ${
+                                                animation === "fade" ? "anim-fade" : animation === "flash" ? "anim-flash" : animation === "typewriter" ? "anim-typewriter" : ""
+                                            }`}>
                                                 {tenantSettings.header_subtitle}
                                             </p>
                                         )}
@@ -419,7 +421,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                                     <div className={`max-w-[90%] flex flex-col gap-1 ${alignX}`} style={{ color: tenantSettings.header_text_color || "#ffffff" }}>
                                         {tenantSettings.header_title && (
                                             <h2 
-                                                className={`text-lg md:text-xl font-bold tracking-tight ${
+                                                className={`text-lg md:text-xl font-semibold tracking-tight ${
                                                     animation === "fade" ? "anim-fade" : animation === "flash" ? "anim-flash" : animation === "typewriter" ? "anim-typewriter" : ""
                                                 }`}
                                             >
@@ -427,7 +429,9 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                                             </h2>
                                         )}
                                         {tenantSettings.header_subtitle && (
-                                            <p className={`text-xs md:text-sm font-medium opacity-90 ${animation === "fade" ? "anim-fade" : ""}`}>
+                                            <p className={`text-xs md:text-sm font-medium opacity-90 ${
+                                                animation === "fade" ? "anim-fade" : animation === "flash" ? "anim-flash" : animation === "typewriter" ? "anim-typewriter" : ""
+                                            }`}>
                                                 {tenantSettings.header_subtitle}
                                             </p>
                                         )}
@@ -448,7 +452,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
             {/* Vignettes Carousel (conditional) */}
             {showVignettes && tenantSettings?.vignettes && tenantSettings.vignettes.length > 0 && (
                 <div className="px-5 mt-4 mb-2 shrink-0">
-                    <h3 className="text-sm font-bold text-slate-800 mb-3 tracking-tight">{tenantSettings.vignettes_title || "À la une"}</h3>
+                    <h3 className="text-sm font-semibold text-slate-800 mb-3 tracking-tight">{tenantSettings.vignettes_title || "À la une"}</h3>
                     <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-3 -mx-5 px-5">
                         {tenantSettings.vignettes.map((vig: Vignette) => {
                             const CardContent = (
@@ -620,7 +624,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
 
             {/* 6. Footer Area */}
             <div className="w-full max-w-[500px] mx-auto lg:mx-0 px-1">
-                <div className="pt-3 flex items-center justify-between pb-2 mb-14">
+                <div className="pt-3 flex items-center justify-between pb-2 mb-20">
                     <div className="flex gap-8">
                         {tenantSettings?.cgv_url && (
                             <a 

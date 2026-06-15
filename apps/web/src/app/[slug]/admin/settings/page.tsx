@@ -320,74 +320,111 @@ export default function AdminSettingsPage() {
                                                 />
                                             </div>
 
-                                            <div className="pt-2 border-t border-slate-100/50">
-                                                <label className="block text-sm font-medium text-slate-700 mb-2 text-center">Logo de l&apos;établissement</label>
-                                                <div className="flex flex-col items-center gap-6">
-                                                    <div className="w-24 h-24 rounded-2xl bg-white border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group">
-                                                        {previewLogo ? (
-                                                            <img src={previewLogo} className="w-full h-full object-contain p-2" alt="Logo" />
-                                                        ) : (
-                                                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 group-hover:text-slate-400 transition-colors">
-                                                                <span className="text-2xl mb-1">🖼️</span>
-                                                                <span className="text-[8px] font-bold uppercase tracking-wider">Aucun logo</span>
-                                                            </div>
-                                                        )}
-                                                        <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                            <button 
-                                                                onClick={() => logoInputRef.current?.click()}
-                                                                className="p-2 bg-white rounded-xl text-slate-900 shadow-xl scale-90 group-hover:scale-100 transition-transform"
-                                                            >
-                                                                <span className="text-sm">🔄</span>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex flex-col items-center gap-2">
-                                                        <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'logo')} />
-                                                        <button 
+                                            <div className="pt-4 border-t border-slate-100/50 flex flex-col items-center justify-center">
+                                                <label className="block text-sm font-medium text-slate-700 mb-4 text-center w-full">Logo de l&apos;établissement</label>
+                                                <div className="flex flex-col items-center gap-4">
+                                                    <div className="relative group">
+                                                        <div 
                                                             onClick={() => logoInputRef.current?.click()}
-                                                            className="px-6 py-2 bg-white hover:bg-slate-50 text-slate-900 border border-slate-200 rounded-xl font-medium text-xs transition-all shadow-sm"
+                                                            className="w-32 h-32 rounded-2xl bg-white border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative cursor-pointer group shadow-sm hover:border-slate-300 transition-all"
                                                         >
-                                                            Changer le logo
-                                                        </button>
-                                                        <p className="text-[10px] text-slate-400 font-normal tracking-wide leading-tight text-center">Fond transparent recommandé, max 1MB.</p>
+                                                            {previewLogo ? (
+                                                                <img src={previewLogo} className="w-full h-full object-contain p-3" alt="Logo" />
+                                                            ) : (
+                                                                 <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 group-hover:text-slate-500 transition-colors text-center p-3">
+                                                                     <span className="text-3xl mb-2">🖼️</span>
+                                                                     <span className="text-xs font-medium text-slate-500 leading-tight">Charger un visuel</span>
+                                                                 </div>
+                                                            )}
+                                                            <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                                <span className="text-white text-xl">📷</span>
+                                                            </div>
+                                                        </div>
+                                                        {previewLogo && (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setPreviewLogo(null);
+                                                                    setFormData({ ...formData, logo_url: "" });
+                                                                }}
+                                                                className="absolute -top-2 -right-2 p-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-700 rounded-xl transition-all shadow-sm z-20 active:scale-95 animate-in fade-in duration-200"
+                                                                title="Supprimer le logo"
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                </svg>
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex flex-col items-center text-center gap-2">
+                                                        <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'logo')} />
+                                                        <p className="text-[10px] text-slate-400 font-normal tracking-wide leading-tight">Fond transparent recommandé, max 1MB.</p>
                                                     </div>
                                                 </div>
-                                            </div>
-
-                                            <div className="pt-2 border-t border-slate-100/50">
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                    Message de bienvenue <span className="text-slate-400 text-[10px] font-normal ml-1">(facultatif - affiché lors de la création de compte)</span>
-                                                </label>
-                                                <textarea
-                                                    value={formData.welcome_message || ""}
-                                                    onChange={e => setFormData({ ...formData, welcome_message: e.target.value })}
-                                                    placeholder="Bienvenue chez nous !"
-                                                    rows={3}
-                                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal resize-none"
-                                                />
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="space-y-8 flex flex-col">
-                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6 flex-1">
+                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
                                         <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">
+                                                    Site internet de l&apos;établissement
+                                                </label>
+                                                <div className="relative">
+                                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 select-none">
+                                                        <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                                                        </svg>
+                                                    </span>
+                                                    <input
+                                                        type="url"
+                                                        value={formData.website_url || ""}
+                                                        onChange={e => setFormData({ ...formData, website_url: e.target.value })}
+                                                        placeholder="https://www.votresite.com"
+                                                        className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-sm"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-2">
+                                                    Email de contact
+                                                </label>
+                                                <div className="relative">
+                                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 select-none">
+                                                        <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                        </svg>
+                                                    </span>
+                                                    <input
+                                                        type="email"
+                                                        value={formData.email || ""}
+                                                        onChange={e => setFormData({ ...formData, email: e.target.value })}
+                                                        placeholder="contact@votreclub.com"
+                                                        className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-sm"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div>
                                                     <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                        Site internet de l&apos;établissement
+                                                        Lien Facebook
                                                     </label>
                                                     <div className="relative">
-                                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 select-none">
-                                                            <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 select-none">
+                                                            <svg className="w-5 h-5 text-[#1877F2]" fill="currentColor" viewBox="0 0 24 24">
+                                                                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                                                             </svg>
                                                         </span>
                                                         <input
                                                             type="url"
-                                                            value={formData.website_url || ""}
-                                                            onChange={e => setFormData({ ...formData, website_url: e.target.value })}
-                                                            placeholder="https://www.votresite.com"
+                                                            value={formData.facebook_url || ""}
+                                                            onChange={e => setFormData({ ...formData, facebook_url: e.target.value })}
+                                                            placeholder="https://facebook.com/page"
                                                             className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-sm"
                                                         />
                                                     </div>
@@ -395,69 +432,41 @@ export default function AdminSettingsPage() {
 
                                                 <div>
                                                     <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                        Email de contact
+                                                        Lien Instagram
                                                     </label>
                                                     <div className="relative">
-                                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 select-none">
-                                                            <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 select-none">
+                                                            <svg className="w-5 h-5 text-[#E1306C]" fill="currentColor" viewBox="0 0 24 24">
+                                                                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
                                                             </svg>
                                                         </span>
                                                         <input
-                                                            type="email"
-                                                            value={formData.email || ""}
-                                                            onChange={e => setFormData({ ...formData, email: e.target.value })}
-                                                            placeholder="contact@votreclub.com"
+                                                            type="url"
+                                                            value={formData.instagram_url || ""}
+                                                            onChange={e => setFormData({ ...formData, instagram_url: e.target.value })}
+                                                            placeholder="https://instagram.com/compte"
                                                             className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-sm"
                                                         />
-                                                    </div>
-                                                </div>
-
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <div>
-                                                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                            Lien Facebook
-                                                        </label>
-                                                        <div className="relative">
-                                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 select-none">
-                                                                <svg className="w-5 h-5 text-[#1877F2]" fill="currentColor" viewBox="0 0 24 24">
-                                                                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                                                                </svg>
-                                                            </span>
-                                                            <input
-                                                                type="url"
-                                                                value={formData.facebook_url || ""}
-                                                                onChange={e => setFormData({ ...formData, facebook_url: e.target.value })}
-                                                                placeholder="https://facebook.com/page"
-                                                                className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-sm"
-                                                            />
-                                                        </div>
-                                                    </div>
-
-                                                    <div>
-                                                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                            Lien Instagram
-                                                        </label>
-                                                        <div className="relative">
-                                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 select-none">
-                                                                <svg className="w-5 h-5 text-[#E1306C]" fill="currentColor" viewBox="0 0 24 24">
-                                                                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
-                                                                </svg>
-                                                            </span>
-                                                            <input
-                                                                type="url"
-                                                                value={formData.instagram_url || ""}
-                                                                onChange={e => setFormData({ ...formData, instagram_url: e.target.value })}
-                                                                placeholder="https://instagram.com/compte"
-                                                                className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-sm"
-                                                            />
-                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
+                                    
+                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-4">
+                                        <label className="block text-sm font-medium text-slate-700">
+                                            Message de bienvenue <span className="text-slate-400 text-[10px] font-normal ml-1">(facultatif - affiché lors de la création de compte)</span>
+                                        </label>
+                                        <textarea
+                                            value={formData.welcome_message || ""}
+                                            onChange={e => setFormData({ ...formData, welcome_message: e.target.value })}
+                                            placeholder="Bienvenue chez nous !"
+                                            rows={3}
+                                            className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal resize-none"
+                                        />
+                                    </div>
                                 </div>
+                            </div>
                         )}
 
                         {/* PORTAL TAB */}
@@ -511,39 +520,60 @@ export default function AdminSettingsPage() {
 
                                             <div>
                                                 <label className="block text-sm font-medium text-slate-700 mb-2">Image de fond du portail</label>
-                                                <div className="w-full h-48 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative group mb-3 shadow-inner">
+                                                <div className="relative group mb-3">
+                                                    <div 
+                                                        onClick={() => loginBgInputRef.current?.click()}
+                                                        className="w-full h-48 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden relative cursor-pointer shadow-inner group"
+                                                    >
                                                     {previewLoginBg ? (
                                                         <img src={previewLoginBg} className="w-full h-full object-contain bg-slate-900/[0.02]" alt="Login Background" />
                                                     ) : (
-                                                        <div className="text-center space-y-2">
-                                                            <span className="text-4xl block">🖼️</span>
-                                                            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Aucune image</p>
-                                                        </div>
+                                                         <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 group-hover:text-slate-500 transition-colors text-center">
+                                                             <span className="text-3xl mb-1">🖼️</span>
+                                                             <span className="text-[11px] font-medium text-slate-500">Charger un visuel</span>
+                                                         </div>
                                                     )}
                                                     {uploading === 'login-bg' && (
                                                         <div className="absolute inset-0 bg-white/80 flex items-center justify-center backdrop-blur-sm">
                                                             <div className="h-8 w-8 border-2 border-blue-600 border-t-transparent animate-spin rounded-full"></div>
                                                         </div>
                                                     )}
+                                                    {uploading !== 'login-bg' && (
+                                                        <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                            <span className="text-white text-2xl">📷</span>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <input type="file" ref={loginBgInputRef} className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'login-bg' as any)} />
-                                                <button 
-                                                    onClick={() => loginBgInputRef.current?.click()}
-                                                    className="w-full py-3 bg-slate-900 text-white rounded-xl font-medium text-xs transition-all shadow-lg shadow-slate-200"
-                                                >
-                                                    Changer l&apos;image de fond
-                                                </button>
+                                                {previewLoginBg && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setPreviewLoginBg(null);
+                                                            setFormData({ ...formData, login_background_url: "" });
+                                                        }}
+                                                        className="absolute -top-2 -right-2 p-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-700 rounded-xl transition-all shadow-sm z-20 active:scale-95 animate-in fade-in duration-200"
+                                                        title="Supprimer l'image"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
+                                                    </button>
+                                                )}
                                             </div>
+                                            <input type="file" ref={loginBgInputRef} className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'login-bg' as any)} />
+                                        </div>
 
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-700 mb-2">Couleur dédiée au portail</label>
-                                                <p className="text-xs text-slate-400 mb-4 font-normal">Si non définie, la couleur d&apos;accentuation du club sera utilisée.</p>
-                                                <div className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                                            <div className="flex items-center justify-between gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-slate-700">Couleur dédiée au portail</label>
+                                                    <p className="text-xs text-slate-400 font-normal mt-0.5">Si non définie, la couleur d&apos;accentuation du club sera utilisée.</p>
+                                                </div>
+                                                <div className="flex items-center gap-3 p-3 bg-white rounded-2xl border border-slate-100 shadow-sm min-w-[150px]">
                                                     <input
                                                         type="color"
                                                         value={formData.login_primary_color || formData.primary_color || "#7c3aed"}
                                                         onChange={e => setFormData({ ...formData, login_primary_color: e.target.value })}
-                                                        className="w-12 h-12 rounded-xl border-2 border-white shadow-sm cursor-pointer"
+                                                        className="w-8 h-8 rounded-lg border border-slate-200/50 shadow-sm cursor-pointer"
                                                     />
                                                     <div className="flex-1">
                                                         <input
@@ -551,7 +581,7 @@ export default function AdminSettingsPage() {
                                                             value={formData.login_primary_color || ""}
                                                             placeholder={formData.primary_color}
                                                             onChange={e => setFormData({ ...formData, login_primary_color: e.target.value })}
-                                                            className="bg-transparent border-none p-0 font-mono font-semibold text-base outline-none w-full"
+                                                            className="bg-transparent border-none p-0 font-mono font-medium text-sm text-slate-700 outline-none w-full"
                                                         />
                                                     </div>
                                                 </div>
@@ -585,7 +615,7 @@ export default function AdminSettingsPage() {
                                                         value={structuredDescription.intro}
                                                         onChange={e => setStructuredDescription(prev => ({ ...prev, intro: e.target.value }))}
                                                         placeholder="Ex: Bienvenue dans votre club de bien-être..."
-                                                        className="w-full px-5 py-4 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:bg-white transition-all outline-none font-normal text-slate-700 resize-none min-h-[100px]"
+                                                        className="w-full px-5 py-4 bg-white border border-slate-100 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:bg-white transition-all outline-none text-sm font-normal text-slate-700 resize-none min-h-[100px]"
                                                     />
                                                 </div>
 
@@ -635,12 +665,7 @@ export default function AdminSettingsPage() {
                         {activeTab === "rules" && (
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
                                 <section className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-8 flex flex-col h-full">
-                                    <div className="space-y-1">
-                                        <h3 className="text-lg font-semibold flex items-center gap-2">
-                                            ⏱️ Délais de gestion
-                                        </h3>
-                                        <p className="text-xs text-slate-400 font-normal">Configurez les limites temporelles pour vos activités</p>
-                                    </div>
+
 
                                     <div className="space-y-4 flex-1">
                                         <div className="space-y-1.5">
@@ -735,8 +760,9 @@ export default function AdminSettingsPage() {
                                 {/* LOCATIONS SECTION */}
                                 <section className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-8 flex flex-col h-full">
                                     <div className="space-y-1">
-                                        <h3 className="text-lg font-semibold flex items-center gap-2">
-                                            📍 Locaux & Espaces
+                                        <h3 className="text-base font-medium flex items-center gap-2 text-slate-800">
+                                            <span>📍</span>
+                                            <span>Locaux & Espaces</span>
                                         </h3>
                                         <p className="text-xs text-slate-400 font-normal">Définissez les salles et lieux de votre établissement</p>
                                     </div>
@@ -794,7 +820,10 @@ export default function AdminSettingsPage() {
                             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 <section className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-8">
                                     <div className="space-y-1">
-                                        <h3 className="text-lg font-semibold flex items-center gap-2">💶 Paramètres de paiement</h3>
+                                        <h3 className="text-base font-medium flex items-center gap-2 text-slate-800">
+                                            <span>💶</span>
+                                            <span>Paramètres de paiement</span>
+                                        </h3>
                                         <p className="text-xs text-slate-400 font-normal">Gérer vos moyens de paiement des commandes et inscriptions</p>
                                     </div>
 
@@ -808,7 +837,7 @@ export default function AdminSettingsPage() {
                                             <div className="flex items-start gap-4">
                                                 <div className="text-xl -mt-0.5 leading-none">💳</div>
                                                 <div className="flex-1">
-                                                    <h4 className="font-bold text-slate-900 text-base">Stripe / paiement automatisé dans REZEA</h4>
+                                                    <h4 className="font-semibold text-slate-900 text-base">Stripe / paiement automatisé dans REZEA</h4>
                                                     <div className="text-xs text-slate-500 font-normal leading-relaxed mt-1 space-y-1">
                                                         <p>• Configurez la plateforme de paiement Stripe pour gérer votre boutique en ligne.</p>
                                                         <p>• Le statut de la commande est mis à jour automatiquement à <span className="font-semibold text-emerald-600">&quot;Payé&quot;</span> ou <span className="font-semibold text-emerald-600">&quot;Echelonné&quot;</span> après le paiement.</p>
@@ -820,7 +849,7 @@ export default function AdminSettingsPage() {
                                                 <a 
                                                     href="https://dashboard.stripe.com/settings/apps/com.rezea.app" 
                                                     target="_blank" 
-                                                    className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-wider hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 whitespace-nowrap mt-1"
+                                                    className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[10px] font-medium uppercase tracking-wider transition-all shadow-md shadow-slate-100 whitespace-nowrap mt-1 active:scale-95"
                                                 >
                                                     Configurer
                                                 </a>
@@ -832,7 +861,7 @@ export default function AdminSettingsPage() {
                                             <div className="flex items-start gap-6">
                                                 <div className="text-xl -mt-0.5 leading-none">🔗</div>
                                                 <div className="flex-1">
-                                                    <h4 className="font-bold text-slate-900 text-base">Lien de redirection / paiement externe</h4>
+                                                    <h4 className="font-semibold text-slate-900 text-base">Lien de redirection / paiement externe</h4>
                                                     <div className="text-xs text-slate-500 font-normal leading-relaxed mt-1 space-y-1">
                                                         <p>• Utilisez une autre page internet pour permettre à vos utilisateurs de régler leur commande (votre site internet, HelloAsso, Zeffy, etc.).</p>
                                                         <p>• Le statut de la commande passe automatiquement à <span className="font-semibold text-amber-600">&quot;À valider&quot;</span>. Vous confirmez manuellement la réception du paiement dans la Gestion des commandes.</p>
@@ -857,7 +886,7 @@ export default function AdminSettingsPage() {
                                                 <div className="flex items-start gap-4 flex-1">
                                                     <div className="text-xl -mt-0.5 leading-none">🕐</div>
                                                     <div className="flex-1">
-                                                        <h4 className="font-bold text-slate-900 text-base">Paiement différé / autres moyens de paiement (optionnel)</h4>
+                                                        <h4 className="font-semibold text-slate-900 text-base">Paiement différé / autres moyens de paiement (optionnel)</h4>
                                                         <div className="text-xs text-slate-500 font-normal leading-relaxed mt-1 space-y-1">
                                                             <p>• En activant l&apos;option de paiement différé, vous permettez à l&apos;utilisateur qui le souhaite de &quot;payer plus tard&quot; sa commande (chèque, espèces, virement...). Il n&apos;est pas redirigé vers Stripe ou votre URL.</p>
                                                             <p>• Vous pouvez activer cette option indépendamment pour les offres (boutique) et les événements.</p>
@@ -927,7 +956,10 @@ export default function AdminSettingsPage() {
                                 {/* LEGAL INFO SECTION */}
                                 <section className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-8">
                                     <div className="space-y-1">
-                                        <h3 className="text-lg font-semibold flex items-center gap-3">🏛️ Informations de facturation</h3>
+                                        <h3 className="text-base font-medium flex items-center gap-2 text-slate-800">
+                                            <span>🏛️</span>
+                                            <span>Informations de facturation</span>
+                                        </h3>
                                         <p className="text-xs text-slate-400 font-normal">Ces informations apparaîtront automatiquement sur les factures générées</p>
                                     </div>
 
@@ -1009,7 +1041,10 @@ export default function AdminSettingsPage() {
                                 {/* DOCUMENTS SECTION */}
                                 <section id="documents-legaux" className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
                                     <div className="space-y-1">
-                                        <h3 className="text-lg font-semibold flex items-center gap-3">📄 Documents légaux</h3>
+                                        <h3 className="text-base font-medium flex items-center gap-2 text-slate-800">
+                                            <span>📄</span>
+                                            <span>Documents légaux</span>
+                                        </h3>
                                         <p className="text-xs text-slate-400 font-normal">Publiez vos conditions générales et règlement intérieur</p>
                                     </div>
 
@@ -1036,7 +1071,7 @@ export default function AdminSettingsPage() {
                                                 <button 
                                                     onClick={() => cgvInputRef.current?.click()}
                                                     disabled={!!uploading}
-                                                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-[10px] transition-all shadow-sm disabled:opacity-50"
+                                                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium text-[10px] transition-all shadow-sm disabled:opacity-50"
                                                 >
                                                      {uploading === 'cgv' ? "Upload..." : "Charger"}
                                                 </button>
@@ -1065,7 +1100,7 @@ export default function AdminSettingsPage() {
                                                 <button 
                                                     onClick={() => rulesInputRef.current?.click()}
                                                     disabled={!!uploading}
-                                                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-[10px] transition-all shadow-sm disabled:opacity-50"
+                                                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium text-[10px] transition-all shadow-sm disabled:opacity-50"
                                                 >
                                                      {uploading === 'rules' ? "Upload..." : "Charger"}
                                                 </button>
@@ -1107,8 +1142,45 @@ export default function AdminSettingsPage() {
 
                             return (
                                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                                    {/* Description de la Personnalisation Visuelle + Aperçu de l'écran d'accueil */}
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch animate-in fade-in duration-300">
+                                        <div className="lg:col-span-2 bg-blue-50/70 rounded-3xl p-6 border border-blue-100 shadow-sm flex items-start gap-4">
+                                            <span className="text-2xl text-blue-600 select-none mt-0.5">ℹ️</span>
+                                            <div className="space-y-2 flex-1">
+                                                <h4 className="text-sm font-bold text-slate-900">
+                                                    Personnalisation de la page d&apos;accueil de Rezea :
+                                                </h4>
+                                                <p className="text-xs text-slate-600 font-normal leading-relaxed">
+                                                    Rezea vous permet de personnaliser et dynamiser votre page d&apos;accueil avec votre logo auquel vous pouvez ajouter le nom de votre établissement, une couleur d&apos;accentuation et d&apos;intégrer des visuels optionnels pour enrichir l&apos;expérience quotidienne de vos utilisateurs, promouvoir des événements ou mettre en avant des offres spéciales :
+                                                </p>
+                                                <ul className="text-xs text-slate-600 font-normal list-disc pl-5 space-y-1.5">
+                                                    <li>Une image en format horizontal toute largeur à laquelle vous pouvez ajouter un texte court dynamique</li>
+                                                    <li>Un carrousel d&apos;images en format vignettes verticales (jusqu&apos;à 5 visuels)</li>
+                                                </ul>
+                                                <p className="text-xs text-slate-500 italic font-normal pt-1">
+                                                    Le carrousel s&apos;affiche sous le bandeau lorsque les deux options sont activées.
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-slate-50 rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col justify-center items-center text-center">
+                                            <label className="block text-sm font-semibold text-slate-900 mb-1">
+                                                Aperçu de l&apos;écran d&apos;accueil
+                                            </label>
+                                            <span className="block text-slate-400 text-[10px] font-normal mb-4 max-w-[200px]">
+                                                Visualisez le rendu final de l&apos;interface utilisateur en temps réel
+                                            </span>
+                                            <button 
+                                                onClick={() => setShowHomePreview(true)}
+                                                className="w-full max-w-[200px] py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium text-xs transition-all shadow-md flex items-center justify-center active:scale-95"
+                                            >
+                                                Visualiser le rendu
+                                            </button>
+                                        </div>
+                                    </div>
+
                                     {/* Configuration de base de l'interface */}
-                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                                         {/* 1. Affichage de l'en-tête de l'écran d'accueil */}
                                         <div className="pb-6 border-b md:border-b-0 md:border-r border-slate-100 pr-0 md:pr-8">
                                             <label className="block text-sm font-semibold text-slate-900 mb-2">
@@ -1150,7 +1222,7 @@ export default function AdminSettingsPage() {
                                         </div>
 
                                         {/* 2. Personnalisation de la couleur */}
-                                        <div className="pb-6 border-b md:border-b-0 md:border-r border-slate-100 px-0 md:px-8">
+                                        <div className="pl-0 md:pl-8">
                                             <label className="block text-sm font-semibold text-slate-900 mb-1">
                                                 Personnalisation de la couleur
                                             </label>
@@ -1171,42 +1243,6 @@ export default function AdminSettingsPage() {
                                                     className="bg-transparent border-none p-0 font-mono font-bold text-xs outline-none w-20 text-slate-600"
                                                 />
                                             </div>
-                                        </div>
-
-                                        {/* 3. Aperçu de l'écran d'accueil */}
-                                        <div className="pl-0 md:pl-8">
-                                            <label className="block text-sm font-semibold text-slate-900 mb-1">
-                                                Aperçu de l&apos;écran d&apos;accueil
-                                            </label>
-                                            <span className="block text-slate-400 text-[10px] font-normal mb-3">
-                                                Visualisez le rendu final de l&apos;interface utilisateur en temps réel
-                                            </span>
-                                            <button 
-                                                onClick={() => setShowHomePreview(true)}
-                                                className="w-full max-w-[200px] py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium text-xs transition-all shadow-md flex items-center justify-center active:scale-95"
-                                            >
-                                                Visualiser le rendu
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Description de la Personnalisation Visuelle en Bandeau d'information */}
-                                    <div className="bg-blue-50/70 rounded-3xl p-6 border border-blue-100 shadow-sm flex items-start gap-4 animate-in fade-in duration-300">
-                                        <span className="text-2xl text-blue-600 select-none mt-0.5">ℹ️</span>
-                                        <div className="space-y-2 flex-1">
-                                            <h4 className="text-sm font-bold text-slate-900">
-                                                Personnalisation visuelle de l&apos;accueil
-                                            </h4>
-                                            <p className="text-xs text-slate-600 font-normal leading-relaxed">
-                                                Rezea vous permet d&apos;intégrer des visuels optionnels pour enrichir l&apos;expérience quotidienne de vos utilisateurs, promouvoir des événements ou mettre en avant des offres spéciales :
-                                            </p>
-                                            <ul className="text-xs text-slate-600 font-normal list-disc pl-5 space-y-1.5">
-                                                <li>Une image en format horizontal toute largeur à laquelle vous pouvez ajouter un texte court dynamique</li>
-                                                <li>Un carrousel d&apos;images en format vignettes verticales (jusqu&apos;à 5 visuels)</li>
-                                            </ul>
-                                            <p className="text-xs text-slate-500 italic font-normal pt-1">
-                                                Le carrousel s&apos;affiche sous le bandeau lorsque les deux options sont activées.
-                                            </p>
                                         </div>
                                     </div>
 
@@ -1303,7 +1339,7 @@ export default function AdminSettingsPage() {
 
                                                             <div className="grid grid-cols-[180px_1fr] items-center gap-4">
                                                                 <label className="text-[11px] font-medium text-slate-500">Couleur du texte d'accroche :</label>
-                                                                <div className="flex items-center gap-2.5 p-2 bg-slate-50 rounded-2xl border border-slate-200 max-w-[200px]">
+                                                                <div className="flex items-center gap-2.5 p-2 bg-white rounded-2xl border border-slate-200 max-w-[200px]">
                                                                     <input 
                                                                         type="color"
                                                                         value={formData.header_text_color || "#ffffff"}
@@ -1526,7 +1562,7 @@ export default function AdminSettingsPage() {
                             {/* Modal Header */}
                             <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm">
                                 <div className="flex items-center gap-4">
-                                    <h2 className="text-lg font-bold text-slate-900">Aperçu du Portail Client (Home)</h2>
+                                    <h2 className="text-lg font-bold text-slate-900">Aperçu de l'écran d'accueil</h2>
                                     <div className="flex items-center bg-slate-100 p-1 rounded-xl">
                                         <button 
                                             onClick={() => setPreviewMode("desktop")}
@@ -1561,15 +1597,15 @@ export default function AdminSettingsPage() {
                                                         <div className="flex items-center gap-3">
                                                             {formData.user_header_show_logo !== false && (
                                                                 previewLogo ? (
-                                                                    <img src={previewLogo} className="h-6 w-6 object-contain" alt="Logo" />
+                                                                    <img src={previewLogo} className="h-14 w-14 object-contain" alt="Logo" />
                                                                 ) : (
-                                                                    <div className="w-6 h-6 rounded-lg bg-slate-900 flex items-center justify-center text-white text-[8px] font-semibold">
+                                                                    <div className="w-14 h-14 rounded-2xl bg-slate-900 flex items-center justify-center text-white text-sm font-semibold">
                                                                         {formData.name?.[0]?.toUpperCase() || 'R'}
                                                                     </div>
                                                                 )
                                                             )}
                                                             {formData.user_header_show_name !== false && (
-                                                                <span className="text-xs font-semibold tracking-tight text-slate-800">
+                                                                <span className="text-sm font-medium tracking-tight text-slate-800 truncate max-w-[200px]">
                                                                     {formData.name || "rezea"}
                                                                 </span>
                                                             )}
@@ -1695,9 +1731,12 @@ export default function AdminSettingsPage() {
                                                             borderColor: `${formData.primary_color}20`
                                                         }}
                                                     >
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="text-xl">🗓️</span>
-                                                            <span className="text-xs font-bold text-slate-800">Planning & réservations</span>
+                                                        <div className="flex items-center gap-3.5">
+                                                            <span className="text-2xl shrink-0">🗓️</span>
+                                                            <div className="flex flex-col gap-0.5">
+                                                                <span className="text-xs font-medium text-slate-800">Planning & réservations</span>
+                                                                <span className="text-[10px] font-normal text-slate-500">Réservez votre prochaine séance</span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     <div 
@@ -1707,9 +1746,12 @@ export default function AdminSettingsPage() {
                                                             borderColor: `${formData.primary_color}15`
                                                         }}
                                                     >
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="text-xl">🛍️</span>
-                                                            <span className="text-xs font-bold text-slate-800">Boutique</span>
+                                                        <div className="flex items-center gap-3.5">
+                                                            <span className="text-2xl shrink-0">🛍️</span>
+                                                            <div className="flex flex-col gap-0.5">
+                                                                <span className="text-xs font-medium text-slate-800">Boutique</span>
+                                                                <span className="text-[10px] font-normal text-slate-500">Créditez votre compte</span>
+                                                            </div>
                                                         </div>
                                                     </div>
 
@@ -1720,9 +1762,12 @@ export default function AdminSettingsPage() {
                                                             borderColor: `${formData.primary_color}15`
                                                         }}
                                                     >
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="text-xl">📦</span>
-                                                            <span className="text-xs font-bold text-slate-800">Mes commandes</span>
+                                                        <div className="flex items-center gap-3.5">
+                                                            <span className="text-2xl shrink-0">📦</span>
+                                                            <div className="flex flex-col gap-0.5">
+                                                                <span className="text-xs font-medium text-slate-800">Mes commandes</span>
+                                                                <span className="text-[10px] font-normal text-slate-500">Consultez vos offres et évènements</span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1730,22 +1775,26 @@ export default function AdminSettingsPage() {
                                         </div>
 
                                         {previewMode === "mobile" && (
-                                            <div className="mt-auto border-t border-slate-100 flex items-center justify-around py-3 px-4 bg-white/80 backdrop-blur-sm">
-                                                <div className="flex flex-col items-center gap-1 opacity-40">
-                                                    <span className="text-sm">🏠</span>
-                                                    <span className="text-[8px] font-bold">Home</span>
+                                            <div className="mt-auto border-t border-slate-100 flex items-center justify-around py-3 px-2 bg-white/72 backdrop-blur-md">
+                                                <div className="flex flex-col items-center gap-0.5 transition-all duration-300" style={{ color: formData.primary_color }}>
+                                                    <span className="text-base">🏠</span>
+                                                    <span className="text-[9px] font-bold">Accueil</span>
                                                 </div>
-                                                <div className="flex flex-col items-center gap-1 opacity-40">
-                                                    <span className="text-sm">🗓️</span>
-                                                    <span className="text-[8px] font-bold">Planning</span>
+                                                <div className="flex flex-col items-center gap-0.5 opacity-50 text-slate-500">
+                                                    <span className="text-base">🗓️</span>
+                                                    <span className="text-[9px] font-medium">Planning</span>
                                                 </div>
-                                                <div className="flex flex-col items-center gap-1 opacity-40">
-                                                    <span className="text-sm">🛍️</span>
-                                                    <span className="text-[8px] font-bold">Shop</span>
+                                                <div className="flex flex-col items-center gap-0.5 opacity-50 text-slate-500">
+                                                    <span className="text-base">🛍️</span>
+                                                    <span className="text-[9px] font-medium">Boutique</span>
                                                 </div>
-                                                <div className="flex flex-col items-center gap-1 opacity-40">
-                                                    <span className="text-sm">👤</span>
-                                                    <span className="text-[8px] font-bold">Profil</span>
+                                                <div className="flex flex-col items-center gap-0.5 opacity-50 text-slate-500">
+                                                    <span className="text-base">📦</span>
+                                                    <span className="text-[9px] font-medium">Commandes</span>
+                                                </div>
+                                                <div className="flex flex-col items-center gap-0.5 opacity-50 text-slate-500">
+                                                    <span className="text-base">👤</span>
+                                                    <span className="text-[9px] font-medium">Profil</span>
                                                 </div>
                                             </div>
                                         )}
@@ -1934,8 +1983,8 @@ function VignettesEditor({ vignettes, onChange, isEnabled, onToggle, title, onTi
                                         ) : (
                                             <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-slate-50 transition-colors p-2 text-center">
                                                 <span className="text-xl mb-1">🖼️</span>
-                                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                                                    {uploadingId === v.id ? "Upload..." : "Ajouter image"}
+                                                <span className="text-[10px] font-medium text-slate-500">
+                                                    {uploadingId === v.id ? "Upload..." : "Charger un visuel"}
                                                 </span>
                                                 <input 
                                                     type="file" 
