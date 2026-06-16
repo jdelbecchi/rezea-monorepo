@@ -701,28 +701,14 @@ export default function GestionInscriptionsPage() {
                                                                                                     <span className="text-xs">✅</span>
                                                                                                 </button>
 
-                                                                                                <span className="truncate text-xs tracking-tight text-slate-600 font-medium flex items-center gap-1.5 min-w-0 max-w-full">
+                                                                                                <button type="button" onClick={() => handleViewContact(p)} className="truncate text-xs tracking-tight text-slate-600 font-medium flex items-center gap-1.5 min-w-0 max-w-full hover:text-slate-900 hover:underline transition-colors text-left" title="Voir la fiche participant">
                                                                                                     <span className="truncate">{p.user_name}</span>
                                                                                                     {hasWarning && (
                                                                                                         <span title="Commande à régulariser" className="flex-shrink-0 w-4 h-4 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center text-[10px] font-bold border border-amber-200 shadow-sm cursor-help">!</span>
                                                                                                     )}
-                                                                                                </span>
-                                                                                            </div>
-                                                                                            
-                                                                                            <div className="flex items-center gap-1.5">
-
-
-
-                                                                                                <button 
-                                                                                                    onClick={() => handleViewContact(p)}
-                                                                                                        className="w-7 h-7 flex items-center justify-center bg-slate-50 border border-slate-200/60 rounded-full text-slate-400 hover:text-slate-700 transition-all hover:bg-slate-100 active:scale-95 shadow-sm"
-                                                                                                    title="Fiche participant"
-                                                                                                >
-                                                                                                            <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                                                                                                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                                                                                            </svg>
                                                                                                 </button>
                                                                                             </div>
+                                                                                            
                                                                                         </div>
                                                                                     );
                                                                                 })}
@@ -868,28 +854,14 @@ export default function GestionInscriptionsPage() {
                                                                                                     <span className="text-xs">✅</span>
                                                                                                 </button>
 
-                                                                                                <span className="truncate text-xs tracking-tight text-slate-600 font-medium flex items-center gap-1.5 min-w-0 max-w-full">
+                                                                                                <button type="button" onClick={() => handleViewContact(p)} className="truncate text-xs tracking-tight text-slate-600 font-medium flex items-center gap-1.5 min-w-0 max-w-full hover:text-slate-900 hover:underline transition-colors text-left" title="Voir la fiche participant">
                                                                                                     <span className="truncate">{p.user_name}</span>
                                                                                                     {hasWarning && (
                                                                                                         <span title="Commande à régulariser" className="flex-shrink-0 w-4 h-4 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center text-[10px] font-bold border border-amber-200 shadow-sm cursor-help">!</span>
                                                                                                     )}
-                                                                                                </span>
-                                                                                            </div>
-                                                                                            
-                                                                                            <div className="flex items-center gap-1.5">
-
-
-
-                                                                                                <button 
-                                                                                                    onClick={() => handleViewContact(p)}
-                                                                                                        className="w-7 h-7 flex items-center justify-center bg-slate-50 border border-slate-200/60 rounded-full text-slate-400 hover:text-slate-700 transition-all hover:bg-slate-100 active:scale-95 shadow-sm"
-                                                                                                    title="Fiche participant"
-                                                                                                >
-                                                                                                            <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                                                                                                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                                                                                            </svg>
                                                                                                 </button>
                                                                                             </div>
+                                                                                            
                                                                                         </div>
                                                                                     );
                                                                                 })}
