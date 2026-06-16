@@ -703,19 +703,26 @@ export default function GestionInscriptionsPage() {
 
                                                                                                 <span className="truncate text-xs tracking-tight text-slate-600 font-medium">
                                                                                                     {p.user_name}
-                                                                                                </span>
+                                                                                                    </span>
+                                                                                                    {hasWarning && (
+                                                                                                        <span title="Commande à régulariser" className="flex-shrink-0 w-4 h-4 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center text-[10px] font-bold border border-amber-200 shadow-sm cursor-help ml-1">!</span>
+                                                                                                    )}
                                                                                             </div>
                                                                                             
                                                                                             <div className="flex items-center gap-1.5">
-                                                                                                {hasWarning && (
-                                                                                                    <span title="Commande à régulariser" className="flex-shrink-0 w-4 h-4 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center text-[10px] font-bold border border-amber-200 shadow-sm cursor-help">!</span>
-                                                                                                )}
+
+
+
                                                                                                 <button 
                                                                                                     onClick={() => handleViewContact(p)}
-                                                                                                    className="w-7 h-7 flex items-center justify-center bg-slate-50 border border-slate-200/60 rounded-full text-slate-500 hover:text-slate-800 transition-all hover:bg-slate-100 active:scale-95"
+                                                                                                        className="w-7 h-7 flex items-center justify-center bg-slate-50 border border-slate-200/60 rounded-full text-slate-400 hover:text-slate-700 transition-all hover:bg-slate-100 active:scale-95 shadow-sm"
                                                                                                     title="Fiche participant"
                                                                                                 >
-                                                                                                    <span className="text-[11px] font-bold">ℹ️</span>
+                                                                                                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                                                                                <circle cx="12" cy="12" r="10" />
+                                                                                                                <line x1="12" y1="16" x2="12" y2="12" />
+                                                                                                                <line x1="12" y1="8" x2="12.01" y2="8" />
+                                                                                                            </svg>
                                                                                                 </button>
                                                                                             </div>
                                                                                         </div>
@@ -865,19 +872,26 @@ export default function GestionInscriptionsPage() {
 
                                                                                                 <span className="truncate text-xs tracking-tight text-slate-600 font-medium">
                                                                                                     {p.user_name}
-                                                                                                </span>
+                                                                                                    </span>
+                                                                                                    {hasWarning && (
+                                                                                                        <span title="Commande à régulariser" className="flex-shrink-0 w-4 h-4 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center text-[10px] font-bold border border-amber-200 shadow-sm cursor-help ml-1">!</span>
+                                                                                                    )}
                                                                                             </div>
                                                                                             
                                                                                             <div className="flex items-center gap-1.5">
-                                                                                                {hasWarning && (
-                                                                                                    <span title="Commande à régulariser" className="flex-shrink-0 w-4 h-4 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center text-[10px] font-bold border border-amber-200 shadow-sm cursor-help">!</span>
-                                                                                                )}
+
+
+
                                                                                                 <button 
                                                                                                     onClick={() => handleViewContact(p)}
-                                                                                                    className="w-7 h-7 flex items-center justify-center bg-slate-50 border border-slate-200/60 rounded-full text-slate-500 hover:text-slate-800 transition-all hover:bg-slate-100 active:scale-95"
+                                                                                                        className="w-7 h-7 flex items-center justify-center bg-slate-50 border border-slate-200/60 rounded-full text-slate-400 hover:text-slate-700 transition-all hover:bg-slate-100 active:scale-95 shadow-sm"
                                                                                                     title="Fiche participant"
                                                                                                 >
-                                                                                                    <span className="text-[11px] font-bold">ℹ️</span>
+                                                                                                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                                                                                <circle cx="12" cy="12" r="10" />
+                                                                                                                <line x1="12" y1="16" x2="12" y2="12" />
+                                                                                                                <line x1="12" y1="8" x2="12.01" y2="8" />
+                                                                                                            </svg>
                                                                                                 </button>
                                                                                             </div>
                                                                                         </div>
