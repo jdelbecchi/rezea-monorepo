@@ -708,7 +708,7 @@ export default function GestionInscriptionsPage() {
                                                                                             
                                                                                             <div className="flex items-center gap-1.5">
                                                                                                 {hasWarning && (
-                                                                                                    <span className="text-sm cursor-help" title="Commande à régulariser">⚠️</span>
+                                                                                                    <span title="Commande à régulariser" className="flex-shrink-0 w-4 h-4 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center text-[10px] font-bold border border-amber-200 shadow-sm cursor-help">!</span>
                                                                                                 )}
                                                                                                 <button 
                                                                                                     onClick={() => handleViewContact(p)}
@@ -870,7 +870,7 @@ export default function GestionInscriptionsPage() {
                                                                                             
                                                                                             <div className="flex items-center gap-1.5">
                                                                                                 {hasWarning && (
-                                                                                                    <span className="text-sm cursor-help" title="Commande à régulariser">⚠️</span>
+                                                                                                    <span title="Commande à régulariser" className="flex-shrink-0 w-4 h-4 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center text-[10px] font-bold border border-amber-200 shadow-sm cursor-help">!</span>
                                                                                                 )}
                                                                                                 <button 
                                                                                                     onClick={() => handleViewContact(p)}
