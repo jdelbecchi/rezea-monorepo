@@ -1405,7 +1405,7 @@ export default function AdminSettingsPage() {
                                                                 >
                                                                     <option value="none">Aucune (apparition statique)</option>
                                                                     <option value="fade">Fondu d'apparition (Fade-in)</option>
-                                                                    <option value="typewriter">Machine à écrire (Typewriter)</option>
+                                                                    <option value="scale">Zoom doux (Scale-in)</option>
                                                                     <option value="flash">Effet Flash subtil</option>
                                                                 </select>
                                                             </div>
@@ -1645,8 +1645,8 @@ export default function AdminSettingsPage() {
                                                                             } backdrop-blur-md px-4 py-2.5 rounded-2xl max-w-[90%] inline-flex flex-col gap-0.5 ${alignX}`}>
                                                                                 {formData.header_title && (
                                                                                     <h2 
-                                                                                        className={`text-xs md:text-sm font-bold tracking-tight ${
-                                                                                            animation === "fade" ? "anim-fade" : animation === "flash" ? "anim-flash" : animation === "typewriter" ? "anim-typewriter" : ""
+                                                                                        className={`text-[11px] md:text-xs font-medium tracking-tight ${
+                                                                                            animation === "fade" ? "anim-fade" : animation === "flash" ? "anim-flash" : animation === "scale" ? "anim-scale" : ""
                                                                                         }`}
                                                                                         style={{ color: formData.header_text_bg === "pill_dark" ? undefined : formData.header_text_color }}
                                                                                     >
@@ -1663,8 +1663,8 @@ export default function AdminSettingsPage() {
                                                                             <div className={`max-w-[90%] flex flex-col gap-0.5 ${alignX}`} style={{ color: formData.header_text_color || "#ffffff" }}>
                                                                                 {formData.header_title && (
                                                                                     <h2 
-                                                                                        className={`text-xs md:text-sm font-bold tracking-tight ${
-                                                                                            animation === "fade" ? "anim-fade" : animation === "flash" ? "anim-flash" : animation === "typewriter" ? "anim-typewriter" : ""
+                                                                                        className={`text-[11px] md:text-xs font-medium tracking-tight ${
+                                                                                            animation === "fade" ? "anim-fade" : animation === "flash" ? "anim-flash" : animation === "scale" ? "anim-scale" : ""
                                                                                         }`}
                                                                                     >
                                                                                         {formData.header_title}

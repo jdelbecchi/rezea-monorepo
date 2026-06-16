@@ -456,6 +456,79 @@ export default function AdminDashboardPage() {
         return Object.values(currentSegments).reduce((a: any, b: any) => a + b, 0) as number;
     }, [currentSegments]);
 
+    // Calcul des dérives de consommation de crédits
+    const creditDriftStats = useMemo(() => {
+        const overConsuming: any[] = [];
+        const underConsuming: any[] = [];
+        const today = new Date();
+
+        currentOrders.forEach(o => {
+            // Uniquement les formules actives avec crédits finis et durée finie
+            if (
+                o.status !== 'active' || 
+                o.is_unlimited || 
+                !o.credits_total || 
+                o.credits_total <= 0 || 
+                !o.end_date || 
+                o.is_validity_unlimited
+            ) {
+                return;
+            }
+
+            const startDate = new Date(o.start_date);
+            const endDate = new Date(o.end_date);
+            const totalDurationMs = endDate.getTime() - startDate.getTime();
+            if (totalDurationMs <= 0) return;
+
+            const elapsedMs = today.getTime() - startDate.getTime();
+            const elapsedDays = elapsedMs / (1000 * 60 * 60 * 24);
+            const progressTime = elapsedMs / totalDurationMs;
+
+            // Garde-fou de 30 jours écoulés OU au moins 10% de la période écoulée
+            if (elapsedDays < 30 && progressTime < 0.10) {
+                return;
+            }
+
+            const creditsUsed = o.credits_used || 0;
+            const progressConso = creditsUsed / o.credits_total;
+
+            // Dérive = Avancement conso - Avancement temps
+            const driftScore = progressConso - progressTime;
+            const driftPercent = Math.round(driftScore * 100);
+
+            const remainingDays = Math.max(0, Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
+            const balance = Math.max(0, o.credits_total - creditsUsed);
+
+            const item = {
+                orderId: o.id,
+                userName: o.user_name || "Membre",
+                userEmail: o.user_email || "",
+                offerName: o.offer_name || o.offer_snap_name || "Formule",
+                creditsTotal: o.credits_total,
+                creditsUsed: creditsUsed,
+                balance: balance,
+                elapsedDays: Math.round(elapsedDays),
+                remainingDays: remainingDays,
+                progressTime: Math.round(progressTime * 100),
+                progressConso: Math.round(progressConso * 100),
+                driftPercent: driftPercent,
+            };
+
+            // Attribution aux groupes (Seuil de dérive de +/- 15%)
+            if (driftPercent >= 15) {
+                overConsuming.push(item);
+            } else if (driftPercent <= -15) {
+                underConsuming.push(item);
+            }
+        });
+
+        // Tri des dérives (surconsommation décroissante, sous-consommation croissante)
+        overConsuming.sort((a, b) => b.driftPercent - a.driftPercent);
+        underConsuming.sort((a, b) => a.driftPercent - b.driftPercent);
+
+        return { overConsuming, underConsuming };
+    }, [currentOrders]);
+
     const primaryColor = tenant?.primary_color || "#2563eb";
 
     if (loading) {
@@ -847,6 +920,130 @@ export default function AdminDashboardPage() {
                                         </div>
                                     )}
                                 </div>
+                            </section>
+
+                        </div>
+                    </div>
+
+                    {/* Suivi de la consommation des crédits */}
+                    <div className="space-y-4">
+                        <h2 className="text-xs font-medium text-slate-400 uppercase tracking-widest px-1">Suivi de la consommation des crédits</h2>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            
+                            {/* Table Surconsommation */}
+                            <section className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col">
+                                <div className="space-y-2 mb-6">
+                                    <h3 className="text-xs font-semibold text-rose-600 uppercase tracking-wider flex items-center gap-2">
+                                        <span>🚨</span> Surconsommation de crédits ({creditDriftStats.overConsuming.length})
+                                    </h3>
+                                    <p className="text-[11px] text-slate-400 font-medium">
+                                        Membres consommant plus rapidement que prévu (dérive &ge; +15%)
+                                    </p>
+                                </div>
+
+                                {creditDriftStats.overConsuming.length === 0 ? (
+                                    <div className="flex-1 flex flex-col items-center justify-center text-slate-400 italic text-xs py-8">
+                                        Aucun membre en surconsommation notable
+                                    </div>
+                                ) : (
+                                    <div className="flex-1 overflow-x-auto">
+                                        <table className="w-full text-left">
+                                            <thead>
+                                                <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                    <th className="py-2">Membre / Offre</th>
+                                                    <th className="py-2 text-center">Crédits</th>
+                                                    <th className="py-2 text-center">Temps écoulé</th>
+                                                    <th className="py-2 text-right">Dérive</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {creditDriftStats.overConsuming.map((item) => (
+                                                    <tr key={item.orderId} className="text-xs group hover:bg-slate-50 transition-colors">
+                                                        <td className="py-3">
+                                                            <p className="font-semibold text-slate-800">{item.userName}</p>
+                                                            <p className="text-[10px] text-slate-450 truncate max-w-[150px]">{item.offerName}</p>
+                                                        </td>
+                                                        <td className="py-3 text-center">
+                                                            <p className="font-bold text-slate-700">{item.balance} / {item.creditsTotal}</p>
+                                                            <p className="text-[10px] text-slate-400">Restants ({100 - item.progressConso}%)</p>
+                                                        </td>
+                                                        <td className="py-3 text-center text-slate-600">
+                                                            <p className="font-semibold">{item.progressTime}%</p>
+                                                            <p className="text-[10px] text-slate-400">{item.remainingDays}j restants</p>
+                                                        </td>
+                                                        <td className="py-3 text-right">
+                                                            <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                                                                item.driftPercent >= 30 
+                                                                    ? "bg-rose-50 text-rose-700 border border-rose-100" 
+                                                                    : "bg-orange-50 text-orange-700 border border-orange-100"
+                                                            }`}>
+                                                                +{item.driftPercent}%
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </section>
+
+                            {/* Table Sous-consommation */}
+                            <section className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col">
+                                <div className="space-y-2 mb-6">
+                                    <h3 className="text-xs font-semibold text-blue-600 uppercase tracking-wider flex items-center gap-2">
+                                        <span>📉</span> Sous-consommation / Risque d&apos;inactivité ({creditDriftStats.underConsuming.length})
+                                    </h3>
+                                    <p className="text-[11px] text-slate-400 font-medium">
+                                        Membres sous-utilisant leur forfait (dérive &le; -15%)
+                                    </p>
+                                </div>
+
+                                {creditDriftStats.underConsuming.length === 0 ? (
+                                    <div className="flex-1 flex flex-col items-center justify-center text-slate-400 italic text-xs py-8">
+                                        Aucun membre en sous-consommation notable
+                                    </div>
+                                ) : (
+                                    <div className="flex-1 overflow-x-auto">
+                                        <table className="w-full text-left">
+                                            <thead>
+                                                <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                    <th className="py-2">Membre / Offre</th>
+                                                    <th className="py-2 text-center">Crédits</th>
+                                                    <th className="py-2 text-center">Temps écoulé</th>
+                                                    <th className="py-2 text-right">Dérive</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {creditDriftStats.underConsuming.map((item) => (
+                                                    <tr key={item.orderId} className="text-xs group hover:bg-slate-50 transition-colors">
+                                                        <td className="py-3">
+                                                            <p className="font-semibold text-slate-800">{item.userName}</p>
+                                                            <p className="text-[10px] text-slate-450 truncate max-w-[150px]">{item.offerName}</p>
+                                                        </td>
+                                                        <td className="py-3 text-center">
+                                                            <p className="font-bold text-slate-700">{item.balance} / {item.creditsTotal}</p>
+                                                            <p className="text-[10px] text-slate-400">Restants ({100 - item.progressConso}%)</p>
+                                                        </td>
+                                                        <td className="py-3 text-center text-slate-600">
+                                                            <p className="font-semibold">{item.progressTime}%</p>
+                                                            <p className="text-[10px] text-slate-400">{item.remainingDays}j restants</p>
+                                                        </td>
+                                                        <td className="py-3 text-right">
+                                                            <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                                                                item.driftPercent <= -30 
+                                                                    ? "bg-indigo-50 text-indigo-700 border border-indigo-100" 
+                                                                    : "bg-blue-50 text-blue-700 border border-blue-100"
+                                                            }`}>
+                                                                {item.driftPercent}%
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
                             </section>
 
                         </div>

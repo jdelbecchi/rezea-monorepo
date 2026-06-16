@@ -260,36 +260,20 @@ export default function MemberOrdersPage() {
         <div className="flex flex-col md:flex-row min-h-screen bg-white pb-20 md:pb-0 overflow-x-hidden">
             {isAdminMode && <Sidebar user={user} tenant={tenant} />}
             
-            {/* PWA Mobile Header - Reduced Height and Tight Spacing */}
-            {!isAdminMode && (
-                <header className="fixed top-0 left-0 right-0 h-14 bg-white/80 backdrop-blur-lg border-b border-slate-100 flex items-center px-4 z-40 md:hidden safe-top shadow-sm">
-                    <Link href={`/${slug}/home`} className="flex items-center gap-2 group text-slate-400 active:scale-95 transition-all">
-                        <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 ml-0.5" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        <span className="text-[13px] font-medium leading-none">Retour</span>
-                    </Link>
-                </header>
-            )}
-
-            <main className={`flex-1 px-5 pb-5 md:p-12 ${!isAdminMode ? 'pt-16 md:pt-14' : ''}`}>
+            <main className={`flex-1 px-5 pb-5 md:p-12 pt-4 md:pt-12`}>
                 <div className="max-w-4xl mx-auto">
-                    {/* Desktop Header with Back Button */}
-                    {!isAdminMode && (
-                        <div className="hidden md:flex items-center gap-2 mb-10">
-                            <Link href={`/${slug}/home`} className="flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-slate-800 transition-colors group">
-                                <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 transition-transform group-hover:-translate-x-1" xmlns="http://www.w3.org/2000/svg">
+                    <header className="flex items-center justify-between pb-3 border-b border-slate-200 mb-6 gap-4">
+                        <h1 className="text-lg md:text-xl font-medium text-slate-900 tracking-tight flex items-center gap-2">
+                            <span className="text-xl md:text-2xl">📋</span> Mes commandes
+                        </h1>
+                        {!isAdminMode && (
+                            <Link href={`/${slug}/home`} className="flex items-center gap-1 text-[10px] md:text-xs font-medium text-slate-400 hover:text-slate-800 transition-colors group border border-slate-200 rounded-full px-2.5 py-1 hover:border-slate-300">
+                                <svg viewBox="0 0 24 24" fill="none" className="w-3 h-3 transition-transform group-hover:-translate-x-0.5" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                                 </svg>
-                                <span className="leading-none">Retour</span>
+                                <span>Retour</span>
                             </Link>
-                        </div>
-                    )}
-                    <header className="px-1 space-y-1 mb-8">
-                        <h1 className="text-xl md:text-2xl font-medium text-slate-900 tracking-tight flex items-center gap-2">
-                            <span className="text-2xl md:text-3xl">📋</span> Mes commandes
-                        </h1>
-                        <p className="text-slate-500 font-medium text-[11px] md:text-xs">Historique de vos achats</p>
+                        )}
                     </header>
 
                     {/* Tab Switcher */}
@@ -327,19 +311,21 @@ export default function MemberOrdersPage() {
                     </div>
 
                     {(activeTab === 'offers' ? orders.length : registrations.length) === 0 ? (
-                        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 md:p-16 text-center space-y-4">
-                            <div className="text-6xl">{activeTab === 'offers' ? '🛍️' : '🎫'}</div>
-                            <h2 className="text-2xl font-semibold text-slate-900">
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-10 text-center space-y-3">
+                            <div className="text-4xl">{activeTab === 'offers' ? '🛍️' : '🎫'}</div>
+                            <h2 className="text-base font-semibold text-slate-900">
                                 {activeTab === 'offers' ? "Vous n'avez pas encore de commande" : "Vous n'êtes inscrit à aucun événement"}
                             </h2>
-                            <p className="text-slate-500 max-w-xs mx-auto">
+                            <p className="text-xs text-slate-500 max-w-xs mx-auto">
                                 {activeTab === 'offers' 
                                     ? "Parcourez notre boutique pour découvrir nos offres et forfaits." 
                                     : "Consultez notre planning pour découvrir les événements à venir."}
                             </p>
-                            <Link href={activeTab === 'offers' ? `/${slug}/credits` : `/${slug}/planning`} className="inline-block mt-4 px-8 py-3 bg-blue-600 text-white font-medium rounded-2xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100">
-                                {activeTab === 'offers' ? "Aller à la Boutique" : "Voir le Planning"}
-                            </Link>
+                            {activeTab === 'offers' && (
+                                <Link href={`/${slug}/credits`} className="inline-block mt-2 px-6 py-2 bg-slate-900 text-white text-xs font-medium rounded-xl hover:bg-slate-800 transition-all shadow-lg active:scale-95">
+                                    Aller à la Boutique
+                                </Link>
+                            )}
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 gap-4">
@@ -389,7 +375,7 @@ export default function MemberOrdersPage() {
                                                     <div className="flex items-center gap-2 px-1">
                                                         <span className="text-sm">⌛</span>
                                                         <p className="text-xs text-slate-600 font-medium tracking-tight">Fin de validité :</p>
-                                                        <p className={`text-sm font-bold tracking-tight ${order.is_validity_unlimited ? 'text-emerald-600' : 'text-slate-900'}`}>
+                                                        <p className={`text-sm font-semibold tracking-tight ${order.is_validity_unlimited ? 'text-emerald-600' : 'text-slate-900'}`}>
                                                             {order.is_validity_unlimited ? 'Illimitée' : (order.end_date ? new Date(order.end_date).toLocaleDateString("fr-FR") : "N/A")}
                                                         </p>
                                                     </div>
@@ -532,7 +518,7 @@ export default function MemberOrdersPage() {
             {/* Detail Modal */}
             {showInfoModal && selectedOrder && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-300">
-                   <div className="bg-white rounded-[2.5rem] w-full max-w-sm overflow-hidden shadow-2xl border border-white animate-in zoom-in duration-300 p-8 md:p-10 relative">
+                   <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl border border-white animate-in zoom-in duration-300 p-8 md:p-10 relative">
                       {/* Decorative elements */}
                       <div 
                         className="absolute top-0 right-0 w-32 h-32 opacity-10 rounded-full -mr-16 -mt-16"
@@ -540,7 +526,7 @@ export default function MemberOrdersPage() {
                       />
                       
                       <div className="text-center relative z-10">
-                         <h2 className="text-xl md:text-2xl font-bold text-slate-900 mb-2 tracking-tight capitalize">
+                         <h2 className="text-xl md:text-2xl font-semibold text-slate-900 mb-2 tracking-tight capitalize">
                              {selectedOrder.offer_snap_name || selectedOrder.offer_name}
                          </h2>
                          <p className="text-xs text-slate-600 font-medium leading-relaxed mb-8 max-w-[280px] mx-auto">

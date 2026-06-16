@@ -343,26 +343,18 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                     0%, 100% { opacity: 1; transform: scale(1); }
                     50% { opacity: 0.92; transform: scale(1.01); }
                 }
-                @keyframes typewriter {
-                    from { max-width: 0; }
-                    to { max-width: 100%; }
-                }
-                @keyframes blink {
-                    from, to { border-color: transparent }
-                    50% { border-color: currentColor }
+                @keyframes scaleIn {
+                    from { opacity: 0; transform: scale(0.96); }
+                    to { opacity: 1; transform: scale(1); }
                 }
                 .anim-fade { 
                     opacity: 0;
                     animation: fadeIn 0.8s ease-out forwards; 
                 }
                 .anim-flash { animation: flashGlow 2.5s ease-in-out infinite; }
-                .anim-typewriter { 
-                    display: inline-block;
-                    overflow: hidden;
-                    white-space: nowrap;
-                    border-right: 2px solid;
-                    max-width: 0;
-                    animation: typewriter 2s steps(25, end) forwards, blink 0.75s step-end infinite;
+                .anim-scale { 
+                    opacity: 0;
+                    animation: scaleIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
                 }
                 .no-scrollbar::-webkit-scrollbar { display: none; }
                 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -401,8 +393,8 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                                     } backdrop-blur-md px-6 py-4 rounded-3xl max-w-[90%] inline-flex flex-col gap-1 ${alignX}`}>
                                         {tenantSettings.header_title && (
                                             <h2 
-                                                className={`text-lg md:text-xl font-semibold tracking-tight ${
-                                                    animation === "fade" ? "anim-fade" : animation === "flash" ? "anim-flash" : animation === "typewriter" ? "anim-typewriter" : ""
+                                                className={`text-base md:text-lg font-medium tracking-tight ${
+                                                    animation === "fade" ? "anim-fade" : animation === "flash" ? "anim-flash" : animation === "scale" ? "anim-scale" : ""
                                                 }`}
                                                 style={{ color: tenantSettings.header_text_bg === "pill_dark" ? undefined : tenantSettings.header_text_color }}
                                             >
@@ -411,7 +403,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                                         )}
                                         {tenantSettings.header_subtitle && (
                                             <p className={`text-xs md:text-sm font-medium opacity-90 ${
-                                                animation === "fade" ? "anim-fade" : animation === "flash" ? "anim-flash" : animation === "typewriter" ? "anim-typewriter" : ""
+                                                animation === "fade" ? "anim-fade" : animation === "flash" ? "anim-flash" : animation === "scale" ? "anim-scale" : ""
                                             }`}>
                                                 {tenantSettings.header_subtitle}
                                             </p>
@@ -421,8 +413,8 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                                     <div className={`max-w-[90%] flex flex-col gap-1 ${alignX}`} style={{ color: tenantSettings.header_text_color || "#ffffff" }}>
                                         {tenantSettings.header_title && (
                                             <h2 
-                                                className={`text-lg md:text-xl font-semibold tracking-tight ${
-                                                    animation === "fade" ? "anim-fade" : animation === "flash" ? "anim-flash" : animation === "typewriter" ? "anim-typewriter" : ""
+                                                className={`text-base md:text-lg font-medium tracking-tight ${
+                                                    animation === "fade" ? "anim-fade" : animation === "flash" ? "anim-flash" : animation === "scale" ? "anim-scale" : ""
                                                 }`}
                                             >
                                                 {tenantSettings.header_title}
@@ -430,7 +422,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                                         )}
                                         {tenantSettings.header_subtitle && (
                                             <p className={`text-xs md:text-sm font-medium opacity-90 ${
-                                                animation === "fade" ? "anim-fade" : animation === "flash" ? "anim-flash" : animation === "typewriter" ? "anim-typewriter" : ""
+                                                animation === "fade" ? "anim-fade" : animation === "flash" ? "anim-flash" : animation === "scale" ? "anim-scale" : ""
                                             }`}>
                                                 {tenantSettings.header_subtitle}
                                             </p>

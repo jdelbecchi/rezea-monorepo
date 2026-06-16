@@ -44,6 +44,7 @@ export default function GestionInscriptionsPage() {
     // Modals & UX
     const [expandedIds, setExpandedIds] = useState<string[]>([]);
     const [showEditSessionModal, setShowEditSessionModal] = useState(false);
+    const [showCancelConfirmModal, setShowCancelConfirmModal] = useState(false);
     const [confirmingSessionId, setConfirmingSessionId] = useState<string | null>(null);
     const [confirmingReactivateId, setConfirmingReactivateId] = useState<string | null>(null);
     const [restorationErrorUsers, setRestorationErrorUsers] = useState<string[] | null>(null);
@@ -270,14 +271,13 @@ export default function GestionInscriptionsPage() {
 
     const handleCancelSessionFromModal = async () => {
         if (!selectedItem || !selectedItem.data) return;
-        if (window.confirm("Êtes-vous sûr de vouloir annuler cette séance ? Les inscriptions liées seront également annulées.")) {
-            try {
-                await api.cancelSession(selectedItem.data.id);
-                setShowEditSessionModal(false);
-                await loadMonthData(currentMonth);
-            } catch (err) {
-                alert("Erreur lors de l'annulation");
-            }
+        try {
+            await api.cancelSession(selectedItem.data.id);
+            setShowCancelConfirmModal(false);
+            setShowEditSessionModal(false);
+            await loadMonthData(currentMonth);
+        } catch (err) {
+            alert("Erreur lors de l'annulation");
         }
     };
 
@@ -546,8 +546,8 @@ export default function GestionInscriptionsPage() {
                                                 }}
                                             >
                                                 {/* Entête Séance */}
-                                                <div className="p-3 md:p-4">
-                                                    <div className={`flex flex-col gap-1 min-w-0 flex-1 ${session.is_active === false ? 'opacity-50' : ''}`}>
+                                                <div className="p-4 md:p-5">
+                                                    <div className={`flex flex-col gap-1.5 min-w-0 flex-1 ${session.is_active === false ? 'opacity-50' : ''}`}>
                                                          {/* Ligne 1: Heure + Titre + Actions */}
                                                          <div className="flex items-center justify-between gap-3 w-full">
                                                              <div className="flex items-center gap-3 min-w-0">
@@ -602,7 +602,7 @@ export default function GestionInscriptionsPage() {
                                                          </div>
 
                                                          {/* Ligne 2: Attribution + Salle */}
-                                                         <div className="flex items-center justify-between gap-4 w-full mt-0.5">
+                                                         <div className="flex items-center justify-between gap-4 w-full mt-1">
                                                              <div className="flex items-center gap-2 text-slate-500 text-xs font-normal min-w-0">
                                                                  <div className="flex items-center gap-1.5 truncate">
                                                                      <svg className="w-4 h-4 flex-shrink-0 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -622,7 +622,7 @@ export default function GestionInscriptionsPage() {
                                                          </div>
  
                                                         {/* Ligne 3: Inscriptions + Voir les participants (Hors du bloc d'opacité) */}
-                                                        <div className="flex items-center justify-between gap-4 w-full mt-0.5">
+                                                        <div className="flex items-center justify-between gap-4 w-full mt-1">
                                                                 <div className="flex items-center gap-3">
                                                                     {(() => {
                                                                         const current = session.current_participants ?? 0;
@@ -677,44 +677,44 @@ export default function GestionInscriptionsPage() {
                                                             {loadingParticipants ? (
                                                                 <div className="py-8 text-center text-slate-300 font-medium text-[11px] animate-pulse tracking-widest">Récupération des inscrits...</div>
                                                             ) : (
-                                                                <>
-                                                                    {participants.length === 0 ? (
-                                                                        <div className="py-8 text-center text-slate-300 text-[10px] font-medium italic">Aucun inscrit pour le moment.</div>
-                                                                    ) : (
-                                                                        <div className="space-y-1.5">
-                                                                            {participants
-                                                                                .filter(p => p.status !== 'cancelled' && p.status !== 'session_cancelled' && p.status !== 'pending' && (p as any).status !== 'waiting_list')
-                                                                                .sort((a,b) => (a.user_name || '').localeCompare(b.user_name || ''))
-                                                                                .map((p) => {
-                                                                                    const hasWarning = p.has_pending_order;
-                                                                                    const isAbsent = p.status === 'absent';
-                                                                                    
-                                                                                    return (
-                                                                                        <div key={p.id} className="bg-white rounded-2xl border border-slate-100/50 p-2 pl-3 flex items-center justify-between group/p">
-                                                                                            <div className="flex items-center gap-3 min-w-0">
-                                                                                                {/* Appel (Présence) */}
-                                                                                                <button 
-                                                                                                    onClick={() => handleMarkAbsent(p, 'session')}
-                                                                                                    className={`w-7 h-7 flex items-center justify-center rounded-full transition-all active:scale-95 ${isAbsent ? 'opacity-30 grayscale' : ''}`}
-                                                                                                    title={isAbsent ? "Marquer présent" : "Signaler absent"}
-                                                                                                >
-                                                                                                    <span className="text-xs">✅</span>
-                                                                                                </button>
-
-                                                                                                <button type="button" onClick={() => handleViewContact(p)} className="truncate text-xs tracking-tight text-slate-600 font-medium flex items-center gap-1.5 min-w-0 max-w-full hover:text-slate-900 hover:underline transition-colors text-left" title="Voir la fiche participant">
-                                                                                                    <span className="truncate">{p.user_name}</span>
-                                                                                                    {hasWarning && (
-                                                                                                        <span title="Commande à régulariser" className="flex-shrink-0 w-4 h-4 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center text-[10px] font-bold border border-amber-200 shadow-sm cursor-help">!</span>
-                                                                                                    )}
-                                                                                                </button>
+                                                                    <>
+                                                                        {participants.length === 0 ? (
+                                                                            <div className="py-8 text-center text-slate-300 text-[10px] font-medium italic">Aucun inscrit pour le moment.</div>
+                                                                        ) : (
+                                                                            <div className="space-y-0.5">
+                                                                                {participants
+                                                                                    .filter(p => p.status !== 'cancelled' && p.status !== 'session_cancelled' && p.status !== 'pending' && (p as any).status !== 'waiting_list')
+                                                                                    .sort((a,b) => (a.user_name || '').localeCompare(b.user_name || ''))
+                                                                                    .map((p) => {
+                                                                                        const hasWarning = p.has_pending_order;
+                                                                                        const isAbsent = p.status === 'absent';
+                                                                                        
+                                                                                        return (
+                                                                                            <div key={p.id} className="flex items-center justify-between py-1 px-2 hover:bg-white/80 rounded-xl transition-all group/p">
+                                                                                                <div className="flex items-center gap-3 min-w-0">
+                                                                                                    {/* Appel (Présence) */}
+                                                                                                    <button 
+                                                                                                        onClick={() => handleMarkAbsent(p, 'session')}
+                                                                                                        className={`w-7 h-7 flex items-center justify-center rounded-full transition-all active:scale-95 ${isAbsent ? 'opacity-30 grayscale' : ''}`}
+                                                                                                        title={isAbsent ? "Marquer présent" : "Signaler absent"}
+                                                                                                    >
+                                                                                                        <span className="text-xs">✅</span>
+                                                                                                    </button>
+ 
+                                                                                                    <button type="button" onClick={() => handleViewContact(p)} className="truncate text-xs tracking-tight text-slate-600 font-medium flex items-center gap-1.5 min-w-0 max-w-full hover:text-slate-900 hover:underline transition-colors text-left" title="Voir la fiche participant">
+                                                                                                        <span className="truncate">{p.user_name}</span>
+                                                                                                        {hasWarning && (
+                                                                                                            <span title="Commande à régulariser" className="flex-shrink-0 w-4 h-4 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center text-[10px] font-bold border border-amber-200 shadow-sm cursor-help">!</span>
+                                                                                                        )}
+                                                                                                    </button>
+                                                                                                </div>
+                                                                                                
                                                                                             </div>
-                                                                                            
-                                                                                        </div>
-                                                                                    );
-                                                                                })}
-                                                                        </div>
-                                                                    )}
-                                                                </>
+                                                                                        );
+                                                                                    })}
+                                                                            </div>
+                                                                        )}
+                                                                    </>
                                                             )}
                                                         </div>
                                                     </div>
@@ -739,26 +739,34 @@ export default function GestionInscriptionsPage() {
                                                 }}
                                             >
                                                 {/* Entête Événement */}
-                                                <div className="p-3 md:p-4">
-                                                    <div className="flex flex-col gap-1 min-w-0 flex-1">
-                                                        {/* Ligne 1: Heure + Titre */}
-                                                        <div className="flex items-center gap-3 min-w-0">
-                                                            <span className="text-slate-900 font-semibold text-sm md:text-base shrink-0">
-                                                                {event.event_time}
-                                                            </span>
-                                                            <div className="flex items-center gap-1.5 min-w-0">
-                                                                <span className="text-sm shrink-0">✨</span>
-                                                                <h4 className="font-medium text-sm md:text-base text-slate-800 first-letter:uppercase leading-tight">
-                                                                    {event.title}
-                                                                </h4>
+                                                <div className="p-4 md:p-5">
+                                                    <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+                                                        {/* Ligne 1: Heure + Titre + Actions (aligné sur les séances) */}
+                                                        <div className="flex items-center justify-between gap-3 w-full">
+                                                            <div className="flex items-center gap-3 min-w-0">
+                                                                <span className="text-slate-900 font-semibold text-sm md:text-base shrink-0">
+                                                                    {event.event_time}
+                                                                </span>
+                                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                                    <span className="text-sm shrink-0">✨</span>
+                                                                    <h4 className="font-medium text-sm md:text-base text-slate-800 first-letter:uppercase leading-tight">
+                                                                        {event.title}
+                                                                    </h4>
+                                                                </div>
+                                                            </div>
+                                                            {/* Bouton fantôme pour occuper le même espace vertical que le bouton de modification des séances */}
+                                                            <div className="flex items-center shrink-0 opacity-0 pointer-events-none select-none">
+                                                                <div className="p-1">
+                                                                    <span className="text-sm">✏️</span>
+                                                                </div>
                                                             </div>
                                                         </div>
-
+ 
                                                         {/* Ligne 2: Attribution + Salle */}
-                                                        <div className="flex items-center justify-between gap-4 w-full mt-0.5">
-                                                            <div className="flex items-center gap-2 text-slate-600 text-sm font-normal min-w-0">
+                                                        <div className="flex items-center justify-between gap-4 w-full mt-1">
+                                                            <div className="flex items-center gap-2 text-slate-500 text-xs font-normal min-w-0">
                                                                 <div className="flex items-center gap-1.5 truncate">
-                                                                    <svg className="w-5 h-5 flex-shrink-0 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <svg className="w-4 h-4 flex-shrink-0 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                                                     </svg>
                                                                     <span className="truncate">{event.instructor_name || "Staff"}</span>
@@ -767,15 +775,14 @@ export default function GestionInscriptionsPage() {
                                                                     <>
                                                                         <span className="text-slate-300">•</span>
                                                                         <span className="truncate flex items-center gap-1">
-                                                                            <span className="text-base opacity-60">📍</span> {event.location}
+                                                                            <span className="text-xs opacity-60">📍</span> {event.location}
                                                                         </span>
                                                                     </>
                                                                 )}
                                                             </div>
-                                                            {/* Pas de boutons d'action d'administration pour les évènements pour le moment */}
                                                         </div>
 
-                                                        <div className="flex items-center justify-between gap-4 w-full">
+                                                        <div className="flex items-center justify-between gap-4 w-full mt-1">
                                                                 <div className="flex items-center gap-3">
                                                                     {(() => {
                                                                         const current = event.registrations_count ?? 0;
@@ -834,7 +841,7 @@ export default function GestionInscriptionsPage() {
                                                                     {participants.length === 0 ? (
                                                                         <div className="py-8 text-center text-slate-300 text-[10px] font-medium italic">Aucun inscrit pour le moment.</div>
                                                                     ) : (
-                                                                        <div className="space-y-1.5">
+                                                                        <div className="space-y-0.5">
                                                                             {participants
                                                                                 .filter(p => p.status !== 'cancelled' && p.status !== 'session_cancelled' && p.status !== 'pending' && (p as any).status !== 'waiting_list')
                                                                                 .sort((a,b) => (a.user_name || '').localeCompare(b.user_name || ''))
@@ -843,7 +850,7 @@ export default function GestionInscriptionsPage() {
                                                                                     const isAbsent = p.status === 'absent';
                                                                                     
                                                                                     return (
-                                                                                        <div key={p.id} className="bg-white rounded-2xl border border-slate-100/50 p-2 pl-3 flex items-center justify-between group/p">
+                                                                                        <div key={p.id} className="flex items-center justify-between py-1 px-2 hover:bg-white/80 rounded-xl transition-all group/p">
                                                                                             <div className="flex items-center gap-3 min-w-0">
                                                                                                 {/* Appel (Présence) */}
                                                                                                 <button 
@@ -853,7 +860,7 @@ export default function GestionInscriptionsPage() {
                                                                                                 >
                                                                                                     <span className="text-xs">✅</span>
                                                                                                 </button>
-
+ 
                                                                                                 <button type="button" onClick={() => handleViewContact(p)} className="truncate text-xs tracking-tight text-slate-600 font-medium flex items-center gap-1.5 min-w-0 max-w-full hover:text-slate-900 hover:underline transition-colors text-left" title="Voir la fiche participant">
                                                                                                     <span className="truncate">{p.user_name}</span>
                                                                                                     {hasWarning && (
@@ -885,59 +892,51 @@ export default function GestionInscriptionsPage() {
             {showEditSessionModal && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/80"
                      style={{ '--primary': tenant?.primary_color || '#6366f1' } as any}>
-                    <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 p-1">
-                        <form onSubmit={handleUpdateSession} className="p-6 md:p-10">
-                            <div className="flex justify-between items-start mb-6">
-                                <div>
-                                    <h2 className="text-xl md:text-2xl font-medium text-slate-900 tracking-tight">Modifier la séance</h2>
-                                </div>
-                                <button 
-                                    onClick={() => setShowEditSessionModal(false)}
-                                    className="w-10 h-10 bg-slate-50 hover:bg-slate-100 text-slate-400 rounded-full flex items-center justify-center transition-colors -mt-2 -mr-2"
-                                >
-                                    ✕
-                                </button>
+                    <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 p-1">
+                        <form onSubmit={handleUpdateSession} className="p-5 md:p-6">
+                            <div className="mb-4">
+                                <h2 className="text-lg md:text-xl font-semibold text-slate-900 tracking-tight">Modifier la séance</h2>
                             </div>
 
-                            <div className="space-y-4 mb-8">
+                            <div className="space-y-3 mb-5">
 
                                 <div>
-                                    <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1.5 px-1">Intitulé</label>
+                                    <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1 px-1">Intitulé</label>
                                     <input 
                                         type="text" 
                                         required
                                         value={editFormData.title}
                                         onChange={(e) => setEditFormData({...editFormData, title: e.target.value})}
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all placeholder:text-slate-300 text-sm"
+                                        className="w-full bg-transparent border border-slate-200 rounded-xl p-2.5 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all placeholder:text-slate-300 text-sm"
                                     />
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1.5 px-1">Date</label>
+                                        <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1 px-1">Date</label>
                                         <input 
                                             type="date" 
                                             required
                                             value={editFormData.date}
                                             onChange={(e) => setEditFormData({...editFormData, date: e.target.value})}
-                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-sm"
+                                            className="w-full bg-transparent border border-slate-200 rounded-xl p-2.5 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-sm"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1.5 px-1">Heure de début</label>
+                                        <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1 px-1">Heure de début</label>
                                         <input 
                                             type="time" 
                                             required
                                             value={editFormData.time}
                                             onChange={(e) => setEditFormData({...editFormData, time: e.target.value})}
-                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-sm"
+                                            className="w-full bg-transparent border border-slate-200 rounded-xl p-2.5 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-sm"
                                         />
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1.5 px-1">Durée</label>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1 px-1">Durée</label>
+                                    <div className="grid grid-cols-2 gap-3">
                                         <div className="relative">
                                             <input 
                                                 type="number" 
@@ -945,7 +944,7 @@ export default function GestionInscriptionsPage() {
                                                 required
                                                 value={editFormData.duration_h}
                                                 onChange={(e) => setEditFormData({...editFormData, duration_h: parseInt(e.target.value) || 0})}
-                                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-sm pr-8"
+                                                className="w-full bg-transparent border border-slate-200 rounded-xl p-2.5 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-sm pr-8"
                                             />
                                             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">hh</span>
                                         </div>
@@ -957,43 +956,43 @@ export default function GestionInscriptionsPage() {
                                                 required
                                                 value={editFormData.duration_m}
                                                 onChange={(e) => setEditFormData({...editFormData, duration_m: parseInt(e.target.value) || 0})}
-                                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-sm pr-8"
+                                                className="w-full bg-transparent border border-slate-200 rounded-xl p-2.5 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-sm pr-8"
                                             />
                                             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">mm</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1.5 px-1">Attribution</label>
+                                        <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1 px-1">Attribution</label>
                                         <input 
                                             type="text"
                                             placeholder="Coach" 
                                             value={editFormData.instructor_name}
                                             onChange={(e) => setEditFormData({...editFormData, instructor_name: e.target.value})}
-                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-sm"
+                                            className="w-full bg-transparent border border-slate-200 rounded-xl p-2.5 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-sm"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1.5 px-1">Capacité</label>
+                                        <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1 px-1">Capacité</label>
                                         <input 
                                             type="number" 
                                             required
                                             value={editFormData.max_participants}
                                             onChange={(e) => setEditFormData({...editFormData, max_participants: parseInt(e.target.value)})}
-                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-sm"
+                                            className="w-full bg-transparent border border-slate-200 rounded-xl p-2.5 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-sm"
                                         />
                                     </div>
                                 </div>
 
                                 <div className="relative">
-                                    <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-2 px-1">Lieu</label>
+                                    <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1 px-1">Lieu</label>
                                     <div className="relative">
                                         <button
                                             type="button"
                                             onClick={() => setIsLocationOpen(!isLocationOpen)}
-                                            className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-sm flex items-center justify-between"
+                                            className="w-full bg-transparent border border-slate-200 rounded-xl p-2.5 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-sm flex items-center justify-between"
                                         >
                                             <span className={!editFormData.location ? 'text-slate-400' : ''}>
                                                 {editFormData.location || "Sélectionner un lieu..."}
@@ -1006,9 +1005,9 @@ export default function GestionInscriptionsPage() {
                                         {isLocationOpen && (
                                             <>
                                                 <div className="fixed inset-0 z-[120]" onClick={() => setIsLocationOpen(false)}></div>
-                                                <div className="absolute left-0 right-0 top-full mt-2 bg-white border border-slate-100 rounded-2xl shadow-2xl z-[130] max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
+                                                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-2xl z-[130] max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
                                                     <div 
-                                                        className="p-4 hover:bg-slate-50 cursor-pointer text-sm text-slate-400 hover:text-slate-600 transition-colors border-b border-slate-50"
+                                                        className="p-3 hover:bg-slate-50 cursor-pointer text-sm text-slate-400 hover:text-slate-600 transition-colors border-b border-slate-100"
                                                         onClick={() => { setEditFormData({...editFormData, location: ""}); setIsLocationOpen(false); }}
                                                     >
                                                         Aucun lieu
@@ -1016,7 +1015,7 @@ export default function GestionInscriptionsPage() {
                                                     {tenant?.locations?.map((loc) => (
                                                         <div 
                                                             key={loc}
-                                                            className="p-4 hover:bg-slate-50 cursor-pointer text-sm font-medium flex items-center justify-between group transition-colors border-b border-slate-50 last:border-0"
+                                                            className="p-3 hover:bg-slate-50 cursor-pointer text-sm font-medium flex items-center justify-between group transition-colors border-b border-slate-100 last:border-0"
                                                             style={editFormData.location === loc ? { color: tenant?.primary_color } : {}}
                                                             onClick={() => { setEditFormData({...editFormData, location: loc}); setIsLocationOpen(false); }}
                                                         >
@@ -1027,14 +1026,14 @@ export default function GestionInscriptionsPage() {
                                                         </div>
                                                     ))}
                                                     {(!tenant?.locations || tenant.locations.length === 0) && (
-                                                        <div className="p-4">
+                                                        <div className="p-3">
                                                             <input 
                                                                 type="text" 
                                                                 placeholder="Saisir un lieu..."
                                                                 value={editFormData.location}
                                                                 autoFocus
                                                                 onChange={(e) => setEditFormData({...editFormData, location: e.target.value})}
-                                                                className="w-full bg-slate-50 border border-slate-100 rounded-xl p-3 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-xs"
+                                                                className="w-full bg-transparent border border-slate-200 rounded-xl p-2.5 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-xs"
                                                                 onKeyDown={(e) => e.key === 'Enter' && setIsLocationOpen(false)}
                                                             />
                                                         </div>
@@ -1046,18 +1045,18 @@ export default function GestionInscriptionsPage() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1.5 px-1">Description</label>
+                                    <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1 px-1">Description</label>
                                     <textarea 
                                         rows={2}
                                         value={editFormData.description}
                                         onChange={(e) => setEditFormData({...editFormData, description: e.target.value})}
-                                        className="w-full bg-slate-100/50 border border-slate-100 rounded-2xl p-4 text-slate-600 font-medium italic focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-xs"
+                                        className="w-full bg-transparent border border-slate-200 rounded-xl p-2.5 text-slate-600 font-medium italic focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-xs"
                                     />
                                 </div>
                             </div>
 
                             {modalParticipants.length > 0 && (
-                                <div className="flex items-center justify-between px-2 mb-8 mt-4 border-t border-slate-50 pt-6">
+                                <div className="flex items-center justify-between px-2 mb-5 mt-3 border-t border-slate-100 pt-4">
                                     <div className="flex flex-col">
                                         <span className="text-xs text-slate-400 italic">Envoyer un e-mail groupé</span>
                                         <label className="flex items-center gap-2 mt-1 cursor-pointer group">
@@ -1078,41 +1077,72 @@ export default function GestionInscriptionsPage() {
                                                 : modalParticipants.filter(p => p.status === 'confirmed' || p.status === 'absent');
                                             handleContactEmail(targets.map(p => p.user_id));
                                         }}
-                                        className="w-11 h-11 flex items-center justify-center rounded-full transition-all active:scale-95 shadow-md bg-white border border-slate-100 hover:bg-slate-50 text-[11px]"
+                                        className="w-9 h-9 flex items-center justify-center rounded-full transition-all active:scale-95 shadow-md bg-white border border-slate-100 hover:bg-slate-50 text-[11px]"
                                     >
-                                        <span className="text-xl">📧</span>
+                                        <span className="text-lg">📧</span>
                                     </button>
                                 </div>
                             )}
 
                             {selectedItem?.data?.is_active && (
-                                <div className="mb-6 pt-4 border-t border-slate-100 flex justify-center">
+                                <div className="mb-4 pt-3 border-t border-slate-100 flex justify-center">
                                     <button
                                         type="button"
-                                        onClick={handleCancelSessionFromModal}
-                                        className="py-2.5 px-4 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                                        onClick={() => setShowCancelConfirmModal(true)}
+                                        className="py-2 px-4 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
                                     >
                                         Annuler la séance
                                     </button>
                                 </div>
                             )}
 
-                            <div className="flex gap-4">
+                            <div className="flex gap-3">
                                 <button 
                                     type="button"
                                     onClick={() => setShowEditSessionModal(false)}
-                                    className="flex-1 py-4 bg-white text-black border border-slate-200 rounded-2xl font-medium hover:bg-slate-50 transition-all text-xs"
+                                    className="flex-1 py-3 bg-white text-black border border-slate-200 rounded-xl font-medium hover:bg-slate-50 transition-all text-xs"
                                 >
-                                    Annuler
+                                    Fermer
                                 </button>
                                 <button 
                                     type="submit"
-                                    className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-medium hover:bg-slate-800 shadow-xl shadow-slate-200 transition-all text-xs"
+                                    className="flex-1 py-3 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 shadow-xl shadow-slate-200 transition-all text-xs"
                                 >
                                     Enregistrer
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {showCancelConfirmModal && (
+                <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="absolute inset-0" onClick={() => setShowCancelConfirmModal(false)}></div>
+                    <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl border border-slate-100 p-6 relative z-10 animate-in zoom-in-95 duration-200 text-center">
+                        <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4 text-xl">
+                            ⚠️
+                        </div>
+                        <h3 className="text-base font-semibold text-slate-900 mb-2">Annuler la séance</h3>
+                        <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+                            Êtes-vous sûr de vouloir annuler cette séance ? Les inscriptions liées seront également annulées.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setShowCancelConfirmModal(false)}
+                                className="flex-1 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl font-medium hover:bg-slate-50 transition-all text-xs"
+                            >
+                                Non, retourner
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleCancelSessionFromModal}
+                                className="flex-1 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-xs"
+                            >
+                                Oui, annuler
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

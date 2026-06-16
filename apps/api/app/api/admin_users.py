@@ -385,6 +385,23 @@ async def get_user(
     # Attacher le segment marketing comportemental
     await attach_user_segments(db, tenant_id, [user])
 
+    # Calculer le nombre total de réservations passées
+    from app.models.models import Booking, BookingStatus, Session
+    from datetime import datetime
+    now_utc = datetime.utcnow()
+    past_bookings_stmt = (
+        select(func.count(Booking.id))
+        .join(Session, Booking.session_id == Session.id)
+        .where(
+            Booking.user_id == user_id,
+            Booking.tenant_id == tenant_id,
+            Booking.status.not_in([BookingStatus.CANCELLED, BookingStatus.SESSION_CANCELLED]),
+            Session.start_time <= now_utc
+        )
+    )
+    past_bookings_res = await db.execute(past_bookings_stmt)
+    user.past_bookings_count = past_bookings_res.scalar() or 0
+
     return user
 
 

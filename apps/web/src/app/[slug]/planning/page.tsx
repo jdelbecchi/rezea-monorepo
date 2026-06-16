@@ -280,40 +280,26 @@ export default function PlanningPage() {
     <div className="flex flex-col md:flex-row min-h-screen bg-white overflow-x-hidden pb-20 md:pb-0">
       {isAdminMode && <Sidebar user={user} tenant={tenant} />}
       
-      {!isAdminMode && (
-          <header className="fixed top-0 left-0 right-0 h-14 bg-white/80 backdrop-blur-lg border-b border-slate-100 flex items-center px-4 z-40 md:hidden safe-top shadow-sm">
-              <Link href={`/${slug}/home`} className="flex items-center gap-2 group text-slate-400 active:scale-95 transition-all">
-                  <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 ml-0.5" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <span className="text-[13px] font-medium leading-none">Retour</span>
-              </Link>
-          </header>
-      )}
-
-      <main className={`flex-1 px-5 pb-5 md:p-12 ${!isAdminMode ? 'pt-16 md:pt-14' : ''}`}>
+      <main className={`flex-1 px-5 pb-5 md:p-12 pt-4 md:pt-12`}>
         <div className="max-w-6xl mx-auto">
-          {!isAdminMode && (
-              <div className="hidden md:flex items-center gap-2 mb-10">
-                  <Link href={`/${slug}/home`} className="flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-slate-800 transition-colors group">
-                      <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 transition-transform group-hover:-translate-x-1" xmlns="http://www.w3.org/2000/svg">
+          <header className="flex items-center justify-between pb-3 border-b border-slate-200 mb-3 md:mb-4 gap-4">
+              <h1 className="text-lg md:text-xl font-medium text-slate-900 tracking-tight flex items-center gap-2">
+                  <span className="text-xl md:text-2xl">🗓️</span> Planning
+              </h1>
+              {!isAdminMode && (
+                  <Link href={`/${slug}/home`} className="flex items-center gap-1 text-[10px] md:text-xs font-medium text-slate-400 hover:text-slate-800 transition-colors group border border-slate-200 rounded-full px-2.5 py-1 hover:border-slate-300">
+                      <svg viewBox="0 0 24 24" fill="none" className="w-3 h-3 transition-transform group-hover:-translate-x-0.5" xmlns="http://www.w3.org/2000/svg">
                           <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
-                      <span className="leading-none">Retour</span>
+                      <span>Retour</span>
                   </Link>
-              </div>
-          )}
+              )}
+          </header>
 
           <div className="md:grid md:grid-cols-[320px_1fr] md:gap-10 items-start">
             <aside className="md:sticky md:top-14 space-y-6">
-              <header className="px-1 space-y-1">
-                <h1 className="text-xl md:text-2xl font-medium text-slate-900 tracking-tight flex items-center gap-2">
-                  <span className="text-2xl md:text-3xl">🗓️</span> Planning
-                </h1>
-                <p className="text-slate-500 font-medium text-[11px] md:text-xs">Réservez vos séances et évènements</p>
-              </header>
 
-              <div className="bg-white -mx-5 md:mx-0 rounded-none md:rounded-3xl shadow-xl shadow-blue-900/10 border-b md:border border-slate-200 p-4 md:p-2">
+              <div className="bg-white -mx-5 md:mx-0 rounded-none md:rounded-3xl shadow-lg shadow-blue-900/8 border-b md:border border-slate-200 p-4 md:p-2">
                 <div className="flex items-center justify-between mb-1 px-2">
                   <h2 className="font-semibold text-slate-800 capitalize text-[13px] md:text-sm">
                     {format(currentMonth, 'MMMM yyyy', { locale: fr })}
@@ -381,12 +367,12 @@ export default function PlanningPage() {
                   <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
                       <DiamondToken className="w-12 h-12" />
                   </div>
-                  <span className="text-[11px] text-slate-400 font-medium leading-none mb-1 flex items-center gap-1.5">
+                  <span className="text-[11px] text-slate-400 font-normal leading-none mb-1 flex items-center gap-1.5">
                     Mes crédits <DiamondToken className="w-4 h-4" />
                   </span>
                   <div className="flex items-baseline gap-2">
-                      <span className="text-3xl font-semibold text-slate-900 leading-none">{formatCredits(credits?.balance)}</span>
-                      <span className="text-xs text-slate-500 font-medium">unités</span>
+                      <span className="text-3xl font-medium text-slate-900 leading-none">{formatCredits(credits?.balance)}</span>
+                      <span className="text-xs text-slate-500 font-normal">unités</span>
                   </div>
                   <button 
                     onClick={() => window.location.href = `/${slug}/credits`}
@@ -404,11 +390,11 @@ export default function PlanningPage() {
                 <div className="md:flex-1"></div>
                 <div className="flex items-center gap-2 px-4 py-1 rounded-2xl">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-sm text-slate-400 font-medium whitespace-nowrap">Mes crédits</span>
+                    <span className="text-sm text-slate-400 font-normal whitespace-nowrap">Mes crédits</span>
                     <DiamondToken className="w-4 h-4" />
-                    <span className="text-sm text-slate-400 font-medium">:</span>
+                    <span className="text-sm text-slate-400 font-normal">:</span>
                   </div>
-                  <span className="text-sm md:text-base font-semibold text-slate-900">{formatCredits(credits?.balance)}</span>
+                  <span className="text-sm md:text-base font-medium text-slate-900">{formatCredits(credits?.balance)}</span>
                   <button 
                     onClick={() => window.location.href = `/${slug}/credits`}
                     className="w-7 h-7 flex items-center justify-center bg-slate-100 text-slate-500 rounded-full text-lg font-medium shadow-sm shadow-slate-100 hover:bg-slate-200 active:scale-95 transition-all ml-1"
@@ -582,7 +568,7 @@ export default function PlanningPage() {
                           {/* 1. HEADER : Heure + Titre */}
                           <div className="px-5 pt-3 pb-1">
                             <div className="flex items-center gap-4">
-                              <span className="text-sm font-bold text-slate-900 tracking-tight">{time}</span>
+                              <span className="text-sm font-semibold text-slate-900 tracking-tight">{time}</span>
                               <div className="flex items-center gap-2 min-w-0">
                                  {isEvent && <span className="text-base md:text-lg">✨</span>}
                                  <h4 className="text-sm md:text-base font-medium text-slate-800 first-letter:uppercase leading-tight">{item.title}</h4>
@@ -604,26 +590,26 @@ export default function PlanningPage() {
                               )}
                             </div>
 
-                            <button 
-                              onClick={handleToggleExpand}
-                              className="px-2.5 py-1.5 rounded-full text-[11px] font-medium transition-all active:scale-95 flex items-center gap-1.5 bg-slate-200 text-slate-600"
-                            >
-                              <span>{isExpanded ? '-' : '+'} info</span>
-                            </button>
+                             <button 
+                               onClick={handleToggleExpand}
+                               className="px-2.5 py-1.5 rounded-full text-[11px] font-medium transition-all active:scale-95 flex items-center gap-1.5 bg-slate-100 text-slate-500 hover:bg-slate-200/60"
+                             >
+                               <span>{isExpanded ? '-' : '+'} info</span>
+                             </button>
                           </div>
 
                           {/* 3. ACCORDÉON (Détails) */}
                           <div className={`px-5 overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[500px] mb-1 opacity-100' : 'max-h-0 opacity-0'}`}>
                             <div className="pt-0.5 space-y-1.5 pb-2">
-                              <div className="flex flex-wrap items-center gap-y-1 gap-x-6">
-                                <div className="flex items-center gap-2 text-slate-600 text-sm font-normal">
+                              <div className="flex flex-wrap items-center justify-between gap-y-1 gap-x-6 w-full">
+                                <div className="flex items-center gap-2 text-slate-600 text-[11px] md:text-xs font-normal">
                                   <svg className="w-5 h-5 shrink-0 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                   </svg>
                                   <span>{item.instructor_name}</span>
                                 </div>
                                 {item.location && (
-                                  <div className="flex items-center gap-2 text-slate-600 text-sm font-normal">
+                                  <div className="flex items-center gap-2 text-slate-600 text-[11px] md:text-xs font-normal">
                                     <span className="text-base opacity-60">📍</span>
                                     <span>{item.location}</span>
                                   </div>
@@ -631,7 +617,7 @@ export default function PlanningPage() {
                               </div>
 
                               {item.description && (
-                                <div className="px-4 py-2 bg-slate-100/80 rounded-xl border border-slate-200/50">
+                                <div className="px-3 py-2 bg-white border-y border-black/10 my-1">
                                   <p className="text-slate-600 text-[11px] md:text-xs leading-relaxed italic text-center">
                                     {item.description}
                                   </p>
