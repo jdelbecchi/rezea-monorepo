@@ -143,7 +143,9 @@ export interface User {
   balance?: number;
   created_at?: string;
   last_login?: string;
+  past_bookings_count?: number;
   is_blacklisted?: boolean;
+  is_suspended?: boolean;
   is_archived?: boolean;
   status_override?: string | null;
   blacklist_reason?: string;

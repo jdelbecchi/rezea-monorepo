@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { api, User, Session, AdminBookingItem, AdminEventRegistrationItem, Tenant } from "@/lib/api";
+import { api, User, Session, AdminBookingItem, AdminEventRegistrationItem, Tenant, OrderItem } from "@/lib/api";
 import BottomNav from "@/components/BottomNav";
 import Sidebar from "@/components/Sidebar";
 import Link from "next/link";
@@ -48,6 +48,10 @@ export default function GestionInscriptionsPage() {
     const [confirmingReactivateId, setConfirmingReactivateId] = useState<string | null>(null);
     const [restorationErrorUsers, setRestorationErrorUsers] = useState<string[] | null>(null);
     const [viewingContact, setViewingContact] = useState<AdminBookingItem | AdminEventRegistrationItem | null>(null);
+    const [fullUser, setFullUser] = useState<User | null>(null);
+    const [userOrders, setUserOrders] = useState<OrderItem[]>([]);
+    const [loadingUser, setLoadingUser] = useState(false);
+    const [loadingOrders, setLoadingOrders] = useState(false);
     const [isLocationMenuOpen, setIsLocationMenuOpen] = useState(false);
 
     // Form for editing session
@@ -88,6 +92,29 @@ export default function GestionInscriptionsPage() {
         };
         fetchData();
     }, [router, currentMonth]);
+
+    useEffect(() => {
+        if (viewingContact) {
+            setLoadingUser(true);
+            setLoadingOrders(true);
+            
+            api.getAdminUser(viewingContact.user_id)
+                .then(setFullUser)
+                .catch(err => console.error("Failed to load user details", err))
+                .finally(() => setLoadingUser(false));
+
+            api.getAdminOrders()
+                .then(orders => {
+                    const filtered = orders.filter(o => o.user_id === viewingContact.user_id);
+                    setUserOrders(filtered);
+                })
+                .catch(err => console.error("Failed to load user orders", err))
+                .finally(() => setLoadingOrders(false));
+        } else {
+            setFullUser(null);
+            setUserOrders([]);
+        }
+    }, [viewingContact]);
 
     const loadMonthData = async (date: Date) => {
         const start = format(startOfMonth(date), "yyyy-MM-dd") + "T00:00:00";
@@ -357,7 +384,7 @@ export default function GestionInscriptionsPage() {
 
             <main className="flex-1 px-5 pb-5 md:p-12 pt-4 md:pt-12">
                 <div className="max-w-6xl mx-auto">
-                    <header className="flex items-center justify-between pb-3 border-b border-slate-200 mb-6 gap-4">
+                    <header className="flex items-center justify-between pb-3 border-b border-slate-200 mb-3 md:mb-4 gap-4">
                         <h1 className="text-lg md:text-xl font-medium text-slate-900 tracking-tight flex items-center gap-2">
                             <span className="text-xl md:text-2xl">📝</span> Gestion des inscriptions
                         </h1>
@@ -371,9 +398,9 @@ export default function GestionInscriptionsPage() {
 
                     <div className="md:grid md:grid-cols-[320px_1fr] md:gap-10 items-start">
                         {/* Colonne Gauche: Calendrier */}
-                        <aside className="md:sticky md:top-14 space-y-6">
+                        <aside className="md:sticky md:top-14 space-y-6 mb-5 md:mb-0">
 
-                            <div className="bg-white -mx-5 md:mx-0 rounded-none md:rounded-3xl shadow-xl shadow-blue-900/10 border-b md:border border-slate-200 p-4 md:p-2">
+                            <div className="bg-white -mx-5 md:mx-0 rounded-none md:rounded-3xl shadow-lg shadow-blue-900/8 border-b md:border border-slate-200 p-4 md:p-2">
                                 <div className="flex items-center justify-between mb-1 px-2">
                                     <h2 className="font-semibold text-slate-800 capitalize text-[13px] md:text-sm">
                                         {format(currentMonth, 'MMMM yyyy', { locale: fr })}
@@ -685,10 +712,10 @@ export default function GestionInscriptionsPage() {
                                                                                                 )}
                                                                                                 <button 
                                                                                                     onClick={() => handleViewContact(p)}
-                                                                                                    className="w-7 h-7 flex items-center justify-center bg-slate-50 rounded-full text-slate-400 hover:text-slate-600 transition-all hover:bg-slate-100 active:scale-95"
-                                                                                                    title="Consulter le contact"
+                                                                                                    className="w-7 h-7 flex items-center justify-center bg-slate-50 border border-slate-200/60 rounded-full text-slate-500 hover:text-slate-800 transition-all hover:bg-slate-100 active:scale-95"
+                                                                                                    title="Fiche participant"
                                                                                                 >
-                                                                                                    <span className="text-[10px]">📞</span>
+                                                                                                    <span className="text-[11px] font-bold">ℹ️</span>
                                                                                                 </button>
                                                                                             </div>
                                                                                         </div>
@@ -847,10 +874,10 @@ export default function GestionInscriptionsPage() {
                                                                                                 )}
                                                                                                 <button 
                                                                                                     onClick={() => handleViewContact(p)}
-                                                                                                    className="w-7 h-7 flex items-center justify-center bg-slate-50 rounded-full text-slate-400 hover:text-slate-600 transition-all hover:bg-slate-100 active:scale-95"
-                                                                                                    title="Consulter le contact"
+                                                                                                    className="w-7 h-7 flex items-center justify-center bg-slate-50 border border-slate-200/60 rounded-full text-slate-500 hover:text-slate-800 transition-all hover:bg-slate-100 active:scale-95"
+                                                                                                    title="Fiche participant"
                                                                                                 >
-                                                                                                    <span className="text-[10px]">📞</span>
+                                                                                                    <span className="text-[11px] font-bold">ℹ️</span>
                                                                                                 </button>
                                                                                             </div>
                                                                                         </div>
@@ -1111,76 +1138,237 @@ export default function GestionInscriptionsPage() {
             <BottomNav userRole={user?.role} />
 
             {/* Fiche Contact Modal */}
-            {viewingContact && (
-                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="absolute inset-0" onClick={() => setViewingContact(null)}></div>
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-100 p-8 relative">
-                        <div className="mb-6">
-                            <h3 className="text-xl font-medium text-slate-900 tracking-tight">Informations de contact</h3>
-                            <p className="text-xs font-medium text-slate-400 mt-1">Pour {viewingContact.user_name}</p>
-                        </div>
+            {viewingContact && (() => {
+                const isNewMember = fullUser?.created_at && (new Date().getTime() - new Date(fullUser.created_at).getTime()) < 30 * 24 * 60 * 60 * 1000;
+                
+                const problematicOrders = userOrders.filter(o => 
+                    o.payment_status === 'en_attente' || 
+                    o.payment_status === 'a_regulariser' || 
+                    o.payment_status === 'a_valider'
+                );
+                
+                const activeFormulas = userOrders.filter(o => o.status === 'active');
+                
+                return (
+                    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+                        <div className="absolute inset-0" onClick={() => setViewingContact(null)}></div>
+                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-100 flex flex-col max-h-[85vh] relative z-10">
+                            
+                            {/* Modal Header */}
+                            <div className="p-6 pb-4 border-b border-slate-200 flex items-center justify-between">
+                                <div className="space-y-1">
+                                    <h3 className="text-sm font-semibold text-slate-900 tracking-tight">{viewingContact.user_name}</h3>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    {loadingUser ? (
+                                        <span className="text-[10px] bg-slate-100 text-slate-400 font-light px-2 py-0.5 rounded-full animate-pulse">Chargement...</span>
+                                    ) : fullUser ? (
+                                        <>
+                                            {fullUser.is_suspended ? (
+                                                <span className="text-[10px] bg-rose-50 text-rose-600 border border-rose-100 font-light px-2.5 py-0.5 rounded-full">Suspendu</span>
+                                            ) : (
+                                                <span className="text-[10px] bg-emerald-50 text-emerald-600 border border-emerald-100 font-light px-2.5 py-0.5 rounded-full">Actif</span>
+                                            )}
+                                            {fullUser.role !== 'user' && (
+                                                <span className="text-[10px] bg-blue-50 text-blue-600 border border-blue-100 font-light px-2.5 py-0.5 rounded-full capitalize">{fullUser.role}</span>
+                                            )}
+                                        </>
+                                    ) : null}
+                                </div>
+                            </div>
 
-                        <div className="space-y-6">
-                            <div>
-                                <label className="text-[11px] font-medium text-slate-400 block mb-1.5 ml-1">Téléphone</label>
-                                {viewingContact.user_phone ? (
-                                    <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 flex items-center justify-between group transition-colors hover:bg-slate-50">
-                                        <span className="text-sm font-medium text-slate-700">{viewingContact.user_phone}</span>
-                                        <button 
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(viewingContact.user_phone!);
-                                            }}
-                                            className="h-8 w-8 bg-white shadow-sm border border-slate-100 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all active:scale-90"
-                                            title="Copier le numéro"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
-                                            </svg>
-                                        </button>
+                            {/* Modal Body (Scrollable) */}
+                            <div className="p-6 space-y-5 overflow-y-auto flex-1">
+                                {loadingUser ? (
+                                    <div className="py-12 flex flex-col items-center justify-center space-y-3">
+                                        <div className="h-6 w-6 border-2 border-slate-200 border-t-slate-800 animate-spin rounded-full"></div>
+                                        <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Chargement des données...</p>
                                     </div>
                                 ) : (
-                                    <div className="text-center py-4 bg-slate-50/30 rounded-xl border border-dashed border-slate-200 text-slate-300 font-medium italic text-xs">
-                                        Non renseigné
-                                    </div>
+                                    <>
+                                        {/* Section 1: Coordonnées (Téléphone & Réseaux) */}
+                                        <div className="space-y-2.5 px-1">
+                                            {/* Téléphone */}
+                                            {(viewingContact.user_phone || fullUser?.phone) && (
+                                                <div className="flex items-center justify-between min-w-0">
+                                                    <a 
+                                                        href={`tel:${viewingContact.user_phone || fullUser?.phone}`}
+                                                        className="text-xs font-medium text-slate-700 hover:text-slate-900 transition-colors flex items-center gap-2.5 min-w-0 truncate"
+                                                    >
+                                                        <div className="w-5 flex justify-center items-center shrink-0 text-base">📱</div>
+                                                        <span className="truncate">{viewingContact.user_phone || fullUser?.phone}</span>
+                                                    </a>
+                                                    <button 
+                                                        onClick={() => {
+                                                            navigator.clipboard.writeText(viewingContact.user_phone || fullUser?.phone || "");
+                                                        }}
+                                                        className="h-7 w-7 bg-white shadow-sm border border-slate-100 hover:border-slate-200 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all active:scale-95 shrink-0"
+                                                        title="Copier le numéro"
+                                                    >
+                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {/* Instagram */}
+                                            {(viewingContact.instagram_handle || fullUser?.instagram_handle) && (
+                                                <div className="flex items-center justify-between min-w-0">
+                                                    <div className="flex items-center gap-2.5 min-w-0">
+                                                        <div className="w-5 flex justify-center items-center shrink-0">
+                                                            <svg className="w-4 h-4 text-pink-600" fill="currentColor" viewBox="0 0 24 24">
+                                                                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+                                                            </svg>
+                                                        </div>
+                                                        <span className="text-xs font-medium text-slate-700 truncate">@{viewingContact.instagram_handle || fullUser?.instagram_handle}</span>
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => {
+                                                            navigator.clipboard.writeText(viewingContact.instagram_handle || fullUser?.instagram_handle || "");
+                                                        }}
+                                                        className="h-7 w-7 bg-white shadow-sm border border-slate-100 hover:border-slate-200 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all active:scale-95 shrink-0"
+                                                        title="Copier Instagram"
+                                                    >
+                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {/* Facebook */}
+                                            {(viewingContact.facebook_handle || fullUser?.facebook_handle) && (
+                                                <div className="flex items-center justify-between min-w-0">
+                                                    <div className="flex items-center gap-2.5 min-w-0">
+                                                        <div className="w-5 flex justify-center items-center shrink-0">
+                                                            <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                                                                <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.56-.93 8-4.96 8-9.75z" />
+                                                            </svg>
+                                                        </div>
+                                                        <span className="text-xs font-medium text-slate-700 truncate">{viewingContact.facebook_handle || fullUser?.facebook_handle}</span>
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => {
+                                                            navigator.clipboard.writeText(viewingContact.facebook_handle || fullUser?.facebook_handle || "");
+                                                        }}
+                                                        className="h-7 w-7 bg-white shadow-sm border border-slate-100 hover:border-slate-200 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all active:scale-95 shrink-0"
+                                                        title="Copier Facebook"
+                                                    >
+                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {/* Si aucune information */}
+                                            {!(viewingContact.user_phone || fullUser?.phone) && 
+                                             !(viewingContact.instagram_handle || fullUser?.instagram_handle) && 
+                                             !(viewingContact.facebook_handle || fullUser?.facebook_handle) && (
+                                                <div className="text-center py-4 text-slate-300 font-medium italic text-xs">
+                                                    Aucune coordonnée renseignée
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Section 2: Profil (Ancienneté / Fréquentation) */}
+                                        <div className="border-t border-slate-200 pt-4">
+                                            <div className="space-y-2.5 text-xs text-slate-600 font-medium px-1">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="flex items-center gap-2.5">
+                                                        <div className="w-5 flex justify-center items-center shrink-0 text-base">📅</div>
+                                                        <span>Membre depuis le {fullUser?.created_at ? new Date(fullUser.created_at).toLocaleDateString("fr-FR") : "N/A"}</span>
+                                                    </span>
+                                                    {isNewMember && (
+                                                        <span className="text-[9px] bg-emerald-50 text-emerald-600 border border-emerald-100 font-light px-1.5 py-0.5 rounded-md shrink-0">Nouveau</span>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="w-5 flex justify-center items-center shrink-0 text-base">🏋️</div>
+                                                    <span>{fullUser?.past_bookings_count ?? 0} séance(s) effectuée(s)</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Section 3: Situation Administrative */}
+                                        <div className="border-t border-slate-200 pt-4 space-y-4">
+                                            {/* Commandes à régulariser / En attente */}
+                                            {problematicOrders.length > 0 && (
+                                                <div className="bg-amber-50/50 border border-amber-200/60 rounded-2xl p-4 space-y-2.5">
+                                                    <h5 className="text-[11px] font-semibold text-amber-800 flex items-center gap-1.5">
+                                                        ⚠️ Commandes à régulariser ({problematicOrders.length})
+                                                    </h5>
+                                                    <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+                                                        {problematicOrders.map(order => (
+                                                            <div key={order.id} className="text-[11px] text-amber-700 flex justify-between items-center border-b border-amber-200/30 pb-2 last:border-0 last:pb-0">
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-semibold text-slate-800">{order.offer_name || order.offer_snap_name}</span>
+                                                                    <span className="text-[9px] text-slate-400 font-medium mt-0.5">{new Date(order.created_at).toLocaleDateString("fr-FR")}</span>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <span className="font-bold text-slate-800">{(order.price_cents / 100).toFixed(2)}€</span>
+                                                                    <span className="block text-[8px] font-bold uppercase tracking-wider px-1 py-0.5 rounded bg-amber-100 text-amber-800 mt-0.5">
+                                                                        {order.payment_status === 'a_regulariser' ? 'À régulariser' : 'En attente'}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Formules actives */}
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-medium text-slate-400 block ml-1 uppercase tracking-wide">Formules actives</label>
+                                                {loadingOrders ? (
+                                                    <div className="text-[11px] text-slate-400 animate-pulse py-4 text-center bg-slate-50/20 rounded-2xl border border-slate-100">
+                                                        Chargement des formules...
+                                                    </div>
+                                                ) : activeFormulas.length > 0 ? (
+                                                    <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+                                                        {activeFormulas.map(order => (
+                                                            <div key={order.id} className="bg-slate-50/50 p-3.5 rounded-2xl border border-slate-100 text-xs flex justify-between items-center transition-colors hover:bg-slate-50">
+                                                                <div className="flex flex-col min-w-0">
+                                                                    <span className="font-semibold text-slate-800 truncate">{order.offer_name || order.offer_snap_name}</span>
+                                                                    <span className="text-[10px] text-slate-400 font-light mt-1">
+                                                                        {order.is_validity_unlimited ? 'Validité illimitée' : (order.end_date ? `Expire le ${new Date(order.end_date).toLocaleDateString("fr-FR")}` : 'Pas de date de fin')}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="text-right font-semibold text-slate-900 shrink-0 pl-3">
+                                                                    {order.is_unlimited ? (
+                                                                        <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 text-[10px]">Illimité</span>
+                                                                    ) : (
+                                                                        <span>{order.balance !== null ? `${order.balance} / ${order.credits_total} cr.` : `${order.credits_total} cr.`}</span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-center py-5 bg-slate-50/30 rounded-2xl border border-dashed border-slate-200 text-slate-300 font-medium italic text-[11px]">
+                                                        Aucune formule active
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </>
                                 )}
                             </div>
 
-                            <div>
-                                <label className="text-[11px] font-medium text-slate-400 block mb-1.5 ml-1">Réseaux sociaux</label>
-                                {viewingContact.instagram_handle || viewingContact.facebook_handle ? (
-                                    <div className="grid grid-cols-1 gap-3">
-                                        {viewingContact.instagram_handle && (
-                                            <div className="flex items-center gap-3 bg-slate-50/50 p-3.5 rounded-xl border border-slate-100 transition-colors hover:bg-slate-50">
-                                                <span className="text-lg">📸</span>
-                                                <span className="text-xs font-medium text-slate-600">@{viewingContact.instagram_handle}</span>
-                                            </div>
-                                        )}
-                                        {viewingContact.facebook_handle && (
-                                            <div className="flex items-center gap-3 bg-slate-50/50 p-3.5 rounded-xl border border-slate-100 transition-colors hover:bg-slate-50">
-                                                <span className="text-base">👤</span>
-                                                <span className="text-xs font-medium text-slate-600">{viewingContact.facebook_handle}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-4 bg-slate-50/30 rounded-xl border border-dashed border-slate-200 text-slate-300 font-medium italic text-xs">
-                                        Non renseigné
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="pt-2 flex justify-center">
+                            {/* Modal Footer */}
+                            <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-center shrink-0">
                                 <button 
                                     onClick={() => setViewingContact(null)}
-                                    className="px-10 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all text-sm shadow-sm active:scale-95"
+                                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-semibold transition-all text-xs active:scale-[0.98] shadow-sm"
                                 >
                                     Fermer
                                 </button>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
 
             {/* Alerte Erreur Restauration */}
             {restorationErrorUsers && (

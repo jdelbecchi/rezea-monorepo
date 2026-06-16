@@ -105,11 +105,13 @@ class UserResponse(UserBase):
     created_at: datetime
     last_login: Optional[datetime] = None
     is_blacklisted: bool = False
+    is_suspended: bool = False
     is_archived: bool = False
     status_override: Optional[str] = None
     blacklist_reason: Optional[str] = None
     remind_before_session: bool = True
     receive_marketing_emails: bool = True
+    past_bookings_count: Optional[int] = 0
 
     @field_validator('is_active_override', 'created_by_admin', mode='before')
     @classmethod
