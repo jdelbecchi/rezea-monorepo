@@ -448,18 +448,18 @@ function AdminOffersContent() {
                                     <div className="flex flex-col md:flex-row gap-4">
                                         <div className="w-full md:w-48">
                                             <label className={`block text-sm font-medium mb-1 ${(showErrors && !formData.offer_code) ? 'text-red-500' : 'text-slate-700'}`}>Code Offre *</label>
-                                            <input type="text" value={formData.offer_code} onChange={e => setFormData({...formData, offer_code: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm ${(showErrors && !formData.offer_code) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="ex: FORFAIT-10" />
+                                            <input type="text" value={formData.offer_code} onChange={e => setFormData({...formData, offer_code: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm ${(showErrors && !formData.offer_code) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="ex: FORFAIT-10" />
                                         </div>
                                         <div className="flex-1">
                                             <label className={`block text-sm font-medium mb-1 ${(showErrors && !formData.name) ? 'text-red-500' : 'text-slate-700'}`}>Intitulé *</label>
-                                            <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm ${(showErrors && !formData.name) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} />
+                                            <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm ${(showErrors && !formData.name) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} />
                                         </div>
                                     </div>
 
                                     {/* Description */}
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-                                        <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" rows={2} placeholder="Détails de l'offre..." />
+                                        <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" rows={2} placeholder="Détails de l'offre..." />
                                     </div>
 
                                     {/* Activité, Engagement et Achat unique */}
@@ -480,7 +480,7 @@ function AdminOffersContent() {
                                         )}
                                         <div className="w-full md:w-48">
                                             <label className="block text-sm font-medium text-slate-700 mb-1">Type d'engagement</label>
-                                            <select value={formData.engagement_type} onChange={e => setFormData({...formData, engagement_type: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm bg-white">
+                                            <select value={formData.engagement_type} onChange={e => setFormData({...formData, engagement_type: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white">
                                                 <option value="essai">Essai</option>
                                                 <option value="regulier">Régulier (Actif)</option>
                                                 <option value="ponctuel">Ponctuel (Occasionnel)</option>
@@ -500,7 +500,7 @@ function AdminOffersContent() {
                                         <div className="flex flex-col md:flex-row gap-4">
                                             <div className="w-full md:w-32">
                                                 <label className="block text-sm font-medium text-slate-700 mb-1">N° Rubrique</label>
-                                                <input type="number" value={formData.category_display_order} onChange={e => setFormData({...formData, category_display_order: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" />
+                                                <input type="number" value={formData.category_display_order} onChange={e => setFormData({...formData, category_display_order: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" />
                                             </div>
                                             <div className="flex-1">
                                                 <label className="block text-sm font-medium text-slate-700 mb-1">Rubrique</label>
@@ -508,7 +508,7 @@ function AdminOffersContent() {
                                                     type="text" 
                                                     value={formData.category} 
                                                     onChange={e => setFormData({...formData, category: e.target.value})} 
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" 
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" 
                                                     list="categories-list"
                                                     placeholder="ex: Abonnement, Formation..."
                                                 />
@@ -520,7 +520,7 @@ function AdminOffersContent() {
                                             </div>
                                             <div className="w-full md:w-32">
                                                 <label className="block text-sm font-medium text-slate-700 mb-1">N° Offre</label>
-                                                <input type="number" value={formData.offer_display_order} onChange={e => setFormData({...formData, offer_display_order: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" />
+                                                <input type="number" value={formData.offer_display_order} onChange={e => setFormData({...formData, offer_display_order: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" />
                                             </div>
                                         </div>
                                     </div>
@@ -534,7 +534,7 @@ function AdminOffersContent() {
                                             <div>
                                                 <label className={`block text-sm font-medium mb-1 ${(showErrors && !formData.is_unlimited && !formData.classes_included) ? 'text-red-500' : 'text-slate-700'}`}>Nombre de crédits inclus *</label>
                                                 <div className="flex flex-col gap-2">
-                                                    <input type="number" disabled={formData.is_unlimited} value={formData.classes_included} onChange={e => setFormData({...formData, classes_included: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm disabled:bg-gray-100 ${(showErrors && !formData.is_unlimited && !formData.classes_included) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} />
+                                                    <input type="number" disabled={formData.is_unlimited} value={formData.classes_included} onChange={e => setFormData({...formData, classes_included: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:bg-gray-100 ${(showErrors && !formData.is_unlimited && !formData.classes_included) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} />
                                                     <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap">
                                                         <input type="checkbox" checked={formData.is_unlimited} onChange={e => setFormData({...formData, is_unlimited: e.target.checked})} className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500" />
                                                         <span className="text-sm font-medium text-slate-700">Illimité</span>
@@ -553,9 +553,9 @@ function AdminOffersContent() {
                                                         disabled={formData.is_validity_unlimited} 
                                                         value={formData.validity_duration} 
                                                         onChange={e => setFormData({...formData, validity_duration: e.target.value})} 
-                                                        className={`w-20 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm disabled:bg-gray-100 ${(showErrors && !formData.is_validity_unlimited && !formData.deadline_date && !formData.validity_duration) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} 
+                                                        className={`w-20 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:bg-gray-100 ${(showErrors && !formData.is_validity_unlimited && !formData.deadline_date && !formData.validity_duration) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} 
                                                     />
-                                                    <select disabled={formData.is_validity_unlimited} value={formData.validity_unit} onChange={e => setFormData({...formData, validity_unit: e.target.value as any})} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm disabled:bg-gray-100 bg-white">
+                                                    <select disabled={formData.is_validity_unlimited} value={formData.validity_unit} onChange={e => setFormData({...formData, validity_unit: e.target.value as any})} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:bg-gray-100 bg-white">
                                                         <option value="months">mois</option>
                                                         <option value="weeks">semaine</option>
                                                         <option value="days">jour</option>
@@ -565,7 +565,7 @@ function AdminOffersContent() {
                                             <div className="flex items-center justify-between gap-4">
                                                 <div>
                                                     <label className="block text-sm font-medium text-slate-700 mb-1">Ou Échéance fixe</label>
-                                                    <input type="date" disabled={formData.is_validity_unlimited} value={formData.deadline_date} onChange={e => setFormData({...formData, deadline_date: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm disabled:bg-gray-100" />
+                                                    <input type="date" disabled={formData.is_validity_unlimited} value={formData.deadline_date} onChange={e => setFormData({...formData, deadline_date: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:bg-gray-100" />
                                                 </div>
                                                 <div className="pt-6">
                                                     <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap">
@@ -601,7 +601,7 @@ function AdminOffersContent() {
                                                     </div>
                                                     <div>
                                                         <label className="block text-xs text-slate-500 mb-1">Prix TTC (€)</label>
-                                                        <input type="number" step="0.01" value={formData.price_lump_sum} onChange={e => setFormData({...formData, price_lump_sum: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 bg-white ${(showErrors && formData.featured_pricing === 'lump_sum' && !formData.price_lump_sum) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="0.00" disabled={formData.featured_pricing !== 'lump_sum'} />
+                                                        <input type="number" step="0.01" value={formData.price_lump_sum} onChange={e => setFormData({...formData, price_lump_sum: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100 bg-white ${(showErrors && formData.featured_pricing === 'lump_sum' && !formData.price_lump_sum) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="0.00" disabled={formData.featured_pricing !== 'lump_sum'} />
                                                     </div>
                                                 </div>
 
@@ -618,11 +618,11 @@ function AdminOffersContent() {
                                                         <div className="flex gap-2">
                                                             <div className="flex-1">
                                                                 <label className="block text-xs text-slate-500 mb-1">Échéance (€)</label>
-                                                                <input type="number" step="0.01" value={formData.price_recurring} onChange={e => setFormData({...formData, price_recurring: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 disabled:bg-gray-100 bg-white text-sm ${(showErrors && formData.featured_pricing === 'recurring' && !formData.price_recurring) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="0.00" disabled={formData.featured_pricing !== 'recurring'} />
+                                                                <input type="number" step="0.01" value={formData.price_recurring} onChange={e => setFormData({...formData, price_recurring: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 outline-none disabled:bg-gray-100 bg-white text-sm ${(showErrors && formData.featured_pricing === 'recurring' && !formData.price_recurring) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="0.00" disabled={formData.featured_pricing !== 'recurring'} />
                                                             </div>
                                                             <div className="w-32">
                                                                 <label className="block text-xs text-slate-500 mb-1">Période</label>
-                                                                <select value={formData.period} onChange={e => setFormData({...formData, period: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 disabled:bg-gray-100 bg-white text-sm" disabled={formData.featured_pricing !== 'recurring'}>
+                                                                <select value={formData.period} onChange={e => setFormData({...formData, period: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none disabled:bg-gray-100 bg-white text-sm" disabled={formData.featured_pricing !== 'recurring'}>
                                                                     <option value="mois">mois</option>
                                                                     <option value="semaine">semaine</option>
                                                                     <option value="jour">jour</option>
@@ -631,7 +631,7 @@ function AdminOffersContent() {
                                                         </div>
                                                         <div>
                                                             <label className="block text-xs text-slate-500 mb-1">Nombre d'échéances</label>
-                                                            <input type="number" value={formData.recurring_count} onChange={e => setFormData({...formData, recurring_count: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 disabled:bg-gray-100 bg-white text-sm ${(showErrors && formData.featured_pricing === 'recurring' && !formData.recurring_count) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} disabled={formData.featured_pricing !== 'recurring'} />
+                                                            <input type="number" value={formData.recurring_count} onChange={e => setFormData({...formData, recurring_count: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 outline-none disabled:bg-gray-100 bg-white text-sm ${(showErrors && formData.featured_pricing === 'recurring' && !formData.recurring_count) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} disabled={formData.featured_pricing !== 'recurring'} />
                                                         </div>
                                                     </div>
                                                 </div>
@@ -644,7 +644,7 @@ function AdminOffersContent() {
                                 <div className="pt-6 border-t border-gray-150">
                                     <div className="w-80">
                                         <label className="block text-sm font-medium text-slate-700 mb-1">Statut de l'offre</label>
-                                        <select value={formData.is_active ? "true" : "false"} onChange={e => setFormData({...formData, is_active: e.target.value === "true"})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm bg-white">
+                                        <select value={formData.is_active ? "true" : "false"} onChange={e => setFormData({...formData, is_active: e.target.value === "true"})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white">
                                             <option value="true">Active (Visible dans la boutique)</option>
                                             <option value="false">Inactive (Masquée)</option>
                                         </select>

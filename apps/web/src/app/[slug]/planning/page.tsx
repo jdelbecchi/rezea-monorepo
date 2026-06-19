@@ -370,10 +370,36 @@ export default function PlanningPage() {
                   <span className="text-[11px] text-slate-400 font-normal leading-none mb-1 flex items-center gap-1.5">
                     Mes crédits <DiamondToken className="w-4 h-4" />
                   </span>
-                  <div className="flex items-baseline gap-2">
-                      <span className="text-3xl font-medium text-slate-900 leading-none">{formatCredits(credits?.balance)}</span>
-                      <span className="text-xs text-slate-500 font-normal">unités</span>
-                  </div>
+                  
+                  {credits && (() => {
+                      const sortedActs = Object.entries(credits.balances_by_activity || {})
+                          .filter(([_, bal]) => bal === null || Number(bal) > 0)
+                          .sort(([a], [b]) => {
+                              if (a === "Toutes activités") return -1;
+                              if (b === "Toutes activités") return 1;
+                              return a.localeCompare(b);
+                          });
+                      if (sortedActs.length === 0) {
+                          return (
+                              <div className="flex items-baseline gap-2">
+                                  <span className="text-3xl font-medium text-slate-900 leading-none">0</span>
+                                  <span className="text-xs text-slate-500 font-normal">unité</span>
+                              </div>
+                          );
+                      }
+                      return (
+                          <div className="flex flex-col gap-1.5 mt-1">
+                              {sortedActs.map(([activity, bal]) => (
+                                  <div key={activity} className="flex items-center gap-2 text-xs text-slate-700 bg-white shadow-sm border border-slate-200/80 px-3 py-1.5 rounded-xl">
+                                      <DiamondToken className="w-3.5 h-3.5 text-slate-400" />
+                                      <span className="font-semibold text-slate-900">{bal === null ? "Illimité" : formatCredits(Number(bal))}</span>
+                                      <span className="text-slate-600 text-xs truncate max-w-[150px] capitalize">{activity}</span>
+                                  </div>
+                              ))}
+                          </div>
+                      );
+                  })()}
+
                   <button 
                     onClick={() => window.location.href = `/${slug}/credits`}
                     className="mt-4 w-full py-3 text-white font-medium rounded-2xl text-xs transition-all active:scale-95 shadow-lg"
@@ -386,22 +412,33 @@ export default function PlanningPage() {
                   </button>
               </div>
               
-              <div className="md:hidden sticky top-14 z-30 -mx-5 px-5 py-0 bg-white/90 backdrop-blur-md flex items-center justify-between mt-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
-                <div className="md:flex-1"></div>
-                <div className="flex items-center gap-2 px-4 py-1 rounded-2xl">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm text-slate-400 font-normal whitespace-nowrap">Mes crédits</span>
-                    <DiamondToken className="w-4 h-4" />
-                    <span className="text-sm text-slate-400 font-normal">:</span>
-                  </div>
-                  <span className="text-sm md:text-base font-medium text-slate-900">{formatCredits(credits?.balance)}</span>
-                  <button 
-                    onClick={() => window.location.href = `/${slug}/credits`}
-                    className="w-7 h-7 flex items-center justify-center bg-slate-100 text-slate-500 rounded-full text-lg font-medium shadow-sm shadow-slate-100 hover:bg-slate-200 active:scale-95 transition-all ml-1"
-                  >
-                    +
-                  </button>
+              <div className="md:hidden sticky top-14 z-30 -mx-5 px-5 py-2 bg-white/95 backdrop-blur-md flex flex-col gap-1 mt-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] items-end">
+                <div className="flex items-center justify-end w-full">
+                  <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Mes crédits</span>
                 </div>
+                {credits && (() => {
+                    const sortedActs = Object.entries(credits.balances_by_activity || {})
+                        .filter(([_, bal]) => bal === null || Number(bal) > 0)
+                        .sort(([a], [b]) => {
+                            if (a === "Toutes activités") return -1;
+                            if (b === "Toutes activités") return 1;
+                            return a.localeCompare(b);
+                        });
+                    if (sortedActs.length === 0) {
+                        return <span className="text-xs font-medium text-slate-500 py-1">0 crédit</span>;
+                    }
+                    return (
+                        <div className="flex flex-wrap justify-end gap-1.5 py-1">
+                            {sortedActs.map(([activity, bal]) => (
+                                <div key={activity} className="flex items-center gap-1 text-[10px] text-slate-700 bg-slate-50 border border-slate-200/80 px-2 py-0.5 rounded-lg">
+                                    <DiamondToken className="w-2.5 h-2.5 text-slate-400" />
+                                    <span className="font-semibold text-slate-900">{bal === null ? "Illimité" : formatCredits(Number(bal))}</span>
+                                    <span className="text-slate-600 text-[10px] truncate max-w-[100px] capitalize">{activity}</span>
+                                </div>
+                            ))}
+                        </div>
+                    );
+                })()}
               </div>
             </aside>
 
@@ -586,6 +623,11 @@ export default function PlanningPage() {
                                 <div className="flex items-center gap-1.5 text-slate-700 font-bold text-[11px] md:text-xs">
                                   <DiamondToken className="w-5 h-5" />
                                   <span>{formatCredits(item.credits_required)}</span>
+                                  {item.activity_type && (
+                                    <span className="text-slate-500 font-normal capitalize ml-0.5">
+                                      {item.activity_type}
+                                    </span>
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -612,12 +654,6 @@ export default function PlanningPage() {
                                   <div className="flex items-center gap-2 text-slate-600 text-[11px] md:text-xs font-normal">
                                     <span className="text-base opacity-60">📍</span>
                                     <span>{item.location}</span>
-                                  </div>
-                                )}
-                                {item.activity_type && (
-                                  <div className="flex items-center gap-2 text-slate-600 text-[11px] md:text-xs font-normal">
-                                    <span className="text-base opacity-60">🏷️</span>
-                                    <span className="capitalize">{item.activity_type}</span>
                                   </div>
                                 )}
                               </div>

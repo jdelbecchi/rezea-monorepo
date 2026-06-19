@@ -345,28 +345,47 @@ export default function MemberOrdersPage() {
                                             {/* Top Section: Title & Metadata */}
                                             <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                                                 <div className="flex flex-col min-w-0 flex-1 w-full sm:w-auto">
-                                                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                                        <h3 className="text-lg md:text-xl font-semibold text-slate-900 truncate pr-2 capitalize tracking-tight">{order.offer_name}</h3>
-                                                        {order.allowed_activities && order.allowed_activities.length > 0 && (
-                                                            <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[9px] font-medium border border-slate-200 capitalize">
-                                                                {order.allowed_activities.join(", ")}
-                                                            </span>
-                                                        )}
+                                                    <div className="flex items-center justify-between gap-4 mb-1.5 w-full">
+                                                        <h3 className="text-lg md:text-xl font-semibold text-slate-900 capitalize tracking-tight truncate">{order.offer_name}</h3>
+                                                        <div className="flex-shrink-0">
+                                                            <div 
+                                                                className="inline-block text-[11px] md:text-xs font-semibold px-3 py-0.5 rounded-full border transition-colors capitalize whitespace-nowrap"
+                                                                style={{
+                                                                    backgroundColor: `${tenant?.primary_color || '#2563eb'}10`,
+                                                                    borderColor: `${tenant?.primary_color || '#2563eb'}30`,
+                                                                    color: tenant?.primary_color || '#2563eb'
+                                                                }}
+                                                            >
+                                                                {order.allowed_activities && order.allowed_activities.length > 0 
+                                                                    ? order.allowed_activities.join(", ") 
+                                                                    : "Toutes activités"
+                                                                }
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex items-center justify-between sm:justify-start gap-4">
+                                                    <div className="flex flex-col items-start gap-2">
                                                         <p className="text-slate-600 text-xs font-medium tracking-tight whitespace-nowrap">
                                                             Commandée le {new Date(order.created_at).toLocaleDateString("fr-FR")}
                                                         </p>
                                                         <button 
                                                             onClick={() => { setSelectedOrder(order); setShowInfoModal(true); }}
-                                                            className="px-3 py-1 bg-slate-200/50 text-slate-500 hover:text-slate-900 hover:bg-slate-200 rounded-lg transition-all text-[10px] font-medium flex items-center gap-1"
+                                                            className="text-[11px] font-bold flex items-center gap-1 transition-all hover:opacity-80 group/info"
+                                                            style={{ color: tenant?.primary_color || '#2563eb' }}
                                                         >
-                                                            <span>+ d'infos</span>
+                                                            <span className="hover:underline">Plus d'infos</span>
+                                                            <span className="transition-transform group-hover/info:translate-x-0.5">→</span>
                                                         </button>
                                                     </div>
                                                 </div>
                                                 
                                                 <div className="flex flex-col items-start sm:items-end gap-3 w-full sm:w-auto">
+                                                    <div className="flex items-center gap-2 px-1">
+                                                        <span className="text-sm">⌛</span>
+                                                        <p className="text-xs text-slate-600 font-medium tracking-tight">Fin de validité :</p>
+                                                        <p className={`text-sm font-semibold tracking-tight ${order.is_validity_unlimited ? 'text-emerald-600' : 'text-slate-900'}`}>
+                                                            {order.is_validity_unlimited ? 'Illimitée' : (order.end_date ? new Date(order.end_date).toLocaleDateString("fr-FR") : "N/A")}
+                                                        </p>
+                                                    </div>
                                                     <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:justify-end">
                                                         <span className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold border ${getStatusStyle(order.payment_status)}`}>
                                                             <span className="opacity-60 mr-1">Paiement :</span>
@@ -376,13 +395,6 @@ export default function MemberOrdersPage() {
                                                             <span className="opacity-60 mr-1">Statut :</span>
                                                             {getGeneralStatusLabel(order.status)}
                                                         </span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2 px-1">
-                                                        <span className="text-sm">⌛</span>
-                                                        <p className="text-xs text-slate-600 font-medium tracking-tight">Fin de validité :</p>
-                                                        <p className={`text-sm font-semibold tracking-tight ${order.is_validity_unlimited ? 'text-emerald-600' : 'text-slate-900'}`}>
-                                                            {order.is_validity_unlimited ? 'Illimitée' : (order.end_date ? new Date(order.end_date).toLocaleDateString("fr-FR") : "N/A")}
-                                                        </p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -582,7 +594,7 @@ export default function MemberOrdersPage() {
                                       <div className="flex items-center gap-3">
                                           <span className="text-lg w-6 text-center">🎯</span>
                                           <div className="flex flex-col">
-                                              <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium leading-none mb-1">Activités autorisées</span>
+                                              <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium leading-none mb-1">Activités concernées</span>
                                               <p className="text-sm font-medium text-slate-900 leading-none capitalize">
                                                   {selectedOrder.allowed_activities.join(", ")}
                                               </p>

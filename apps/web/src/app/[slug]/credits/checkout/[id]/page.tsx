@@ -111,6 +111,21 @@ export default function CheckoutPage() {
                             <div className="flex flex-col items-center gap-4 pb-8 border-b border-slate-200">
                                 <div className="space-y-4 text-center">
                                     <h2 className="text-lg md:text-xl font-semibold text-slate-900 capitalize tracking-tight">{offer.name}</h2>
+                                    <div className="pt-1">
+                                        <div 
+                                            className="inline-block text-[13px] md:text-sm font-semibold px-4 py-1 rounded-full border transition-colors capitalize"
+                                            style={{
+                                                backgroundColor: `${tenant?.primary_color || '#2563eb'}10`,
+                                                borderColor: `${tenant?.primary_color || '#2563eb'}30`,
+                                                color: tenant?.primary_color || '#2563eb'
+                                            }}
+                                        >
+                                            {offer.allowed_activities && offer.allowed_activities.length > 0 
+                                                ? offer.allowed_activities.join(", ") 
+                                                : "Toutes activités"
+                                            }
+                                        </div>
+                                    </div>
                                     
                                     <div className="flex flex-col items-center gap-1">
                                         <div className="flex items-center gap-2 text-slate-500">

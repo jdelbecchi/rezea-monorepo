@@ -189,7 +189,11 @@ def build_order_response(
         offer_snap_validity_days=order.offer_snap_validity_days,
         offer_snap_validity_unit=order.offer_snap_validity_unit,
         offer_snap_is_validity_unlimited=order.offer_snap_is_validity_unlimited or False,
-        allowed_activities=order.offer.allowed_activities if order.offer else (getattr(order, 'offer_snap_allowed_activities', []) or []),
+        allowed_activities=(
+            order.offer_snap_allowed_activities 
+            if getattr(order, 'offer_snap_allowed_activities', None) is not None 
+            else (order.offer.allowed_activities if order.offer else [])
+        ),
         installments=order.installments,
         is_blocked=effective_blocked
     )
@@ -327,6 +331,7 @@ async def compute_fifo_balances(
     grace_days = tenant.grace_period_days if tenant else 0
     grace_mode = tenant.grace_period_mode if tenant else "days"
     
+    from sqlalchemy.orm import selectinload
     # 2. Load all orders of the user, ordered by start_date ascending, then created_at
     orders_res = await db.execute(
         select(Order)
@@ -337,6 +342,7 @@ async def compute_fifo_balances(
                 Order.status != "resiliee"
             )
         )
+        .options(selectinload(Order.offer))
         .order_by(Order.start_date.asc(), Order.created_at.asc())
     )
     orders = orders_res.scalars().all()
@@ -431,10 +437,10 @@ async def compute_fifo_balances(
             # Check if order's activity restrictions allow this item's activity
             if is_valid:
                 allowed_acts = []
-                if o.offer and isinstance(o.offer.allowed_activities, list):
-                    allowed_acts = o.offer.allowed_activities
-                elif hasattr(o, 'offer_snap_allowed_activities') and isinstance(o.offer_snap_allowed_activities, list):
+                if hasattr(o, 'offer_snap_allowed_activities') and isinstance(o.offer_snap_allowed_activities, list) and o.offer_snap_allowed_activities is not None:
                     allowed_acts = o.offer_snap_allowed_activities
+                elif o.offer and isinstance(o.offer.allowed_activities, list):
+                    allowed_acts = o.offer.allowed_activities
                 
                 item_act = item.get("activity_type")
                 if allowed_acts:
@@ -503,10 +509,10 @@ async def compute_fifo_balances(
         # Compute balances by activity
         if not is_blocked:
             allowed_acts = []
-            if o.offer and isinstance(o.offer.allowed_activities, list):
-                allowed_acts = o.offer.allowed_activities
-            elif hasattr(o, 'offer_snap_allowed_activities') and isinstance(o.offer_snap_allowed_activities, list):
+            if hasattr(o, 'offer_snap_allowed_activities') and isinstance(o.offer_snap_allowed_activities, list) and o.offer_snap_allowed_activities is not None:
                 allowed_acts = o.offer_snap_allowed_activities
+            elif o.offer and isinstance(o.offer.allowed_activities, list):
+                allowed_acts = o.offer.allowed_activities
             
             label = ", ".join(allowed_acts) if allowed_acts else "Toutes activités"
             if label not in balances_by_activity:

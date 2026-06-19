@@ -40,7 +40,7 @@ function formatPrice(order: OrderItem): React.ReactNode {
     // Display the featured price from the offer
     if (order.offer_featured_pricing === "recurring" && order.offer_price_recurring_cents) {
         const amount = formatCents(order.offer_price_recurring_cents);
-        const period = order.offer_period ? `/${order.offer_period}` : "";
+        const period = order.offer_period ? (order.offer_period.startsWith('/') ? order.offer_period : `/${order.offer_period}`) : "";
         const count = order.offer_recurring_count ? ` x${order.offer_recurring_count}` : "";
         return (
             <div className="flex items-baseline gap-1">
@@ -286,15 +286,25 @@ export default function AdminShopOrdersPage() {
 
         setSaving(true);
         try {
+            const priceCentsStr = typeof editForm.price_cents === 'string' ? editForm.price_cents : String(editForm.price_cents ?? "");
+            const priceRecurringCentsStr = typeof editForm.price_recurring_cents === 'string' ? editForm.price_recurring_cents : String(editForm.price_recurring_cents ?? "");
+            
+            const parsedPriceCents = parseFloat(priceCentsStr.replace(',', '.'));
+            const parsedPriceRecurringCents = parseFloat(priceRecurringCentsStr.replace(',', '.'));
+
             const payload: any = {
                 start_date: editForm.start_date,
                 end_date: editForm.end_date || null,
-                price_cents: isLumpSum ? Math.round(parseFloat(editForm.price_cents.replace(',', '.')) * 100) : Math.round(parseFloat(editForm.price_recurring_cents.replace(',', '.')) * 100),
+                price_cents: isLumpSum 
+                    ? (isNaN(parsedPriceCents) ? 0 : Math.round(parsedPriceCents * 100)) 
+                    : (isNaN(parsedPriceRecurringCents) ? 0 : Math.round(parsedPriceRecurringCents * 100)),
                 featured_pricing: editForm.featured_pricing,
-                price_recurring_cents: !isLumpSum ? Math.round(parseFloat(editForm.price_recurring_cents.replace(',', '.')) * 100) : null,
-                recurring_count: !isLumpSum ? parseInt(editForm.recurring_count) : null,
+                price_recurring_cents: !isLumpSum 
+                    ? (isNaN(parsedPriceRecurringCents) ? 0 : Math.round(parsedPriceRecurringCents * 100)) 
+                    : null,
+                recurring_count: !isLumpSum ? (parseInt(editForm.recurring_count) || 0) : null,
                 period: !isLumpSum ? editForm.period : null,
-                credits_total: editForm.is_unlimited ? null : parseInt(editForm.credits_total),
+                credits_total: editForm.is_unlimited ? null : (parseInt(editForm.credits_total) || 0),
                 is_unlimited: editForm.is_unlimited,
                 status: editForm.status,
                 payment_status: editForm.payment_status,

@@ -22,6 +22,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
   const [myOrders, setMyOrders] = useState<OrderItem[]>([]);
   const [myEventRegistrations, setMyEventRegistrations] = useState<EventRegistration[]>([]);
   const [isAlertsExpanded, setIsAlertsExpanded] = useState(false);
+  const [showCreditDetails, setShowCreditDetails] = useState(false);
   const [loading, setLoading] = useState(true);
   
   const basePath = `/${slug}`;
@@ -491,13 +492,40 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
 
             {/* Credits display */}
             {credits && (credits.balance > 0 || myOrders.length > 0) && (() => {
-                const activities = Object.entries(credits.balances_by_activity || {});
-                if (activities.length > 1) {
-                    return (
-                        <div className="flex flex-col items-end gap-1 px-1 my-4">
-                            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-0.5">Mes Crédits</span>
-                            <div className="flex flex-wrap justify-end gap-1.5 max-w-xs">
-                                {activities.map(([activity, bal]) => (
+                const activities = Object.entries(credits.balances_by_activity || {})
+                    .filter(([_, bal]) => bal === null || Number(bal) > 0);
+                const sortedActivities = [...activities].sort(([a], [b]) => {
+                    if (a === "Toutes activités") return -1;
+                    if (b === "Toutes activités") return 1;
+                    return a.localeCompare(b);
+                });
+                
+                if (sortedActivities.length === 0) return null;
+                
+                return (
+                    <div className="flex flex-col items-end gap-1 px-1 mt-1 mb-5">
+                        <button 
+                            onClick={() => setShowCreditDetails(!showCreditDetails)}
+                            className="flex items-center gap-2 text-slate-800 hover:text-slate-900 focus:outline-none select-none transition-all active:scale-[0.98] py-1"
+                        >
+                            <div className="w-px h-5 bg-slate-300 mr-1" />
+                            <span className="text-sm font-medium text-slate-600">Mes crédits</span>
+                            <span className="text-base">💎</span>
+                            <p className="text-lg font-medium leading-none text-slate-900">{formatCredits(credits.balance)}</p>
+                            {sortedActivities.length > 0 && (
+                                <svg 
+                                    xmlns="http://www.w3.org/2000/svg" 
+                                    className={`h-4 w-4 text-slate-400 transition-transform duration-300 ${showCreditDetails ? 'rotate-180' : ''}`} 
+                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            )}
+                        </button>
+                        
+                        {showCreditDetails && (
+                            <div className="flex flex-wrap justify-end gap-1.5 max-w-xs mt-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                                {sortedActivities.map(([activity, bal]) => (
                                     <div key={activity} className="flex items-center gap-1 text-[11px] text-slate-700 bg-white shadow-sm border border-slate-200/80 px-2.5 py-1 rounded-xl">
                                         <span>💎</span>
                                         <span className="font-bold text-slate-900">{bal === null ? "Illimité" : formatCredits(Number(bal))}</span>
@@ -505,18 +533,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                                     </div>
                                 ))}
                             </div>
-                        </div>
-                    );
-                }
-                const singleAct = activities[0];
-                const label = singleAct && singleAct[0] !== "Toutes activités" ? ` (${singleAct[0]})` : "";
-                const balValue = singleAct ? (singleAct[1] === null ? "Illimité" : formatCredits(Number(singleAct[1]))) : formatCredits(credits.balance);
-                return (
-                    <div className="flex items-center justify-end gap-2 px-1 my-4">
-                        <div className="w-px h-5 bg-slate-300" />
-                        <span className="text-sm font-medium text-slate-900">Crédits{label}</span>
-                        <span className="text-base">💎</span>
-                        <p className="text-lg font-medium leading-none text-slate-900">{balValue}</p>
+                        )}
                     </div>
                 );
             })()}
