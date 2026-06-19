@@ -685,11 +685,7 @@ export default function AdminSettingsPage() {
                                 <section className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
                                     <div className="flex flex-col lg:flex-row gap-8 items-stretch">
                                         {/* Left Side: Deadlines */}
-                                        <div className="flex-1 space-y-4">
-                                            <h3 className="text-base font-medium flex items-center gap-2 text-slate-800 mb-4">
-                                                <span>⏱️</span>
-                                                <span>Délais d&apos;inscription & d&apos;annulation</span>
-                                            </h3>
+                                        <div className="flex-1 space-y-4 pt-1">
                                             
                                             <div className="space-y-4">
                                                 <div className="space-y-1.5">
