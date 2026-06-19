@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { api, User, Session, AdminBookingItem, AdminEventRegistrationItem, Tenant, OrderItem } from "@/lib/api";
+import { api, User, Session, AdminBookingItem, AdminEventRegistrationItem, Tenant, OrderItem, StaffNoteItem } from "@/lib/api";
 import BottomNav from "@/components/BottomNav";
 import Sidebar from "@/components/Sidebar";
 import Link from "next/link";
@@ -55,6 +55,17 @@ export default function GestionInscriptionsPage() {
     const [loadingOrders, setLoadingOrders] = useState(false);
     const [isLocationMenuOpen, setIsLocationMenuOpen] = useState(false);
 
+    // Staff Notes
+    const [notesMap, setNotesMap] = useState<Record<string, StaffNoteItem | null>>({});
+    const [noteModal, setNoteModal] = useState<{
+        open: boolean;
+        entityId: string;
+        entityType: 'session' | 'event';
+        entityLabel: string;
+        message: string;
+        saving: boolean;
+    }>({ open: false, entityId: '', entityType: 'session', entityLabel: '', message: '', saving: false });
+
     // Form for editing session
     const [editFormData, setEditFormData] = useState({
         title: "",
@@ -63,12 +74,51 @@ export default function GestionInscriptionsPage() {
         location: "",
         date: "",
         time: "",
-        duration_h: 1,
-        duration_m: 0,
+        duration_hm: '01:00',
         max_participants: 10,
     });
     const [includeWaitlist, setIncludeWaitlist] = useState(false);
     const [isLocationOpen, setIsLocationOpen] = useState(false);
+
+    // Staff Notes helpers
+    const loadNoteForEntity = async (entityId: string) => {
+        if (notesMap[entityId] !== undefined) return; // déjà chargé
+        try {
+            const note = await api.getEntityStaffNote(entityId);
+            setNotesMap(prev => ({ ...prev, [entityId]: note }));
+        } catch {
+            setNotesMap(prev => ({ ...prev, [entityId]: null }));
+        }
+    };
+
+    const openNoteModal = async (entityId: string, entityType: 'session' | 'event', entityLabel: string) => {
+        const existing = notesMap[entityId];
+        setNoteModal({
+            open: true,
+            entityId,
+            entityType,
+            entityLabel,
+            message: existing?.message || '',
+            saving: false,
+        });
+    };
+
+    const handleSaveNote = async () => {
+        if (!noteModal.message.trim()) return;
+        setNoteModal(prev => ({ ...prev, saving: true }));
+        try {
+            const saved = await api.upsertStaffNote({
+                message: noteModal.message.trim(),
+                entity_type: noteModal.entityType,
+                entity_id: noteModal.entityId,
+                entity_label: noteModal.entityLabel,
+            });
+            setNotesMap(prev => ({ ...prev, [noteModal.entityId]: saved }));
+            setNoteModal(prev => ({ ...prev, open: false, saving: false }));
+        } catch {
+            setNoteModal(prev => ({ ...prev, saving: false }));
+        }
+    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -224,8 +274,7 @@ export default function GestionInscriptionsPage() {
             location: s.location || "",
             date: format(start, "yyyy-MM-dd"),
             time: format(start, "HH:mm"),
-            duration_h: Math.floor(duration / 60),
-            duration_m: duration % 60,
+            duration_hm: `${String(Math.floor(duration / 60)).padStart(2, '0')}:${String(duration % 60).padStart(2, '0')}`,
             max_participants: s.max_participants,
         });
 
@@ -249,7 +298,8 @@ export default function GestionInscriptionsPage() {
         if (!selectedItem || selectedItem.type !== 'session') return;
         try {
             const startDt = new Date(`${editFormData.date}T${editFormData.time}:00`);
-            const totalMinutes = (editFormData.duration_h * 60) + editFormData.duration_m;
+            const [dh, dm] = (editFormData.duration_hm || '00:00').split(':').map(Number);
+            const totalMinutes = (dh * 60) + dm;
             const endDt = new Date(startDt.getTime() + totalMinutes * 60 * 1000);
 
             await api.updateSession(selectedItem.data.id, {
@@ -575,6 +625,18 @@ export default function GestionInscriptionsPage() {
                                                                          >
                                                                              <span className="text-sm">✏️</span>
                                                                          </button>
+                                                                         {/* Icône note staff */}
+                                                                         <button
+                                                                             type="button"
+                                                                             onClick={() => {
+                                                                                 loadNoteForEntity(session.id);
+                                                                                 openNoteModal(session.id, 'session', `${session.title} – ${format(new Date(session.start_time), 'EEE d MMM HH:mm', { locale: fr })}`);
+                                                                             }}
+                                                                             className="p-1 hover:bg-slate-50 rounded-lg transition-colors"
+                                                                             title={notesMap[session.id] ? 'Voir/modifier la note' : 'Ajouter une note'}
+                                                                         >
+                                                                             <span className={`text-sm ${notesMap[session.id] ? 'opacity-100' : 'opacity-25 grayscale'}`}>📝</span>
+                                                                         </button>
                                                                      </div>
                                                                  ) : (
                                                                      <div className="flex items-center">
@@ -681,7 +743,7 @@ export default function GestionInscriptionsPage() {
                                                                         {participants.length === 0 ? (
                                                                             <div className="py-8 text-center text-slate-300 text-[10px] font-medium italic">Aucun inscrit pour le moment.</div>
                                                                         ) : (
-                                                                            <div className="space-y-0.5">
+                                                                            <div className="space-y-0">
                                                                                 {participants
                                                                                     .filter(p => p.status !== 'cancelled' && p.status !== 'session_cancelled' && p.status !== 'pending' && (p as any).status !== 'waiting_list')
                                                                                     .sort((a,b) => (a.user_name || '').localeCompare(b.user_name || ''))
@@ -690,7 +752,7 @@ export default function GestionInscriptionsPage() {
                                                                                         const isAbsent = p.status === 'absent';
                                                                                         
                                                                                         return (
-                                                                                            <div key={p.id} className="flex items-center justify-between py-1 px-2 hover:bg-white/80 rounded-xl transition-all group/p">
+                                                                                            <div key={p.id} className="flex items-center justify-between py-0.5 px-2 hover:bg-white/80 rounded-xl transition-all group/p">
                                                                                                 <div className="flex items-center gap-3 min-w-0">
                                                                                                     {/* Appel (Présence) */}
                                                                                                     <button 
@@ -754,11 +816,19 @@ export default function GestionInscriptionsPage() {
                                                                     </h4>
                                                                 </div>
                                                             </div>
-                                                            {/* Bouton fantôme pour occuper le même espace vertical que le bouton de modification des séances */}
-                                                            <div className="flex items-center shrink-0 opacity-0 pointer-events-none select-none">
-                                                                <div className="p-1">
-                                                                    <span className="text-sm">✏️</span>
-                                                                </div>
+                                                            {/* Bouton note staff pour les évènements */}
+                                                            <div className="flex items-center shrink-0">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        loadNoteForEntity(event.id);
+                                                                        openNoteModal(event.id, 'event', `${event.title} – ${event.event_time}`);
+                                                                    }}
+                                                                    className="p-1 hover:bg-amber-50 rounded-lg transition-colors"
+                                                                    title={notesMap[event.id] ? 'Voir/modifier la note' : 'Ajouter une note'}
+                                                                >
+                                                                    <span className={`text-sm ${notesMap[event.id] ? 'opacity-100' : 'opacity-25 grayscale'}`}>📝</span>
+                                                                </button>
                                                             </div>
                                                         </div>
  
@@ -841,7 +911,7 @@ export default function GestionInscriptionsPage() {
                                                                     {participants.length === 0 ? (
                                                                         <div className="py-8 text-center text-slate-300 text-[10px] font-medium italic">Aucun inscrit pour le moment.</div>
                                                                     ) : (
-                                                                        <div className="space-y-0.5">
+                                                                        <div className="space-y-0">
                                                                             {participants
                                                                                 .filter(p => p.status !== 'cancelled' && p.status !== 'session_cancelled' && p.status !== 'pending' && (p as any).status !== 'waiting_list')
                                                                                 .sort((a,b) => (a.user_name || '').localeCompare(b.user_name || ''))
@@ -850,7 +920,7 @@ export default function GestionInscriptionsPage() {
                                                                                     const isAbsent = p.status === 'absent';
                                                                                     
                                                                                     return (
-                                                                                        <div key={p.id} className="flex items-center justify-between py-1 px-2 hover:bg-white/80 rounded-xl transition-all group/p">
+                                                                                        <div key={p.id} className="flex items-center justify-between py-0.5 px-2 hover:bg-white/80 rounded-xl transition-all group/p">
                                                                                             <div className="flex items-center gap-3 min-w-0">
                                                                                                 {/* Appel (Présence) */}
                                                                                                 <button 
@@ -935,32 +1005,14 @@ export default function GestionInscriptionsPage() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1 px-1">Durée</label>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="relative">
-                                            <input 
-                                                type="number" 
-                                                min="0"
-                                                required
-                                                value={editFormData.duration_h}
-                                                onChange={(e) => setEditFormData({...editFormData, duration_h: parseInt(e.target.value) || 0})}
-                                                className="w-full bg-transparent border border-slate-200 rounded-xl p-2.5 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-sm pr-8"
-                                            />
-                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">hh</span>
-                                        </div>
-                                        <div className="relative">
-                                            <input 
-                                                type="number" 
-                                                min="0"
-                                                max="59"
-                                                required
-                                                value={editFormData.duration_m}
-                                                onChange={(e) => setEditFormData({...editFormData, duration_m: parseInt(e.target.value) || 0})}
-                                                className="w-full bg-transparent border border-slate-200 rounded-xl p-2.5 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-sm pr-8"
-                                            />
-                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">mm</span>
-                                        </div>
-                                    </div>
+                                    <label className="block text-xs md:text-sm font-semibold text-slate-500 mb-1 px-1">Durée (hh:mm)</label>
+                                    <input 
+                                        type="time"
+                                        required
+                                        value={editFormData.duration_hm}
+                                        onChange={(e) => setEditFormData({...editFormData, duration_hm: e.target.value})}
+                                        className="w-full bg-transparent border border-slate-200 rounded-xl p-2.5 text-slate-900 font-normal focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all text-sm"
+                                    />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
@@ -1085,14 +1137,16 @@ export default function GestionInscriptionsPage() {
                             )}
 
                             {selectedItem?.data?.is_active && (
-                                <div className="mb-4 pt-3 border-t border-slate-100 flex justify-center">
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowCancelConfirmModal(true)}
-                                        className="py-2 px-4 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
-                                    >
-                                        Annuler la séance
-                                    </button>
+                                <div className="mb-4 pt-3 border-t border-slate-100">
+                                    <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50/40 flex justify-center">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowCancelConfirmModal(true)}
+                                            className="w-full py-2 px-4 text-xs font-semibold text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-all"
+                                        >
+                                            Annuler la séance
+                                        </button>
+                                    </div>
                                 </div>
                             )}
 
@@ -1411,6 +1465,78 @@ export default function GestionInscriptionsPage() {
                         >
                             Compris
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Modal Note staff ─────────────────────────────────────────── */}
+            {noteModal.open && (
+                <div
+                    className="fixed inset-0 z-[140] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200"
+                    onClick={(e) => { if (e.target === e.currentTarget) setNoteModal(prev => ({ ...prev, open: false })); }}
+                >
+                    <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-200">
+                        {/* Header */}
+                        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className="text-base">📝</span>
+                                <div>
+                                    <h3 className="text-sm font-semibold text-slate-900 leading-tight">Post-it</h3>
+                                    <p className="text-[10px] text-slate-400 truncate max-w-[200px]">{noteModal.entityLabel}</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setNoteModal(prev => ({ ...prev, open: false }))}
+                                className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all text-sm"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        {/* Corps */}
+                        <div className="p-5 space-y-4">
+                            {notesMap[noteModal.entityId] && (
+                                <div className="text-[10px] text-slate-400 bg-slate-50 rounded-xl px-3 py-2 flex items-center gap-2">
+                                    <span>ℹ️</span>
+                                    <span>Une note existe déjà. La modifier la remettra en statut non traitée.</span>
+                                </div>
+                            )}
+                            <textarea
+                                autoFocus
+                                value={noteModal.message}
+                                onChange={e => setNoteModal(prev => ({ ...prev, message: e.target.value }))}
+                                placeholder="Décrivez l'information à transmettre au manager…"
+                                rows={5}
+                                className="w-full bg-slate-50/60 border border-slate-200 rounded-xl p-3 text-sm text-slate-800 placeholder:text-slate-300 focus:ring-2 focus:ring-slate-900/10 outline-none transition-all resize-none leading-relaxed"
+                            />
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-5 pb-5 flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setNoteModal(prev => ({ ...prev, open: false }))}
+                                className="flex-1 py-2.5 bg-white text-slate-600 border border-slate-200 rounded-xl font-medium hover:bg-slate-50 transition-all text-xs"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSaveNote}
+                                disabled={noteModal.saving || !noteModal.message.trim()}
+                                className="flex-1 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all text-xs disabled:opacity-40 flex items-center justify-center gap-2"
+                            >
+                                {noteModal.saving ? (
+                                    <>
+                                        <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                        </svg>
+                                        Envoi...
+                                    </>
+                                ) : 'Enregistrer'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

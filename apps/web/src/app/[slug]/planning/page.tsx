@@ -68,7 +68,7 @@ export default function PlanningPage() {
 
         const [userData, creditData, tenantData, bookingsData, sessionsData, upcomingEventsData] = await Promise.all([
           api.getCurrentUser(),
-          api.getCreditAccount(),
+          api.getCreditAccount().catch(() => null),
           api.getTenantSettings(),
           api.getMyBookings(),
           api.getSessions({ start_date: start, end_date: end }),
@@ -103,7 +103,7 @@ export default function PlanningPage() {
             api.getSessions({ start_date: start, end_date: end }),
             api.getUpcomingEvents(),
             api.getMyBookings(),
-            api.getCreditAccount()
+            api.getCreditAccount().catch(() => null)
         ]);
         setSessions(sessionsData);
         setAllUpcomingEvents(upcomingEventsData);
@@ -324,8 +324,8 @@ export default function PlanningPage() {
                   {daysInMonth.map((day, i) => {
                     const isSelected = isSameDay(day, selectedDate);
                     const isToday = isSameDay(day, startOfToday());
-                    const clubColor = tenant?.primary_color;
-                    if (!clubColor && isToday && !isSelected) {
+                    const clubColor = tenant?.primary_color || '#2563eb';
+                    if (!tenant?.primary_color && isToday && !isSelected) {
                         return (
                           <button
                             key={i}
@@ -612,6 +612,12 @@ export default function PlanningPage() {
                                   <div className="flex items-center gap-2 text-slate-600 text-[11px] md:text-xs font-normal">
                                     <span className="text-base opacity-60">📍</span>
                                     <span>{item.location}</span>
+                                  </div>
+                                )}
+                                {item.activity_type && (
+                                  <div className="flex items-center gap-2 text-slate-600 text-[11px] md:text-xs font-normal">
+                                    <span className="text-base opacity-60">🏷️</span>
+                                    <span className="capitalize">{item.activity_type}</span>
                                   </div>
                                 )}
                               </div>

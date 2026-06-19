@@ -345,8 +345,13 @@ export default function MemberOrdersPage() {
                                             {/* Top Section: Title & Metadata */}
                                             <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                                                 <div className="flex flex-col min-w-0 flex-1 w-full sm:w-auto">
-                                                    <div className="flex items-center gap-2 mb-1">
+                                                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                                                         <h3 className="text-lg md:text-xl font-semibold text-slate-900 truncate pr-2 capitalize tracking-tight">{order.offer_name}</h3>
+                                                        {order.allowed_activities && order.allowed_activities.length > 0 && (
+                                                            <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[9px] font-medium border border-slate-200 capitalize">
+                                                                {order.allowed_activities.join(", ")}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     <div className="flex items-center justify-between sm:justify-start gap-4">
                                                         <p className="text-slate-600 text-xs font-medium tracking-tight whitespace-nowrap">
@@ -572,6 +577,18 @@ export default function MemberOrdersPage() {
                                          </p>
                                      </div>
                                  </div>
+
+                                 {selectedOrder.allowed_activities && selectedOrder.allowed_activities.length > 0 && (
+                                      <div className="flex items-center gap-3">
+                                          <span className="text-lg w-6 text-center">🎯</span>
+                                          <div className="flex flex-col">
+                                              <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium leading-none mb-1">Activités autorisées</span>
+                                              <p className="text-sm font-medium text-slate-900 leading-none capitalize">
+                                                  {selectedOrder.allowed_activities.join(", ")}
+                                              </p>
+                                          </div>
+                                      </div>
+                                  )}
 
                                  {(selectedOrder.offer_snap_description || selectedOrder.offer_description) && (
                                      <div className="pt-2 border-t border-slate-100 flex items-start gap-3">

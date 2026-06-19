@@ -490,14 +490,36 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
         <div className="flex flex-col flex-1 px-5 h-full pt-3 lg:pt-0">
 
             {/* Credits display */}
-            {credits && (credits.balance > 0 || myOrders.length > 0) && (
-                <div className="flex items-center justify-end gap-2 px-1 my-4">
-                    <div className="w-px h-5 bg-slate-300" />
-                    <span className="text-sm font-medium text-slate-900">Crédits</span>
-                    <span className="text-base">💎</span>
-                    <p className="text-lg font-medium leading-none text-slate-900">{formatCredits(credits.balance)}</p>
-                </div>
-            )}
+            {credits && (credits.balance > 0 || myOrders.length > 0) && (() => {
+                const activities = Object.entries(credits.balances_by_activity || {});
+                if (activities.length > 1) {
+                    return (
+                        <div className="flex flex-col items-end gap-1 px-1 my-4">
+                            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-0.5">Mes Crédits</span>
+                            <div className="flex flex-wrap justify-end gap-1.5 max-w-xs">
+                                {activities.map(([activity, bal]) => (
+                                    <div key={activity} className="flex items-center gap-1 text-[11px] text-slate-700 bg-white shadow-sm border border-slate-200/80 px-2.5 py-1 rounded-xl">
+                                        <span>💎</span>
+                                        <span className="font-bold text-slate-900">{bal === null ? "Illimité" : formatCredits(Number(bal))}</span>
+                                        <span className="text-slate-500 text-[10px] truncate max-w-[100px] capitalize">{activity}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                }
+                const singleAct = activities[0];
+                const label = singleAct && singleAct[0] !== "Toutes activités" ? ` (${singleAct[0]})` : "";
+                const balValue = singleAct ? (singleAct[1] === null ? "Illimité" : formatCredits(Number(singleAct[1]))) : formatCredits(credits.balance);
+                return (
+                    <div className="flex items-center justify-end gap-2 px-1 my-4">
+                        <div className="w-px h-5 bg-slate-300" />
+                        <span className="text-sm font-medium text-slate-900">Crédits{label}</span>
+                        <span className="text-base">💎</span>
+                        <p className="text-lg font-medium leading-none text-slate-900">{balValue}</p>
+                    </div>
+                );
+            })()}
 
             {/* 5. Quick Actions Stack */}
             <div className="grid grid-cols-2 gap-2.5 mb-4 w-full mx-auto lg:mx-0 px-1 lg:px-0 lg:mt-28">

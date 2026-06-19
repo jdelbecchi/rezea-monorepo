@@ -18,6 +18,7 @@ export default function CreditsPage() {
     const [tenantSettings, setTenantSettings] = useState<Tenant | null>(null);
     const [balance, setBalance] = useState(0);
     const [offers, setOffers] = useState<Offer[]>([]);
+    const [balancesByActivity, setBalancesByActivity] = useState<Record<string, number | null>>({});
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -31,6 +32,7 @@ export default function CreditsPage() {
                 ]);
                 setUser(userData);
                 setBalance(accountData.balance);
+                setBalancesByActivity(accountData.balances_by_activity || {});
                 setOffers(offersData);
                 setTenantSettings(tenantData);
             } catch (err) {
@@ -93,20 +95,56 @@ export default function CreditsPage() {
                         </div>
 
                         {/* Balance display below the separator line */}
-                        <div className="mt-4 flex justify-center">
-                            <div 
-                                className="px-4 py-1.5 md:px-5 md:py-2 rounded-2xl border flex items-center justify-center gap-3 shadow-sm"
-                                style={{ 
-                                    background: `linear-gradient(135deg, white, ${(tenantSettings?.primary_color || '#2563eb')}40)`,
-                                    borderColor: `${(tenantSettings?.primary_color || '#2563eb')}30`
-                                }}
-                            >
-                                <span className="text-[11px] md:text-xs font-semibold text-slate-500 capitalize tracking-tight whitespace-nowrap">Mon solde :</span>
-                                <div className="flex items-baseline gap-1.5">
-                                    <span className="text-lg md:text-xl font-semibold text-slate-900 leading-none">{formatCredits(balance)}</span>
-                                    <span className="text-[10px] md:text-xs font-medium text-slate-500 lowercase">crédit{balance > 1 ? 's' : ''}</span>
-                                </div>
-                            </div>
+                        <div className="mt-4 flex flex-col items-center">
+                            {(() => {
+                                const activities = Object.entries(balancesByActivity || {});
+                                if (activities.length > 1) {
+                                    return (
+                                        <div className="flex flex-col items-center gap-1.5 max-w-md w-full">
+                                            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Mes soldes de crédits</span>
+                                            <div className="flex flex-wrap justify-center gap-2">
+                                                {activities.map(([activity, bal]) => (
+                                                    <div 
+                                                        key={activity} 
+                                                        className="px-3.5 py-1.5 rounded-2xl border flex items-center justify-center gap-2 shadow-sm bg-white"
+                                                        style={{ 
+                                                            borderColor: `${(tenantSettings?.primary_color || '#2563eb')}25`
+                                                        }}
+                                                    >
+                                                        <span>💎</span>
+                                                        <span className="text-xs md:text-sm font-bold text-slate-900 leading-none">
+                                                            {bal === null ? "Illimité" : formatCredits(Number(bal))}
+                                                        </span>
+                                                        <span className="text-slate-500 text-[10px] lowercase font-medium">
+                                                            {activity}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                }
+                                const singleAct = activities[0];
+                                const label = singleAct && singleAct[0] !== "Toutes activités" ? ` (${singleAct[0]})` : "";
+                                const balValue = singleAct ? (singleAct[1] === null ? "Illimité" : formatCredits(Number(singleAct[1]))) : formatCredits(balance);
+                                return (
+                                    <div 
+                                        className="px-4 py-1.5 md:px-5 md:py-2 rounded-2xl border flex items-center justify-center gap-3 shadow-sm"
+                                        style={{ 
+                                            background: `linear-gradient(135deg, white, ${(tenantSettings?.primary_color || '#2563eb')}40)`,
+                                            borderColor: `${(tenantSettings?.primary_color || '#2563eb')}30`
+                                        }}
+                                    >
+                                        <span className="text-[11px] md:text-xs font-semibold text-slate-500 capitalize tracking-tight whitespace-nowrap">Mon solde{label} :</span>
+                                        <div className="flex items-baseline gap-1.5">
+                                            <span className="text-lg md:text-xl font-semibold text-slate-900 leading-none">{balValue}</span>
+                                            {balValue !== "Illimité" && (
+                                                <span className="text-[10px] md:text-xs font-medium text-slate-500 lowercase">crédit{Number(balValue) > 1 ? 's' : ''}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </div>
                     </header>
 
@@ -177,6 +215,12 @@ export default function CreditsPage() {
                                                                 {offer.is_unlimited ? "Crédits illimités" : `${offer.classes_included || 0} crédit${(offer.classes_included || 0) > 1 ? 's' : ''}`}
                                                             </span>
                                                         </div>
+                                                        {offer.allowed_activities && offer.allowed_activities.length > 0 && (
+                                                            <div className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 bg-slate-100 text-slate-600 rounded-lg mt-0.5 max-w-full">
+                                                                <span className="text-[9px]">🏷️</span>
+                                                                <span className="truncate capitalize">{offer.allowed_activities.join(", ")}</span>
+                                                            </div>
+                                                        )}
                                                         
                                                         {offer.is_validity_unlimited ? (
                                                             <div className="flex items-center gap-1.5 text-emerald-600/70 justify-center">

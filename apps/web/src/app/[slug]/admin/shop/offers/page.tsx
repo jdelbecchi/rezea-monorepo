@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { api, User, Offer } from "@/lib/api";
+import { api, User, Offer, Tenant } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 
 const emptyForm = {
@@ -26,6 +26,7 @@ const emptyForm = {
     category_display_order: "1",
     offer_display_order: "1",
     engagement_type: "ponctuel",
+    allowed_activities: [] as string[],
 };
 
 const formatPrice = (cents: number | null | undefined) => {
@@ -38,6 +39,7 @@ function AdminOffersContent() {
     const router = useRouter();
     const params = useParams();
     const [user, setUser] = useState<User | null>(null);
+    const [tenant, setTenant] = useState<Tenant | null>(null);
     const [offers, setOffers] = useState<Offer[]>([]);
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -72,8 +74,11 @@ function AdminOffersContent() {
                 }
                 setUser(userData);
 
-                // 2. Fetch other data
-                await fetchOffers();
+                const [tenantData] = await Promise.all([
+                    api.getTenantSettings(),
+                    fetchOffers()
+                ]);
+                setTenant(tenantData);
             } catch (err: any) {
                 if (err.response?.status === 401) {
                     router.push(`/${params.slug}`);
@@ -124,6 +129,7 @@ function AdminOffersContent() {
                 display_order: parseInt(formData.offer_display_order) || 1,
                 category_display_order: parseInt(formData.category_display_order) || 1,
                 engagement_type: formData.engagement_type,
+                allowed_activities: formData.allowed_activities,
             };
 
             if (editingId) {
@@ -175,6 +181,7 @@ function AdminOffersContent() {
             category_display_order: (o as any).category_display_order?.toString() || "1",
             offer_display_order: (o.display_order || 1).toString(),
             engagement_type: o.engagement_type || "ponctuel",
+            allowed_activities: o.allowed_activities || [],
         });
         setShowForm(true);
     };
@@ -321,6 +328,15 @@ function AdminOffersContent() {
                                                 <td className="px-3 py-2.5 whitespace-nowrap">
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-sm font-medium text-slate-900">{o.name}</span>
+                                                        {o.allowed_activities && o.allowed_activities.length > 0 && (
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {o.allowed_activities.map((act) => (
+                                                                    <span key={act} className="px-1.5 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 rounded text-[10px] font-medium uppercase tracking-tight">
+                                                                        {act}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                         {o.description && (
                                                             <div title={o.description} className="text-slate-400 hover:text-slate-600 transition-colors cursor-help">
                                                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -595,6 +611,39 @@ function AdminOffersContent() {
                                                                 </select>
                                                             </div>
                                                         </div>
+                                                        {/* Restrictions par activité */}
+                                                        {tenant?.activity_types && tenant.activity_types.length > 0 && (
+                                                            <div className="space-y-4">
+                                                                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Restrictions par activité (Facultatif)</h4>
+                                                                <p className="text-xs text-slate-500">Si aucune activité n'est sélectionnée, l'offre donnera accès à toutes les séances de l'établissement sans restriction.</p>
+                                                                <div className="flex flex-wrap gap-3">
+                                                                    {tenant.activity_types.map((act) => {
+                                                                        const isChecked = formData.allowed_activities?.includes(act);
+                                                                        return (
+                                                                            <label key={act} className={`flex items-center gap-2 px-3 py-2 border rounded-xl cursor-pointer transition-all text-sm font-medium ${
+                                                                                isChecked 
+                                                                                    ? 'border-blue-600 bg-blue-50 text-blue-800' 
+                                                                                    : 'border-gray-200 bg-white hover:border-gray-300 text-slate-700'
+                                                                            }`}>
+                                                                                <input 
+                                                                                    type="checkbox" 
+                                                                                    checked={isChecked} 
+                                                                                    onChange={(e) => {
+                                                                                        const current = formData.allowed_activities || [];
+                                                                                        const next = e.target.checked 
+                                                                                            ? [...current, act] 
+                                                                                            : current.filter(x => x !== act);
+                                                                                        setFormData({ ...formData, allowed_activities: next });
+                                                                                    }}
+                                                                                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                                                                />
+                                                                                <span>{act}</span>
+                                                                            </label>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                         <div>
                                                             <label className="block text-xs text-slate-500 mb-1">Nombre d'échéances</label>
                                                             <input type="number" value={formData.recurring_count} onChange={e => setFormData({...formData, recurring_count: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 disabled:bg-gray-100 bg-white text-sm ${(showErrors && formData.featured_pricing === 'recurring' && !formData.recurring_count) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} disabled={formData.featured_pricing !== 'recurring'} />

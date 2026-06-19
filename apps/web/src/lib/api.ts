@@ -323,6 +323,7 @@ export interface Tenant {
   payment_redirect_link?: string;
   pay_now_instructions?: string;
   locations?: string[];
+  activity_types?: string[];
   is_active: boolean;
   max_users: number;
   max_sessions_per_day: number;
@@ -371,6 +372,7 @@ export interface Offer {
   display_order: number;
   category_display_order?: number;
   engagement_type?: 'essai' | 'regulier' | 'ponctuel';
+  allowed_activities?: string[];
   created_at: string;
   updated_at: string;
 }
@@ -418,6 +420,7 @@ export interface OrderItem {
   offer_snap_validity_days: number | null;
   offer_snap_validity_unit: string | null;
   offer_snap_is_validity_unlimited: boolean;
+  allowed_activities?: string[];
   invoice_number?: string | null;
   is_blocked?: boolean | null;
 }
@@ -493,6 +496,7 @@ export interface CreditAccount {
   balance: number;
   total_purchased: number;
   total_used: number;
+  balances_by_activity?: Record<string, number | null>;
 }
 
 // API Functions
@@ -1275,4 +1279,67 @@ export const api = {
     const response = await apiClient.post(`/api/public/feedback/${token}`, data);
     return response.data;
   },
+
+  // ── Staff Notes ──────────────────────────────────────────────────────────
+
+  /** Crée ou met à jour la note d'une séance/event (upsert). Remet is_resolved=false si modifiée. */
+  upsertStaffNote: async (data: {
+    message: string;
+    entity_type: 'session' | 'event' | 'general';
+    entity_id?: string | null;
+    entity_label?: string | null;
+  }): Promise<StaffNoteItem> => {
+    const response = await apiClient.post('/api/staff-notes', data);
+    return response.data;
+  },
+
+  /** Liste les notes (inbox manager). includeResolved=true pour toutes les notes y compris traitées */
+  getAdminStaffNotes: async (includeResolved = false): Promise<StaffNoteItem[]> => {
+    const response = await apiClient.get('/api/staff-notes/admin', {
+      params: { include_resolved: includeResolved },
+    });
+    return response.data;
+  },
+
+  /** Retourne un Set des entity_id ayant un post-it (résolu ou non) — pour les icônes de table */
+  getAllStaffNoteEntityIds: async (entityType: 'session' | 'event'): Promise<Set<string>> => {
+    const response = await apiClient.get('/api/staff-notes/admin', {
+      params: { include_resolved: true },
+    });
+    const notes: StaffNoteItem[] = response.data;
+    return new Set(
+      notes
+        .filter(n => n.entity_type === entityType && n.entity_id)
+        .map(n => n.entity_id as string)
+    );
+  },
+
+  /** Retourne la note liée à une séance/event (traitée ou non), ou null */
+  getEntityStaffNote: async (entityId: string): Promise<StaffNoteItem | null> => {
+    const response = await apiClient.get(`/api/staff-notes/entity/${entityId}`);
+    return response.data;
+  },
+
+  /** Marque une note comme traitée → disparaît de l'inbox */
+  resolveStaffNote: async (noteId: string): Promise<StaffNoteItem> => {
+    const response = await apiClient.patch(`/api/staff-notes/admin/${noteId}/resolve`);
+    return response.data;
+  },
 };
+
+// ── Staff Note type ───────────────────────────────────────────────────────
+export interface StaffNoteItem {
+  id: string;
+  tenant_id: string;
+  author_id: string;
+  author_name: string;
+  message: string;
+  entity_type: 'session' | 'event' | 'general';
+  entity_id: string | null;
+  entity_label: string | null;
+  is_resolved: boolean;
+  resolved_at: string | null;
+  resolved_by: string | null;
+  created_at: string;
+  updated_at: string | null;
+}

@@ -862,22 +862,33 @@ export default function AdminShopOrdersPage() {
                                                     </div>
                                                 </td>
                                                 <td className="px-3 py-2.5 whitespace-nowrap">
-                                                    <div className="flex items-center gap-1">
-                                                        <span className="text-sm font-medium text-slate-900">{order.offer_code}</span>
-                                                        {order.comment && order.comment.trim().length > 0 && (
-                                                            <span title={`Commentaire interne : ${order.comment}`} className="cursor-help text-sm">
-                                                                📝
-                                                            </span>
-                                                        )}
-                                                        {order.user_note && order.user_note.trim().length > 0 && (
-                                                            <div title={`Note à l'utilisateur : ${order.user_note}`} className="text-slate-400 hover:text-slate-600 transition-colors cursor-help">
-                                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                                                                </svg>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </td>
+                                                     <div className="flex flex-col gap-1 justify-center">
+                                                         <div className="flex items-center gap-1">
+                                                             <span className="text-sm font-medium text-slate-900">{order.offer_code}</span>
+                                                             {order.comment && order.comment.trim().length > 0 && (
+                                                                 <span title={`Commentaire interne : ${order.comment}`} className="cursor-help text-sm">
+                                                                     📝
+                                                                 </span>
+                                                             )}
+                                                             {order.user_note && order.user_note.trim().length > 0 && (
+                                                                 <div title={`Note à l'utilisateur : ${order.user_note}`} className="text-slate-400 hover:text-slate-600 transition-colors cursor-help">
+                                                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                                                     </svg>
+                                                                 </div>
+                                                             )}
+                                                         </div>
+                                                         {order.allowed_activities && order.allowed_activities.length > 0 && (
+                                                             <div className="flex flex-wrap gap-1 max-w-[150px]">
+                                                                 {order.allowed_activities.map((act) => (
+                                                                     <span key={act} className="px-1.5 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 rounded text-[9px] font-semibold uppercase tracking-tight">
+                                                                         {act}
+                                                                     </span>
+                                                                 ))}
+                                                             </div>
+                                                         )}
+                                                     </div>
+                                                 </td>
                                                 <td className="px-3 py-2.5 whitespace-nowrap text-sm text-slate-700 hidden lg:table-cell text-center">
                                                     {new Date(order.start_date).toLocaleDateString("fr-FR")}
                                                 </td>
@@ -1109,6 +1120,22 @@ export default function AdminShopOrdersPage() {
                                             disabled={editOrder.is_validity_unlimited} />
                                     </div>
                                 </div>
+
+                                 {/* Type d'activité (Snapshot) */}
+                                 <div className="space-y-1">
+                                     <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">Activités autorisées par l'offre</label>
+                                     <div className="flex flex-wrap gap-1.5 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                                         {editOrder.allowed_activities && editOrder.allowed_activities.length > 0 ? (
+                                             editOrder.allowed_activities.map((act) => (
+                                                 <span key={act} className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded text-[10px] font-semibold uppercase tracking-tight">
+                                                     {act}
+                                                 </span>
+                                             ))
+                                         ) : (
+                                             <span className="text-xs text-slate-500 italic">Toutes les activités (aucune restriction)</span>
+                                         )}
+                                     </div>
+                                 </div>
 
                                 {/* Statuts & Paiement */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
