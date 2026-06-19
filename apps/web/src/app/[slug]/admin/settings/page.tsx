@@ -53,6 +53,7 @@ export default function AdminSettingsPage() {
     const [previewLogo, setPreviewLogo] = useState<string | null>(null);
     const [previewLoginBg, setPreviewLoginBg] = useState<string | null>(null);
     const [newLocation, setNewLocation] = useState("");
+    const [newActivity, setNewActivity] = useState("");
     const [showPreview, setShowPreview] = useState(false);
     const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("mobile");
 
@@ -206,6 +207,22 @@ export default function AdminSettingsPage() {
     const handleRemoveLocation = (loc: string) => {
         const current = formData.locations || [];
         setFormData({ ...formData, locations: current.filter(l => l !== loc) });
+    };
+
+    const handleAddActivity = () => {
+        if (!newActivity.trim()) return;
+        const current = formData.activity_types || [];
+        if (current.includes(newActivity.trim())) {
+            showMessage("Cette activité existe déjà", "error");
+            return;
+        }
+        setFormData({ ...formData, activity_types: [...current, newActivity.trim()] });
+        setNewActivity("");
+    };
+
+    const handleRemoveActivity = (act: string) => {
+        const current = formData.activity_types || [];
+        setFormData({ ...formData, activity_types: current.filter(a => a !== act) });
     };
 
     const handleAddAtout = () => {
@@ -663,58 +680,68 @@ export default function AdminSettingsPage() {
 
                         {/* RULES TAB */}
                         {activeTab === "rules" && (
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
-                                <section className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-8 flex flex-col h-full">
+                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                {/* DEADLINES BOX - FULL WIDTH */}
+                                <section className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
+                                    <div className="flex flex-col lg:flex-row gap-8 items-stretch">
+                                        {/* Left Side: Deadlines */}
+                                        <div className="flex-1 space-y-4">
+                                            <h3 className="text-base font-medium flex items-center gap-2 text-slate-800 mb-4">
+                                                <span>⏱️</span>
+                                                <span>Délais d&apos;inscription & d&apos;annulation</span>
+                                            </h3>
+                                            
+                                            <div className="space-y-4">
+                                                <div className="space-y-1.5">
+                                                    <label className="block text-sm font-medium text-slate-700 flex items-center gap-1.5">
+                                                        <span>⏳</span>
+                                                        <span>Délai limite d&apos;inscription</span>
+                                                    </label>
+                                                    <div className="relative group">
+                                                        <input
+                                                            type="number"
+                                                            value={formData.registration_limit_mins ?? 0}
+                                                            onChange={e => setFormData({ ...formData, registration_limit_mins: parseInt(e.target.value) || 0 })}
+                                                            className="w-full pl-6 pr-20 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                                                        />
+                                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-medium">minutes</span>
+                                                    </div>
+                                                    <p className="text-[10px] text-slate-400 font-normal">0 = possible jusqu&apos;au début du cours</p>
+                                                </div>
 
-
-                                    <div className="space-y-4 flex-1">
-                                        <div className="space-y-1.5">
-                                            <label className="block text-sm font-medium text-slate-700 flex items-center gap-1.5">
-                                                <span>⏳</span>
-                                                <span>Délai limite d&apos;inscription</span>
-                                            </label>
-                                            <div className="relative group">
-                                                <input
-                                                    type="number"
-                                                    value={formData.registration_limit_mins ?? 0}
-                                                    onChange={e => setFormData({ ...formData, registration_limit_mins: parseInt(e.target.value) || 0 })}
-                                                    className="w-full pl-6 pr-20 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-4 focus:ring-blue-100 transition-all outline-none"
-                                                />
-                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-medium">minutes</span>
+                                                <div className="space-y-1.5">
+                                                    <label className="block text-sm font-medium text-slate-700 flex items-center gap-1.5">
+                                                        <span>🚫</span>
+                                                        <span>Délai limite d&apos;annulation</span>
+                                                    </label>
+                                                    <div className="relative group">
+                                                        <input
+                                                            type="number"
+                                                            value={formData.cancellation_limit_mins ?? 45}
+                                                            onChange={e => setFormData({ ...formData, cancellation_limit_mins: parseInt(e.target.value) || 0 })}
+                                                            className="w-full pl-6 pr-20 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                                                        />
+                                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-medium">minutes</span>
+                                                    </div>
+                                                    <p className="text-[10px] text-slate-400 font-normal">Passé ce délai, le crédit ne sera pas restitué</p>
+                                                </div>
                                             </div>
-                                            <p className="text-[10px] text-slate-400 font-normal">0 = possible jusqu&apos;au début du cours</p>
                                         </div>
 
-                                        <div className="space-y-1.5">
-                                            <label className="block text-sm font-medium text-slate-700 flex items-center gap-1.5">
-                                                <span>🚫</span>
-                                                <span>Délai limite d&apos;annulation</span>
-                                            </label>
-                                            <div className="relative group">
-                                                <input
-                                                    type="number"
-                                                    value={formData.cancellation_limit_mins ?? 45}
-                                                    onChange={e => setFormData({ ...formData, cancellation_limit_mins: parseInt(e.target.value) || 0 })}
-                                                    className="w-full pl-6 pr-20 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold focus:ring-4 focus:ring-blue-100 transition-all outline-none"
-                                                />
-                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-medium">minutes</span>
-                                            </div>
-                                            <p className="text-[10px] text-slate-400 font-normal">Passé ce délai, le crédit ne sera pas restitué</p>
-                                        </div>
+                                        {/* Vertical Separator */}
+                                        <div className="hidden lg:block w-px bg-slate-100 self-stretch my-2"></div>
 
-                                        {/* Grace period / Tolerance settings */}
-                                        <div className="pt-6 border-t border-slate-100 space-y-4">
-                                            <div className="space-y-1">
-                                                <label className="block text-sm font-medium text-slate-700 flex items-center gap-1.5">
-                                                    <span>🎁</span>
-                                                    <span>Délai de grâce (crédits & statut)</span>
-                                                </label>
-                                                <p className="text-xs text-slate-400 font-normal">
-                                                    Autoriser les utilisateurs à consommer leurs crédits après la fin théorique de leur commande d&apos;offre.
-                                                </p>
-                                            </div>
+                                        {/* Right Side: Grace period */}
+                                        <div className="flex-1 space-y-4">
+                                            <h3 className="text-base font-medium flex items-center gap-2 text-slate-800 mb-4">
+                                                <span>🎁</span>
+                                                <span>Délai de grâce (crédits & statut)</span>
+                                            </h3>
+                                            <p className="text-xs text-slate-400 font-normal">
+                                                Autoriser les utilisateurs à consommer leurs crédits après la fin théorique de leur commande d&apos;offre.
+                                            </p>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                                                 <div>
                                                     <label className="block text-[11px] font-light text-slate-400 uppercase tracking-wider mb-2 ml-1">Mode de tolérance</label>
                                                     <select
@@ -750,68 +777,127 @@ export default function AdminSettingsPage() {
                                                     </div>
                                                 )}
                                             </div>
-                                            <p className="text-[10px] text-slate-400 font-normal italic leading-tight">
+                                            <p className="text-[10px] text-slate-400 font-normal italic leading-tight pt-2">
                                                 💡 Exemple : Pour une offre finissant le 10 juin, avec 15 jours de tolérance ou une fin de mois, l&apos;utilisateur pourra utiliser ses crédits restants jusqu&apos;au 25 juin ou 30 juin. Le statut passera à Expiré après cette date de tolérance.
                                             </p>
                                         </div>
                                     </div>
                                 </section>
 
-                                {/* LOCATIONS SECTION */}
-                                <section className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-8 flex flex-col h-full">
-                                    <div className="space-y-1">
-                                        <h3 className="text-base font-medium flex items-center gap-2 text-slate-800">
-                                            <span>📍</span>
-                                            <span>Locaux & Espaces</span>
-                                        </h3>
-                                        <p className="text-xs text-slate-400 font-normal">Définissez les salles et lieux de votre établissement</p>
-                                    </div>
-
-                                    <div className="space-y-6 flex-1">
-                                        <div className="flex gap-3 items-center">
-                                            <input
-                                                type="text"
-                                                placeholder="Ex: Salle 1, Studio Yoga..."
-                                                value={newLocation}
-                                                onChange={e => setNewLocation(e.target.value)}
-                                                onKeyDown={e => e.key === "Enter" && (e.preventDefault(), handleAddLocation())}
-                                                className="flex-1 px-5 py-2.5 bg-slate-50 border border-slate-100 rounded-xl font-normal focus:ring-4 focus:ring-blue-100 transition-all outline-none text-sm"
-                                            />
-                                            <button
-                                                onClick={handleAddLocation}
-                                                className="px-4 py-1.5 bg-slate-900 text-white rounded-xl font-semibold text-xs hover:bg-slate-800 transition-all shadow-sm active:scale-95 flex items-center gap-2 leading-none"
-                                            >
-                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                                                </svg>
-                                                <span className="mb-[1px]">Ajouter</span>
-                                            </button>
+                                {/* LOCATIONS & ACTIVITIES - SIDE BY SIDE */}
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+                                    {/* LOCATIONS SECTION */}
+                                    <section className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-8 flex flex-col h-full">
+                                        <div className="space-y-1">
+                                            <h3 className="text-base font-medium flex items-center gap-2 text-slate-800">
+                                                <span>📍</span>
+                                                <span>Locaux & Espaces</span>
+                                            </h3>
+                                            <p className="text-xs text-slate-400 font-normal">Définissez les salles et lieux de votre établissement</p>
                                         </div>
 
-                                        <div className="divide-y divide-slate-100">
-                                            {(formData.locations || []).map((loc) => (
-                                                <div key={loc} className="group flex items-center justify-between py-2.5 transition-all">
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="text-slate-400 text-[10px]">📍</span>
-                                                        <span className="font-medium text-slate-600 text-sm">{loc}</span>
+                                        <div className="space-y-6 flex-1">
+                                            <div className="flex gap-3 items-center">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Ex: Salle 1, Studio Yoga..."
+                                                    value={newLocation}
+                                                    onChange={e => setNewLocation(e.target.value)}
+                                                    onKeyDown={e => e.key === "Enter" && (e.preventDefault(), handleAddLocation())}
+                                                    className="flex-1 px-5 py-2.5 bg-slate-50 border border-slate-100 rounded-xl font-normal focus:ring-4 focus:ring-blue-100 transition-all outline-none text-sm"
+                                                />
+                                                <button
+                                                    onClick={handleAddLocation}
+                                                    className="px-4 py-1.5 bg-slate-900 text-white rounded-xl font-semibold text-xs hover:bg-slate-800 transition-all shadow-sm active:scale-95 flex items-center gap-2 leading-none"
+                                                >
+                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                                                    </svg>
+                                                    <span className="mb-[1px]">Ajouter</span>
+                                                </button>
+                                            </div>
+
+                                            <div className="divide-y divide-slate-100">
+                                                {(formData.locations || []).map((loc) => (
+                                                    <div key={loc} className="group flex items-center justify-between py-2.5 transition-all">
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="text-slate-400 text-[10px]">📍</span>
+                                                            <span className="font-medium text-slate-600 text-sm">{loc}</span>
+                                                        </div>
+                                                        <button 
+                                                            onClick={() => handleRemoveLocation(loc)}
+                                                            className="p-1 text-slate-300 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"
+                                                            title="Supprimer ce lieu"
+                                                        >
+                                                            🗑️
+                                                        </button>
                                                     </div>
-                                                    <button 
-                                                        onClick={() => handleRemoveLocation(loc)}
-                                                        className="p-1 text-slate-300 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"
-                                                        title="Supprimer ce lieu"
-                                                    >
-                                                        🗑️
-                                                    </button>
-                                                </div>
-                                            ))}
-                                            {(formData.locations || []).length === 0 && (
-                                                <div className="py-8 text-center border-2 border-dashed border-slate-50 rounded-xl mt-2">
-                                                    <p className="text-slate-400 font-normal text-xs">Aucun lieu configuré</p>
-                                                </div>
-                                            )}
+                                                ))}
+                                                {(formData.locations || []).length === 0 && (
+                                                    <div className="py-8 text-center border-2 border-dashed border-slate-50 rounded-xl mt-2">
+                                                        <p className="text-slate-400 font-normal text-xs">Aucun lieu configuré</p>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                </section>
+                                    </section>
+
+                                    {/* ACTIVITIES SECTION */}
+                                    <section className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-8 flex flex-col h-full">
+                                        <div className="space-y-1">
+                                            <h3 className="text-base font-medium flex items-center gap-2 text-slate-800">
+                                                <span>🏷️</span>
+                                                <span>Activités de l&apos;établissement</span>
+                                            </h3>
+                                            <p className="text-xs text-slate-400 font-normal">Définissez les types d&apos;activités proposés (ex: Peinture, Dessin, Yoga...)</p>
+                                        </div>
+
+                                        <div className="space-y-6 flex-1">
+                                            <div className="flex gap-3 items-center">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Ex: Peinture, Dessin, Yoga..."
+                                                    value={newActivity}
+                                                    onChange={e => setNewActivity(e.target.value)}
+                                                    onKeyDown={e => e.key === "Enter" && (e.preventDefault(), handleAddActivity())}
+                                                    className="flex-1 px-5 py-2.5 bg-slate-50 border border-slate-100 rounded-xl font-normal focus:ring-4 focus:ring-blue-100 transition-all outline-none text-sm"
+                                                />
+                                                <button
+                                                    onClick={handleAddActivity}
+                                                    className="px-4 py-1.5 bg-slate-900 text-white rounded-xl font-semibold text-xs hover:bg-slate-800 transition-all shadow-sm active:scale-95 flex items-center gap-2 leading-none"
+                                                >
+                                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                                                    </svg>
+                                                    <span className="mb-[1px]">Ajouter</span>
+                                                </button>
+                                            </div>
+
+                                            <div className="divide-y divide-slate-100">
+                                                {(formData.activity_types || []).map((act) => (
+                                                    <div key={act} className="group flex items-center justify-between py-2.5 transition-all">
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="text-slate-400 text-[10px]">🏷️</span>
+                                                            <span className="font-medium text-slate-600 text-sm capitalize">{act}</span>
+                                                        </div>
+                                                        <button 
+                                                            onClick={() => handleRemoveActivity(act)}
+                                                            className="p-1 text-slate-300 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"
+                                                            title="Supprimer cette activité"
+                                                        >
+                                                            🗑️
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                {(formData.activity_types || []).length === 0 && (
+                                                    <div className="py-8 text-center border-2 border-dashed border-slate-50 rounded-xl mt-2">
+                                                        <p className="text-slate-400 font-normal text-xs">Aucune activité configurée</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </section>
+                                </div>
                             </div>
                         )}
 
