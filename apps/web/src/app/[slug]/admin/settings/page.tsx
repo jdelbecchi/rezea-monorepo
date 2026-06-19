@@ -57,6 +57,11 @@ export default function AdminSettingsPage() {
     const [showPreview, setShowPreview] = useState(false);
     const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("mobile");
 
+    const [editingLocIndex, setEditingLocIndex] = useState<number | null>(null);
+    const [editingLocValue, setEditingLocValue] = useState("");
+    const [editingActIndex, setEditingActIndex] = useState<number | null>(null);
+    const [editingActValue, setEditingActValue] = useState("");
+
     // Helpers for structured description
     const parseDescription = (html: string) => {
         if (!html) return { intro: "", items: [""] };
@@ -209,6 +214,19 @@ export default function AdminSettingsPage() {
         setFormData({ ...formData, locations: current.filter(l => l !== loc) });
     };
 
+    const handleStartEditLocation = (index: number, val: string) => {
+        setEditingLocIndex(index);
+        setEditingLocValue(val);
+    };
+
+    const handleSaveEditLocation = (index: number) => {
+        if (!editingLocValue.trim()) return;
+        const current = [...(formData.locations || [])];
+        current[index] = editingLocValue.trim();
+        setFormData({ ...formData, locations: current });
+        setEditingLocIndex(null);
+    };
+
     const handleAddActivity = () => {
         if (!newActivity.trim()) return;
         const current = formData.activity_types || [];
@@ -223,6 +241,19 @@ export default function AdminSettingsPage() {
     const handleRemoveActivity = (act: string) => {
         const current = formData.activity_types || [];
         setFormData({ ...formData, activity_types: current.filter(a => a !== act) });
+    };
+
+    const handleStartEditActivity = (index: number, val: string) => {
+        setEditingActIndex(index);
+        setEditingActValue(val);
+    };
+
+    const handleSaveEditActivity = (index: number) => {
+        if (!editingActValue.trim()) return;
+        const current = [...(formData.activity_types || [])];
+        current[index] = editingActValue.trim();
+        setFormData({ ...formData, activity_types: current });
+        setEditingActIndex(null);
     };
 
     const handleAddAtout = () => {
@@ -814,19 +845,57 @@ export default function AdminSettingsPage() {
                                             </div>
 
                                             <div className="divide-y divide-slate-100">
-                                                {(formData.locations || []).map((loc) => (
-                                                    <div key={loc} className="group flex items-center justify-between py-2.5 transition-all">
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="text-slate-400 text-[10px]">📍</span>
-                                                            <span className="font-medium text-slate-600 text-sm">{loc}</span>
-                                                        </div>
-                                                        <button 
-                                                            onClick={() => handleRemoveLocation(loc)}
-                                                            className="p-1 text-slate-300 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"
-                                                            title="Supprimer ce lieu"
-                                                        >
-                                                            🗑️
-                                                        </button>
+                                                {(formData.locations || []).map((loc, index) => (
+                                                    <div key={index} className="group flex items-center justify-between py-2.5 transition-all">
+                                                        {editingLocIndex === index ? (
+                                                            <div className="flex items-center gap-2 w-full animate-in slide-in-from-top-1 duration-200">
+                                                                <input
+                                                                    type="text"
+                                                                    value={editingLocValue}
+                                                                    onChange={e => setEditingLocValue(e.target.value)}
+                                                                    onKeyDown={e => e.key === "Enter" && (e.preventDefault(), handleSaveEditLocation(index))}
+                                                                    className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 transition-all outline-none text-sm font-medium"
+                                                                    autoFocus
+                                                                />
+                                                                <button
+                                                                    onClick={() => handleSaveEditLocation(index)}
+                                                                    className="p-1.5 hover:bg-emerald-50 text-emerald-600 rounded-lg transition-all"
+                                                                    title="Valider"
+                                                                >
+                                                                    ✔️
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => setEditingLocIndex(null)}
+                                                                    className="p-1.5 hover:bg-slate-100 text-slate-400 rounded-lg transition-all"
+                                                                    title="Annuler"
+                                                                >
+                                                                    ❌
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <div className="flex items-center gap-3">
+                                                                    <span className="text-slate-400 text-[10px]">📍</span>
+                                                                    <span className="font-medium text-slate-600 text-sm">{loc}</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                                    <button 
+                                                                        onClick={() => handleStartEditLocation(index, loc)}
+                                                                        className="p-1 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all"
+                                                                        title="Modifier ce lieu"
+                                                                    >
+                                                                        ✏️
+                                                                    </button>
+                                                                    <button 
+                                                                        onClick={() => handleRemoveLocation(loc)}
+                                                                        className="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                                                                        title="Supprimer ce lieu"
+                                                                    >
+                                                                        🗑️
+                                                                    </button>
+                                                                </div>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 ))}
                                                 {(formData.locations || []).length === 0 && (
@@ -870,19 +939,57 @@ export default function AdminSettingsPage() {
                                             </div>
 
                                             <div className="divide-y divide-slate-100">
-                                                {(formData.activity_types || []).map((act) => (
-                                                    <div key={act} className="group flex items-center justify-between py-2.5 transition-all">
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="text-slate-400 text-[10px]">🏷️</span>
-                                                            <span className="font-medium text-slate-600 text-sm capitalize">{act}</span>
-                                                        </div>
-                                                        <button 
-                                                            onClick={() => handleRemoveActivity(act)}
-                                                            className="p-1 text-slate-300 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"
-                                                            title="Supprimer cette activité"
-                                                        >
-                                                            🗑️
-                                                        </button>
+                                                {(formData.activity_types || []).map((act, index) => (
+                                                    <div key={index} className="group flex items-center justify-between py-2.5 transition-all">
+                                                        {editingActIndex === index ? (
+                                                            <div className="flex items-center gap-2 w-full animate-in slide-in-from-top-1 duration-200">
+                                                                <input
+                                                                    type="text"
+                                                                    value={editingActValue}
+                                                                    onChange={e => setEditingActValue(e.target.value)}
+                                                                    onKeyDown={e => e.key === "Enter" && (e.preventDefault(), handleSaveEditActivity(index))}
+                                                                    className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 transition-all outline-none text-sm font-medium"
+                                                                    autoFocus
+                                                                />
+                                                                <button
+                                                                    onClick={() => handleSaveEditActivity(index)}
+                                                                    className="p-1.5 hover:bg-emerald-50 text-emerald-600 rounded-lg transition-all"
+                                                                    title="Valider"
+                                                                >
+                                                                    ✔️
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => setEditingActIndex(null)}
+                                                                    className="p-1.5 hover:bg-slate-100 text-slate-400 rounded-lg transition-all"
+                                                                    title="Annuler"
+                                                                >
+                                                                    ❌
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <div className="flex items-center gap-3">
+                                                                    <span className="text-slate-400 text-[10px]">🏷️</span>
+                                                                    <span className="font-medium text-slate-600 text-sm capitalize">{act}</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                                    <button 
+                                                                        onClick={() => handleStartEditActivity(index, act)}
+                                                                        className="p-1 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all"
+                                                                        title="Modifier cette activité"
+                                                                    >
+                                                                        ✏️
+                                                                    </button>
+                                                                    <button 
+                                                                        onClick={() => handleRemoveActivity(act)}
+                                                                        className="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                                                                        title="Supprimer cette activité"
+                                                                    >
+                                                                        🗑️
+                                                                    </button>
+                                                                </div>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 ))}
                                                 {(formData.activity_types || []).length === 0 && (

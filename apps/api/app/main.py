@@ -272,6 +272,10 @@ app.include_router(finance.router, prefix="/api/admin/finance", tags=["Admin Fin
 from app.api import admin_surveys
 app.include_router(admin_surveys.router, prefix="/api", tags=["Surveys"])
 
+# Staff Notes
+from app.api import staff_notes
+app.include_router(staff_notes.router, prefix="/api/staff-notes", tags=["Staff Notes"])
+
 # Servir les fichiers uploadés
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)

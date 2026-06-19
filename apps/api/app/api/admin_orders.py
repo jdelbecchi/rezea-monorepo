@@ -156,7 +156,7 @@ async def list_orders(
         if u_id not in fifo_cache:
             fifo_cache[u_id] = await order_service.compute_fifo_balances(db, order.user_id, tenant_id)
             
-        user_fifo_balances, _, _ = fifo_cache[u_id]
+        user_fifo_balances, _, _, _ = fifo_cache[u_id]
         order_fifo = user_fifo_balances.get(str(order.id), {})
         order_balance = order_fifo.get("balance")
         order_used = order_fifo.get("credits_used", 0)
@@ -273,6 +273,12 @@ async def create_order(
         user_note=data.user_note,
         status=order_service.normalize_status(initial_status),
         created_by_admin=True,
+        offer_snap_name=offer.name,
+        offer_snap_description=offer.description,
+        offer_snap_validity_days=offer.validity_days,
+        offer_snap_validity_unit=offer.validity_unit,
+        offer_snap_is_validity_unlimited=offer.is_validity_unlimited,
+        offer_snap_allowed_activities=offer.allowed_activities
     )
     db.add(order)
     await db.flush()  # Get order.id before generating installments
@@ -291,7 +297,7 @@ async def create_order(
     order = result.unique().scalar_one()
 
     # Get FIFO balances
-    user_fifo_balances, _, _ = await order_service.compute_fifo_balances(db, order.user_id, tenant_id)
+    user_fifo_balances, _, _, _ = await order_service.compute_fifo_balances(db, order.user_id, tenant_id)
     order_fifo = user_fifo_balances.get(str(order.id), {})
     order_balance = order_fifo.get("balance")
     order_used = order_fifo.get("credits_used", 0)
@@ -396,7 +402,7 @@ async def update_order(
     order = result.unique().scalar_one()
 
     # Get FIFO balances
-    user_fifo_balances, _, _ = await order_service.compute_fifo_balances(db, order.user_id, tenant_id)
+    user_fifo_balances, _, _, _ = await order_service.compute_fifo_balances(db, order.user_id, tenant_id)
     order_fifo = user_fifo_balances.get(str(order.id), {})
     order_balance = order_fifo.get("balance")
     order_used = order_fifo.get("credits_used", 0)

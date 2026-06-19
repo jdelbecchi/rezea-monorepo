@@ -1,0 +1,15 @@
+{
+  "name": "replace_file_content",
+  "args": {
+    "AllowMultiple": "false",
+    "Description": "\"Remove overflow-hidden from newsletter section editor wrapper.\"",
+    "EndLine": "1215",
+    "Instruction": "\"Replace the wrapper div class to remove overflow-hidden.\"",
+    "ReplacementContent": "\"                                                    <div className=\\\"bg-white rounded-xl border border-slate-200 focus-within:border-indigo-500 transition-all\\\">\"",
+    "StartLine": "1213",
+    "TargetContent": "\"                                                    <div className=\\\"bg-white rounded-xl overflow-hidden border border-slate-200 focus-within:border-indigo-500 transition-all\\\">\"",
+    "TargetFile": "\"c:\\\\Users\\\\jdemo\\\\rezea-monorepo\\\\apps/web/src/app/[slug]/admin/emails/page.tsx\"",
+    "toolAction": "\"Removing overflow-hidden from newsletter editor wrapper\"",
+    "toolSummary": "\"Update newsletter wrapper class\""
+  }
+}

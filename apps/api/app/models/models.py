@@ -155,6 +155,8 @@ class Tenant(Base):
     
     # Lieux et Espaces
     locations = Column(JSON, default=list) # Liste des noms de salles autorisées
+    activity_types = Column(JSON, default=list) # Types d'activités configurés
+    
     
     # Options de paiement
     allow_pay_later_offers = Column(Boolean, default=True)
@@ -422,6 +424,8 @@ class Offer(Base):
     
     # Options
     is_unique = Column(Boolean, default=False)  # Offre unique (une seule commande par utilisateur)
+    allowed_activities = Column(JSON, default=list) # Activités autorisées pour cette offre
+    
     
     # Configuration
     is_active = Column(Boolean, default=True)
@@ -659,6 +663,8 @@ class Order(Base):
     offer_snap_validity_days = Column(Integer)
     offer_snap_validity_unit = Column(String(20))
     offer_snap_is_validity_unlimited = Column(Boolean, default=False)
+    offer_snap_allowed_activities = Column(JSON, default=list)
+    
     
     # Facturation
     invoice_number = Column(String(100), nullable=True)
@@ -852,4 +858,36 @@ class SurveyResponse(Base):
         Index("idx_survey_response_tenant", "tenant_id"),
         Index("idx_survey_response_campaign", "campaign_id"),
         Index("idx_survey_response_token", "token", unique=True),
+    )
+
+
+class StaffNote(Base):
+    """Note créée par le staff depuis la Gestion des inscriptions, visible dans l'inbox admin."""
+    __tablename__ = "staff_notes"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    author_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+
+    message = Column(Text, nullable=False)
+    entity_type = Column(String(20), nullable=False, default="general")  # 'session' | 'event' | 'general'
+    entity_id = Column(UUID(as_uuid=True), nullable=True)
+    entity_label = Column(Text, nullable=True)
+
+    is_resolved = Column(Boolean, nullable=False, default=False)
+    resolved_at = Column(DateTime, nullable=True)
+    resolved_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relations
+    author = relationship("User", foreign_keys=[author_id])
+    resolver = relationship("User", foreign_keys=[resolved_by])
+
+    __table_args__ = (
+        Index("idx_staff_notes_tenant", "tenant_id"),
+        Index("idx_staff_notes_entity", "tenant_id", "entity_id"),
+        Index("idx_staff_notes_unresolved", "tenant_id", "is_resolved"),
+        {"extend_existing": True},
     )

@@ -92,6 +92,67 @@ async def update_tenant_settings(
     
     # Appliquer les modifications
     update_data = settings_in.model_dump(exclude_unset=True)
+    
+    # Detect renamed locations to update sessions and events
+    if "locations" in update_data and tenant.locations:
+        old_locs = tenant.locations
+        new_locs = update_data["locations"]
+        for i, old_name in enumerate(old_locs):
+            if i < len(new_locs):
+                new_name = new_locs[i]
+                if old_name != new_name and old_name.strip() and new_name.strip():
+                    from app.models.models import Session, Event
+                    from sqlalchemy import update
+                    await db.execute(
+                        update(Session)
+                        .where(Session.tenant_id == tenant_id, Session.location == old_name)
+                        .values(location=new_name)
+                    )
+                    await db.execute(
+                        update(Event)
+                        .where(Event.tenant_id == tenant_id, Event.location == old_name)
+                        .values(location=new_name)
+                    )
+
+    # Detect renamed activity types to update sessions, offers and orders
+    if "activity_types" in update_data and tenant.activity_types:
+        old_acts = tenant.activity_types
+        new_acts = update_data["activity_types"]
+        for i, old_name in enumerate(old_acts):
+            if i < len(new_acts):
+                new_name = new_acts[i]
+                if old_name != new_name and old_name.strip() and new_name.strip():
+                    from app.models.models import Session, Offer, Order
+                    from sqlalchemy import update
+                    # 1. Update sessions
+                    await db.execute(
+                        update(Session)
+                        .where(Session.tenant_id == tenant_id, Session.activity_type == old_name)
+                        .values(activity_type=new_name)
+                    )
+                    # 2. Update offers
+                    offers_res = await db.execute(
+                        select(Offer).where(Offer.tenant_id == tenant_id)
+                    )
+                    for offer in offers_res.scalars().all():
+                        if offer.allowed_activities and old_name in offer.allowed_activities:
+                            offer.allowed_activities = [
+                                new_name if x == old_name else x 
+                                for x in offer.allowed_activities
+                            ]
+                            db.add(offer)
+                    # 3. Update orders
+                    orders_res = await db.execute(
+                        select(Order).where(Order.tenant_id == tenant_id)
+                    )
+                    for order in orders_res.scalars().all():
+                        if order.offer_snap_allowed_activities and old_name in order.offer_snap_allowed_activities:
+                            order.offer_snap_allowed_activities = [
+                                new_name if x == old_name else x 
+                                for x in order.offer_snap_allowed_activities
+                            ]
+                            db.add(order)
+
     for field, value in update_data.items():
         setattr(tenant, field, value)
     

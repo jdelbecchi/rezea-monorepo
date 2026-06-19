@@ -1,0 +1,15 @@
+{
+  "name": "replace_file_content",
+  "args": {
+    "AllowMultiple": "false",
+    "Description": "\"Fix possible null value error for tenant variable in checkout page\"",
+    "EndLine": "242",
+    "Instruction": "\"Add optional chaining to tenant on line 238\"",
+    "ReplacementContent": "\"                                    {(tenant?.payment_redirect_link || event?.payment_link) ? (\\n                                        <>\\n                                            {tenant?.allow_pay_later_events ? (\"",
+    "StartLine": "235",
+    "TargetContent": "\"                                    {(tenant?.payment_redirect_link || event?.payment_link) ? (\\n                                        <>\\n                                            {tenant.allow_pay_later_events ? (\"",
+    "TargetFile": "\"c:\\\\Users\\\\jdemo\\\\rezea-monorepo\\\\apps\\\\web\\\\src\\\\app\\\\[slug]\\\\events\\\\checkout\\\\[id]\\\\page.tsx\"",
+    "toolAction": "\"Fixing tenant possibly null error\"",
+    "toolSummary": "\"Replace file content in checkout page.tsx\""
+  }
+}

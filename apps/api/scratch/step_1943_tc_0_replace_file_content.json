@@ -1,0 +1,15 @@
+{
+  "name": "replace_file_content",
+  "args": {
+    "AllowMultiple": "false",
+    "Description": "\"Change className of marketing QuillNode to include quill-editor class.\"",
+    "EndLine": "2372",
+    "Instruction": "\"Replace the className line.\"",
+    "ReplacementContent": "\"                                                  className=\\\"bg-white min-h-[160px] text-sm quill-editor\\\"\"",
+    "StartLine": "2370",
+    "TargetContent": "\"                                                  className=\\\"bg-white min-h-[160px] text-sm\\\"\"",
+    "TargetFile": "\"c:\\\\Users\\\\jdemo\\\\rezea-monorepo\\\\apps/web/src/app/[slug]/admin/emails/page.tsx\"",
+    "toolAction": "\"Replacing class name in marketing editor\"",
+    "toolSummary": "\"Update marketing class name\""
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "replace_file_content",
+  "args": {
+    "AllowMultiple": "false",
+    "Description": "\"Change slogan text color from dark blue/black to dark gray (#475569)\"",
+    "EndLine": "1067",
+    "Instruction": "\"Change color class to text-[#475569] on the slogan element\"",
+    "ReplacementContent": "\"                                                     <div className=\\\"text-[10px] font-light text-[#475569] mb-2\\\" style={{ fontFamily: \\\"'Livvic', sans-serif\\\" }}>\\n                                                         Le bien-être à chaque respiration | A vos côtés depuis 2005\\n                                                     </div>\"",
+    "StartLine": "1063",
+    "TargetContent": "\"                                                     <div className=\\\"text-[10px] font-light text-[#0f172a] mb-2\\\" style={{ fontFamily: \\\"'Livvic', sans-serif\\\" }}>\\n                                                         Le bien-être à chaque respiration | A vos côtés depuis 2005\\n                                                     </div>\"",
+    "TargetFile": "\"c:\\\\Users\\\\jdemo\\\\rezea-monorepo\\\\apps\\\\web\\\\src\\\\app\\\\[slug]\\\\admin\\\\emails\\\\page.tsx\"",
+    "toolAction": "\"Updating slogan text color to dark gray\"",
+    "toolSummary": "\"Replace file content in emails/page.tsx\""
+  }
+}

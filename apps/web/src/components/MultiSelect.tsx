@@ -15,6 +15,7 @@ interface MultiSelectProps {
     placeholder?: string;
     className?: string;
     icon?: string | React.ReactNode;
+    joinWithSemicolon?: boolean;
 }
 
 export default function MultiSelect({
@@ -25,6 +26,7 @@ export default function MultiSelect({
     placeholder = "Tous",
     className = "",
     icon,
+    joinWithSemicolon = false,
 }: MultiSelectProps) {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -54,6 +56,12 @@ export default function MultiSelect({
 
     const getDisplayText = () => {
         if (selected.length === 0) return placeholder;
+        if (joinWithSemicolon) {
+            return selected.map(id => {
+                const opt = options.find((o) => o.id === id);
+                return opt ? opt.label : id;
+            }).join("; ");
+        }
         if (selected.length === 1) {
             const opt = options.find((o) => o.id === selected[0]);
             return opt ? opt.label : selected[0];

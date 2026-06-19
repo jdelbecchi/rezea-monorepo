@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { api, User } from "@/lib/api";
+import type { StaffNoteItem } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import MultiSelect from "@/components/MultiSelect";
 import { formatDuration } from "@/lib/formatters";
@@ -63,6 +64,8 @@ export default function AdminEventsProgrammingPage() {
     const [locationFilter, setLocationFilter] = useState<string[]>([]);
     const [tenant, setTenant] = useState<any>(null);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [eventNote, setEventNote] = useState<StaffNoteItem | null | undefined>(undefined); // undefined = pas encore chargé
+    const [eventNoteIds, setEventNoteIds] = useState<Set<string>>(new Set()); // IDs d'évènements ayant un post-it
 
     // Confirmation Modal
     const [confirmModal, setConfirmModal] = useState<{
@@ -95,6 +98,12 @@ export default function AdminEventsProgrammingPage() {
             ]);
             setEvents(eventsData);
             setTenant(tenantData);
+
+            // 3. Charger les IDs ayant un post-it (résolu ou non, pour les icônes)
+            try {
+                const ids = await api.getAllStaffNoteEntityIds('event');
+                setEventNoteIds(ids);
+            } catch { /* silencieux */ }
         } catch (err: any) {
             console.error(err);
             if (err.response?.status === 401) {
@@ -165,6 +174,11 @@ export default function AdminEventsProgrammingPage() {
         });
         setEditingId(event.id);
         setShowForm(true);
+        // Charger la note associée
+        setEventNote(undefined);
+        api.getEntityStaffNote(event.id)
+            .then(note => setEventNote(note))
+            .catch(() => setEventNote(null));
     };
 
     const handleCancelEvent = async (event: EventItem) => {
@@ -401,6 +415,13 @@ export default function AdminEventsProgrammingPage() {
                                                             </svg>
                                                         </span>
                                                     )}
+                                                    {eventNoteIds.has(event.id) && (
+                                                        <span title="Post-it en attente" className="text-amber-400 cursor-help shrink-0">
+                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                                            </svg>
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="px-4 py-2.5 whitespace-nowrap text-sm text-slate-500 text-center">{formatDuration(event.duration_minutes)}</td>
@@ -605,9 +626,7 @@ export default function AdminEventsProgrammingPage() {
                                     </div>
                                 </div>
 
-                                <div className="space-y-4">
-                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Tarification</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-1.5">
                                             <label className="text-sm font-medium text-slate-700">Tarif membre (€) *</label>
                                             <input
@@ -634,14 +653,11 @@ export default function AdminEventsProgrammingPage() {
                                                 placeholder="0.00"
                                             />
                                         </div>
-                                    </div>
                                 </div>
 
                                 {/* Section: Paiement Spécifique */}
-                                <div className="space-y-4">
-                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Paiement spécifique (Optionnel)</h4>
-                                    <div className="space-y-1.5">
-                                        <label className="text-sm font-medium text-slate-700">Lien de paiement externe dédié</label>
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-medium text-slate-700">Lien de paiement (optionnel)</label>
                                         <div className="relative group">
                                             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
                                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -659,9 +675,38 @@ export default function AdminEventsProgrammingPage() {
                                         <p className="text-[11px] text-slate-400 italic font-normal tracking-tight">
                                             Si renseigné, l'utilisateur sera redirigé vers ce lien pour payer cet évènement. Laisse vide pour utiliser les paramètres par défaut de l'établissement.
                                         </p>
-                                    </div>
                                 </div>
                             </form>
+
+                            {/* Note du staff (lecture seule — en modification uniquement) */}
+                            {editingId && (
+                                <div className="px-10 pb-6 pt-2 border-t border-gray-100">
+                                    <label className="text-sm font-medium text-slate-700 flex items-center gap-2 mb-2">
+                                        <span>🗒️</span> Post-it
+                                    </label>
+                                    {eventNote === undefined ? (
+                                        <p className="text-xs text-slate-400 italic animate-pulse">Chargement...</p>
+                                    ) : eventNote === null ? (
+                                        <p className="text-xs text-slate-400 italic">Aucune note pour cet évènement.</p>
+                                    ) : (
+                                        <div className={`rounded-xl border px-4 py-3 text-xs leading-relaxed whitespace-pre-wrap ${
+                                            eventNote.is_resolved
+                                                ? 'bg-slate-50 border-slate-200 text-slate-500'
+                                                : 'bg-amber-50 border-amber-200 text-amber-900'
+                                        }`}>
+                                            <p className="font-medium mb-1 flex items-center gap-2">
+                                                {!eventNote.is_resolved && <span className="w-1.5 h-1.5 bg-amber-500 rounded-full inline-block" />}
+                                                {eventNote.author_name}
+                                                <span className="font-normal text-[10px] text-slate-400">
+                                                    {new Date(eventNote.updated_at || eventNote.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                                {eventNote.is_resolved && <span className="ml-auto text-[10px] text-emerald-500 font-semibold">✓ Traitée</span>}
+                                            </p>
+                                            {eventNote.message}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         {/* Footer */}

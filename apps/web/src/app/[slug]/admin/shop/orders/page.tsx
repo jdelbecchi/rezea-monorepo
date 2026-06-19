@@ -101,7 +101,8 @@ export default function AdminShopOrdersPage() {
         payment_status: "",
         comment: "",
         user_note: "",
-        is_blocked: false
+        is_blocked: false,
+        allowed_activities: [] as string[]
     });
 
     const [modalError, setModalError] = useState<string | null>(null);
@@ -260,7 +261,8 @@ export default function AdminShopOrdersPage() {
             payment_status: order.payment_status,
             comment: order.comment || "",
             user_note: order.user_note || "",
-            is_blocked: order.is_blocked === true || (order.is_blocked === null && order.status === "expiree")
+            is_blocked: order.is_blocked === true || (order.is_blocked === null && order.status === "expiree"),
+            allowed_activities: order.allowed_activities || []
         });
         const isStd = ["active", "termine", "expiree", "en_pause", "resiliee", "", null, undefined].includes(order.status);
         setShowCustomStatus(!isStd);
@@ -298,7 +300,8 @@ export default function AdminShopOrdersPage() {
                 payment_status: editForm.payment_status,
                 comment: editForm.comment,
                 user_note: editForm.user_note,
-                is_blocked: editForm.is_blocked
+                is_blocked: editForm.is_blocked,
+                offer_snap_allowed_activities: editForm.allowed_activities
             };
 
             await api.updateAdminOrder(editOrder.id, payload);
@@ -878,15 +881,6 @@ export default function AdminShopOrdersPage() {
                                                                  </div>
                                                              )}
                                                          </div>
-                                                         {order.allowed_activities && order.allowed_activities.length > 0 && (
-                                                             <div className="flex flex-wrap gap-1 max-w-[150px]">
-                                                                 {order.allowed_activities.map((act) => (
-                                                                     <span key={act} className="px-1.5 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 rounded text-[9px] font-semibold uppercase tracking-tight">
-                                                                         {act}
-                                                                     </span>
-                                                                 ))}
-                                                             </div>
-                                                         )}
                                                      </div>
                                                  </td>
                                                 <td className="px-3 py-2.5 whitespace-nowrap text-sm text-slate-700 hidden lg:table-cell text-center">
@@ -1122,20 +1116,19 @@ export default function AdminShopOrdersPage() {
                                 </div>
 
                                  {/* Type d'activité (Snapshot) */}
-                                 <div className="space-y-1">
-                                     <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">Activités autorisées par l'offre</label>
-                                     <div className="flex flex-wrap gap-1.5 p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                                         {editOrder.allowed_activities && editOrder.allowed_activities.length > 0 ? (
-                                             editOrder.allowed_activities.map((act) => (
-                                                 <span key={act} className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded text-[10px] font-semibold uppercase tracking-tight">
-                                                     {act}
-                                                 </span>
-                                             ))
-                                         ) : (
-                                             <span className="text-xs text-slate-500 italic">Toutes les activités (aucune restriction)</span>
-                                         )}
+                                 {tenant?.activity_types && tenant.activity_types.length > 0 && (
+                                     <div className="space-y-2 animate-in fade-in duration-200">
+                                         <label className="block text-sm font-medium text-slate-700">Activités autorisées par la commande</label>
+                                         <p className="text-xs text-slate-400 font-normal mb-1">Si aucun type d&apos;activité n&apos;est sélectionné, la commande donne accès à toutes les séances de l&apos;établissement.</p>
+                                         <MultiSelect
+                                             options={tenant.activity_types.map(act => ({ id: act, label: act }))}
+                                             selected={editForm.allowed_activities || []}
+                                             onChange={(acts) => setEditForm({ ...editForm, allowed_activities: acts })}
+                                             placeholder="Toutes les activités"
+                                             joinWithSemicolon={true}
+                                         />
                                      </div>
-                                 </div>
+                                 )}
 
                                 {/* Statuts & Paiement */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

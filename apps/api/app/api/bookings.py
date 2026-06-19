@@ -257,14 +257,15 @@ async def create_booking(
     
     try:
         # Simuler la file d'attente FIFO en ajoutant la réservation demandée
-        orders_balances, global_balance, success = await order_service.compute_fifo_balances(
+        orders_balances, global_balance, success, _ = await order_service.compute_fifo_balances(
             db,
             user_id,
             tenant_id,
             bookings_to_add=[{
                 "id": "new_booking",
                 "date": session.start_time.date(),
-                "credits": session.credits_required
+                "credits": session.credits_required,
+                "activity_type": session.activity_type
             }]
         )
         if not success:
@@ -444,7 +445,7 @@ async def cancel_booking(
         if account:
             # Recompute global_balance dynamically
             from app.services import orders as order_service
-            _, global_balance, _ = await order_service.compute_fifo_balances(db, user_id, tenant_id)
+            _, global_balance, _, _ = await order_service.compute_fifo_balances(db, user_id, tenant_id)
             
             account.balance = global_balance
             account.total_used -= booking.credits_used

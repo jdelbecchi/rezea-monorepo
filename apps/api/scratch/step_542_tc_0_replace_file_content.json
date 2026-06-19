@@ -1,0 +1,15 @@
+{
+  "name": "replace_file_content",
+  "args": {
+    "AllowMultiple": "false",
+    "Description": "\"Set initial color and reset image url when selecting marketing template card\"",
+    "EndLine": "215",
+    "Instruction": "\"Add setMarketingColor and setMarketingImageUrl in handleSelectMarketingCard.\"",
+    "ReplacementContent": "\"    const handleSelectMarketingCard = (card: any) => {\\n        setSelectedMarketingCard(card);\\n        const segmentUsers = allUsers.filter(u => u.segment === card.segment);\\n        setSelectedMarketingUserIds(segmentUsers.map(u => u.id));\\n        \\n        // Dynamically replace establishment/tenant name\\n        const estName = tenant?.name || \\\"votre établissement\\\";\\n        const subject = card.defaultSubject.replace(/{establishment}/g, estName).replace(/Rezea/g, estName).replace(/rezea/g, estName);\\n        const content = card.defaultContent.replace(/{establishment}/g, estName).replace(/Rezea/g, estName).replace(/rezea/g, estName);\\n        \\n        setMarketingSubject(subject);\\n        setMarketingContent(content);\\n        setMarketingColor(tenant?.primary_color || \\\"#7c3aed\\\");\\n        setMarketingImageUrl(\\\"\\\");\\n    };\"",
+    "StartLine": "203",
+    "TargetContent": "\"    const handleSelectMarketingCard = (card: any) => {\\n        setSelectedMarketingCard(card);\\n        const segmentUsers = allUsers.filter(u => u.segment === card.segment);\\n        setSelectedMarketingUserIds(segmentUsers.map(u => u.id));\\n        \\n        // Dynamically replace establishment/tenant name\\n        const estName = tenant?.name || \\\"votre établissement\\\";\\n        const subject = card.defaultSubject.replace(/{establishment}/g, estName).replace(/Rezea/g, estName).replace(/rezea/g, estName);\\n        const content = card.defaultContent.replace(/{establishment}/g, estName).replace(/Rezea/g, estName).replace(/rezea/g, estName);\\n        \\n        setMarketingSubject(subject);\\n        setMarketingContent(content);\\n    };\"",
+    "TargetFile": "\"c:\\\\Users\\\\jdemo\\\\rezea-monorepo\\\\apps\\\\web\\\\src\\\\app\\\\[slug]\\\\admin\\\\emails\\\\page.tsx\"",
+    "toolAction": "\"Initializing campaign color and image state variables in card select handler\"",
+    "toolSummary": "\"Update handleSelectMarketingCard\""
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "replace_file_content",
+  "args": {
+    "AllowMultiple": "false",
+    "Description": "\"Send custom_color and custom_image_url payload values in handleSendMarketing api call\"",
+    "EndLine": "246",
+    "Instruction": "\"Add custom_color and custom_image_url parameters inside api.sendAdminEmail request.\"",
+    "ReplacementContent": "\"            const result = await api.sendAdminEmail({\\n                subject: marketingSubject,\\n                content: marketingContent,\\n                recipient_type: \\\"selected\\\",\\n                selected_user_ids: selectedMarketingUserIds,\\n                segment: selectedMarketingCard.segment,\\n                custom_color: marketingColor || undefined,\\n                custom_image_url: marketingImageUrl || undefined\\n            });\"",
+    "StartLine": "236",
+    "TargetContent": "\"            const result = await api.sendAdminEmail({\\n                subject: marketingSubject,\\n                content: marketingContent,\\n                recipient_type: \\\"selected\\\",\\n                selected_user_ids: selectedMarketingUserIds,\\n                segment: selectedMarketingCard.segment\\n            });\"",
+    "TargetFile": "\"c:\\\\Users\\\\jdemo\\\\rezea-monorepo\\\\apps\\\\web\\\\src\\\\app\\\\[slug]\\\\admin\\\\emails\\\\page.tsx\"",
+    "toolAction": "\"Passing custom color and image variables to marketing email send client call\"",
+    "toolSummary": "\"Update handleSendMarketing\""
+  }
+}

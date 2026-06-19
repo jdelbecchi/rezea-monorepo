@@ -1,0 +1,15 @@
+{
+  "name": "replace_file_content",
+  "args": {
+    "AllowMultiple": "false",
+    "Description": "\"Fix class to className on the main wrapper div of feedback page.\"",
+    "EndLine": "158",
+    "Instruction": "\"Change class to className on line 155.\"",
+    "ReplacementContent": "\"    return (\\n        <div className=\\\"min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6\\\">\\n            <div className=\\\"bg-white p-6 sm:p-8 md:p-10 rounded-3xl border border-slate-200/80 shadow-2xl max-w-lg w-full space-y-6 animate-in fade-in duration-300\\\">\"",
+    "StartLine": "151",
+    "TargetContent": "\"    return (\\n        <div class=\\\"min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6\\\">\\n            <div className=\\\"bg-white p-6 sm:p-8 md:p-10 rounded-3xl border border-slate-200/80 shadow-2xl max-w-lg w-full space-y-6 animate-in fade-in duration-300\\\">\"",
+    "TargetFile": "\"C:/Users/jdemo/rezea-monorepo/apps/web/src/app/[slug]/feedback/page.tsx\"",
+    "toolAction": "\"Correcting class to className in React file\"",
+    "toolSummary": "\"React syntax correction\""
+  }
+}

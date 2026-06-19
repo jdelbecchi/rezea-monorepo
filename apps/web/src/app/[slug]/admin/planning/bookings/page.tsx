@@ -496,7 +496,6 @@ export default function AdminBookingsPage() {
                         <div className="flex-1 overflow-y-auto p-8">
                             {/* Summary Banner */}
                             <div className="mb-6 p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-2 relative overflow-hidden">
-                                <div className="absolute top-0 right-0 p-3 opacity-5 text-4xl">🗓️</div>
                                 <div className="flex justify-between items-center group">
                                     <span className="text-sm font-medium text-slate-500 font-livvic">Séance</span>
                                     <span className="text-sm font-semibold text-slate-900 font-livvic">{editBooking.session_title}</span>

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, Suspense } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { api, User, Offer, Tenant } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
+import MultiSelect from "@/components/MultiSelect";
 
 const emptyForm = {
     offer_code: "",
@@ -328,6 +329,9 @@ function AdminOffersContent() {
                                                 <td className="px-3 py-2.5 whitespace-nowrap">
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-sm font-medium text-slate-900">{o.name}</span>
+                                                        {o.is_unique && (
+                                                            <span className="w-4 h-4 flex items-center justify-center bg-amber-50 border border-amber-200/60 text-amber-600 rounded-full text-[9px] font-medium" title="Achat unique (1x par utilisateur)">1</span>
+                                                        )}
                                                         {o.allowed_activities && o.allowed_activities.length > 0 && (
                                                             <div className="flex flex-wrap gap-1">
                                                                 {o.allowed_activities.map((act) => (
@@ -343,9 +347,6 @@ function AdminOffersContent() {
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                                                                 </svg>
                                                             </div>
-                                                        )}
-                                                        {o.is_unique && (
-                                                            <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 rounded text-[10px] font-medium uppercase tracking-tight">Achat unique</span>
                                                         )}
                                                     </div>
                                                 </td>
@@ -442,68 +443,85 @@ function AdminOffersContent() {
 
                         <div className="flex-1 overflow-y-auto p-6">
                             <form onSubmit={handleSubmit} className="space-y-6">
-                                {/* Identification */}
                                 <div className="space-y-4">
-                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Identification</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
+                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Identification & Description</h4>
+                                    <div className="flex flex-col md:flex-row gap-4">
+                                        <div className="w-full md:w-48">
                                             <label className={`block text-sm font-medium mb-1 ${(showErrors && !formData.offer_code) ? 'text-red-500' : 'text-slate-700'}`}>Code Offre *</label>
                                             <input type="text" value={formData.offer_code} onChange={e => setFormData({...formData, offer_code: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm ${(showErrors && !formData.offer_code) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="ex: FORFAIT-10" />
                                         </div>
-                                        <div>
+                                        <div className="flex-1">
                                             <label className={`block text-sm font-medium mb-1 ${(showErrors && !formData.name) ? 'text-red-500' : 'text-slate-700'}`}>Intitulé *</label>
                                             <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm ${(showErrors && !formData.name) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} />
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Rubrique</label>
-                                            <input 
-                                                type="text" 
-                                                value={formData.category} 
-                                                onChange={e => setFormData({...formData, category: e.target.value})} 
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" 
-                                                list="categories-list"
-                                                placeholder="ex: Abonnement, Formation..."
-                                            />
-                                            <datalist id="categories-list">
-                                                {existingCategories.map(cat => (
-                                                    <option key={cat} value={cat} />
-                                                ))}
-                                            </datalist>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">N° Rubrique</label>
-                                            <input type="number" value={formData.category_display_order} onChange={e => setFormData({...formData, category_display_order: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">N° Offre</label>
-                                            <input type="number" value={formData.offer_display_order} onChange={e => setFormData({...formData, offer_display_order: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" />
-                                        </div>
+
+                                    {/* Description */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                                        <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" rows={2} placeholder="Détails de l'offre..." />
                                     </div>
-                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mt-4">
-                                        <div className="flex flex-col sm:flex-row gap-4 flex-1">
-                                            <div className="w-48">
-                                                <label className="block text-sm font-medium text-slate-700 mb-1">Statut de l'offre</label>
-                                                <select value={formData.is_active ? "true" : "false"} onChange={e => setFormData({...formData, is_active: e.target.value === "true"})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm bg-white">
-                                                    <option value="true">Active</option>
-                                                    <option value="false">Inactive</option>
-                                                </select>
+
+                                    {/* Activité, Engagement et Achat unique */}
+                                    <div className="flex flex-col md:flex-row md:items-end gap-6">
+                                        {tenant?.activity_types && tenant.activity_types.length > 0 && (
+                                            <div className="flex-1 min-w-[200px] animate-in fade-in duration-200">
+                                                <div className="flex flex-col mb-1">
+                                                    <label className="block text-sm font-medium text-slate-700">Types d'activités autorisés</label>
+                                                    <span className="text-[10px] text-slate-400 font-normal">Vide = accès à toutes les séances</span>
+                                                </div>
+                                                <MultiSelect
+                                                    options={tenant.activity_types.map(act => ({ id: act, label: act }))}
+                                                    selected={formData.allowed_activities || []}
+                                                    onChange={(acts) => setFormData({ ...formData, allowed_activities: acts })}
+                                                    placeholder="Toutes les activités"
+                                                />
                                             </div>
-                                            <div className="w-48">
-                                                <label className="block text-sm font-medium text-slate-700 mb-1">Type d'engagement</label>
-                                                <select value={formData.engagement_type} onChange={e => setFormData({...formData, engagement_type: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm bg-white">
-                                                    <option value="essai">Essai</option>
-                                                    <option value="regulier">Régulier (Actif)</option>
-                                                    <option value="ponctuel">Ponctuel (Occasionnel)</option>
-                                                </select>
-                                            </div>
+                                        )}
+                                        <div className="w-full md:w-48">
+                                            <label className="block text-sm font-medium text-slate-700 mb-1">Type d'engagement</label>
+                                            <select value={formData.engagement_type} onChange={e => setFormData({...formData, engagement_type: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm bg-white">
+                                                <option value="essai">Essai</option>
+                                                <option value="regulier">Régulier (Actif)</option>
+                                                <option value="ponctuel">Ponctuel (Occasionnel)</option>
+                                            </select>
                                         </div>
-                                        <div className="pt-0 sm:pt-6">
+                                        <div className="pb-2.5">
                                             <label className="flex items-center gap-2 cursor-pointer">
                                                 <input type="checkbox" checked={formData.is_unique} onChange={e => setFormData({...formData, is_unique: e.target.checked})} className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
-                                                <span className="text-sm font-medium text-slate-700">Achat unique (1x par user)</span>
+                                                <span className="text-sm font-medium text-slate-700 whitespace-nowrap">Achat unique (1x par user)</span>
                                             </label>
+                                        </div>
+                                    </div>
+
+                                    {/* Classification Rubrique */}
+                                    <div className="space-y-4 pt-2">
+                                        <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">ORGANISATION DE LA BOUTIQUE</h4>
+                                        <div className="flex flex-col md:flex-row gap-4">
+                                            <div className="w-full md:w-32">
+                                                <label className="block text-sm font-medium text-slate-700 mb-1">N° Rubrique</label>
+                                                <input type="number" value={formData.category_display_order} onChange={e => setFormData({...formData, category_display_order: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <label className="block text-sm font-medium text-slate-700 mb-1">Rubrique</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={formData.category} 
+                                                    onChange={e => setFormData({...formData, category: e.target.value})} 
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" 
+                                                    list="categories-list"
+                                                    placeholder="ex: Abonnement, Formation..."
+                                                />
+                                                <datalist id="categories-list">
+                                                    {existingCategories.map(cat => (
+                                                        <option key={cat} value={cat} />
+                                                    ))}
+                                                </datalist>
+                                            </div>
+                                            <div className="w-full md:w-32">
+                                                <label className="block text-sm font-medium text-slate-700 mb-1">N° Offre</label>
+                                                <input type="number" value={formData.offer_display_order} onChange={e => setFormData({...formData, offer_display_order: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -611,39 +629,6 @@ function AdminOffersContent() {
                                                                 </select>
                                                             </div>
                                                         </div>
-                                                        {/* Restrictions par activité */}
-                                                        {tenant?.activity_types && tenant.activity_types.length > 0 && (
-                                                            <div className="space-y-4">
-                                                                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Restrictions par activité (Facultatif)</h4>
-                                                                <p className="text-xs text-slate-500">Si aucune activité n'est sélectionnée, l'offre donnera accès à toutes les séances de l'établissement sans restriction.</p>
-                                                                <div className="flex flex-wrap gap-3">
-                                                                    {tenant.activity_types.map((act) => {
-                                                                        const isChecked = formData.allowed_activities?.includes(act);
-                                                                        return (
-                                                                            <label key={act} className={`flex items-center gap-2 px-3 py-2 border rounded-xl cursor-pointer transition-all text-sm font-medium ${
-                                                                                isChecked 
-                                                                                    ? 'border-blue-600 bg-blue-50 text-blue-800' 
-                                                                                    : 'border-gray-200 bg-white hover:border-gray-300 text-slate-700'
-                                                                            }`}>
-                                                                                <input 
-                                                                                    type="checkbox" 
-                                                                                    checked={isChecked} 
-                                                                                    onChange={(e) => {
-                                                                                        const current = formData.allowed_activities || [];
-                                                                                        const next = e.target.checked 
-                                                                                            ? [...current, act] 
-                                                                                            : current.filter(x => x !== act);
-                                                                                        setFormData({ ...formData, allowed_activities: next });
-                                                                                    }}
-                                                                                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                                                                                />
-                                                                                <span>{act}</span>
-                                                                            </label>
-                                                                        );
-                                                                    })}
-                                                                </div>
-                                                            </div>
-                                                        )}
                                                         <div>
                                                             <label className="block text-xs text-slate-500 mb-1">Nombre d'échéances</label>
                                                             <input type="number" value={formData.recurring_count} onChange={e => setFormData({...formData, recurring_count: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 disabled:bg-gray-100 bg-white text-sm ${(showErrors && formData.featured_pricing === 'recurring' && !formData.recurring_count) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} disabled={formData.featured_pricing !== 'recurring'} />
@@ -655,10 +640,15 @@ function AdminOffersContent() {
                                     );
                                 })()}
 
-                                {/* Description */}
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-                                    <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" rows={3} placeholder="Détails de l'offre..." />
+                                {/* Statut de l'offre */}
+                                <div className="pt-6 border-t border-gray-150">
+                                    <div className="w-80">
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Statut de l'offre</label>
+                                        <select value={formData.is_active ? "true" : "false"} onChange={e => setFormData({...formData, is_active: e.target.value === "true"})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm bg-white">
+                                            <option value="true">Active (Visible dans la boutique)</option>
+                                            <option value="false">Inactive (Masquée)</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </form>
                         </div>

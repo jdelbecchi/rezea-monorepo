@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
 import { api, User, Session } from "@/lib/api";
+import type { StaffNoteItem } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import MultiSelect from "@/components/MultiSelect";
 import { format } from "date-fns";
@@ -21,6 +22,7 @@ const emptyForm = {
     max_participants: "" as any,
     credits_required: "" as any,
     location: "",
+    activity_type: "",
     allow_waitlist: true,
     recurrence: "none" as RecurrenceType,
     recurrence_count: 4,
@@ -47,6 +49,8 @@ function AdminSessionsContent() {
     const [filterTo, setFilterTo] = useState("");
     const [showErrors, setShowErrors] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [sessionNote, setSessionNote] = useState<StaffNoteItem | null | undefined>(undefined); // undefined = pas encore chargé
+    const [sessionNoteIds, setSessionNoteIds] = useState<Set<string>>(new Set()); // IDs de séances ayant un post-it
 
     // Confirmation Modal
     const [confirmModal, setConfirmModal] = useState<{
@@ -92,6 +96,12 @@ function AdminSessionsContent() {
                     fetchSessions()
                 ]);
                 setTenant(tenantData);
+
+                // 3. Charger les IDs ayant un post-it (résolu ou non, pour les icônes)
+                try {
+                    const ids = await api.getAllStaffNoteEntityIds('session');
+                    setSessionNoteIds(ids);
+                } catch { /* silencieux */ }
                 
                 const editId = searchParams.get("edit");
                 if (editId) {
@@ -159,6 +169,7 @@ function AdminSessionsContent() {
                     max_participants: formData.max_participants,
                     credits_required: formData.credits_required,
                     location: formData.location,
+                    activity_type: formData.activity_type || undefined,
                     allow_waitlist: formData.allow_waitlist,
                 });
             }
@@ -201,6 +212,7 @@ function AdminSessionsContent() {
                 max_participants: formData.max_participants,
                 credits_required: formData.credits_required,
                 location: formData.location,
+                activity_type: formData.activity_type || undefined,
                 allow_waitlist: formData.allow_waitlist,
             });
             resetForm();
@@ -214,25 +226,28 @@ function AdminSessionsContent() {
     };
 
     const openEdit = (s: Session) => {
-        const start = new Date(s.start_time);
-        const end = new Date(s.end_time);
-        const dur = Math.round((end.getTime() - start.getTime()) / 60000);
-        setEditingSession(s);
         setFormData({
             title: s.title,
             description: s.description || "",
             instructor_name: (s as any).instructor_name || "",
-            date: start.toISOString().split("T")[0],
-            time: start.toTimeString().slice(0, 5),
-            duration_minutes: dur,
+            date: format(new Date(s.start_time), "yyyy-MM-dd"),
+            time: format(new Date(s.start_time), "HH:mm"),
+            duration_minutes: Math.round((new Date(s.end_time).getTime() - new Date(s.start_time).getTime()) / 60000),
             max_participants: s.max_participants,
             credits_required: s.credits_required,
             location: s.location || "",
+            activity_type: s.activity_type || "",
             allow_waitlist: s.allow_waitlist,
             recurrence: "none",
-            recurrence_count: 1,
+            recurrence_count: 4,
         });
+        setEditingSession(s);
         setShowForm(true);
+        // Charger la note associée
+        setSessionNote(undefined);
+        api.getEntityStaffNote(s.id)
+            .then(note => setSessionNote(note))
+            .catch(() => setSessionNote(null));
     };
 
     const handleCancelSession = async (session: Session) => {
@@ -501,17 +516,29 @@ function AdminSessionsContent() {
                                                             </svg>
                                                         </span>
                                                     )}
+                                                    {sessionNoteIds.has(s.id) && (
+                                                        <span title="Post-it en attente" className="text-amber-400 cursor-help shrink-0">
+                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                                        </svg>
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="px-3 py-2.5 whitespace-nowrap text-sm font-normal text-slate-500 text-center">{formatDuration(Math.round((new Date(s.end_time).getTime() - date.getTime())/60000))}</td>
                                             <td className="px-3 py-2.5 whitespace-nowrap text-center">
-                                                {s.location ? (
-                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-50 text-slate-600 rounded-lg text-xs font-normal border border-slate-100 whitespace-nowrap">
-                                                        📍 {s.location}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-slate-300 text-xs italic">—</span>
-                                                )}
+                                                <div className="flex flex-col gap-1 items-center">
+                                                    {s.location ? (
+                                                        <span className="text-[11px] text-slate-500 flex items-center gap-1 font-medium bg-slate-100 px-2 py-0.5 rounded-md">
+                                                            📍 {s.location}
+                                                        </span>
+                                                    ) : null}
+                                                    {s.activity_type ? (
+                                                        <span className="text-[11px] text-slate-500 flex items-center gap-1 font-medium bg-slate-100 px-2 py-0.5 rounded-md capitalize">
+                                                            🏷️ {s.activity_type}
+                                                        </span>
+                                                    ) : null}
+                                                </div>
                                             </td>
                                             <td className="px-3 py-2.5 text-sm font-normal text-slate-500 whitespace-nowrap text-center">{(s as any).instructor_name || "—"}</td>
                                             <td className="px-3 py-2.5 text-center whitespace-nowrap">
@@ -632,6 +659,19 @@ function AdminSessionsContent() {
                                             <option value="">Aucun lieu spécifique</option>
                                             {(tenant?.locations || []).map((loc: string) => (
                                                 <option key={loc} value={loc}>{loc}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-medium text-slate-700">Type d'activité</label>
+                                        <select 
+                                            value={formData.activity_type} 
+                                            onChange={e => setFormData({...formData, activity_type: e.target.value})} 
+                                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 appearance-none cursor-pointer"
+                                        >
+                                            <option value="">Aucun type d'activité</option>
+                                            {(tenant?.activity_types || []).map((act: string) => (
+                                                <option key={act} value={act}>{act}</option>
                                             ))}
                                         </select>
                                     </div>
@@ -775,6 +815,36 @@ function AdminSessionsContent() {
                                                 </div>
                                             )}
                                         </div>
+                                )}
+
+                                {/* Note du staff (lecture seule — en modification uniquement) */}
+                                {editingSession && (
+                                    <div className="pt-2 border-t border-gray-100">
+                                        <label className="text-sm font-medium text-slate-700 flex items-center gap-2 mb-2">
+                                                            <span>🗒️</span> Post-it
+                                        </label>
+                                        {sessionNote === undefined ? (
+                                            <p className="text-xs text-slate-400 italic animate-pulse">Chargement...</p>
+                                        ) : sessionNote === null ? (
+                                            <p className="text-xs text-slate-400 italic">Aucune note pour cette séance.</p>
+                                        ) : (
+                                            <div className={`rounded-xl border px-4 py-3 text-xs leading-relaxed whitespace-pre-wrap ${
+                                                sessionNote.is_resolved
+                                                    ? 'bg-slate-50 border-slate-200 text-slate-500'
+                                                    : 'bg-amber-50 border-amber-200 text-amber-900'
+                                            }`}>
+                                                <p className="font-medium mb-1 flex items-center gap-2">
+                                                    {!sessionNote.is_resolved && <span className="w-1.5 h-1.5 bg-amber-500 rounded-full inline-block" />}
+                                                    {sessionNote.author_name}
+                                                    <span className="font-normal text-[10px] text-slate-400">
+                                                        {new Date(sessionNote.updated_at || sessionNote.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                                    </span>
+                                                    {sessionNote.is_resolved && <span className="ml-auto text-[10px] text-emerald-500 font-semibold">✓ Traitée</span>}
+                                                </p>
+                                                {sessionNote.message}
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
                             </form>
                         </div>

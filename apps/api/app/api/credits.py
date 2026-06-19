@@ -43,8 +43,9 @@ async def get_credit_account(
     
     # Calculer le solde global dynamiquement via FIFO
     from app.services import orders as order_service
-    _, global_balance, _ = await order_service.compute_fifo_balances(db, user_id, tenant_id)
+    _, global_balance, _, balances_by_activity = await order_service.compute_fifo_balances(db, user_id, tenant_id)
     account.balance = global_balance
+    account.balances_by_activity = balances_by_activity
     
     return account
 

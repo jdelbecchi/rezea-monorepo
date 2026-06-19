@@ -2,7 +2,7 @@
 Schémas Pydantic pour validation des requêtes/réponses
 """
 from datetime import datetime, date as py_date
-from typing import Optional, List
+from typing import Optional, List, Dict
 from decimal import Decimal
 from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 from uuid import UUID
@@ -146,6 +146,8 @@ class TenantBase(BaseModel):
     header_text_animation: Optional[str] = "none"
     vignettes: Optional[List[VignetteSchema]] = Field(default_factory=list)
     vignettes_title: Optional[str] = "À la une"
+    activity_types: Optional[List[str]] = Field(default_factory=list)
+    
 
 
 class TenantCreate(TenantBase):
@@ -187,7 +189,9 @@ class TenantSettingsUpdate(BaseModel):
     payment_redirect_link: Optional[str] = None
     pay_now_instructions: Optional[str] = None
     locations: Optional[List[str]] = Field(default_factory=list)
+    activity_types: Optional[List[str]] = Field(default_factory=list)
     show_logo: Optional[bool] = None
+    
     show_name: Optional[bool] = None
     show_slogan: Optional[bool] = None
     user_header_show_logo: Optional[bool] = None
@@ -246,7 +250,9 @@ class TenantResponse(TenantBase):
     payment_redirect_link: Optional[str] = None
     pay_now_instructions: Optional[str] = None
     locations: Optional[List[str]] = Field(default_factory=list)
+    activity_types: Optional[List[str]] = Field(default_factory=list)
     show_logo: bool = True
+    
     show_name: bool = True
     show_slogan: bool = True
     user_header_show_logo: bool = True
@@ -375,7 +381,9 @@ class CreditAccountResponse(BaseModel):
     balance: Decimal
     total_purchased: Decimal
     total_used: Decimal
+    balances_by_activity: Optional[Dict[str, Optional[Decimal]]] = None
     created_at: datetime
+    
 
 
 class CreditTransactionResponse(BaseModel):
@@ -428,6 +436,8 @@ class OfferBase(BaseModel):
     display_order: Optional[int] = 0
     category_display_order: Optional[int] = 0
     engagement_type: str = "ponctuel"
+    allowed_activities: Optional[List[str]] = Field(default_factory=list)
+    
 
 
 class OfferCreate(OfferBase):
@@ -457,6 +467,8 @@ class OfferUpdate(BaseModel):
     display_order: Optional[int] = None
     category_display_order: Optional[int] = None
     engagement_type: Optional[str] = None
+    allowed_activities: Optional[List[str]] = None
+    
 
 
 class OfferResponse(OfferBase):
@@ -601,6 +613,7 @@ class OrderUpdate(BaseModel):
     invoice_number: Optional[str] = None
     invoice_url: Optional[str] = None
     is_blocked: Optional[bool] = None
+    offer_snap_allowed_activities: Optional[List[str]] = None
 
 
 class InstallmentResponse(BaseModel):
@@ -668,6 +681,8 @@ class OrderResponse(BaseModel):
     offer_snap_validity_days: Optional[int] = None
     offer_snap_validity_unit: Optional[str] = None
     offer_snap_is_validity_unlimited: Optional[bool] = False
+    allowed_activities: Optional[List[str]] = Field(default_factory=list)
+    
     # Financial summary for installments
     received_cents: int = 0
     pending_cents: int = 0
@@ -978,3 +993,31 @@ class SurveyResponsePublic(BaseModel):
     comment: Optional[str] = None
     tenant_name: str = ""
 
+
+# ==================== Staff Notes ====================
+
+class StaffNoteUpsert(BaseModel):
+    """Création ou mise à jour d'une note staff (upsert par entity_id)"""
+    message: str = Field(..., min_length=1)
+    entity_type: str = Field(default="general")   # 'session' | 'event' | 'general'
+    entity_id: Optional[UUID] = None
+    entity_label: Optional[str] = None
+
+
+class StaffNoteOut(BaseModel):
+    """Réponse complète d'une note staff"""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    tenant_id: UUID
+    author_id: UUID
+    author_name: str = ""
+    message: str
+    entity_type: str
+    entity_id: Optional[UUID] = None
+    entity_label: Optional[str] = None
+    is_resolved: bool
+    resolved_at: Optional[datetime] = None
+    resolved_by: Optional[UUID] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None

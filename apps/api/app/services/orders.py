@@ -189,6 +189,7 @@ def build_order_response(
         offer_snap_validity_days=order.offer_snap_validity_days,
         offer_snap_validity_unit=order.offer_snap_validity_unit,
         offer_snap_is_validity_unlimited=order.offer_snap_is_validity_unlimited or False,
+        allowed_activities=order.offer.allowed_activities if order.offer else (getattr(order, 'offer_snap_allowed_activities', []) or []),
         installments=order.installments,
         is_blocked=effective_blocked
     )
@@ -356,19 +357,23 @@ async def compute_fifo_balances(
     bookings = bookings_res.scalars().all()
     
     # Let's build the list of all allocations:
-    # Each item: {"id": uuid, "date": date, "credits": int}
+    # Each item: {"id": uuid, "date": date, "credits": int, "activity_type": str}
     items_to_allocate = []
     for b in bookings:
         if exclude_booking_id and b.id == exclude_booking_id:
             continue
-        # Get session start date
-        session_res = await db.execute(select(Session.start_time).where(Session.id == b.session_id))
-        session_start = session_res.scalar()
-        if session_start:
+        # Get session start date and activity type
+        session_res = await db.execute(
+            select(Session.start_time, Session.activity_type).where(Session.id == b.session_id)
+        )
+        session_row = session_res.first()
+        if session_row:
+            session_start, session_activity = session_row
             items_to_allocate.append({
                 "id": str(b.id),
                 "date": session_start.date(),
-                "credits": int(b.credits_used or 1)
+                "credits": int(b.credits_used or 1),
+                "activity_type": session_activity
             })
             
     # Add temporary bookings (to validate new booking request)
@@ -376,7 +381,8 @@ async def compute_fifo_balances(
         items_to_allocate.append({
             "id": temp.get("id"),
             "date": temp.get("date"),
-            "credits": temp.get("credits", 1)
+            "credits": temp.get("credits", 1),
+            "activity_type": temp.get("activity_type")
         })
         
     # Sort all items to allocate by date ascending
@@ -422,6 +428,23 @@ async def compute_fifo_balances(
             else: # is_blocked is None
                 is_valid = (o.start_date <= item_date) and (o.is_validity_unlimited or not effective_end or item_date <= effective_end)
                 
+            # Check if order's activity restrictions allow this item's activity
+            if is_valid:
+                allowed_acts = []
+                if o.offer and isinstance(o.offer.allowed_activities, list):
+                    allowed_acts = o.offer.allowed_activities
+                elif hasattr(o, 'offer_snap_allowed_activities') and isinstance(o.offer_snap_allowed_activities, list):
+                    allowed_acts = o.offer_snap_allowed_activities
+                
+                item_act = item.get("activity_type")
+                if allowed_acts:
+                    if not item_act:
+                        is_valid = False
+                    else:
+                        allowed_acts_clean = [a.strip().lower() for a in allowed_acts if a]
+                        if item_act.strip().lower() not in allowed_acts_clean:
+                            is_valid = False
+                
             # If valid, do we have enough remaining credits?
             if is_valid:
                 # Unlimited credits orders have infinite capacity
@@ -448,9 +471,12 @@ async def compute_fifo_balances(
         if item_credits > 0 and not allocated:
             success = False
             
-    # Compute balances for each order
+    # Compute balances for each order & balances by activity
     orders_balances = {}
     global_balance = 0
+    balances_by_activity = {}
+    from decimal import Decimal
+    
     for o in orders:
         o_id = str(o.id)
         credits_init = int(o.credits_total or 0)
@@ -474,6 +500,24 @@ async def compute_fifo_balances(
             "is_blocked": is_blocked
         }
         
-    return orders_balances, global_balance, success
+        # Compute balances by activity
+        if not is_blocked:
+            allowed_acts = []
+            if o.offer and isinstance(o.offer.allowed_activities, list):
+                allowed_acts = o.offer.allowed_activities
+            elif hasattr(o, 'offer_snap_allowed_activities') and isinstance(o.offer_snap_allowed_activities, list):
+                allowed_acts = o.offer_snap_allowed_activities
+            
+            label = ", ".join(allowed_acts) if allowed_acts else "Toutes activités"
+            if label not in balances_by_activity:
+                balances_by_activity[label] = None if o.is_unlimited else Decimal(0)
+            
+            if balances_by_activity[label] is not None:
+                if o.is_unlimited:
+                    balances_by_activity[label] = None
+                else:
+                    balances_by_activity[label] += Decimal(bal)
+            
+    return orders_balances, global_balance, success, balances_by_activity
 
 
