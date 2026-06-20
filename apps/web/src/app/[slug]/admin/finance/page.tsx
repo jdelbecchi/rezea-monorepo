@@ -6,6 +6,7 @@ import { api, FinanceCategory, FinanceAccount, FinanceTransaction, FinanceDashbo
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import Sidebar from "@/components/Sidebar";
+import ConfirmModal from "@/components/ConfirmModal";
 
 export default function TreasuryPage() {
     const params = useParams();
@@ -1432,33 +1433,16 @@ export default function TreasuryPage() {
                     </div>
                 </div>
             )}
-            {/* Confirmation Modal */}
-            {confirmModal.isOpen && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-[200] animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[28px] shadow-2xl w-full max-w-[400px] overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-100">
-                        <div className="p-10 pb-6">
-                            <h3 className="text-xl font-semibold text-slate-900 mb-4">{confirmModal.title}</h3>
-                            <p className="text-slate-500 text-[14px] leading-relaxed">
-                                {confirmModal.message}
-                            </p>
-                        </div>
-                        <div className="p-8 pt-0 flex justify-end gap-3">
-                            <button 
-                                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-                                className="px-6 py-2.5 bg-white text-slate-600 border border-slate-200 rounded-[14px] font-medium hover:bg-slate-50 transition-all text-sm shadow-sm active:scale-95"
-                            >
-                                Annuler
-                            </button>
-                            <button 
-                                onClick={confirmModal.onConfirm}
-                                className="px-6 py-2.5 bg-[#e11d48] text-white rounded-[14px] font-medium hover:bg-rose-700 transition-all text-sm shadow-md active:scale-95"
-                            >
-                                Supprimer
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                type="danger"
+                confirmLabel="Supprimer"
+                cancelLabel="Annuler"
+                onConfirm={confirmModal.onConfirm}
+                onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+            />
         </>
     );
 }

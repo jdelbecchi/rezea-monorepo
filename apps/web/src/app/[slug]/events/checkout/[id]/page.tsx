@@ -6,6 +6,7 @@ import Link from "next/link";
 import { api, Event, Tenant, User } from "@/lib/api";
 import { formatPrice } from "@/lib/formatters";
 import BottomNav from "@/components/BottomNav";
+import ConfirmModal from "@/components/ConfirmModal";
 
 export default function EventCheckoutPage() {
     const params = useParams();
@@ -289,37 +290,29 @@ export default function EventCheckoutPage() {
                 </div>
             </main>
 
-
             <BottomNav userRole={user?.role} />
 
-            {/* Success Modal */}
-            {showSuccess && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[100] p-6 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-3xl max-w-sm w-full p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-300 text-center">
-                        <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center text-3xl mx-auto">
-                            ✨
-                        </div>
-                        <div className="space-y-2">
-                            <h2 className="text-xl font-semibold text-slate-900 tracking-tight">C'est validé !</h2>
-                            <p className="text-slate-500 text-sm leading-relaxed">
-                                Votre inscription à l'événement <span className="font-semibold" style={{ color: tenant?.primary_color || "#2563eb" }}>{event?.title}</span> est bien enregistrée.
+            <ConfirmModal
+                isOpen={showSuccess}
+                title="C'est validé !"
+                message={
+                    <>
+                        Votre inscription à l'événement{" "}
+                        <strong className="font-semibold" style={{ color: tenant?.primary_color || "#2563eb" }}>
+                            {event?.title}
+                        </strong>{" "}
+                        est bien enregistrée.
+                        {!(tenant?.payment_redirect_link || event?.payment_link) && (
+                            <p className="text-xs text-slate-400 mt-2 italic leading-relaxed">
+                                Le règlement sera à effectuer selon les modalités de l'établissement.
                             </p>
-                            {!(tenant?.payment_redirect_link || event?.payment_link) && (
-                                <p className="text-xs text-slate-400 mt-2 italic leading-relaxed">
-                                    Le règlement sera à effectuer selon les modalités de l'établissement.
-                                </p>
-                            )}
-                        </div>
-
-                        <button
-                            onClick={() => router.push(`/${params.slug}/planning`)}
-                            className="w-full py-4 rounded-2xl bg-slate-900 text-white font-medium text-sm hover:bg-slate-800 transition-all duration-300 shadow-xl"
-                        >
-                            {(tenant?.payment_redirect_link || event?.payment_link) ? "Retour au planning" : "Retour au planning"}
-                        </button>
-                    </div>
-                </div>
-            )}
+                        )}
+                    </>
+                }
+                type="success-stars"
+                confirmLabel="Retour au planning"
+                onConfirm={() => router.push(`/${params.slug}/planning`)}
+            />
 
             {/* Global style for safe areas */}
             <style jsx global>{`

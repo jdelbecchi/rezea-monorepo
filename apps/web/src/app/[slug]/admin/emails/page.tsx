@@ -1,6 +1,7 @@
 "use client";
 
 import Sidebar from "@/components/Sidebar";
+import ConfirmModal from "@/components/ConfirmModal";
 import { useEffect, useState, useMemo, useCallback, useRef, Suspense } from "react";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
 import { api, User, EmailTemplate } from "@/lib/api";
@@ -2985,60 +2986,44 @@ function AdminEmailsContent() {
             )}
 
             {/* Modal de suppression de modèle */}
-            {templateToDelete && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-10 pb-8">
-                            <h3 className="text-xl font-bold text-slate-900 mb-2">Supprimer le modèle ?</h3>
-                            <p className="text-sm text-slate-500 leading-relaxed font-medium">Cette action est définitive. Le modèle <b>&quot;{templateToDelete.name}&quot;</b> sera supprimé.</p>
-                        </div>
-                        <div className="p-6 bg-white border-t border-slate-100 flex gap-3 justify-end items-center">
-                            <button
-                                onClick={() => setTemplateToDelete(null)}
-                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-semibold hover:bg-gray-50 transition-all text-sm active:scale-95"
-                            >
-                                Annuler
-                            </button>
-                            <button
-                                onClick={handleDeleteTemplate}
-                                disabled={isDeleting}
-                                className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-bold hover:bg-rose-700 transition-all text-sm shadow-sm active:scale-95"
-                            >
-                                {isDeleting ? "..." : "Supprimer"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ConfirmModal
+                isOpen={!!templateToDelete}
+                title="Supprimer le modèle ?"
+                message={
+                    <>
+                        Cette action est définitive. Le modèle{" "}
+                        <strong className="font-semibold text-slate-900">
+                            &quot;{templateToDelete?.name}&quot;
+                        </strong>{" "}
+                        sera supprimé.
+                    </>
+                }
+                type="danger"
+                confirmLabel={isDeleting ? "..." : "Supprimer"}
+                cancelLabel="Annuler"
+                onConfirm={handleDeleteTemplate}
+                onCancel={() => setTemplateToDelete(null)}
+            />
 
             {/* Modal de suppression d'enquête */}
-            {surveyToDelete && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-10 pb-8">
-                            <h3 className="text-xl font-semibold text-slate-900 mb-2">Confirmer la suppression</h3>
-                            <p className="text-[15px] text-slate-500 leading-relaxed font-normal">
-                                Cette action est définitive. L&apos;enquête <b>&quot;{surveyToDelete.title}&quot;</b> ainsi que tous les avis associés seront définitivement supprimés.
-                            </p>
-                        </div>
-                        <div className="p-6 bg-white border-t border-slate-100 flex gap-3 justify-end items-center">
-                            <button
-                                onClick={() => setSurveyToDelete(null)}
-                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm active:scale-95"
-                            >
-                                Annuler
-                            </button>
-                            <button
-                                onClick={confirmDeleteSurvey}
-                                disabled={isDeletingSurvey}
-                                className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm active:scale-95"
-                            >
-                                {isDeletingSurvey ? "..." : "Supprimer"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ConfirmModal
+                isOpen={!!surveyToDelete}
+                title="Confirmer la suppression"
+                message={
+                    <>
+                        Cette action est définitive. L&apos;enquête{" "}
+                        <strong className="font-semibold text-slate-900">
+                            &quot;{surveyToDelete?.title}&quot;
+                        </strong>{" "}
+                        ainsi que tous les avis associés seront définitivement supprimés.
+                    </>
+                }
+                type="danger"
+                confirmLabel={isDeletingSurvey ? "..." : "Supprimer"}
+                cancelLabel="Annuler"
+                onConfirm={confirmDeleteSurvey}
+                onCancel={() => setSurveyToDelete(null)}
+            />
 
             {/* Modal Inspecteur détaillé Enquêtes */}
             {showSurveyDetailsModal && selectedSurveyDetails && (

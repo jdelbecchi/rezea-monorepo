@@ -7,6 +7,7 @@ import { api, Booking, User } from "@/lib/api";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import Sidebar from "@/components/Sidebar";
+import ConfirmModal from "@/components/ConfirmModal";
 
 // Extended Booking to include session details if available
 interface ExtendedBooking extends Booking {
@@ -21,6 +22,7 @@ export default function BookingsPage() {
     const [bookings, setBookings] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [cancellingId, setCancellingId] = useState<string | null>(null);
+    const [bookingToCancel, setBookingToCancel] = useState<string | null>(null);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
     const fetchBookings = async () => {
@@ -52,13 +54,18 @@ export default function BookingsPage() {
         fetchData();
     }, [router]);
 
-    const handleCancel = async (bookingId: string) => {
-        if (!confirm("Êtes-vous sûr de vouloir annuler cette réservation ? Vos crédits vous seront remboursés.")) return;
+    const handleCancel = (bookingId: string) => {
+        setBookingToCancel(bookingId);
+    };
 
-        setCancellingId(bookingId);
+    const handleCancelConfirm = async () => {
+        if (!bookingToCancel) return;
+        const id = bookingToCancel;
+        setBookingToCancel(null);
+        setCancellingId(id);
         setMessage(null);
         try {
-            await api.cancelBooking(bookingId);
+            await api.cancelBooking(id);
             setMessage({ type: 'success', text: 'Réservation annulée et crédits remboursés.' });
             await fetchBookings();
         } catch (err: any) {
@@ -139,6 +146,17 @@ export default function BookingsPage() {
                     </div>
                 </div>
             </main>
+
+            <ConfirmModal
+                isOpen={!!bookingToCancel}
+                title="Annuler la réservation"
+                message="Êtes-vous sûr de vouloir annuler cette réservation ? Vos crédits vous seront remboursés."
+                type="warning"
+                confirmLabel="Oui, annuler"
+                cancelLabel="Non, retourner"
+                onConfirm={handleCancelConfirm}
+                onCancel={() => setBookingToCancel(null)}
+            />
         </div>
     );
 }

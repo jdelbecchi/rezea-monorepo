@@ -2,6 +2,7 @@
 
 import Sidebar from "@/components/Sidebar";
 import MultiSelect from "@/components/MultiSelect";
+import ConfirmModal from "@/components/ConfirmModal";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { api, User, OrderItem, AdminBookingItem, AdminEventRegistrationItem } from "@/lib/api";
@@ -1115,32 +1116,24 @@ export default function AdminUsersPage() {
             )}
 
             {/* Delete Confirmation Modal */}
-            {deletingUser && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-10 pb-8">
-                            <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">Confirmer la suppression</h3>
-                            <p className="text-slate-500 text-base leading-relaxed">
-                                Attention : cette action est irréversible. L&apos;utilisateur <strong>{deletingUser.first_name} {deletingUser.last_name}</strong> sera définitivement supprimé.
-                            </p>
-                        </div>
-                        <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center">
-                            <button 
-                                onClick={() => setDeletingUser(null)}
-                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm"
-                            >
-                                Annuler
-                            </button>
-                            <button 
-                                onClick={handleDelete}
-                                className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm active:scale-95"
-                            >
-                                Confirmer la suppression
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ConfirmModal
+                isOpen={!!deletingUser}
+                title="Confirmer la suppression"
+                message={
+                    <>
+                        Attention : cette action est irréversible. L&apos;utilisateur{" "}
+                        <strong className="font-semibold text-slate-900">
+                            {deletingUser?.first_name} {deletingUser?.last_name}
+                        </strong>{" "}
+                        sera définitivement supprimé.
+                    </>
+                }
+                type="danger"
+                confirmLabel="Confirmer la suppression"
+                cancelLabel="Annuler"
+                onConfirm={handleDelete}
+                onCancel={() => setDeletingUser(null)}
+            />
 
             {/* Create User Modal */}
             {showCreateModal && (

@@ -6,6 +6,7 @@ import { api, User } from "@/lib/api";
 import type { StaffNoteItem } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import MultiSelect from "@/components/MultiSelect";
+import ConfirmModal from "@/components/ConfirmModal";
 import { formatDuration } from "@/lib/formatters";
 
 interface EventItem {
@@ -730,33 +731,16 @@ export default function AdminEventsProgrammingPage() {
                 </div>
             )}
 
-            {confirmModal.show && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-10 pb-8">
-                            <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">{confirmModal.title}</h3>
-                            <p className="text-slate-500 text-sm font-normal leading-relaxed">{confirmModal.message}</p>
-                        </div>
-                        <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center">
-                            <button 
-                                onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}
-                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm"
-                            >
-                                Annuler
-                            </button>
-                            <button 
-                                onClick={confirmModal.onConfirm}
-                                className={`px-6 py-2.5 text-white rounded-xl font-medium transition-all text-sm shadow-sm active:scale-95 ${
-                                    confirmModal.type === 'danger' ? 'bg-rose-600 hover:bg-rose-700' : 
-                                    confirmModal.type === 'warning' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-slate-900 hover:bg-slate-800'
-                                }`}
-                            >
-                                Confirmer
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ConfirmModal
+                isOpen={confirmModal.show}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                type={confirmModal.type as any}
+                confirmLabel="Confirmer"
+                cancelLabel="Annuler"
+                onConfirm={confirmModal.onConfirm}
+                onCancel={() => setConfirmModal(prev => ({ ...prev, show: false }))}
+            />
         </div>
     );
 }

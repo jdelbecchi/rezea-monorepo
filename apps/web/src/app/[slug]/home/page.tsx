@@ -6,6 +6,7 @@ import Link from "next/link";
 import { api, User, CreditAccount, Tenant, Booking, Event, OrderItem, EventRegistration, Vignette } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
+import ConfirmModal from "@/components/ConfirmModal";
 import { formatCredits } from "@/lib/formatters";
 import { PaymentStatus } from "@/types/enums";
 
@@ -824,50 +825,34 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
       <BottomNav userRole={user?.role} />
 
       {/* New Alerts Popup Modal */}
-      {showNewAlertsPopup && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/40 backdrop-blur-md animate-in fade-in duration-500">
-          <div className="w-full max-w-sm bg-white rounded-[2rem] shadow-2xl shadow-black/20 overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-10 duration-700">
-            <div className="p-8 flex flex-col items-center text-center">
-              <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 animate-pulse
-                ${newAlertsForPopup[0].priority === 1 ? 'bg-orange-50' : 
-                  newAlertsForPopup[0].priority === 2 ? 'bg-yellow-50' : 'bg-sky-50'}`}
-              >
-                <span className="text-4xl">🔔</span>
-              </div>
-              
-              <h3 className="text-xl font-bold text-slate-900 mb-2">
-                Nouvelle notification
-              </h3>
-              
-              <p className="text-sm text-slate-500 mb-8 leading-relaxed">
-                {newAlertsForPopup.length === 1 
-                  ? "Vous avez 1 nouveau message à consulter"
-                  : `Vous avez ${newAlertsForPopup.length} nouveaux messages à consulter`}
-              </p>
-
-              <div className="w-full space-y-3 mb-8 max-h-[35vh] overflow-y-auto pr-2 no-scrollbar">
-                {newAlertsForPopup.map(alert => (
-                  <div key={alert.id} className="flex items-start gap-3 p-4 bg-slate-50 rounded-2xl text-left border border-slate-100 transition-colors hover:bg-slate-100/50">
-                    <div className="mt-1 shrink-0">
-                      {alert.priority === 1 && <div className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.4)]" />}
-                      {alert.priority === 2 && <div className="w-2 h-2 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.4)]" />}
-                      {alert.priority === 3 && <div className="w-2 h-2 rounded-full bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.4)]" />}
-                    </div>
-                    <p className="text-xs font-semibold text-slate-800 leading-snug">{alert.message}</p>
+      <ConfirmModal
+        isOpen={showNewAlertsPopup}
+        title="Nouvelle notification"
+        type="info"
+        confirmLabel="J'ai compris"
+        onConfirm={markAlertsAsSeen}
+        message={
+          <div className="space-y-4">
+            <p className="text-slate-500 text-sm leading-relaxed -mt-1">
+              {newAlertsForPopup.length === 1 
+                ? "Vous avez 1 nouveau message à consulter"
+                : `Vous avez ${newAlertsForPopup.length} nouveaux messages à consulter`}
+            </p>
+            <div className="w-full space-y-3 max-h-[35vh] overflow-y-auto pr-1 no-scrollbar">
+              {newAlertsForPopup.map(alert => (
+                <div key={alert.id} className="flex items-start gap-3 p-4 bg-slate-50 rounded-2xl text-left border border-slate-100 transition-colors hover:bg-slate-100/50">
+                  <div className="mt-1 shrink-0">
+                    {alert.priority === 1 && <div className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.4)]" />}
+                    {alert.priority === 2 && <div className="w-2 h-2 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.4)]" />}
+                    {alert.priority === 3 && <div className="w-2 h-2 rounded-full bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.4)]" />}
                   </div>
-                ))}
-              </div>
-
-              <button
-                onClick={markAlertsAsSeen}
-                className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/20 active:scale-[0.98] transition-all hover:bg-slate-800"
-              >
-                J'ai compris
-              </button>
+                  <p className="text-xs font-medium text-slate-700 leading-snug">{alert.message}</p>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-      )}
+        }
+      />
 
       {/* Global CSS fixes for PWA feel */}
       <style jsx global>{`

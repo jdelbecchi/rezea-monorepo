@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { api, User, OrderItem, InstallmentItem, Tenant } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
+import ConfirmModal from "@/components/ConfirmModal";
 import { formatCredits } from "@/lib/formatters";
 import MultiSelect from "@/components/MultiSelect";
 
@@ -1348,38 +1349,36 @@ export default function AdminShopOrdersPage() {
                 </div>
             )}
 
-            {/* Delete Confirmation */}
-            {deleteConfirmId && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-10 pb-8">
-                            <h3 className="text-xl font-semibold text-slate-900 mb-2 tracking-tight">Confirmer la suppression</h3>
-                            <p className="text-slate-500 text-base leading-relaxed">Cette commande sera définitivement supprimée. Les crédits associés seront retirés du compte client.</p>
-                            {deleteError && (
-                                <div className="mt-4 p-4 bg-rose-50 border border-rose-100 text-rose-700 rounded-xl flex items-start gap-2.5 text-sm animate-in slide-in-from-top-1 duration-200">
-                                    <span className="text-lg leading-none">⚠️</span>
-                                    <div className="flex-1 font-medium">{deleteError}</div>
-                                    <button type="button" onClick={() => setDeleteError(null)} className="text-rose-400 hover:text-rose-600 transition-colors">
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                        <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center">
-                            <button onClick={() => { setDeleteConfirmId(null); setDeleteError(null); }}
-                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
-                                Annuler
-                            </button>
-                            <button onClick={() => handleDelete(deleteConfirmId)}
-                                className="px-6 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-all text-sm shadow-sm active:scale-95">
-                                Supprimer
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ConfirmModal
+                isOpen={!!deleteConfirmId}
+                title="Confirmer la suppression"
+                message={
+                    <>
+                        <p>Cette commande sera définitivement supprimée. Les crédits associés seront retirés du compte client.</p>
+                        {deleteError && (
+                            <div className="mt-4 p-4 bg-rose-50 border border-rose-100 text-rose-700 rounded-xl flex items-start gap-2.5 text-sm animate-in slide-in-from-top-1 duration-200">
+                                <span className="text-lg leading-none">⚠️</span>
+                                <div className="flex-1 font-medium">{deleteError}</div>
+                                <button type="button" onClick={() => setDeleteError(null)} className="text-rose-400 hover:text-rose-600 transition-colors">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        )}
+                    </>
+                }
+                type="danger"
+                confirmLabel="Supprimer"
+                cancelLabel="Annuler"
+                onConfirm={() => {
+                    if (deleteConfirmId) handleDelete(deleteConfirmId);
+                }}
+                onCancel={() => {
+                    setDeleteConfirmId(null);
+                    setDeleteError(null);
+                }}
+            />
 
 
 

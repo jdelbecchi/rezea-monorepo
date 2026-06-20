@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
+import ConfirmModal from "@/components/ConfirmModal";
 import { api, Session, Event, User, CreditAccount, Tenant, Booking } from "@/lib/api";
 import { formatDuration, calculateDuration, formatCredits } from "@/lib/formatters";
 import { 
@@ -790,36 +791,23 @@ export default function PlanningPage() {
         </div>
       </main>
 
-      {/* Cancel Confirmation Modal */}
-      {showCancelModal && bookingToCancel && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
-           <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl border border-slate-100 p-8 text-center animate-in zoom-in duration-300">
-              <h2 className="text-xl md:text-2xl font-medium text-slate-900 mb-2 tracking-tight">Annuler l'inscription</h2>
-              <p className="text-slate-500 text-sm font-medium mb-8 leading-relaxed">
-                Confirmer l'annulation de <span className="text-slate-900 font-bold truncate inline-block max-w-[200px] align-bottom">"{bookingToCancel.title}"</span> ?
-              </p>
-
-              <div className="flex gap-4 mt-auto">
-                <button 
-                  onClick={() => {
-                    setShowCancelModal(false);
-                    setBookingToCancel(null);
-                  }}
-                  className="flex-1 py-4 bg-slate-100 text-slate-400 font-medium rounded-2xl hover:bg-slate-200 transition-all text-xs"
-                >
-                  Garder ma place
-                </button>
-                <button 
-                  disabled={bookingLoading === bookingToCancel.id}
-                  onClick={handleCancelBooking}
-                  className="flex-1 py-4 bg-rose-500 text-white font-medium rounded-2xl hover:bg-rose-600 transition-all shadow-xl shadow-rose-100/50 text-xs disabled:opacity-50"
-                >
-                  {bookingLoading === bookingToCancel.id ? "..." : "Annuler"}
-                </button>
-              </div>
-           </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={showCancelModal && !!bookingToCancel}
+        title="Annuler l'inscription"
+        message={
+            <>
+                Confirmer l'annulation de <strong className="font-semibold text-slate-900">"{bookingToCancel?.title}"</strong> ?
+            </>
+        }
+        type="warning"
+        confirmLabel={bookingLoading === bookingToCancel?.id ? "..." : "Annuler"}
+        cancelLabel="Garder ma place"
+        onConfirm={handleCancelBooking}
+        onCancel={() => {
+            setShowCancelModal(false);
+            setBookingToCancel(null);
+        }}
+      />
 
       {!isAdminMode && <BottomNav />}
     </div>

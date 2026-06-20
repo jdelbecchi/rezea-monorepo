@@ -7,6 +7,7 @@ import { api, User, Offer, Tenant } from "@/lib/api";
 import { formatPrice } from "@/lib/formatters";
 import BottomNav from "@/components/BottomNav";
 import DateInputZen from "@/components/DateInputZen";
+import ConfirmModal from "@/components/ConfirmModal";
 
 export default function CheckoutPage() {
     const router = useRouter();
@@ -286,29 +287,14 @@ export default function CheckoutPage() {
 
             <BottomNav userRole={user?.role} />
 
-            {/* Success Modal */}
-            {showSuccess && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[100] p-6 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-3xl max-w-sm w-full p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-300 text-center">
-                        <div className="w-16 h-16 bg-green-50 text-green-500 rounded-full flex items-center justify-center text-3xl mx-auto">
-                            ✓
-                        </div>
-                        <div className="space-y-2">
-                            <h2 className="text-xl font-semibold text-slate-900 tracking-tight">Commande validée !</h2>
-                            <p className="text-slate-500 text-sm leading-relaxed">
-                                {successData?.message || "Votre commande a été enregistrée avec succès."}
-                            </p>
-                        </div>
-
-                        <button
-                            onClick={handleFinalRedirect}
-                            className="w-full py-4 rounded-2xl bg-slate-900 text-white font-medium text-sm hover:bg-slate-800 transition-all duration-300 shadow-xl"
-                        >
-                            {(successData?.redirect_url && tenant?.payment_redirect_link) ? "Procéder au paiement" : "Retour à l'accueil"}
-                        </button>
-                    </div>
-                </div>
-            )}
+            <ConfirmModal
+                isOpen={showSuccess}
+                title="Commande validée !"
+                message={successData?.message || "Votre commande a été enregistrée avec succès."}
+                type="success-check"
+                confirmLabel={(successData?.redirect_url && tenant?.payment_redirect_link) ? "Procéder au paiement" : "Retour à l'accueil"}
+                onConfirm={handleFinalRedirect}
+            />
 
             {/* Global style for safe areas */}
             <style jsx global>{`
