@@ -19,7 +19,7 @@ export default function EventCheckoutPage() {
     const [submitting, setSubmitting] = useState(false);
     const [tariff, setTariff] = useState<'member' | 'external'>('member');
     const [error, setError] = useState<string | null>(null);
-    const [payLater, setPayLater] = useState(true);
+    const [payLater, setPayLater] = useState(false);
 
     const [showSuccess, setShowSuccess] = useState(false);
 
@@ -75,28 +75,16 @@ export default function EventCheckoutPage() {
 
     return (
         <div className="min-h-screen bg-white flex flex-col md:flex-row pb-20 md:pb-0 overflow-x-hidden">
-            {/* PWA Mobile Header */}
-            <header className="fixed top-0 left-0 right-0 h-14 bg-white/80 backdrop-blur-lg border-b border-slate-100 flex items-center px-4 z-40 md:hidden safe-top shadow-sm">
-                <Link href={`/${params.slug}/planning`} className="flex items-center gap-2 group text-slate-400 active:scale-95 transition-all">
-                    <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 ml-0.5" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    <span className="text-[13px] font-medium leading-none">Retour</span>
-                </Link>
-            </header>
-
-            <main className="flex-1 px-5 pb-5 md:p-12 pt-16 md:pt-14">
+            <main className="flex-1 px-5 pb-5 md:p-12 pt-4 md:pt-12">
                 <div className="max-w-3xl mx-auto">
-                    <header className="space-y-1 mb-4">
-                        <div className="hidden md:flex items-center gap-2 mb-4">
-                            <Link href={`/${params.slug}/planning`} className="flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-slate-800 transition-colors group">
-                                <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 transition-transform group-hover:-translate-x-1" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                </svg>
-                                <span className="leading-none">Retour au planning</span>
-                            </Link>
-                        </div>
-                        <h1 className="text-xl md:text-2xl font-medium text-slate-900 tracking-tight">Récapitulatif de votre inscription</h1>
+                    <header className="flex items-center justify-between pb-3 border-b border-slate-200 mb-6 gap-4">
+                        <h1 className="text-[14px] sm:text-base md:text-lg font-medium text-slate-900 tracking-tight">Récapitulatif d'inscription</h1>
+                        <Link href={`/${params.slug}/planning`} className="flex items-center gap-1 text-[10px] md:text-xs font-medium text-slate-400 hover:text-slate-800 transition-colors group border border-slate-200 rounded-full px-2.5 py-1 hover:border-slate-300">
+                            <svg viewBox="0 0 24 24" fill="none" className="w-3 h-3 transition-transform group-hover:-translate-x-0.5" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                            <span>Retour</span>
+                        </Link>
                     </header>
 
                     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden relative">

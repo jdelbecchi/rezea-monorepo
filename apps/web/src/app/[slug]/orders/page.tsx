@@ -20,6 +20,7 @@ export default function MemberOrdersPage() {
     // States for Info Modal
     const [showInfoModal, setShowInfoModal] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+    const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -278,7 +279,7 @@ export default function MemberOrdersPage() {
 
                     {/* Tab Switcher */}
                     <div className="flex justify-center mb-8">
-                        <div className="flex gap-2 p-1.5 bg-slate-100/60 rounded-2xl w-fit">
+                        <div className="flex gap-2 p-1.5 bg-white border border-slate-200/80 rounded-2xl w-fit">
                             <button 
                                 onClick={() => setActiveTab('offers')}
                                 className={`px-6 py-2.5 rounded-xl text-xs font-medium transition-all duration-300 ${
@@ -333,10 +334,17 @@ export default function MemberOrdersPage() {
                                 orders.map((order) => (
                                     <div 
                                         key={order.id} 
-                                        className="bg-white p-5 md:p-6 rounded-3xl border transition-all duration-300 hover:bg-slate-50 hover:border-slate-400 relative overflow-hidden group"
+                                        onMouseEnter={() => setHoveredCardId(order.id)}
+                                        onMouseLeave={() => setHoveredCardId(null)}
+                                        className="bg-white p-5 md:p-6 rounded-3xl border transition-all duration-300 relative overflow-hidden group"
                                         style={{ 
                                             boxShadow: `4px 6px 18px -2px ${(tenant?.primary_color || '#2563eb')}45`,
-                                            borderColor: `${(tenant?.primary_color || '#2563eb')}20`
+                                            borderColor: hoveredCardId === order.id 
+                                                ? tenant?.primary_color || '#2563eb' 
+                                                : `${(tenant?.primary_color || '#2563eb')}20`,
+                                            backgroundColor: hoveredCardId === order.id 
+                                                ? `${(tenant?.primary_color || '#2563eb')}08` 
+                                                : 'white'
                                         }}
                                     >
                                         <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-bl-full -mr-16 -mt-16 opacity-40 pointer-events-none" />
@@ -345,22 +353,20 @@ export default function MemberOrdersPage() {
                                             {/* Top Section: Title & Metadata */}
                                             <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                                                 <div className="flex flex-col min-w-0 flex-1 w-full sm:w-auto">
-                                                    <div className="flex items-center justify-between gap-4 mb-1.5 w-full">
+                                                    <div className="flex items-center gap-3 mb-2 w-full min-w-0">
                                                         <h3 className="text-lg md:text-xl font-semibold text-slate-900 capitalize tracking-tight truncate">{order.offer_name}</h3>
-                                                        <div className="flex-shrink-0">
-                                                            <div 
-                                                                className="inline-block text-[11px] md:text-xs font-semibold px-3 py-0.5 rounded-full border transition-colors capitalize whitespace-nowrap"
-                                                                style={{
-                                                                    backgroundColor: `${tenant?.primary_color || '#2563eb'}10`,
-                                                                    borderColor: `${tenant?.primary_color || '#2563eb'}30`,
-                                                                    color: tenant?.primary_color || '#2563eb'
-                                                                }}
-                                                            >
-                                                                {order.allowed_activities && order.allowed_activities.length > 0 
-                                                                    ? order.allowed_activities.join(", ") 
-                                                                    : "Toutes activités"
-                                                                }
-                                                            </div>
+                                                        <div 
+                                                            className="flex-shrink-0 inline-block text-[10px] md:text-[11px] font-semibold px-2.5 py-0.5 rounded-full border transition-colors capitalize whitespace-nowrap"
+                                                            style={{
+                                                                backgroundColor: `${tenant?.primary_color || '#2563eb'}10`,
+                                                                borderColor: `${tenant?.primary_color || '#2563eb'}30`,
+                                                                color: tenant?.primary_color || '#2563eb'
+                                                            }}
+                                                        >
+                                                            {order.allowed_activities && order.allowed_activities.length > 0 
+                                                                ? order.allowed_activities.join(", ") 
+                                                                : "Toutes activités"
+                                                            }
                                                         </div>
                                                     </div>
                                                     <div className="flex flex-col items-start gap-2">
@@ -445,10 +451,17 @@ export default function MemberOrdersPage() {
                                 registrations.map((reg) => (
                                     <div 
                                         key={reg.id} 
-                                        className="bg-white p-5 md:p-6 rounded-3xl border transition-all duration-300 hover:bg-slate-50 hover:border-slate-400 relative overflow-hidden group"
+                                        onMouseEnter={() => setHoveredCardId(reg.id)}
+                                        onMouseLeave={() => setHoveredCardId(null)}
+                                        className="bg-white p-5 md:p-6 rounded-3xl border transition-all duration-300 relative overflow-hidden group"
                                         style={{ 
                                             boxShadow: `4px 6px 18px -2px ${(tenant?.primary_color || '#2563eb')}45`,
-                                            borderColor: `${(tenant?.primary_color || '#2563eb')}20`
+                                            borderColor: hoveredCardId === reg.id 
+                                                ? tenant?.primary_color || '#2563eb' 
+                                                : `${(tenant?.primary_color || '#2563eb')}20`,
+                                            backgroundColor: hoveredCardId === reg.id 
+                                                ? `${(tenant?.primary_color || '#2563eb')}08` 
+                                                : 'white'
                                         }}
                                     >
                                         <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-bl-full -mr-16 -mt-16 opacity-40 pointer-events-none" />
@@ -469,25 +482,29 @@ export default function MemberOrdersPage() {
                                                     <p className="text-slate-400 text-xs font-medium tracking-tight">
                                                         Inscrit le {new Date(reg.created_at).toLocaleDateString("fr-FR")}
                                                     </p>
-                                                    <div className="flex items-center gap-1.5 text-slate-500">
+                                                    {/* Price only on mobile */}
+                                                    <div className="flex md:hidden items-center gap-1.5 text-slate-500">
                                                         <span className="text-xs">🏷️</span>
                                                         <span className="text-[13px] font-medium">{formatEventPrice(reg)}</span>
                                                     </div>
                                                 </div>
                                             </div>
                                             
-                                            <div className="flex items-center gap-2 relative z-10 flex-wrap sm:flex-nowrap pt-1">
-                                                <div className="flex flex-col items-end gap-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold border ${getStatusStyle(reg.payment_status || 'en_attente')}`}>
-                                                            <span className="opacity-60 mr-1">Paiement :</span>
-                                                            {getStatusLabel(reg.payment_status || 'en_attente')}
-                                                        </span>
-                                                        <span className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold border ${getEventRegistrationStatusStyle(reg.status)}`}>
-                                                            <span className="opacity-60 mr-1">Statut :</span>
-                                                            {getEventRegistrationStatusLabel(reg.status)}
-                                                        </span>
-                                                    </div>
+                                            <div className="flex flex-col items-end gap-2 relative z-10 pt-1">
+                                                {/* Price only on PC */}
+                                                <div className="hidden md:flex items-center gap-1.5 mb-1 text-slate-900 font-semibold text-base">
+                                                    <span className="text-slate-400 text-sm">🏷️</span>
+                                                    <span>{formatEventPrice(reg)}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                                                    <span className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold border ${getStatusStyle(reg.payment_status || 'en_attente')}`}>
+                                                        <span className="opacity-60 mr-1">Paiement :</span>
+                                                        {getStatusLabel(reg.payment_status || 'en_attente')}
+                                                    </span>
+                                                    <span className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold border ${getEventRegistrationStatusStyle(reg.status)}`}>
+                                                        <span className="opacity-60 mr-1">Statut :</span>
+                                                        {getEventRegistrationStatusLabel(reg.status)}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>

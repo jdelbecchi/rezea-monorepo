@@ -364,10 +364,7 @@ export default function PlanningPage() {
               </div>
 
               <div className="hidden md:flex flex-col gap-2 p-6 bg-slate-50 rounded-3xl border border-slate-100 relative overflow-hidden group shadow-sm transition-all hover:shadow-md !mt-10">
-                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-                      <DiamondToken className="w-12 h-12" />
-                  </div>
-                  <span className="text-[11px] text-slate-400 font-normal leading-none mb-1 flex items-center gap-1.5">
+                  <span className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider leading-none mb-1 flex items-center gap-1.5">
                     Mes crédits <DiamondToken className="w-4 h-4" />
                   </span>
                   
@@ -399,17 +396,6 @@ export default function PlanningPage() {
                           </div>
                       );
                   })()}
-
-                  <button 
-                    onClick={() => window.location.href = `/${slug}/credits`}
-                    className="mt-4 w-full py-3 text-white font-medium rounded-2xl text-xs transition-all active:scale-95 shadow-lg"
-                    style={{ 
-                        backgroundColor: tenant?.primary_color || '#2563eb',
-                        boxShadow: `0 4px 12px ${(tenant?.primary_color || '#2563eb')}40`
-                    }}
-                  >
-                    Recharger mon compte
-                  </button>
               </div>
               
               <div className="md:hidden sticky top-14 z-30 -mx-5 px-5 py-2 bg-white/95 backdrop-blur-md flex flex-col gap-1 mt-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] items-end">

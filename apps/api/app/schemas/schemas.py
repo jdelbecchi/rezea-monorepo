@@ -754,6 +754,7 @@ class EventRegistrationUpdate(BaseModel):
     status: Optional[str] = None
     payment_status: Optional[OrderPaymentStatus] = None
     user_note: Optional[str] = None
+    price_paid_cents: Optional[int] = None
 
 
 class EventRegistrationResponse(BaseModel):

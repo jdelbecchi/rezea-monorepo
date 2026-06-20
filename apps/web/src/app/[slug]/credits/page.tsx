@@ -20,6 +20,7 @@ export default function CreditsPage() {
     const [offers, setOffers] = useState<Offer[]>([]);
     const [balancesByActivity, setBalancesByActivity] = useState<Record<string, number | null>>({});
     const [loading, setLoading] = useState(true);
+    const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -179,10 +180,17 @@ export default function CreditsPage() {
                                         {categoryOffers.map((offer) => (
                                             <div
                                                 key={offer.id}
-                                                className="group relative bg-white rounded-2xl p-4 md:p-5 border transition-all duration-300 hover:bg-slate-50 hover:border-slate-400 flex flex-col items-center justify-between overflow-hidden text-center"
+                                                onMouseEnter={() => setHoveredCardId(offer.id)}
+                                                onMouseLeave={() => setHoveredCardId(null)}
+                                                className="group relative bg-white rounded-2xl p-4 md:p-5 border transition-all duration-300 flex flex-col items-center justify-between overflow-hidden text-center"
                                                 style={{ 
                                                     boxShadow: `3px 4px 14px -2px ${(tenantSettings?.primary_color || '#2563eb')}40`,
-                                                    borderColor: `${(tenantSettings?.primary_color || '#2563eb')}20`
+                                                    borderColor: hoveredCardId === offer.id 
+                                                        ? tenantSettings?.primary_color || '#2563eb' 
+                                                        : `${(tenantSettings?.primary_color || '#2563eb')}20`,
+                                                    backgroundColor: hoveredCardId === offer.id 
+                                                        ? `${(tenantSettings?.primary_color || '#2563eb')}0d` 
+                                                        : 'white'
                                                 }}
                                             >
                                                 <div className="relative z-10 space-y-3 w-full flex flex-col items-center">

@@ -215,6 +215,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
   const layout = tenantSettings?.user_home_layout || "both";
   const showHeader = layout === "both" || layout === "header";
   const showVignettes = layout === "both" || layout === "vignettes";
+  const hasVisuals = showHeader || (showVignettes && !!tenantSettings?.vignettes?.length);
 
   const posY = tenantSettings?.header_text_pos_y || "center";
   const posX = tenantSettings?.header_text_pos_x || "center";
@@ -226,14 +227,148 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
     <div className="min-h-[100dvh] bg-white flex flex-col items-center overflow-x-hidden safe-top md:pb-0">
       
       {/* Main Responsive Container: Max width on Desktop, Full on Mobile */}
-      <div className="w-full max-w-6xl mx-auto flex flex-col md:min-h-0 md:pt-16 bg-white lg:grid lg:grid-cols-2 lg:gap-24 lg:items-start px-0 md:px-12">
+      <div className="w-full max-w-6xl mx-auto flex flex-col md:min-h-0 md:pt-4 lg:pt-4 bg-white px-0 md:px-12">
         
-        {/* Left Column (Desktop) / Top Section (Mobile): Banner & Identity */}
-        <div className="flex flex-col h-full">
-            {/* 1. Header - Club identity + Credits */}
-            <header className={`px-5 py-3 flex items-center shrink-0 mb-2 md:mb-5 ${
-                isLogoOnly ? 'justify-center relative' : 'justify-between'
-            }`}>
+        {/* 2-Column Grid for Content */}
+        <div className={`w-full ${hasVisuals ? 'lg:grid lg:grid-cols-2 lg:gap-x-24 lg:gap-y-0 lg:items-start' : 'max-w-xl mx-auto'} px-0`}>
+            
+            {/* Desktop Header - Only on large screens (placed in col-2, row-1) */}
+            <div className="hidden lg:flex flex-col items-center w-full mb-8 lg:col-start-2 lg:row-start-1">
+                {/* Logo & Name */}
+                <div className="flex items-center justify-center gap-4 mb-4">
+                    {showLogo && (
+                        tenantSettings?.logo_url ? (
+                            <img src={`${API_URL}${tenantSettings.logo_url}`} className="h-20 w-20 object-contain" alt="Logo" />
+                        ) : (
+                            <div className="w-20 h-20 rounded-2xl bg-slate-900 flex items-center justify-center text-xl font-semibold text-white">
+                                {tenantSettings?.name?.[0]?.toUpperCase() || 'R'}
+                            </div>
+                        )
+                    )}
+                    {showName && (
+                        <span className="text-xl font-medium tracking-tight text-slate-800">
+                            {tenantSettings?.name || "rezea"}
+                        </span>
+                    )}
+                </div>
+
+                {/* Notifications & Credits */}
+                <div className="flex items-center justify-center gap-6 w-full">
+                    {/* Alert Hub Pill */}
+                    {allAlerts.length > 0 && (
+                        <div className="relative">
+                            <button 
+                                onClick={() => setIsAlertsExpanded(!isAlertsExpanded)}
+                                className={`inline-flex items-center gap-2 py-1.5 px-3.5 rounded-full border transition-all text-xs font-semibold shadow-sm active:scale-[0.98] select-none
+                                    ${allAlerts[0].priority === 1 ? 'bg-orange-50/90 border-orange-200/60 text-orange-800 hover:bg-orange-100/90' : 
+                                      allAlerts[0].priority === 2 ? 'bg-[#FFF2B9]/50 border-amber-200/50 text-amber-900 hover:bg-[#FFF2B9]/70' : 'bg-sky-50/90 border-sky-200/60 text-sky-800 hover:bg-sky-100/90'}`}
+                            >
+                                <span className="text-[13px] shrink-0 animate-pulse">🔔</span>
+                                <span className="font-bold">
+                                    {allAlerts.length === 1 
+                                        ? "1 notification" 
+                                        : `${allAlerts.length} notifications`}
+                                </span>
+                                <svg 
+                                    xmlns="http://www.w3.org/2000/svg" 
+                                    className={`h-3 w-3 shrink-0 transition-transform duration-500 ${isAlertsExpanded ? 'rotate-180' : ''}`} 
+                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                            
+                            {isAlertsExpanded && (
+                                <div className={`absolute top-10 left-1/2 -translate-x-1/2 w-80 max-w-xs mt-2 flex flex-col gap-2 p-3 border rounded-2xl animate-in fade-in zoom-in-95 duration-500 origin-top shadow-md z-[60]
+                                    ${allAlerts[0].priority === 1 ? 'bg-orange-50/95 border-orange-200/80' : 
+                                      allAlerts[0].priority === 2 ? 'bg-[#FFF2B9]/95 border-amber-200/80' : 'bg-sky-50/95 border-sky-200/80'}`}
+                                >
+                                    {allAlerts.map(alert => (
+                                        <div key={alert.id} className="flex items-start gap-2.5 p-2 bg-white rounded-xl border border-slate-100 shadow-sm transition-all hover:shadow-md text-left">
+                                            <div className="mt-0.5 shrink-0">
+                                                {alert.priority === 1 && (
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                    </svg>
+                                                )}
+                                                {alert.priority === 2 && (
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                )}
+                                                {alert.priority === 3 && (
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-sky-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                )}
+                                            </div>
+                                            <p className="text-[11px] font-medium text-slate-700 leading-snug">
+                                                {alert.message}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Credits display */}
+                    {credits && (credits.balance > 0 || myOrders.length > 0) && (() => {
+                        const activities = Object.entries(credits.balances_by_activity || {})
+                            .filter(([_, bal]) => bal === null || Number(bal) > 0);
+                        const sortedActivities = [...activities].sort(([a], [b]) => {
+                            if (a === "Toutes activités") return -1;
+                            if (b === "Toutes activités") return 1;
+                            return a.localeCompare(b);
+                        });
+                        
+                        if (sortedActivities.length === 0) return null;
+                        
+                        return (
+                            <div className="flex flex-col items-center gap-1 relative">
+                                <button 
+                                    onClick={() => setShowCreditDetails(!showCreditDetails)}
+                                    className="flex items-center gap-2 text-slate-800 hover:text-slate-900 focus:outline-none select-none transition-all active:scale-[0.98] py-1"
+                                >
+                                    <span className="text-sm font-medium text-slate-600">Mes crédits</span>
+                                    <span className="text-base">💎</span>
+                                    <p className="text-lg font-medium leading-none text-slate-900">{formatCredits(credits.balance)}</p>
+                                    {sortedActivities.length > 0 && (
+                                        <svg 
+                                            xmlns="http://www.w3.org/2000/svg" 
+                                            className={`h-4 w-4 text-slate-400 transition-transform duration-300 ${showCreditDetails ? 'rotate-180' : ''}`} 
+                                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                        >
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    )}
+                                </button>
+                                
+                                {showCreditDetails && (
+                                    <div className="absolute top-10 left-1/2 -translate-x-1/2 flex flex-col gap-1.5 w-48 mt-2 animate-in fade-in slide-in-from-top-1 duration-200 z-50">
+                                        {sortedActivities.map(([activity, bal]) => (
+                                            <div key={activity} className="flex items-center justify-between text-[11px] text-slate-700 bg-white shadow-sm border border-slate-200/80 px-2.5 py-1 rounded-xl">
+                                                <span className="text-slate-500 text-[10px] truncate max-w-[100px] capitalize">{activity}</span>
+                                                <div className="flex items-center gap-1">
+                                                    <span>💎</span>
+                                                    <span className="font-bold text-slate-900">{bal === null ? "Illimité" : formatCredits(Number(bal))}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
+                </div>
+            </div>
+
+            {/* Left Column (Desktop) / Top Section (Mobile): Banner & Identity (placed in col-1, row-2) */}
+            <div className="flex flex-col h-full lg:col-start-1 lg:row-start-2">
+                {/* 1. Header - Club identity + Credits (Mobile Only) */}
+                <header className={`px-5 py-3 flex items-center shrink-0 mb-2 md:mb-5 lg:hidden ${
+                    isLogoOnly ? 'justify-center relative' : 'justify-between'
+                }`}>
                 <div className="flex items-center gap-3">
                     {showLogo && (
                         tenantSettings?.logo_url ? (
@@ -275,9 +410,9 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                 </div>
             </header>
 
-            {/* Alert Hub - Compact centered pill layout */}
+            {/* Alert Hub - Compact centered pill layout (Mobile Only) */}
             {allAlerts.length > 0 && (
-                <div className="flex flex-col items-center w-full px-5 mb-4">
+                <div className="flex flex-col items-center w-full px-5 mb-4 lg:hidden">
                     <button 
                         onClick={() => setIsAlertsExpanded(!isAlertsExpanded)}
                         className={`inline-flex items-center gap-2 py-1.5 px-4 rounded-full border transition-all text-xs font-semibold shadow-sm active:scale-[0.98]
@@ -363,9 +498,9 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
 
             {/* Banner (conditional) */}
             {showHeader && (
-                <div className="relative shrink-0 mb-0 md:mb-8 lg:mb-0">
+                <div className="relative shrink-0 mb-0 md:mb-8 lg:mb-0 lg:rounded-3xl">
                     <div 
-                        className="aspect-video w-full shadow-xl shadow-blue-900/10 relative group bg-slate-50 border border-slate-100 overflow-hidden"
+                        className="aspect-video w-full shadow-xl shadow-blue-900/10 relative group bg-slate-50 border border-slate-100 overflow-hidden lg:rounded-3xl"
                         style={{ 
                             background: bannerUrl 
                                 ? `url(${bannerUrl}) center/cover no-repeat` 
@@ -488,7 +623,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
         </div>
 
         {/* Right Column (Desktop) / Bottom Section (Mobile): Menu Buttons */}
-        <div className="flex flex-col flex-1 px-5 h-full pt-3 lg:pt-0">
+        <div className="flex flex-col flex-1 px-5 h-full pt-3 lg:pt-0 lg:px-0 lg:col-start-2 lg:row-start-2">
 
             {/* Credits display */}
             {credits && (credits.balance > 0 || myOrders.length > 0) && (() => {
@@ -503,7 +638,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                 if (sortedActivities.length === 0) return null;
                 
                 return (
-                    <div className="flex flex-col items-end gap-1 px-1 mt-1 mb-5">
+                    <div className="flex flex-col items-end gap-1 px-1 mt-1 mb-5 lg:hidden">
                         <button 
                             onClick={() => setShowCreditDetails(!showCreditDetails)}
                             className="flex items-center gap-2 text-slate-800 hover:text-slate-900 focus:outline-none select-none transition-all active:scale-[0.98] py-1"
@@ -539,7 +674,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
             })()}
 
             {/* 5. Quick Actions Stack */}
-            <div className="grid grid-cols-2 gap-2.5 mb-4 w-full mx-auto lg:mx-0 px-1 lg:px-0 lg:mt-28">
+            <div className="grid grid-cols-2 gap-2.5 mb-4 w-full mx-auto lg:mx-0 px-1 lg:px-0 lg:mt-0">
 
                 {/* Staff: Gestion des inscriptions */}
                 {isAdminOrStaff && (
@@ -682,6 +817,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                 </div>
             </div>
         </div>
+      </div>
       </div>
       
       {/* Bottom Navigation for Mobile PWA Experience */}
