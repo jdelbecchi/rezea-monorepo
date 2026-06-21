@@ -19,23 +19,26 @@ export default function CreditsPage() {
     const [balance, setBalance] = useState(0);
     const [offers, setOffers] = useState<Offer[]>([]);
     const [balancesByActivity, setBalancesByActivity] = useState<Record<string, number | null>>({});
+    const [myOrders, setMyOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [userData, accountData, offersData, tenantData] = await Promise.all([
+                const [userData, accountData, offersData, tenantData, myOrdersData] = await Promise.all([
                     api.getCurrentUser(),
                     api.getCreditAccount(),
                     api.getOffers(false), // Only active offers
-                    api.getTenantSettings()
+                    api.getTenantSettings(),
+                    api.getMyOrders()
                 ]);
                 setUser(userData);
                 setBalance(accountData.balance);
                 setBalancesByActivity(accountData.balances_by_activity || {});
                 setOffers(offersData);
                 setTenantSettings(tenantData);
+                setMyOrders(myOrdersData);
             } catch (err) {
                 console.error(err);
                 router.push(`/${slug}`);
@@ -177,117 +180,129 @@ export default function CreditsPage() {
                                     </div>
                                     
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                        {categoryOffers.map((offer) => (
-                                            <div
-                                                key={offer.id}
-                                                onMouseEnter={() => setHoveredCardId(offer.id)}
-                                                onMouseLeave={() => setHoveredCardId(null)}
-                                                className="group relative bg-white rounded-2xl p-4 md:p-5 border transition-all duration-300 flex flex-col items-center justify-between overflow-hidden text-center"
-                                                style={{ 
-                                                    boxShadow: `3px 4px 14px -2px ${(tenantSettings?.primary_color || '#2563eb')}40`,
-                                                    borderColor: hoveredCardId === offer.id 
-                                                        ? tenantSettings?.primary_color || '#2563eb' 
-                                                        : `${(tenantSettings?.primary_color || '#2563eb')}20`,
-                                                    backgroundColor: hoveredCardId === offer.id 
-                                                        ? `${(tenantSettings?.primary_color || '#2563eb')}0d` 
-                                                        : 'white'
-                                                }}
-                                            >
-                                                <div className="relative z-10 space-y-3 w-full flex flex-col items-center">
-                                                    <div className="space-y-1.5 w-full flex flex-col items-center">
-                                                        <h3 className="text-[15px] md:text-base font-semibold text-slate-800 group-hover:text-slate-900 transition-colors capitalize tracking-tight">{offer.name}</h3>
-                                                        <div 
-                                                            className="inline-block text-[13px] md:text-sm font-semibold px-4 py-1 rounded-full mt-1 border transition-colors capitalize"
-                                                            style={{
-                                                                backgroundColor: `${tenantSettings?.primary_color || '#2563eb'}10`,
-                                                                borderColor: `${tenantSettings?.primary_color || '#2563eb'}30`,
-                                                                color: tenantSettings?.primary_color || '#2563eb'
-                                                            }}
-                                                        >
-                                                            {offer.allowed_activities && offer.allowed_activities.length > 0 
-                                                                ? offer.allowed_activities.join(", ") 
-                                                                : "Toutes activités"
-                                                            }
-                                                        </div>
-                                                    </div>
- 
-                                                    <div className="flex flex-col items-center gap-0.5">
-                                                        <div className="flex items-baseline justify-center flex-wrap">
-                                                            <span className="text-lg font-semibold text-slate-900">
-                                                                {offer.featured_pricing === "recurring" && offer.price_recurring_cents 
-                                                                    ? `${formatPrice(offer.price_recurring_cents)}`
-                                                                    : `${formatPrice(offer.price_lump_sum_cents)}`
+                                        {categoryOffers.map((offer) => {
+                                            const hasAlreadyPurchased = offer.is_unique && myOrders.some(order => order.offer_id === offer.id && order.status !== 'resiliee');
+                                            return (
+                                                <div
+                                                    key={offer.id}
+                                                    onMouseEnter={() => setHoveredCardId(offer.id)}
+                                                    onMouseLeave={() => setHoveredCardId(null)}
+                                                    className="group relative bg-white rounded-2xl p-4 md:p-5 border transition-all duration-300 flex flex-col items-center justify-between overflow-hidden text-center"
+                                                    style={{ 
+                                                        boxShadow: `3px 4px 14px -2px ${(tenantSettings?.primary_color || '#2563eb')}40`,
+                                                        borderColor: hoveredCardId === offer.id 
+                                                            ? tenantSettings?.primary_color || '#2563eb' 
+                                                            : `${(tenantSettings?.primary_color || '#2563eb')}20`,
+                                                        backgroundColor: hoveredCardId === offer.id 
+                                                            ? `${(tenantSettings?.primary_color || '#2563eb')}0d` 
+                                                            : 'white'
+                                                    }}
+                                                >
+                                                    <div className="relative z-10 space-y-3 w-full flex flex-col items-center">
+                                                        <div className="space-y-1.5 w-full flex flex-col items-center">
+                                                            <h3 className="text-[15px] md:text-base font-semibold text-slate-800 group-hover:text-slate-900 transition-colors capitalize tracking-tight">{offer.name}</h3>
+                                                            <div 
+                                                                className="inline-block text-[13px] md:text-sm font-semibold px-4 py-1 rounded-full mt-1 border transition-colors capitalize"
+                                                                style={{
+                                                                    backgroundColor: `${tenantSettings?.primary_color || '#2563eb'}10`,
+                                                                    borderColor: `${tenantSettings?.primary_color || '#2563eb'}30`,
+                                                                    color: tenantSettings?.primary_color || '#2563eb'
+                                                                }}
+                                                            >
+                                                                {offer.allowed_activities && offer.allowed_activities.length > 0 
+                                                                    ? offer.allowed_activities.join(", ") 
+                                                                    : "Toutes activités"
                                                                 }
-                                                            </span>
-                                                            {offer.featured_pricing === "recurring" && (
-                                                                <span className="text-slate-900 text-xs font-medium">
-                                                                    /{(offer.period && offer.period !== 'null') ? offer.period : 'mois'}
-                                                                    {offer.recurring_count && ` pendant ${offer.recurring_count} ${offer.period || 'mois'}`}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        {/* Secondary line: Alternative pricing */}
-                                                        <p className="text-[10px] md:text-xs font-medium text-slate-500 leading-tight">
-                                                            {offer.featured_pricing === "recurring" ? (
-                                                                offer.price_lump_sum_cents ? `ou ${formatPrice(offer.price_lump_sum_cents)} en une fois` : ""
-                                                            ) : (
-                                                                offer.price_recurring_cents ? (
-                                                                    `ou ${formatPrice(offer.price_recurring_cents)}/${(offer.period && offer.period !== 'null') ? offer.period : 'mois'} pendant ${offer.recurring_count} mois`
-                                                                ) : ""
-                                                            )}
-                                                        </p>
-                                                    </div>
- 
-                                                    <div className="space-y-0.5 w-full flex flex-col items-center">
-                                                        <div className="flex items-center gap-1.5 text-slate-500 justify-center">
-                                                            <span className="text-xs">💎</span>
-                                                            <span className="text-xs font-medium">
-                                                                {offer.is_unlimited ? "Crédits illimités" : `${offer.classes_included || 0} crédit${(offer.classes_included || 0) > 1 ? 's' : ''}`}
-                                                            </span>
-                                                        </div>
-                                                        
-                                                        {offer.is_validity_unlimited ? (
-                                                            <div className="flex items-center gap-1.5 text-emerald-600/70 justify-center">
-                                                                <span className="text-xs">♾️</span>
-                                                                <span className="text-xs font-medium">Validité illimitée</span>
                                                             </div>
-                                                        ) : (offer.validity_days || offer.deadline_date) && (
-                                                            <div className="flex items-center gap-1.5 text-slate-500 justify-center">
-                                                                <span className="text-[11px]">🕒</span>
-                                                                <span className="text-xs font-medium">
-                                                                    {offer.deadline_date 
-                                                                        ? `jusqu'au ${new Date(offer.deadline_date).toLocaleDateString()}`
-                                                                        : `Validité : ${offer.validity_unit === 'months' ? Math.round((offer.validity_days || 0) / 30) : offer.validity_days} ${offer.validity_unit === 'months' ? 'mois' : 'jours'}`
+                                                        </div>
+     
+                                                        <div className="flex flex-col items-center gap-0.5">
+                                                            <div className="flex items-baseline justify-center flex-wrap">
+                                                                <span className="text-lg font-semibold text-slate-900">
+                                                                    {offer.featured_pricing === "recurring" && offer.price_recurring_cents 
+                                                                        ? `${formatPrice(offer.price_recurring_cents)}`
+                                                                        : `${formatPrice(offer.price_lump_sum_cents)}`
                                                                     }
                                                                 </span>
+                                                                {offer.featured_pricing === "recurring" && (
+                                                                    <span className="text-slate-900 text-xs font-medium">
+                                                                        /{(offer.period && offer.period !== 'null') ? offer.period : 'mois'}
+                                                                        {offer.recurring_count && ` pendant ${offer.recurring_count} ${offer.period || 'mois'}`}
+                                                                    </span>
+                                                                )}
                                                             </div>
-                                                        )}
- 
-                                                        {offer.is_unique && (
-                                                            <div className="flex items-center gap-1.5 text-amber-600/70 justify-center">
-                                                                <span className="text-xs">🔒</span>
-                                                                <span className="text-xs font-medium">Valable 1 fois / personne</span>
+                                                            {/* Secondary line: Alternative pricing */}
+                                                            <p className="text-[10px] md:text-xs font-medium text-slate-500 leading-tight">
+                                                                {offer.featured_pricing === "recurring" ? (
+                                                                    offer.price_lump_sum_cents ? `ou ${formatPrice(offer.price_lump_sum_cents)} en une fois` : ""
+                                                                ) : (
+                                                                    offer.price_recurring_cents ? (
+                                                                        `ou ${formatPrice(offer.price_recurring_cents)}/${(offer.period && offer.period !== 'null') ? offer.period : 'mois'} pendant ${offer.recurring_count} mois`
+                                                                    ) : ""
+                                                                )}
+                                                            </p>
+                                                        </div>
+     
+                                                        <div className="space-y-0.5 w-full flex flex-col items-center">
+                                                            <div className="flex items-center gap-1.5 text-slate-500 justify-center">
+                                                                <span className="text-xs">💎</span>
+                                                                <span className="text-xs font-medium">
+                                                                    {offer.is_unlimited ? "Crédits illimités" : `${offer.classes_included || 0} crédit${(offer.classes_included || 0) > 1 ? 's' : ''}`}
+                                                                </span>
+                                                            </div>
+                                                            
+                                                            {offer.is_validity_unlimited ? (
+                                                                <div className="flex items-center gap-1.5 text-emerald-600/70 justify-center">
+                                                                    <span className="text-xs">♾️</span>
+                                                                    <span className="text-xs font-medium">Validité illimitée</span>
+                                                                </div>
+                                                            ) : (offer.validity_days || offer.deadline_date) && (
+                                                                <div className="flex items-center gap-1.5 text-slate-500 justify-center">
+                                                                    <span className="text-[11px]">🕒</span>
+                                                                    <span className="text-xs font-medium">
+                                                                        {offer.deadline_date 
+                                                                            ? `jusqu'au ${new Date(offer.deadline_date).toLocaleDateString()}`
+                                                                            : `Validité : ${offer.validity_unit === 'months' ? Math.round((offer.validity_days || 0) / 30) : offer.validity_days} ${offer.validity_unit === 'months' ? 'mois' : 'jours'}`
+                                                                        }
+                                                                    </span>
+                                                                </div>
+                                                            )}
+     
+                                                            {offer.is_unique && (
+                                                                <div className="flex items-center gap-1.5 text-amber-600/70 justify-center">
+                                                                    <span className="text-xs">🔒</span>
+                                                                    <span className="text-xs font-medium">Valable 1 fois / personne</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+     
+                                                        {offer.description && (
+                                                            <div className="pt-2 border-t border-slate-50 w-full">
+                                                                <p className="text-slate-500 text-[10px] md:text-[11px] leading-relaxed italic">{offer.description}</p>
                                                             </div>
                                                         )}
                                                     </div>
- 
-                                                    {offer.description && (
-                                                        <div className="pt-2 border-t border-slate-50 w-full">
-                                                            <p className="text-slate-500 text-[10px] md:text-[11px] leading-relaxed italic">{offer.description}</p>
-                                                        </div>
-                                                    )}
+     
+                                                    <div className="mt-4 relative z-10 w-full">
+                                                        {hasAlreadyPurchased ? (
+                                                            <button
+                                                                disabled
+                                                                className="block w-fit mx-auto px-10 py-2 rounded-xl font-medium text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed text-xs"
+                                                            >
+                                                                Déjà commandée
+                                                            </button>
+                                                        ) : (
+                                                            <Link
+                                                                href={`/${slug}/credits/checkout/${offer.id}`}
+                                                                className="block w-fit mx-auto px-10 py-2 rounded-xl font-medium text-white bg-slate-900 hover:bg-slate-800 transition-all duration-300 text-xs shadow-lg shadow-slate-100"
+                                                            >
+                                                                Choisir cette offre
+                                                            </Link>
+                                                        )}
+                                                    </div>
                                                 </div>
- 
-                                                <div className="mt-4 relative z-10 w-full">
-                                                    <Link
-                                                        href={`/${slug}/credits/checkout/${offer.id}`}
-                                                        className="block w-fit mx-auto px-10 py-2 rounded-xl font-medium text-white bg-slate-900 hover:bg-slate-800 transition-all duration-300 text-xs shadow-lg shadow-slate-100"
-                                                    >
-                                                        Choisir cette offre
-                                                    </Link>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </section>
                             ))}

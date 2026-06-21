@@ -5,7 +5,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
-from sqlalchemy import select, func, and_, extract, desc, case
+from sqlalchemy import select, func, and_, extract, desc, case, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -47,8 +47,16 @@ async def sync_revenues_to_finance(db: AsyncSession, tenant_id: str):
     )
     all_sys_cats = cats_res.scalars().all()
 
-    cat_ventes = next((c for c in all_sys_cats if c.name in LEGACY_OFFER_NAMES), None)
-    cat_events = next((c for c in all_sys_cats if c.name in LEGACY_EVENT_NAMES), None)
+    cat_ventes_list = [c for c in all_sys_cats if c.name in LEGACY_OFFER_NAMES]
+    cat_events_list = [c for c in all_sys_cats if c.name in LEGACY_EVENT_NAMES]
+
+    cat_ventes = next((c for c in cat_ventes_list if c.name == CANONICAL_OFFER_NAME), None)
+    if not cat_ventes and cat_ventes_list:
+        cat_ventes = cat_ventes_list[0]
+
+    cat_events = next((c for c in cat_events_list if c.name == CANONICAL_EVENT_NAME), None)
+    if not cat_events and cat_events_list:
+        cat_events = cat_events_list[0]
 
     # Fallback cat_ventes : première catégorie INCOME non-événement
     if not cat_ventes:
@@ -72,11 +80,33 @@ async def sync_revenues_to_finance(db: AsyncSession, tenant_id: str):
         )
         cat_events = fb_res.scalar_one_or_none()
 
-    # Migration automatique des anciens noms
-    if cat_ventes and cat_ventes.name != CANONICAL_OFFER_NAME:
-        cat_ventes.name = CANONICAL_OFFER_NAME
-    if cat_events and cat_events.name != CANONICAL_EVENT_NAME:
-        cat_events.name = CANONICAL_EVENT_NAME
+    # Migration automatique des anciens noms et fusion des doublons
+    if cat_ventes:
+        if cat_ventes.name != CANONICAL_OFFER_NAME:
+            cat_ventes.name = CANONICAL_OFFER_NAME
+        for extra_cat in cat_ventes_list:
+            if extra_cat.id != cat_ventes.id:
+                await db.execute(
+                    update(FinanceTransaction)
+                    .where(FinanceTransaction.category_id == extra_cat.id)
+                    .values(category_id=cat_ventes.id)
+                )
+                await db.delete(extra_cat)
+        # Nettoyer all_sys_cats pour la suite de la fonction
+        all_sys_cats = [c for c in all_sys_cats if c not in cat_ventes_list or c.id == cat_ventes.id]
+
+    if cat_events:
+        if cat_events.name != CANONICAL_EVENT_NAME:
+            cat_events.name = CANONICAL_EVENT_NAME
+        for extra_cat in cat_events_list:
+            if extra_cat.id != cat_events.id:
+                await db.execute(
+                    update(FinanceTransaction)
+                    .where(FinanceTransaction.category_id == extra_cat.id)
+                    .values(category_id=cat_events.id)
+                )
+                await db.delete(extra_cat)
+        all_sys_cats = [c for c in all_sys_cats if c not in cat_events_list or c.id == cat_events.id]
 
     # ----------------------------------------------------------------
     # 2. GESTION DES ÉCHÉANCES PAYÉES
@@ -326,7 +356,7 @@ async def seed_categories(
         
         # Recettes
         {"name": "Offres et forfaits de crédits", "type": FinanceTransactionType.INCOME, "color": "#3b82f6"},
-        {"name": "Évènements", "type": FinanceTransactionType.INCOME, "color": "#8b5cf6"},
+        {"name": "Événements", "type": FinanceTransactionType.INCOME, "color": "#8b5cf6"},
         {"name": "Ventes Boutique", "type": FinanceTransactionType.INCOME, "color": "#10b981"},
         {"name": "Subventions", "type": FinanceTransactionType.INCOME, "color": "#ec4899"},
     ]

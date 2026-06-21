@@ -275,6 +275,11 @@ export interface Event {
   location?: string;
   allow_waitlist: boolean;
   payment_link?: string | null;
+  event_group?: {
+    id: string;
+    title: string;
+    payment_link?: string | null;
+  } | null;
   waitlist_count?: number;
   waitlist_users?: { first_name: string; last_name: string; email: string }[];
   created_at?: string;
@@ -477,6 +482,7 @@ export interface AdminEventRegistrationItem {
   event_date: string;
   event_time: string;
   event_title: string;
+  event_parent_title?: string | null;
   user_phone: string | null;
   instagram_handle: string | null;
   facebook_handle: string | null;
@@ -910,6 +916,27 @@ export const api = {
     payment_link?: string | null;
   }) => {
     const response = await apiClient.post('/api/admin/events', data);
+    return response.data;
+  },
+
+  createAdminEventBulk: async (data: {
+    group_title: string;
+    payment_link?: string | null;
+    modules: Array<{
+      event_date: string;
+      event_time: string;
+      title: string;
+      duration_minutes: number;
+      price_member_cents: number;
+      price_external_cents: number;
+      instructor_name: string;
+      max_places: number;
+      location?: string | null;
+      description?: string | null;
+      allow_waitlist?: boolean;
+    }>;
+  }) => {
+    const response = await apiClient.post('/api/admin/events/bulk', data);
     return response.data;
   },
 

@@ -525,6 +525,37 @@ class SessionDuplicateRequest(BaseModel):
 
 
 # ==================== Events ====================
+class EventGroupResponse(BaseModel):
+    id: UUID
+    tenant_id: UUID
+    title: str
+    payment_link: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EventModuleCreate(BaseModel):
+    event_date: py_date
+    event_time: str = Field(..., pattern=r"^\d{2}:\d{2}$")
+    title: str = Field(..., min_length=1, max_length=255)
+    duration_minutes: int = Field(..., gt=0)
+    price_member_cents: int = Field(0, ge=0)
+    price_external_cents: int = Field(0, ge=0)
+    instructor_name: str = Field(..., min_length=1, max_length=255)
+    max_places: int = Field(..., gt=0)
+    location: Optional[str] = Field(None, max_length=255)
+    description: Optional[str] = None
+    allow_waitlist: bool = True
+
+
+class EventBulkCreate(BaseModel):
+    group_title: str = Field(..., min_length=1, max_length=255)
+    payment_link: Optional[str] = None
+    modules: List[EventModuleCreate]
+
+
 class EventCreate(BaseModel):
     """Création d'événement"""
     event_date: py_date
@@ -539,6 +570,8 @@ class EventCreate(BaseModel):
     description: Optional[str] = None
     allow_waitlist: bool = True
     payment_link: Optional[str] = None
+    event_group_id: Optional[UUID] = None
+    group_title: Optional[str] = None
 
 
 class EventUpdate(BaseModel):
@@ -556,12 +589,16 @@ class EventUpdate(BaseModel):
     allow_waitlist: Optional[bool] = None
     is_active: Optional[bool] = None
     payment_link: Optional[str] = None
+    event_group_id: Optional[UUID] = None
+    group_title: Optional[str] = None
 
 
 class EventResponse(BaseModel):
     """Réponse événement"""
     id: UUID
     tenant_id: UUID
+    event_group_id: Optional[UUID] = None
+    event_group: Optional[EventGroupResponse] = None
     event_date: py_date
     event_time: str
     title: str
@@ -776,6 +813,7 @@ class EventRegistrationResponse(BaseModel):
     event_date: str = ""
     event_time: str = ""
     event_title: str = ""
+    event_parent_title: Optional[str] = None
     user_name: str = ""
     user_phone: Optional[str] = None
     instagram_handle: Optional[str] = None

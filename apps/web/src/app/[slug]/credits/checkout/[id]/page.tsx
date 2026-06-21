@@ -29,10 +29,11 @@ export default function CheckoutPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [userData, offersData, tenantData] = await Promise.all([
+                const [userData, offersData, tenantData, myOrdersData] = await Promise.all([
                     api.getCurrentUser(),
                     api.getOffers(true),
-                    api.getTenantSettings()
+                    api.getTenantSettings(),
+                    api.getMyOrders()
                 ]);
                 setUser(userData);
                 setTenant(tenantData);
@@ -47,6 +48,14 @@ export default function CheckoutPage() {
                     router.push(`/${params.slug}/credits`);
                     return;
                 }
+
+                // Check if user already purchased this unique offer
+                if (foundOffer.is_unique && myOrdersData.some((order: any) => order.offer_id === foundOffer.id && order.status !== 'resiliee')) {
+                    alert("Vous avez déjà commandé cette offre unique.");
+                    router.push(`/${params.slug}/credits`);
+                    return;
+                }
+
                 setOffer(foundOffer);
                 setHasMultiplePrices(!!(foundOffer.price_lump_sum_cents && foundOffer.price_recurring_cents));
                 setSelectedPricingType(foundOffer.featured_pricing || 'lump_sum');
@@ -58,7 +67,7 @@ export default function CheckoutPage() {
             }
         };
         fetchData();
-    }, [offerId, router]);
+    }, [offerId, router, params.slug]);
 
     const handleCheckout = async (payLaterValue: boolean) => {
         if (!offer) return;

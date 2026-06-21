@@ -65,6 +65,7 @@ def build_response(reg: EventRegistration, users_with_pending: set = None) -> Ev
         event_date=event.event_date.strftime("%Y-%m-%d") if event else "",
         event_time=event.event_time.strftime("%H:%M") if event and event.event_time else "",
         event_title=event.title if event else "",
+        event_parent_title=event.event_group.title if event and event.event_group else None,
         user_name=f"{user.first_name} {user.last_name}" if user else "",
         user_phone=user.phone if user else None,
         instagram_handle=user.instagram_handle if user else None,
@@ -121,7 +122,10 @@ async def list_registrations(
     if event_id:
         query = query.where(EventRegistration.event_id == event_id)
     
-    query = query.options(joinedload(EventRegistration.event), joinedload(EventRegistration.user)).order_by(EventRegistration.created_at.desc())
+    query = query.options(
+        joinedload(EventRegistration.event).joinedload(Event.event_group),
+        joinedload(EventRegistration.user)
+    ).order_by(EventRegistration.created_at.desc())
 
     if status_filter == "confirmed":
         query = query.where(EventRegistration.status.in_([
@@ -300,7 +304,7 @@ async def create_registration(
     result = await db.execute(
         select(EventRegistration)
         .where(EventRegistration.id == registration.id)
-        .options(joinedload(EventRegistration.event), joinedload(EventRegistration.user))
+        .options(joinedload(EventRegistration.event).joinedload(Event.event_group), joinedload(EventRegistration.user))
     )
     registration = result.unique().scalar_one()
     return build_response(registration)
@@ -394,7 +398,7 @@ async def update_registration(
     result = await db.execute(
         select(EventRegistration)
         .where(EventRegistration.id == reg.id)
-        .options(joinedload(EventRegistration.event), joinedload(EventRegistration.user))
+        .options(joinedload(EventRegistration.event).joinedload(Event.event_group), joinedload(EventRegistration.user))
     )
     reg = result.unique().scalar_one()
     return build_response(reg)

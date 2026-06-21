@@ -89,7 +89,7 @@ class FinanceService:
             return
 
         cat = await cls.get_or_create_default_category(
-            db, registration.tenant_id, "Évènements", FinanceTransactionType.INCOME, color="#8b5cf6"
+            db, registration.tenant_id, "Événements", FinanceTransactionType.INCOME, color="#8b5cf6"
         )
         
         new_trans = FinanceTransaction(

@@ -1035,13 +1035,12 @@ export default function AdminSettingsPage() {
                                                         ℹ️ Des frais de transaction Stripe s&apos;appliquent (~1.5% + 0.25€ par paiement).
                                                     </p>
                                                 </div>
-                                                <a 
-                                                    href="https://dashboard.stripe.com/settings/apps/com.rezea.app" 
-                                                    target="_blank" 
-                                                    className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[10px] font-medium uppercase tracking-wider transition-all shadow-md shadow-slate-100 whitespace-nowrap mt-1 active:scale-95"
+                                                <button 
+                                                    disabled
+                                                    className="px-5 py-2.5 bg-slate-100 text-slate-400 border border-slate-200 rounded-xl text-[10px] font-medium uppercase tracking-wider whitespace-nowrap mt-1 cursor-not-allowed"
                                                 >
-                                                    Configurer
-                                                </a>
+                                                    Bientôt disponible
+                                                </button>
                                             </div>
                                         </div>
 

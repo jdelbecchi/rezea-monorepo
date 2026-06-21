@@ -518,12 +518,30 @@ class WaitlistEntry(Base):
     )
 
 
+class EventGroup(Base):
+    """Groupe d'événements (Événement parent)"""
+    __tablename__ = "event_groups"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    title = Column(String(255), nullable=False)
+    payment_link = Column(String(500), nullable=True)
+
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # Relations
+    events = relationship("Event", back_populates="event_group", cascade="all, delete-orphan")
+
+
 class Event(Base):
     """Événement programmé par l'admin"""
     __tablename__ = "events"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    event_group_id = Column(UUID(as_uuid=True), ForeignKey("event_groups.id", ondelete="CASCADE"), nullable=True)
 
     # Programmation
     event_date = Column(Date, nullable=False)
@@ -559,6 +577,7 @@ class Event(Base):
     )
 
     # Relations
+    event_group = relationship("EventGroup", back_populates="events")
     registrations = relationship("EventRegistration", back_populates="event", cascade="all, delete-orphan")
 
 

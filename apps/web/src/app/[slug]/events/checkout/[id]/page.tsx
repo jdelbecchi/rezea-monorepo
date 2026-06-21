@@ -103,6 +103,11 @@ export default function EventCheckoutPage() {
 
                             <div className="flex flex-col items-center text-center gap-6 pb-6 border-b border-slate-100">
                                 <div className="mt-4 flex flex-col items-center">
+                                    {event?.event_group?.title && (
+                                        <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-[0.25em] mb-2.5 flex items-center gap-1.5 justify-center">
+                                            ✨ {event.event_group.title}
+                                        </span>
+                                    )}
                                     <h2 className="text-[22px] md:text-[26px] font-semibold text-slate-900 tracking-tight leading-tight">
                                         {event?.title}
                                     </h2>

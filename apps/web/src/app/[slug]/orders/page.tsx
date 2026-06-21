@@ -468,6 +468,12 @@ export default function MemberOrdersPage() {
                                         
                                         <div className="flex flex-col sm:flex-row justify-between items-start gap-4 relative z-10">
                                             <div className="flex flex-col min-w-0 flex-1 w-full sm:w-auto">
+                                                {(reg as any).event_parent_title && (
+                                                    <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.2em] mb-1 flex items-center gap-1">
+                                                        <span>✨</span>
+                                                        <span>{(reg as any).event_parent_title}</span>
+                                                    </span>
+                                                )}
                                                 <div className="flex items-center gap-2 mb-0.5">
                                                     <h3 className="text-lg md:text-xl font-semibold text-slate-900 truncate pr-2 capitalize tracking-tight">{reg.event_title}</h3>
                                                 </div>

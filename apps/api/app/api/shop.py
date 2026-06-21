@@ -7,7 +7,7 @@ from typing import Optional, List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -49,6 +49,22 @@ async def shop_checkout(
     offer = result.scalar_one_or_none()
     if not offer:
         raise HTTPException(status_code=404, detail="Offre non trouvée ou inactive")
+
+    # 1.5 Vérifier si l'offre est à achat unique et si l'utilisateur l'a déjà commandée
+    if offer.is_unique:
+        existing_order_query = await db.execute(
+            select(Order).where(
+                and_(
+                    Order.user_id == user_id,
+                    Order.offer_id == offer.id,
+                    Order.tenant_id == tenant_id,
+                    or_(Order.status != "resiliee", Order.status.is_(None))
+                )
+            )
+        )
+        existing_order = existing_order_query.scalar_one_or_none()
+        if existing_order:
+            raise HTTPException(status_code=400, detail="Vous avez déjà commandé cette offre unique")
 
     # 2. Récupérer le tenant pour les paramètres
     result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))

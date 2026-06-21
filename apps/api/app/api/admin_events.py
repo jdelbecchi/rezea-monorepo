@@ -7,15 +7,31 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.session import get_db
-from app.models.models import User, UserRole, Event, EventRegistration, EventRegistrationStatus
-from app.schemas.schemas import EventCreate, EventUpdate, EventResponse
+from app.models.models import User, UserRole, Event, EventGroup, EventRegistration, EventRegistrationStatus
+from app.schemas.schemas import EventCreate, EventUpdate, EventResponse, EventBulkCreate
 
 router = APIRouter()
+
+
+def _format_event_response(e: Event) -> dict:
+    return {
+        **{c.name: getattr(e, c.name) for c in e.__table__.columns},
+        "event_time": e.event_time.strftime("%H:%M") if e.event_time else "",
+        "event_group_id": e.event_group_id,
+        "event_group": {
+            "id": e.event_group.id,
+            "tenant_id": e.event_group.tenant_id,
+            "title": e.event_group.title,
+            "payment_link": e.event_group.payment_link,
+            "created_at": e.event_group.created_at,
+            "updated_at": e.event_group.updated_at,
+        } if e.event_group else None
+    }
 
 
 # ---- Auth dependency ----
@@ -46,34 +62,12 @@ async def list_events(
     tenant_id = request.state.tenant_id
     result = await db.execute(
         select(Event)
+        .options(selectinload(Event.event_group))
         .where(Event.tenant_id == tenant_id)
         .order_by(Event.event_date.desc(), Event.event_time.desc())
     )
     events = result.scalars().all()
-    # Convert time objects to strings for response
-    response = []
-    for e in events:
-        data = {
-            "id": e.id,
-            "tenant_id": e.tenant_id,
-            "event_date": e.event_date,
-            "event_time": e.event_time.strftime("%H:%M") if e.event_time else "",
-            "title": e.title,
-            "duration_minutes": e.duration_minutes,
-            "price_member_cents": e.price_member_cents,
-            "price_external_cents": e.price_external_cents,
-            "instructor_name": e.instructor_name,
-            "max_places": e.max_places,
-            "registrations_count": e.registrations_count or 0,
-            "location": e.location,
-            "allow_waitlist": e.allow_waitlist,
-            "is_active": e.is_active,
-            "description": e.description,
-            "created_at": e.created_at,
-            "updated_at": e.updated_at,
-        }
-        response.append(data)
-    return response
+    return [_format_event_response(e) for e in events]
 
 
 # ---- CREATE ----
@@ -91,8 +85,20 @@ async def create_event(
     hours, minutes = map(int, event_data.event_time.split(":"))
     event_time = time(hours, minutes)
 
+    event_group_id = event_data.event_group_id
+    if not event_group_id and event_data.group_title:
+        group = EventGroup(
+            tenant_id=tenant_id,
+            title=event_data.group_title,
+            payment_link=event_data.payment_link,
+        )
+        db.add(group)
+        await db.flush()
+        event_group_id = group.id
+
     new_event = Event(
         tenant_id=tenant_id,
+        event_group_id=event_group_id,
         event_date=event_data.event_date,
         event_time=event_time,
         title=event_data.title,
@@ -105,16 +111,81 @@ async def create_event(
         description=event_data.description,
         allow_waitlist=event_data.allow_waitlist,
         registrations_count=0,
+        payment_link=event_data.payment_link if not event_group_id else None
     )
 
     db.add(new_event)
     await db.commit()
-    await db.refresh(new_event)
+    
+    # Reload with relation loaded
+    res = await db.execute(
+        select(Event)
+        .options(selectinload(Event.event_group))
+        .where(Event.id == new_event.id)
+    )
+    new_event = res.scalar_one()
 
-    return {
-        **{c.name: getattr(new_event, c.name) for c in new_event.__table__.columns},
-        "event_time": new_event.event_time.strftime("%H:%M"),
-    }
+    return _format_event_response(new_event)
+
+
+# ---- CREATE BULK ----
+@router.post("/bulk", response_model=List[EventResponse], status_code=status.HTTP_201_CREATED)
+async def create_event_bulk(
+    event_data: EventBulkCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_manager),
+):
+    """Crée un groupe d'événements et tous ses modules associés"""
+    tenant_id = request.state.tenant_id
+
+    # 1. Créer le groupe parent
+    group = EventGroup(
+        tenant_id=tenant_id,
+        title=event_data.group_title,
+        payment_link=event_data.payment_link
+    )
+    db.add(group)
+    await db.flush()
+
+    # 2. Créer chaque module
+    created_events = []
+    for mod in event_data.modules:
+        hours, minutes = map(int, mod.event_time.split(":"))
+        event_time = time(hours, minutes)
+        
+        new_event = Event(
+            tenant_id=tenant_id,
+            event_group_id=group.id,
+            event_date=mod.event_date,
+            event_time=event_time,
+            title=mod.title,
+            duration_minutes=mod.duration_minutes,
+            price_member_cents=mod.price_member_cents,
+            price_external_cents=mod.price_external_cents,
+            instructor_name=mod.instructor_name,
+            max_places=mod.max_places,
+            location=mod.location,
+            description=mod.description,
+            allow_waitlist=mod.allow_waitlist,
+            registrations_count=0,
+        )
+        db.add(new_event)
+        created_events.append(new_event)
+
+    await db.commit()
+
+    # Charger avec la relation event_group
+    event_ids = [e.id for e in created_events]
+    res = await db.execute(
+        select(Event)
+        .options(selectinload(Event.event_group))
+        .where(Event.id.in_(event_ids))
+        .order_by(Event.event_date.asc(), Event.event_time.asc())
+    )
+    events = res.scalars().all()
+
+    return [_format_event_response(e) for e in events]
 
 
 # ---- EXPORT EXCEL ----
@@ -199,13 +270,37 @@ async def update_event(
     """Modifie un événement"""
     tenant_id = request.state.tenant_id
     result = await db.execute(
-        select(Event).where(Event.id == event_id, Event.tenant_id == tenant_id)
+        select(Event)
+        .options(selectinload(Event.event_group))
+        .where(Event.id == event_id, Event.tenant_id == tenant_id)
     )
     event = result.scalar_one_or_none()
     if not event:
         raise HTTPException(status_code=404, detail="Événement non trouvé")
 
     update_dict = event_data.model_dump(exclude_unset=True)
+
+    if "group_title" in update_dict or "payment_link" in update_dict:
+        group_title = update_dict.pop("group_title", None)
+        payment_link = update_dict.pop("payment_link", None)
+        
+        if event.event_group_id:
+            group_res = await db.execute(select(EventGroup).where(EventGroup.id == event.event_group_id))
+            group = group_res.scalar_one_or_none()
+            if group:
+                if group_title is not None:
+                    group.title = group_title
+                if payment_link is not None:
+                    group.payment_link = payment_link
+        elif group_title:
+            group = EventGroup(
+                tenant_id=tenant_id,
+                title=group_title,
+                payment_link=payment_link
+            )
+            db.add(group)
+            await db.flush()
+            event.event_group_id = group.id
 
     # Handle time conversion
     if "event_time" in update_dict and update_dict["event_time"]:
@@ -220,7 +315,14 @@ async def update_event(
         setattr(event, key, value)
 
     await db.commit()
-    await db.refresh(event)
+    
+    # Reload relation
+    res = await db.execute(
+        select(Event)
+        .options(selectinload(Event.event_group))
+        .where(Event.id == event.id)
+    )
+    event = res.scalar_one()
 
     if date_changed or time_changed:
         try:
@@ -246,10 +348,7 @@ async def update_event(
             logger = get_logger()
             logger.error("❌ Erreur lors de l'envoi des emails de modification", error=str(e), event_id=str(event.id))
 
-    return {
-        **{c.name: getattr(event, c.name) for c in event.__table__.columns},
-        "event_time": event.event_time.strftime("%H:%M"),
-    }
+    return _format_event_response(event)
 
 
 # ---- CANCEL / REACTIVATE ----
@@ -354,6 +453,26 @@ async def delete_event(
     event = result.scalar_one_or_none()
     if not event:
         raise HTTPException(status_code=404, detail="Événement non trouvé")
+
+    # Nullify SurveyCampaign event references
+    from app.models.models import SurveyCampaign, FinanceTransaction
+    await db.execute(
+        update(SurveyCampaign)
+        .where(SurveyCampaign.event_id == event.id)
+        .values(event_id=None)
+    )
+
+    # Get registrations of this event to nullify finance references
+    reg_res = await db.execute(
+        select(EventRegistration.id).where(EventRegistration.event_id == event.id)
+    )
+    reg_ids = [r[0] for r in reg_res.all()]
+    if reg_ids:
+        await db.execute(
+            update(FinanceTransaction)
+            .where(FinanceTransaction.registration_id.in_(reg_ids))
+            .values(registration_id=None)
+        )
 
     await db.delete(event)
     await db.commit()

@@ -5,12 +5,46 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from app.db.session import get_db
 from app.models.models import Event, EventRegistration, EventRegistrationStatus, OrderPaymentStatus, Tenant
 from app.schemas.schemas import EventResponse, EventRegistrationResponse
 
 router = APIRouter()
+
+
+def _format_public_event(e: Event, is_registered: bool = False, registration_status: str = None) -> dict:
+    return {
+        "id": e.id,
+        "tenant_id": e.tenant_id,
+        "event_group_id": e.event_group_id,
+        "event_group": {
+            "id": e.event_group.id,
+            "tenant_id": e.event_group.tenant_id,
+            "title": e.event_group.title,
+            "payment_link": e.event_group.payment_link,
+            "created_at": e.event_group.created_at,
+            "updated_at": e.event_group.updated_at,
+        } if e.event_group else None,
+        "event_date": e.event_date,
+        "event_time": e.event_time.strftime("%H:%M") if e.event_time else "",
+        "title": e.title,
+        "duration_minutes": e.duration_minutes,
+        "price_member_cents": e.price_member_cents,
+        "price_external_cents": e.price_external_cents,
+        "instructor_name": e.instructor_name,
+        "max_places": e.max_places,
+        "registrations_count": e.registrations_count or 0,
+        "waitlist_count": e.waitlist_count or 0,
+        "is_registered": is_registered,
+        "registration_status": registration_status,
+        "location": e.location,
+        "description": e.description,
+        "allow_waitlist": e.allow_waitlist,
+        "is_active": e.is_active,
+        "created_at": e.created_at,
+        "updated_at": e.updated_at,
+    }
 
 
 @router.get("/upcoming", response_model=List[EventResponse])
@@ -23,6 +57,7 @@ async def list_upcoming_events(
     
     result = await db.execute(
         select(Event)
+        .options(selectinload(Event.event_group))
         .where(
             and_(
                 Event.tenant_id == tenant_id,
@@ -47,33 +82,10 @@ async def list_upcoming_events(
     registered_event_ids = {r[0] for r in registrations_data}
     registration_statuses = {r[0]: r[1].value if hasattr(r[1], "value") else r[1] for r in registrations_data}
     
-    # Formatage de l'heure pour le schéma
-    response = []
-    for e in events:
-        data = {
-            "id": e.id,
-            "tenant_id": e.tenant_id,
-            "event_date": e.event_date,
-            "event_time": e.event_time.strftime("%H:%M") if e.event_time else "",
-            "title": e.title,
-            "duration_minutes": e.duration_minutes,
-            "price_member_cents": e.price_member_cents,
-            "price_external_cents": e.price_external_cents,
-            "instructor_name": e.instructor_name,
-            "max_places": e.max_places,
-            "registrations_count": e.registrations_count or 0,
-            "waitlist_count": e.waitlist_count or 0,
-            "is_registered": e.id in registered_event_ids,
-            "registration_status": registration_statuses.get(e.id),
-            "location": e.location,
-            "description": e.description,
-            "allow_waitlist": e.allow_waitlist,
-            "is_active": e.is_active,
-            "created_at": e.created_at,
-            "updated_at": e.updated_at,
-        }
-        response.append(data)
-    return response
+    return [
+        _format_public_event(e, e.id in registered_event_ids, registration_statuses.get(e.id))
+        for e in events
+    ]
 
 
 
@@ -94,7 +106,7 @@ async def list_my_registrations(
                 EventRegistration.user_id == user_id
             )
         )
-        .options(joinedload(EventRegistration.event))
+        .options(joinedload(EventRegistration.event).joinedload(Event.event_group))
         .order_by(EventRegistration.created_at.desc())
     )
     registrations = result.unique().scalars().all()
@@ -118,6 +130,7 @@ async def list_my_registrations(
                 "created_at": reg.created_at,
                 "cancelled_at": reg.cancelled_at,
                 "event_title": reg.event.title if reg.event else "Événement inconnu",
+                "event_parent_title": reg.event.event_group.title if (reg.event and reg.event.event_group) else None,
                 "event_date": reg.event.event_date.isoformat() if (reg.event and reg.event.event_date) else "",
                 "event_time": reg.event.event_time.strftime("%H:%M") if (reg.event and reg.event.event_time) else "",
                 "instructor_name": reg.event.instructor_name if reg.event else None,
@@ -144,7 +157,9 @@ async def get_event(
     tenant_id = request.state.tenant_id
     
     result = await db.execute(
-        select(Event).where(
+        select(Event)
+        .options(selectinload(Event.event_group))
+        .where(
             and_(
                 Event.id == event_id,
                 Event.tenant_id == tenant_id
@@ -174,28 +189,7 @@ async def get_event(
     is_registered = reg is not None
     registration_status = (reg.status.value if hasattr(reg.status, "value") else reg.status) if reg else None
         
-    return {
-        "id": e.id,
-        "tenant_id": e.tenant_id,
-        "event_date": e.event_date,
-        "event_time": e.event_time.strftime("%H:%M") if e.event_time else "",
-        "title": e.title,
-        "duration_minutes": e.duration_minutes,
-        "price_member_cents": e.price_member_cents,
-        "price_external_cents": e.price_external_cents,
-        "instructor_name": e.instructor_name,
-        "max_places": e.max_places,
-        "registrations_count": e.registrations_count or 0,
-        "waitlist_count": e.waitlist_count or 0,
-        "is_registered": is_registered,
-        "registration_status": registration_status,
-        "location": e.location,
-        "description": e.description,
-        "allow_waitlist": e.allow_waitlist,
-        "is_active": e.is_active,
-        "created_at": e.created_at,
-        "updated_at": e.updated_at,
-    }
+    return _format_public_event(e, is_registered, registration_status)
 
 
 @router.post("/{event_id}/checkout")

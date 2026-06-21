@@ -591,10 +591,15 @@ export default function PlanningPage() {
                         >
                           {/* 1. HEADER : Heure + Titre */}
                           <div className="px-5 pt-3 pb-1">
+                            {isEvent && item.event_group?.title && (
+                              <div className="text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-1 flex items-center gap-1">
+                                <span>✨</span>
+                                <span>{item.event_group.title}</span>
+                              </div>
+                            )}
                             <div className="flex items-center gap-4">
                               <span className="text-sm font-semibold text-slate-900 tracking-tight">{time}</span>
                               <div className="flex items-center gap-2 min-w-0">
-                                 {isEvent && <span className="text-base md:text-lg">✨</span>}
                                  <h4 className="text-sm md:text-base font-medium text-slate-800 first-letter:uppercase leading-tight">{item.title}</h4>
                               </div>
                             </div>

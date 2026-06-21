@@ -70,6 +70,18 @@ export default function AdminAgendaPage() {
     const [eventFormData, setEventFormData] = useState({ ...emptyEventForm });
     const [savingEvent, setSavingEvent] = useState(false);
 
+    const [eventGroupTitle, setEventGroupTitle] = useState("");
+    const [eventPaymentLink, setEventPaymentLink] = useState("");
+    const [eventModules, setEventModules] = useState<any[]>([{ ...emptyEventForm }]);
+    const [eventActiveTab, setEventActiveTab] = useState<number>(0);
+
+    const currentEventModule = eventModules[eventActiveTab];
+    const setCurrentEventModule = (updater: any) => {
+        const next = [...eventModules];
+        next[eventActiveTab] = typeof updater === 'function' ? updater(next[eventActiveTab]) : updater;
+        setEventModules(next);
+    };
+
     const [showDetails, setShowDetails] = useState(false);
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [attendanceTab, setAttendanceTab] = useState<'registered' | 'waitlist' | 'cancelled' | 'edit'>('registered');
@@ -1475,150 +1487,250 @@ export default function AdminAgendaPage() {
                                 e.preventDefault();
                                 setSavingEvent(true);
                                 try {
-                                    const memberVal = (eventFormData.price_member_cents || "0").toString().replace(',', '.');
-                                    const externalVal = (eventFormData.price_external_cents || "0").toString().replace(',', '.');
-                                    await api.createAdminEvent({
-                                        title: eventFormData.title,
-                                        description: eventFormData.description || null,
-                                        instructor_name: eventFormData.instructor_name,
-                                        event_date: eventFormData.event_date,
-                                        event_time: eventFormData.event_time,
-                                        duration_minutes: parseInt(eventFormData.duration_minutes),
-                                        max_places: parseInt(eventFormData.max_places),
-                                        price_member_cents: Math.round(parseFloat(memberVal) * 100),
-                                        price_external_cents: Math.round(parseFloat(externalVal) * 100),
-                                        location: eventFormData.location || null,
-                                        allow_waitlist: eventFormData.allow_waitlist,
-                                        payment_link: eventFormData.payment_link || null,
-                                    });
+                                    const data = {
+                                        group_title: eventGroupTitle || eventModules[0].title || "Nouvel Événement",
+                                        payment_link: eventPaymentLink || null,
+                                        modules: eventModules.map(m => {
+                                            const memberVal = (m.price_member_cents || "0").toString().replace(',', '.');
+                                            const externalVal = (m.price_external_cents || "0").toString().replace(',', '.');
+                                            return {
+                                                event_date: m.event_date,
+                                                event_time: m.event_time,
+                                                title: m.title || eventGroupTitle || "Module",
+                                                duration_minutes: parseInt(m.duration_minutes),
+                                                price_member_cents: Math.round(parseFloat(memberVal) * 100),
+                                                price_external_cents: Math.round(parseFloat(externalVal) * 100),
+                                                instructor_name: m.instructor_name,
+                                                max_places: parseInt(m.max_places),
+                                                location: m.location || null,
+                                                description: m.description || null,
+                                                allow_waitlist: m.allow_waitlist,
+                                            };
+                                        })
+                                    };
+                                    await api.createAdminEventBulk(data);
                                     await fetchData();
                                     setShowEventForm(false);
-                                    setEventFormData({ ...emptyEventForm });
-                                    setMessage({ type: 'success', text: "Évènement créé avec succès !" });
+                                    setEventGroupTitle("");
+                                    setEventPaymentLink("");
+                                    setEventModules([{ ...emptyEventForm }]);
+                                    setEventActiveTab(0);
+                                    setMessage({ type: 'success', text: "Évènement(s) créé(s) avec succès !" });
                                 } catch (err: any) {
                                     setMessage({ type: 'error', text: err.response?.data?.detail || "Erreur lors de la création de l'évènement" });
                                 } finally {
                                     setSavingEvent(false);
                                 }
                             }} className="space-y-8">
-                                {/* Section: Informations générales */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-1.5">
-                                        <label className="text-sm font-medium text-slate-700">Intitulé *</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={eventFormData.title}
-                                            onChange={e => setEventFormData({ ...eventFormData, title: e.target.value })}
-                                            placeholder="Ex: Soirée Portes Ouvertes..."
-                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all hover:border-gray-300"
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-sm font-medium text-slate-700">Lieu / Salle</label>
-                                        <select
-                                            value={eventFormData.location}
-                                            onChange={e => setEventFormData({ ...eventFormData, location: e.target.value })}
-                                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 appearance-none cursor-pointer"
-                                        >
-                                            <option value="">Aucun lieu spécifique</option>
-                                            {(tenant?.locations || []).map((loc: string) => (
-                                                <option key={loc} value={loc}>{loc}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="md:col-span-2 space-y-1.5">
-                                        <label className="text-sm font-medium text-slate-700">Description</label>
-                                        <textarea
-                                            value={eventFormData.description}
-                                            onChange={e => setEventFormData({ ...eventFormData, description: e.target.value })}
-                                            placeholder="Détails de l'évènement..."
-                                            className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 min-h-[80px] resize-none"
-                                            rows={2}
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Section: Planification */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div className="space-y-1.5">
-                                        <label className="text-sm font-medium text-slate-700">Date *</label>
-                                        <input
-                                            type="date"
-                                            required
-                                            value={eventFormData.event_date}
-                                            onChange={e => setEventFormData({ ...eventFormData, event_date: e.target.value })}
-                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-sm font-medium text-slate-700">Heure *</label>
-                                        <input
-                                            type="time"
-                                            required
-                                            value={eventFormData.event_time}
-                                            onChange={e => setEventFormData({ ...eventFormData, event_time: e.target.value })}
-                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-sm font-medium text-slate-700">Durée *</label>
-                                        <input
-                                            type="time"
-                                            required
-                                            value={eventFormData.duration_minutes ? `${Math.floor(Number(eventFormData.duration_minutes) / 60).toString().padStart(2, '0')}:${(Number(eventFormData.duration_minutes) % 60).toString().padStart(2, '0')}` : ""}
-                                            onChange={e => {
-                                                const val = e.target.value;
-                                                if (!val) return;
-                                                const [h, m] = val.split(':').map(Number);
-                                                setEventFormData({ ...eventFormData, duration_minutes: ((h || 0) * 60 + (m || 0)).toString() });
-                                            }}
-                                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 appearance-none cursor-pointer"
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Section: Logistique */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-1.5">
-                                        <label className="text-sm font-medium text-slate-700">Attribution (Intervenant)</label>
-                                        <input
-                                            type="text"
-                                            value={eventFormData.instructor_name}
-                                            onChange={e => setEventFormData({ ...eventFormData, instructor_name: e.target.value })}
-                                            placeholder="Ex: Jean Expert"
-                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
-                                        />
-                                    </div>
-                                    <div className="space-y-4">
+                                {/* Section: Événement Global */}
+                                <div className="space-y-4">
+                                    <h4 className="text-[12px] font-light text-slate-400 uppercase tracking-wider">Événement Global / Parent</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-1.5">
-                                            <label className="text-sm font-medium text-slate-700">Capacité *</label>
+                                            <label className="text-sm font-medium text-slate-700">Intitulé de l'évènement *</label>
                                             <input
-                                                type="number"
-                                                min="1"
+                                                type="text"
                                                 required
-                                                value={eventFormData.max_places}
-                                                onChange={e => setEventFormData({ ...eventFormData, max_places: e.target.value })}
-                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
-                                                placeholder="Capacité max"
+                                                value={eventGroupTitle}
+                                                onChange={e => setEventGroupTitle(e.target.value)}
+                                                placeholder="Ex: Journée de formation..."
+                                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
                                             />
                                         </div>
-                                        <div className="flex items-center gap-2 pl-1">
+                                        <div className="space-y-1.5">
+                                            <label className="text-sm font-medium text-slate-700">Lien de paiement (Global)</label>
                                             <input
-                                                type="checkbox"
-                                                id="event_allow_waitlist"
-                                                checked={eventFormData.allow_waitlist}
-                                                onChange={e => setEventFormData({ ...eventFormData, allow_waitlist: e.target.checked })}
-                                                className="w-4 h-4 rounded-md border-gray-300 text-slate-900 focus:ring-slate-500 cursor-pointer"
+                                                type="url"
+                                                value={eventPaymentLink}
+                                                onChange={e => setEventPaymentLink(e.target.value)}
+                                                placeholder="https://..."
+                                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
                                             />
-                                            <label htmlFor="event_allow_waitlist" className="text-xs font-medium text-slate-500 cursor-pointer select-none">
-                                                Autoriser la liste d'attente
-                                            </label>
+                                            <p className="text-[11px] text-slate-400 italic font-normal tracking-tight mt-1">
+                                                Si renseigné, l'utilisateur sera redirigé vers ce lien pour payer cet évènement. Laisse vide pour utiliser les paramètres par défaut de l'établissement.
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Section: Onglets Modules */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-[12px] font-light text-slate-400 uppercase tracking-wider">Modules / Ateliers</label>
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const activeMod = eventModules[eventActiveTab];
+                                                    setEventModules([...eventModules, { ...activeMod, title: activeMod.title ? `${activeMod.title} (Copie)` : "" }]);
+                                                    setEventActiveTab(eventModules.length);
+                                                }}
+                                                className="px-2.5 py-1 text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors font-medium"
+                                            >
+                                                🔄 Dupliquer le module actif
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setEventModules([...eventModules, { ...emptyEventForm }]);
+                                                    setEventActiveTab(eventModules.length);
+                                                }}
+                                                className="px-2.5 py-1 text-[11px] bg-slate-900 hover:bg-slate-800 text-white rounded-lg transition-colors font-medium"
+                                            >
+                                                ➕ Ajouter un module
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-wrap gap-1.5 border-b border-slate-100 pb-2">
+                                        {eventModules.map((m, idx) => (
+                                            <div key={idx} className="flex items-center gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setEventActiveTab(idx)}
+                                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                                                        eventActiveTab === idx 
+                                                            ? "bg-slate-900 text-white" 
+                                                            : "bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200/50"
+                                                    }`}
+                                                >
+                                                    Module {idx + 1} {m.title ? `(${m.title})` : ""}
+                                                </button>
+                                                {eventModules.length > 1 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const next = eventModules.filter((_, i) => i !== idx);
+                                                            setEventModules(next);
+                                                            setEventActiveTab(Math.max(0, eventActiveTab - 1));
+                                                        }}
+                                                        className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                                                    >
+                                                        ❌
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-1.5">
+                                            <label className="text-sm font-medium text-slate-700">Intitulé du module/atelier *</label>
+                                            <input
+                                                type="text"
+                                                required
+                                                value={currentEventModule.title}
+                                                onChange={e => setCurrentEventModule((prev: any) => ({ ...prev, title: e.target.value }))}
+                                                placeholder="Ex: Atelier Débutant..."
+                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all hover:border-gray-300"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-sm font-medium text-slate-700">Lieu / Salle</label>
+                                            <select
+                                                value={currentEventModule.location}
+                                                onChange={e => setCurrentEventModule((prev: any) => ({ ...prev, location: e.target.value }))}
+                                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 appearance-none cursor-pointer"
+                                            >
+                                                <option value="">Aucun lieu spécifique</option>
+                                                {(tenant?.locations || []).map((loc: string) => (
+                                                    <option key={loc} value={loc}>{loc}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="md:col-span-2 space-y-1.5">
+                                            <label className="text-sm font-medium text-slate-700">Description</label>
+                                            <textarea
+                                                value={currentEventModule.description}
+                                                onChange={e => setCurrentEventModule((prev: any) => ({ ...prev, description: e.target.value }))}
+                                                placeholder="Détails du module..."
+                                                className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 min-h-[80px] resize-none"
+                                                rows={2}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Section: Planification */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div className="space-y-1.5">
+                                            <label className="text-sm font-medium text-slate-700">Date *</label>
+                                            <input
+                                                type="date"
+                                                required
+                                                value={currentEventModule.event_date}
+                                                onChange={e => setCurrentEventModule((prev: any) => ({ ...prev, event_date: e.target.value }))}
+                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-sm font-medium text-slate-700">Heure *</label>
+                                            <input
+                                                type="time"
+                                                required
+                                                value={currentEventModule.event_time}
+                                                onChange={e => setCurrentEventModule((prev: any) => ({ ...prev, event_time: e.target.value }))}
+                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-sm font-medium text-slate-700">Durée *</label>
+                                            <input
+                                                type="time"
+                                                required
+                                                value={currentEventModule.duration_minutes ? `${Math.floor(Number(currentEventModule.duration_minutes) / 60).toString().padStart(2, '0')}:${(Number(currentEventModule.duration_minutes) % 60).toString().padStart(2, '0')}` : ""}
+                                                onChange={e => {
+                                                    const val = e.target.value;
+                                                    if (!val) return;
+                                                    const [h, m] = val.split(':').map(Number);
+                                                    setCurrentEventModule((prev: any) => ({ ...prev, duration_minutes: ((h || 0) * 60 + (m || 0)).toString() }));
+                                                }}
+                                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 appearance-none cursor-pointer"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Section: Logistique */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-1.5">
+                                            <label className="text-sm font-medium text-slate-700">Attribution (Intervenant)</label>
+                                            <input
+                                                type="text"
+                                                value={currentEventModule.instructor_name}
+                                                onChange={e => setCurrentEventModule((prev: any) => ({ ...prev, instructor_name: e.target.value }))}
+                                                placeholder="Ex: Jean Expert"
+                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                            />
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div className="space-y-1.5">
+                                                <label className="text-sm font-medium text-slate-700">Capacité *</label>
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    required
+                                                    value={currentEventModule.max_places}
+                                                    onChange={e => setCurrentEventModule((prev: any) => ({ ...prev, max_places: e.target.value }))}
+                                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                                    placeholder="Capacité max"
+                                                />
+                                            </div>
+                                            <div className="flex items-center gap-2 pl-1">
+                                                <input
+                                                    type="checkbox"
+                                                    id="event_allow_waitlist"
+                                                    checked={currentEventModule.allow_waitlist}
+                                                    onChange={e => setCurrentEventModule((prev: any) => ({ ...prev, allow_waitlist: e.target.checked }))}
+                                                    className="w-4 h-4 rounded-md border-gray-300 text-slate-900 focus:ring-slate-500 cursor-pointer"
+                                                />
+                                                <label htmlFor="event_allow_waitlist" className="text-xs font-medium text-slate-500 cursor-pointer select-none">
+                                                    Autoriser la liste d'attente
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-1.5">
                                             <label className="text-sm font-medium text-slate-700">Tarif membre (€) *</label>
                                             <input
@@ -1626,8 +1738,8 @@ export default function AdminAgendaPage() {
                                                 step="0.01"
                                                 min="0"
                                                 required
-                                                value={eventFormData.price_member_cents}
-                                                onChange={e => setEventFormData({ ...eventFormData, price_member_cents: e.target.value })}
+                                                value={currentEventModule.price_member_cents}
+                                                onChange={e => setCurrentEventModule((prev: any) => ({ ...prev, price_member_cents: e.target.value }))}
                                                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
                                                 placeholder="0.00"
                                             />
@@ -1639,34 +1751,13 @@ export default function AdminAgendaPage() {
                                                 step="0.01"
                                                 min="0"
                                                 required
-                                                value={eventFormData.price_external_cents}
-                                                onChange={e => setEventFormData({ ...eventFormData, price_external_cents: e.target.value })}
+                                                value={currentEventModule.price_external_cents}
+                                                onChange={e => setCurrentEventModule((prev: any) => ({ ...prev, price_external_cents: e.target.value }))}
                                                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
                                                 placeholder="0.00"
                                             />
                                         </div>
-                                </div>
-
-                                {/* Section: Paiement Spécifique */}
-                                <div className="space-y-1.5">
-                                    <label className="text-sm font-medium text-slate-700">Lien de paiement (optionnel)</label>
-                                        <div className="relative group">
-                                            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
-                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                                                </svg>
-                                            </div>
-                                            <input
-                                                type="url"
-                                                value={eventFormData.payment_link}
-                                                onChange={e => setEventFormData({ ...eventFormData, payment_link: e.target.value })}
-                                                placeholder="Ex: https://www.helloasso.com/..."
-                                                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all hover:border-gray-300"
-                                            />
-                                        </div>
-                                        <p className="text-[11px] text-slate-400 italic font-normal tracking-tight">
-                                            Si renseigné, l'utilisateur sera redirigé vers ce lien pour payer cet évènement. Laisse vide pour utiliser les paramètres par défaut de l'établissement.
-                                        </p>
+                                    </div>
                                 </div>
                             </form>
                         </div>

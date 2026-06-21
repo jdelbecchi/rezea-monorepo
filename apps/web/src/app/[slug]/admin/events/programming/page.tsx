@@ -26,6 +26,11 @@ interface EventItem {
     description: string | null;
     is_active: boolean;
     payment_link?: string | null;
+    event_group?: {
+        id: string;
+        title: string;
+        payment_link?: string | null;
+    } | null;
 }
 
 const emptyForm = {
@@ -56,8 +61,23 @@ export default function AdminEventsProgrammingPage() {
     const [events, setEvents] = useState<EventItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [formData, setFormData] = useState({ ...emptyForm });
+    const [groupTitle, setGroupTitle] = useState("");
+    const [paymentLink, setPaymentLink] = useState("");
+    const [modules, setModules] = useState<any[]>([{ ...emptyForm }]);
+    const [activeTab, setActiveTab] = useState<number>(0);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [showForm, setShowForm] = useState(false);
+
+    const currentModule = editingId ? formData : modules[activeTab];
+    const setCurrentModule = (updater: any) => {
+        if (editingId) {
+            setFormData(updater);
+        } else {
+            const next = [...modules];
+            next[activeTab] = typeof updater === 'function' ? updater(next[activeTab]) : updater;
+            setModules(next);
+        }
+    };
     const [saving, setSaving] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [exportFrom, setExportFrom] = useState("");
@@ -119,33 +139,51 @@ export default function AdminEventsProgrammingPage() {
         e.preventDefault();
         setSaving(true);
         try {
-            const memberPriceStr = formData.price_member_cents || "";
-            const externalPriceStr = formData.price_external_cents || "";
-            
-            const memberVal = memberPriceStr.toString().replace(',', '.') || "0";
-            const externalVal = externalPriceStr.toString().replace(',', '.') || "0";
-
-            const data = {
-                event_date: formData.event_date,
-                event_time: formData.event_time,
-                title: formData.title,
-                duration_minutes: parseInt(formData.duration_minutes),
-                price_member_cents: Math.round(parseFloat(memberVal) * 100),
-                price_external_cents: Math.round(parseFloat(externalVal) * 100),
-                instructor_name: formData.instructor_name,
-                max_places: parseInt(formData.max_places),
-                location: formData.location || null,
-                description: formData.description || null,
-                allow_waitlist: formData.allow_waitlist,
-                payment_link: formData.payment_link || null,
-            };
-
             if (editingId) {
+                const memberVal = formData.price_member_cents.toString().replace(',', '.') || "0";
+                const externalVal = formData.price_external_cents.toString().replace(',', '.') || "0";
+                
+                const data = {
+                    event_date: formData.event_date,
+                    event_time: formData.event_time,
+                    title: formData.title,
+                    duration_minutes: parseInt(formData.duration_minutes),
+                    price_member_cents: Math.round(parseFloat(memberVal) * 100),
+                    price_external_cents: Math.round(parseFloat(externalVal) * 100),
+                    instructor_name: formData.instructor_name,
+                    max_places: parseInt(formData.max_places),
+                    location: formData.location || null,
+                    description: formData.description || null,
+                    allow_waitlist: formData.allow_waitlist,
+                    group_title: groupTitle || null,
+                    payment_link: paymentLink || null,
+                };
                 await api.updateAdminEvent(editingId, data);
                 setMessage({ type: 'success', text: "Évènement mis à jour avec succès !" });
             } else {
-                await api.createAdminEvent(data);
-                setMessage({ type: 'success', text: "Évènement créé avec succès !" });
+                const data = {
+                    group_title: groupTitle || modules[0].title || "Nouvel Événement",
+                    payment_link: paymentLink || null,
+                    modules: modules.map(m => {
+                        const memberVal = m.price_member_cents.toString().replace(',', '.') || "0";
+                        const externalVal = m.price_external_cents.toString().replace(',', '.') || "0";
+                        return {
+                            event_date: m.event_date,
+                            event_time: m.event_time,
+                            title: m.title || groupTitle || "Module",
+                            duration_minutes: parseInt(m.duration_minutes),
+                            price_member_cents: Math.round(parseFloat(memberVal) * 100),
+                            price_external_cents: Math.round(parseFloat(externalVal) * 100),
+                            instructor_name: m.instructor_name,
+                            max_places: parseInt(m.max_places),
+                            location: m.location || null,
+                            description: m.description || null,
+                            allow_waitlist: m.allow_waitlist,
+                        };
+                    })
+                };
+                await api.createAdminEventBulk(data);
+                setMessage({ type: 'success', text: "Événement(s) créé(s) avec succès !" });
             }
 
             const updated = await api.getAdminEvents();
@@ -173,6 +211,8 @@ export default function AdminEventsProgrammingPage() {
             allow_waitlist: event.allow_waitlist,
             payment_link: event.payment_link || "",
         });
+        setGroupTitle(event.event_group?.title || "");
+        setPaymentLink(event.event_group?.payment_link || event.payment_link || "");
         setEditingId(event.id);
         setShowForm(true);
         // Charger la note associée
@@ -280,6 +320,10 @@ export default function AdminEventsProgrammingPage() {
 
     const resetForm = () => {
         setFormData({ ...emptyForm });
+        setGroupTitle("");
+        setPaymentLink("");
+        setModules([{ ...emptyForm }]);
+        setActiveTab(0);
         setEditingId(null);
         setShowForm(false);
     };
@@ -407,20 +451,27 @@ export default function AdminEventsProgrammingPage() {
                                                 </div>
                                             </td>
                                             <td className="px-4 py-2.5 whitespace-nowrap max-w-[300px] truncate">
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`text-sm font-medium text-slate-900 ${!event.is_active ? 'line-through text-slate-400' : ''}`}>{event.title}</span>
-                                                    {event.description && event.description.length > 0 && (
-                                                        <span title={event.description} className="text-slate-400 hover:text-slate-600 transition-colors cursor-help">
-                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                                                            </svg>
-                                                        </span>
-                                                    )}
-                                                    {eventNoteIds.has(event.id) && (
-                                                        <span title="Post-it en attente" className="text-amber-400 cursor-help shrink-0">
-                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                                            </svg>
+                                                <div className="flex flex-col">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`text-sm font-medium text-slate-900 ${!event.is_active ? 'line-through text-slate-400' : ''}`}>{event.title}</span>
+                                                        {event.description && event.description.length > 0 && (
+                                                            <span title={event.description} className="text-slate-400 hover:text-slate-600 transition-colors cursor-help">
+                                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                                                </svg>
+                                                            </span>
+                                                        )}
+                                                        {eventNoteIds.has(event.id) && (
+                                                            <span title="Post-it en attente" className="text-amber-400 cursor-help shrink-0">
+                                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                                                </svg>
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {event.event_group && (
+                                                        <span className="text-[10px] font-light text-slate-400 uppercase tracking-wider mt-0.5">
+                                                            {event.event_group.title}
                                                         </span>
                                                     )}
                                                 </div>
@@ -510,24 +561,119 @@ export default function AdminEventsProgrammingPage() {
                         {/* Body */}
                         <div className="flex-1 overflow-y-auto p-8">
                             <form id="eventForm" onSubmit={handleSubmit} className="space-y-8">
-                                {/* Section: Informations générales */}
+                                {/* Section: Événement Global */}
+                                <div className="space-y-4">
+                                    <h4 className="text-[12px] font-light text-slate-400 uppercase tracking-wider">Événement Global / Parent</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-1.5">
+                                            <label className="text-sm font-medium text-slate-700">Intitulé de l'évènement *</label>
+                                            <input
+                                                type="text"
+                                                required
+                                                value={groupTitle}
+                                                onChange={e => setGroupTitle(e.target.value)}
+                                                placeholder="Ex: Journée de formation..."
+                                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-sm font-medium text-slate-700">Lien de paiement (Global)</label>
+                                            <input
+                                                type="url"
+                                                value={paymentLink}
+                                                onChange={e => setPaymentLink(e.target.value)}
+                                                placeholder="https://..."
+                                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                            />
+                                            <p className="text-[11px] text-slate-400 italic font-normal tracking-tight mt-1">
+                                                Si renseigné, l'utilisateur sera redirigé vers ce lien pour payer cet évènement. Laisse vide pour utiliser les paramètres par défaut de l'établissement.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Section: Onglets Modules si Création */}
+                                {!editingId && (
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-[12px] font-light text-slate-400 uppercase tracking-wider">Modules / Ateliers</label>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const activeMod = modules[activeTab];
+                                                        setModules([...modules, { ...activeMod, title: activeMod.title ? `${activeMod.title} (Copie)` : "" }]);
+                                                        setActiveTab(modules.length);
+                                                    }}
+                                                    className="px-2.5 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-xs font-semibold transition-colors"
+                                                >
+                                                    🔄 Dupliquer
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setModules([...modules, { ...emptyForm, title: "" }]);
+                                                        setActiveTab(modules.length);
+                                                    }}
+                                                    className="px-2.5 py-1 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-lg text-xs font-semibold transition-colors"
+                                                >
+                                                    + Ajouter
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-wrap gap-2 border-b border-slate-100 pb-2">
+                                            {modules.map((m, idx) => (
+                                                <div key={idx} className="flex items-center gap-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setActiveTab(idx)}
+                                                        className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                                                            activeTab === idx
+                                                                ? "bg-slate-900 text-white shadow-sm"
+                                                                : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+                                                        }`}
+                                                    >
+                                                        {m.title || `Module ${idx + 1}`}
+                                                    </button>
+                                                    {modules.length > 1 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const next = modules.filter((_, i) => i !== idx);
+                                                                setModules(next);
+                                                                setActiveTab(Math.max(0, idx - 1));
+                                                            }}
+                                                            className="text-slate-400 hover:text-red-500 p-1 text-xs"
+                                                            title="Supprimer ce module"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Section: Détails du module courant */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-1.5">
-                                        <label className="text-sm font-medium text-slate-700">Intitulé *</label>
+                                        <label className="text-sm font-medium text-slate-700">Intitulé du module/atelier *</label>
                                         <input
                                             type="text"
                                             required
-                                            value={formData.title}
-                                            onChange={e => setFormData({ ...formData, title: e.target.value })}
-                                            placeholder="Ex: Soirée Portes Ouvertes..."
+                                            value={currentModule.title}
+                                            onChange={e => setCurrentModule({ ...currentModule, title: e.target.value })}
+                                            placeholder="Ex: Atelier Méditation / Module 1..."
                                             className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all hover:border-gray-300"
                                         />
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="text-sm font-medium text-slate-700">Lieu / Salle</label>
                                         <select
-                                            value={formData.location}
-                                            onChange={e => setFormData({ ...formData, location: e.target.value })}
+                                            value={currentModule.location}
+                                            onChange={e => setCurrentModule({ ...currentModule, location: e.target.value })}
                                             className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 appearance-none cursor-pointer"
                                         >
                                             <option value="">Aucun lieu spécifique</option>
@@ -539,9 +685,9 @@ export default function AdminEventsProgrammingPage() {
                                     <div className="md:col-span-2 space-y-1.5">
                                         <label className="text-sm font-medium text-slate-700">Description</label>
                                         <textarea
-                                            value={formData.description}
-                                            onChange={e => setFormData({ ...formData, description: e.target.value })}
-                                            placeholder="Détails de l'évènement..."
+                                            value={currentModule.description || ""}
+                                            onChange={e => setCurrentModule({ ...currentModule, description: e.target.value })}
+                                            placeholder="Détails du module/atelier..."
                                             className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 min-h-[80px] resize-none"
                                             rows={2}
                                         />
@@ -555,8 +701,8 @@ export default function AdminEventsProgrammingPage() {
                                         <input
                                             type="date"
                                             required
-                                            value={formData.event_date}
-                                            onChange={e => setFormData({ ...formData, event_date: e.target.value })}
+                                            value={currentModule.event_date}
+                                            onChange={e => setCurrentModule({ ...currentModule, event_date: e.target.value })}
                                             className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
                                         />
                                     </div>
@@ -565,8 +711,8 @@ export default function AdminEventsProgrammingPage() {
                                         <input
                                             type="time"
                                             required
-                                            value={formData.event_time}
-                                            onChange={e => setFormData({ ...formData, event_time: e.target.value })}
+                                            value={currentModule.event_time}
+                                            onChange={e => setCurrentModule({ ...currentModule, event_time: e.target.value })}
                                             className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
                                         />
                                     </div>
@@ -575,12 +721,12 @@ export default function AdminEventsProgrammingPage() {
                                         <input
                                             type="time"
                                             required
-                                            value={formData.duration_minutes ? `${Math.floor(Number(formData.duration_minutes) / 60).toString().padStart(2, '0')}:${(Number(formData.duration_minutes) % 60).toString().padStart(2, '0')}` : ""}
+                                            value={currentModule.duration_minutes ? `${Math.floor(Number(currentModule.duration_minutes) / 60).toString().padStart(2, '0')}:${(Number(currentModule.duration_minutes) % 60).toString().padStart(2, '0')}` : ""}
                                             onChange={e => {
                                                 const val = e.target.value;
                                                 if (!val) return;
                                                 const [h, m] = val.split(':').map(Number);
-                                                setFormData({ ...formData, duration_minutes: ((h || 0) * 60 + (m || 0)).toString() });
+                                                setCurrentModule({ ...currentModule, duration_minutes: ((h || 0) * 60 + (m || 0)).toString() });
                                             }}
                                             className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 appearance-none cursor-pointer"
                                         />
@@ -593,8 +739,8 @@ export default function AdminEventsProgrammingPage() {
                                         <label className="text-sm font-medium text-slate-700">Attribution (Intervenant)</label>
                                         <input
                                             type="text"
-                                            value={formData.instructor_name}
-                                            onChange={e => setFormData({ ...formData, instructor_name: e.target.value })}
+                                            value={currentModule.instructor_name}
+                                            onChange={e => setCurrentModule({ ...currentModule, instructor_name: e.target.value })}
                                             placeholder="Ex: Jean Expert"
                                             className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
                                         />
@@ -606,8 +752,8 @@ export default function AdminEventsProgrammingPage() {
                                                 type="number"
                                                 min="1"
                                                 required
-                                                value={formData.max_places}
-                                                onChange={e => setFormData({ ...formData, max_places: e.target.value })}
+                                                value={currentModule.max_places}
+                                                onChange={e => setCurrentModule({ ...currentModule, max_places: e.target.value })}
                                                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
                                                 placeholder="Capacité max"
                                             />
@@ -616,8 +762,8 @@ export default function AdminEventsProgrammingPage() {
                                             <input
                                                 type="checkbox"
                                                 id="allow_waitlist"
-                                                checked={formData.allow_waitlist}
-                                                onChange={e => setFormData({ ...formData, allow_waitlist: e.target.checked })}
+                                                checked={currentModule.allow_waitlist}
+                                                onChange={e => setCurrentModule({ ...currentModule, allow_waitlist: e.target.checked })}
                                                 className="w-4 h-4 rounded-md border-gray-300 text-slate-900 focus:ring-slate-500 cursor-pointer"
                                             />
                                             <label htmlFor="allow_waitlist" className="text-xs font-medium text-slate-500 cursor-pointer select-none">
@@ -628,54 +774,32 @@ export default function AdminEventsProgrammingPage() {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-1.5">
-                                            <label className="text-sm font-medium text-slate-700">Tarif membre (€) *</label>
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                min="0"
-                                                required
-                                                value={formData.price_member_cents}
-                                                onChange={e => setFormData({ ...formData, price_member_cents: e.target.value })}
-                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
-                                                placeholder="0.00"
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-sm font-medium text-slate-700">Tarif extérieur (€) *</label>
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                min="0"
-                                                required
-                                                value={formData.price_external_cents}
-                                                onChange={e => setFormData({ ...formData, price_external_cents: e.target.value })}
-                                                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
-                                                placeholder="0.00"
-                                            />
-                                        </div>
-                                </div>
-
-                                {/* Section: Paiement Spécifique */}
-                                <div className="space-y-1.5">
-                                    <label className="text-sm font-medium text-slate-700">Lien de paiement (optionnel)</label>
-                                        <div className="relative group">
-                                            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
-                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                                                </svg>
-                                            </div>
-                                            <input
-                                                type="url"
-                                                value={formData.payment_link}
-                                                onChange={e => setFormData({ ...formData, payment_link: e.target.value })}
-                                                placeholder="Ex: https://www.helloasso.com/..."
-                                                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all hover:border-gray-300"
-                                            />
-                                        </div>
-                                        <p className="text-[11px] text-slate-400 italic font-normal tracking-tight">
-                                            Si renseigné, l'utilisateur sera redirigé vers ce lien pour payer cet évènement. Laisse vide pour utiliser les paramètres par défaut de l'établissement.
-                                        </p>
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-medium text-slate-700">Tarif membre (€) *</label>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            required
+                                            value={currentModule.price_member_cents}
+                                            onChange={e => setCurrentModule({ ...currentModule, price_member_cents: e.target.value })}
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                            placeholder="0.00"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-medium text-slate-700">Tarif extérieur (€) *</label>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            required
+                                            value={currentModule.price_external_cents}
+                                            onChange={e => setCurrentModule({ ...currentModule, price_external_cents: e.target.value })}
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                            placeholder="0.00"
+                                        />
+                                    </div>
                                 </div>
                             </form>
 
