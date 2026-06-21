@@ -220,6 +220,8 @@ export interface FinanceTransaction {
   receipt_url?: string;
   account_id?: string;
   account_name?: string;
+  event_group_id?: string;
+  event_group_title?: string;
   created_at: string;
 }
 
@@ -898,6 +900,10 @@ export const api = {
   // Admin - Events
   getAdminEvents: async (): Promise<any[]> => {
     const response = await apiClient.get('/api/admin/events');
+    return response.data;
+  },
+  getAdminEventGroups: async (): Promise<any[]> => {
+    const response = await apiClient.get('/api/admin/events/groups');
     return response.data;
   },
 

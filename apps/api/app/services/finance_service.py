@@ -92,6 +92,10 @@ class FinanceService:
             db, registration.tenant_id, "Événements", FinanceTransactionType.INCOME, color="#8b5cf6"
         )
         
+        event_group_id = None
+        if registration.event:
+            event_group_id = registration.event.event_group_id
+
         new_trans = FinanceTransaction(
             tenant_id=registration.tenant_id,
             date=date.today(),
@@ -101,6 +105,7 @@ class FinanceService:
             description=f"Évènement: {registration.event.title} - {registration.user.first_name} {registration.user.last_name}",
             payment_method=FinancePaymentMethod.OTHER,
             registration_id=registration.id,
+            event_group_id=event_group_id,
             is_reconciled=True
         )
         db.add(new_trans)

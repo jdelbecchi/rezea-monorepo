@@ -929,6 +929,7 @@ class FinanceTransactionBase(BaseModel):
     payment_method: FinancePaymentMethod = FinancePaymentMethod.OTHER
     order_id: Optional[UUID] = None
     registration_id: Optional[UUID] = None
+    event_group_id: Optional[UUID] = None
     is_reconciled: bool = True
     receipt_url: Optional[str] = None
 
@@ -948,6 +949,7 @@ class FinanceTransactionUpdate(BaseModel):
     vat_rate: Optional[Decimal] = None
     description: Optional[str] = None
     payment_method: Optional[FinancePaymentMethod] = None
+    event_group_id: Optional[UUID] = None
     is_reconciled: Optional[bool] = None
     receipt_url: Optional[str] = None
 
@@ -960,6 +962,7 @@ class FinanceTransactionResponse(FinanceTransactionBase):
     updated_at: datetime
     category_name: Optional[str] = None
     account_name: Optional[str] = None
+    event_group_title: Optional[str] = None
 
 class FinanceDashboardResponse(BaseModel):
     """Résumé pour le tableau de bord de trésorerie"""

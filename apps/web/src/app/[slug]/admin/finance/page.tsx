@@ -38,12 +38,14 @@ export default function TreasuryPage() {
     const [editingCat, setEditingCat] = useState<FinanceCategory | null>(null);
     const [isAccModalOpen, setIsAccModalOpen] = useState(false);
     const [editingAcc, setEditingAcc] = useState<FinanceAccount | null>(null);
+    const [eventGroups, setEventGroups] = useState<any[]>([]);
 
     // Form states
     const [newTrans, setNewTrans] = useState({
         date: format(new Date(), "yyyy-MM-dd"),
         type: "expense",
         category_id: "",
+        event_group_id: "",
         amount_cents: 0,
         vat_rate: 20,
         description: "",
@@ -106,16 +108,18 @@ export default function TreasuryPage() {
 
     const refreshData = async () => {
         try {
-            const [db, cats, accs, trans] = await Promise.all([
+            const [db, cats, accs, trans, groups] = await Promise.all([
                 api.getFinanceDashboard(selectedMonthStr, 30),
                 api.getFinanceCategories(),
                 api.getFinanceAccounts(),
-                api.getFinanceTransactions({ search: searchTerm })
+                api.getFinanceTransactions({ search: searchTerm }),
+                api.getAdminEventGroups().catch(() => [])
             ]);
             setDashboard(db);
             setCategories(cats);
             setAccounts(accs);
             setTransactions(trans);
+            setEventGroups(groups);
         } catch (error) {
             console.error("Error loading treasury data:", error);
         }
@@ -128,6 +132,7 @@ export default function TreasuryPage() {
                 date: trans.date,
                 type: trans.type,
                 category_id: trans.category_id || "",
+                event_group_id: trans.event_group_id || "",
                 amount_cents: trans.amount_cents / 100, // newTrans.amount_cents is in EUR, we parse it
                 vat_rate: trans.vat_rate,
                 description: trans.description,
@@ -142,6 +147,7 @@ export default function TreasuryPage() {
                 date: format(new Date(), "yyyy-MM-dd"),
                 type: "expense",
                 category_id: "",
+                event_group_id: "",
                 amount_cents: 0,
                 vat_rate: 20,
                 description: "",
@@ -168,6 +174,7 @@ export default function TreasuryPage() {
                     date: newTrans.date,
                     type: newTrans.type,
                     category_id: newTrans.category_id || null,
+                    event_group_id: newTrans.event_group_id || null,
                     amount_cents,
                     vat_amount_cents,
                     vat_rate,
@@ -182,12 +189,13 @@ export default function TreasuryPage() {
                     vat_amount_cents,
                     vat_rate,
                     category_id: newTrans.category_id || null,
+                    event_group_id: newTrans.event_group_id || null,
                     account_id: newTrans.account_id || null,
                 });
             }
             setIsTransModalOpen(false);
             refreshData();
-            setNewTrans({ ...newTrans, amount_cents: 0, description: "" });
+            setNewTrans({ ...newTrans, amount_cents: 0, description: "", event_group_id: "" });
             setEditingTrans(null);
         } catch (error) {
             alert("Erreur lors de l'enregistrement de l'opération");
@@ -758,6 +766,11 @@ export default function TreasuryPage() {
                                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">
                                                                 {t.category_name || "Non catégorisé"}
                                                             </span>
+                                                            {t.event_group_title && (
+                                                                <div className="text-[9px] text-slate-400 mt-1 font-medium tracking-wide">
+                                                                    🎟️ {t.event_group_title}
+                                                                </div>
+                                                            )}
                                                         </td>
                                                         <td className="py-2.5 px-4">
                                                             <span className="text-[11px] text-slate-500 font-medium">
@@ -1143,6 +1156,22 @@ export default function TreasuryPage() {
                                         ))}
                                     </select>
                                 </div>
+
+                                {((categories.find(c => c.id === newTrans.category_id)?.name || "").toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes('evenement') || newTrans.event_group_id) && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Événement lié</label>
+                                        <select 
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white"
+                                            value={newTrans.event_group_id}
+                                            onChange={e => setNewTrans({...newTrans, event_group_id: e.target.value})}
+                                        >
+                                            <option value="">Sélectionner un événement</option>
+                                            {eventGroups.map(grp => (
+                                                <option key={grp.id} value={grp.id}>{grp.title}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>

@@ -799,6 +799,7 @@ class FinanceTransaction(Base):
     order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=True)
     registration_id = Column(UUID(as_uuid=True), ForeignKey("event_registrations.id"), nullable=True)
     installment_id = Column(UUID(as_uuid=True), ForeignKey("installments.id"), nullable=True)
+    event_group_id = Column(UUID(as_uuid=True), ForeignKey("event_groups.id", ondelete="SET NULL"), nullable=True)
     
     # Statut & Justificatif
     is_reconciled = Column(Boolean, default=True) # Pointé / Réconcilié
@@ -812,6 +813,7 @@ class FinanceTransaction(Base):
     category = relationship("FinanceCategory")
     account = relationship("FinanceAccount")
     created_by = relationship("User")
+    event_group = relationship("EventGroup")
 
     __table_args__ = (
         Index("idx_fin_trans_tenant_date", "tenant_id", "date"),

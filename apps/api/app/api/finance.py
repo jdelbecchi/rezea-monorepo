@@ -645,6 +645,7 @@ async def list_transactions(
     end_date: Optional[date] = Query(None),
     type: Optional[FinanceTransactionType] = Query(None),
     category_id: Optional[UUID] = Query(None),
+    event_group_id: Optional[UUID] = Query(None),
     search: Optional[str] = Query(None),
     show_future: bool = Query(False)
 ):
@@ -654,7 +655,7 @@ async def list_transactions(
     query = (
         select(FinanceTransaction)
         .where(FinanceTransaction.tenant_id == tenant_id)
-        .options(joinedload(FinanceTransaction.category), joinedload(FinanceTransaction.account))
+        .options(joinedload(FinanceTransaction.category), joinedload(FinanceTransaction.account), joinedload(FinanceTransaction.event_group))
         .order_by(FinanceTransaction.date.desc(), FinanceTransaction.created_at.desc())
     )
     
@@ -669,13 +670,15 @@ async def list_transactions(
         query = query.where(FinanceTransaction.type == type)
     if category_id:
         query = query.where(FinanceTransaction.category_id == category_id)
+    if event_group_id:
+        query = query.where(FinanceTransaction.event_group_id == event_group_id)
     if search:
         query = query.where(FinanceTransaction.description.ilike(f"%{search}%"))
     
     result = await db.execute(query)
     transactions = result.scalars().all()
     
-    # Map to response with category_name
+    # Map to response with category_name, account_name, event_group_title
     response = []
     for t in transactions:
         res = FinanceTransactionResponse.model_validate(t)
@@ -683,9 +686,12 @@ async def list_transactions(
             res.category_name = t.category.name
         if t.account:
             res.account_name = t.account.name
+        if t.event_group:
+            res.event_group_title = t.event_group.title
         response.append(res)
     
     return response
+
 
 @router.post("/transactions", response_model=FinanceTransactionResponse)
 async def create_transaction(
@@ -734,7 +740,7 @@ async def create_transaction(
     result = await db.execute(
         select(FinanceTransaction)
         .where(FinanceTransaction.id == new_trans.id)
-        .options(joinedload(FinanceTransaction.category), joinedload(FinanceTransaction.account))
+        .options(joinedload(FinanceTransaction.category), joinedload(FinanceTransaction.account), joinedload(FinanceTransaction.event_group))
     )
     t = result.scalar_one()
     res = FinanceTransactionResponse.model_validate(t)
@@ -742,6 +748,8 @@ async def create_transaction(
         res.category_name = t.category.name
     if t.account:
         res.account_name = t.account.name
+    if t.event_group:
+        res.event_group_title = t.event_group.title
     return res
 
 @router.patch("/transactions/{trans_id}", response_model=FinanceTransactionResponse)
@@ -770,7 +778,7 @@ async def update_transaction(
     result = await db.execute(
         select(FinanceTransaction)
         .where(FinanceTransaction.id == trans.id)
-        .options(joinedload(FinanceTransaction.category), joinedload(FinanceTransaction.account))
+        .options(joinedload(FinanceTransaction.category), joinedload(FinanceTransaction.account), joinedload(FinanceTransaction.event_group))
     )
     t = result.scalar_one()
     res = FinanceTransactionResponse.model_validate(t)
@@ -778,6 +786,8 @@ async def update_transaction(
         res.category_name = t.category.name
     if t.account:
         res.account_name = t.account.name
+    if t.event_group:
+        res.event_group_title = t.event_group.title
     return res
 
 @router.delete("/transactions/{trans_id}", status_code=status.HTTP_204_NO_CONTENT)

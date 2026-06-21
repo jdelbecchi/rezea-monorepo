@@ -37,6 +37,8 @@ export default function AdminDashboardPage() {
     const [recentComments, setRecentComments] = useState<any[]>([]);
     const [offersMap, setOffersMap] = useState<Record<string, string>>({});
     const [eventsList, setEventsList] = useState<any[]>([]);
+    const [transactionsList, setTransactionsList] = useState<any[]>([]);
+    const [eventReportMode, setEventReportMode] = useState<"modules" | "parents">("modules");
 
     // Custom range and Global View states
     const [isGlobalView, setIsGlobalView] = useState(false);
@@ -109,7 +111,7 @@ export default function AdminDashboardPage() {
                 }
 
                 // Fetch secondary stats in parallel
-                const [segmentsData, sessionsData, ordersData, campaignsData, eventsData, offersData, adminEventsData] = await Promise.all([
+                const [segmentsData, sessionsData, ordersData, campaignsData, eventsData, offersData, adminEventsData, transactionsData] = await Promise.all([
                     api.getSegmentsStats().catch(err => {
                         console.warn("Segments stats fetch failed:", err);
                         return { prospect: 0, decouverte_1: 0, decouverte_2: 0, post_essai: 0, actif: 0, occasionnel: 0, distant: 0, inactif: 0, archive: 0 };
@@ -140,6 +142,14 @@ export default function AdminDashboardPage() {
                     api.getAdminEvents().catch(err => {
                         console.warn("Admin events fetch failed:", err);
                         return [];
+                    }),
+                    api.getFinanceTransactions({
+                        start_date: start,
+                        end_date: end,
+                        show_future: true
+                    }).catch(err => {
+                        console.warn("Transactions fetch failed:", err);
+                        return [];
                     })
                 ]);
 
@@ -149,6 +159,7 @@ export default function AdminDashboardPage() {
                 if (campaignsData) setCampaigns(campaignsData);
                 if (eventsData) setEventRegistrations(eventsData);
                 if (adminEventsData) setEventsList(adminEventsData);
+                if (transactionsData) setTransactionsList(transactionsData);
                 if (offersData) {
                     const mapping: Record<string, string> = {};
                     offersData.forEach((o: any) => {
@@ -341,6 +352,73 @@ export default function AdminDashboardPage() {
             return !isNaN(date.getTime()) && date >= rangeStart && date <= rangeEnd;
         });
 
+        if (eventReportMode === "parents") {
+            const groupsMap: Record<string, {
+                id: string;
+                title: string;
+                modules: any[];
+            }> = {};
+
+            activeEvents.forEach(e => {
+                const group = e.event_group;
+                const groupId = group?.id || "individual";
+                const groupTitle = group?.title || "Séances individuelles";
+
+                if (!groupsMap[groupId]) {
+                    groupsMap[groupId] = {
+                        id: groupId,
+                        title: groupTitle,
+                        modules: []
+                    };
+                }
+                groupsMap[groupId].modules.push(e);
+            });
+
+            return Object.values(groupsMap).map(g => {
+                let totalBookings = 0;
+                let maxPlaces = 0;
+
+                g.modules.forEach(m => {
+                    const regs = eventRegistrations.filter(r => r.event_id === m.id && r.status !== 'cancelled');
+                    totalBookings += regs.length;
+                    maxPlaces += m.max_places || 0;
+                });
+
+                const occupancyRate = maxPlaces > 0 ? Math.round((totalBookings / maxPlaces) * 100) : 0;
+
+                const groupTransactions = transactionsList.filter(t => t.event_group_id === g.id);
+                const totalRevenueCents = groupTransactions
+                    .filter(t => t.type === 'income')
+                    .reduce((sum, t) => sum + (t.amount_cents || 0), 0);
+                const totalExpensesCents = groupTransactions
+                    .filter(t => t.type === 'expense')
+                    .reduce((sum, t) => sum + (t.amount_cents || 0), 0);
+
+                let finalRevenueCents = totalRevenueCents;
+                if (g.id === "individual") {
+                    const moduleRevenues = g.modules.reduce((sum, m) => {
+                        const regs = eventRegistrations.filter(r => r.event_id === m.id && r.status !== 'cancelled');
+                        return sum + regs.reduce((s, r) => s + (r.price_paid_cents || 0), 0);
+                    }, 0);
+                    if (finalRevenueCents === 0) finalRevenueCents = moduleRevenues;
+                }
+
+                const netMarginCents = finalRevenueCents - totalExpensesCents;
+
+                return {
+                    id: g.id,
+                    title: g.title,
+                    totalBookings,
+                    maxPlaces,
+                    occupancyRate,
+                    totalRevenueCents: finalRevenueCents,
+                    totalExpensesCents,
+                    netMarginCents,
+                    isParent: true
+                };
+            }).sort((a, b) => b.totalRevenueCents - a.totalRevenueCents);
+        }
+
         return activeEvents.map(e => {
             const regs = eventRegistrations.filter(r => r.event_id === e.id && r.status !== 'cancelled');
             const totalRevenueCents = regs.reduce((sum, r) => sum + (r.price_paid_cents || 0), 0);
@@ -354,10 +432,13 @@ export default function AdminDashboardPage() {
                 totalBookings,
                 maxPlaces: e.max_places,
                 occupancyRate,
-                totalRevenueCents
+                totalRevenueCents,
+                totalExpensesCents: 0,
+                netMarginCents: totalRevenueCents,
+                isParent: false
             };
         }).sort((a, b) => b.totalRevenueCents - a.totalRevenueCents);
-    }, [eventsList, eventRegistrations, isGlobalView, customStartDate, customEndDate, selectedMonth, selectedYear]);
+    }, [eventsList, eventRegistrations, transactionsList, eventReportMode, isGlobalView, customStartDate, customEndDate, selectedMonth, selectedYear]);
 
     // 4c. Monthly Seasonality (frequency and sales by category)
     const monthlySeasonalityStats = useMemo(() => {
@@ -1138,13 +1219,31 @@ export default function AdminDashboardPage() {
 
                                     {/* Performance des Événements */}
                                     <section className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col lg:col-span-1">
-                                        <div className="space-y-2 mb-6 text-left">
-                                            <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                                                <span>🎟️</span> Performance des Événements
-                                            </h3>
-                                            <p className="text-[11px] text-slate-400 font-medium">
-                                                Inscriptions, taux de remplissage et chiffre d'affaires généré par événement
-                                            </p>
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                                            <div className="space-y-1 text-left">
+                                                <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                                                    <span>🎟️</span> Performance des Événements
+                                                </h3>
+                                                <p className="text-[11px] text-slate-400 font-medium">
+                                                    Inscriptions, taux de remplissage, chiffre d'affaires et marge générée par événement
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center self-start sm:self-auto bg-slate-50 p-1 rounded-xl border border-slate-100">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setEventReportMode("modules")}
+                                                    className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${eventReportMode === "modules" ? 'bg-white text-slate-800 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
+                                                >
+                                                    Modules
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setEventReportMode("parents")}
+                                                    className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${eventReportMode === "parents" ? 'bg-white text-slate-800 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
+                                                >
+                                                    Parents
+                                                </button>
+                                            </div>
                                         </div>
 
                                         <div className="flex-1 overflow-x-auto text-left">
@@ -1158,8 +1257,18 @@ export default function AdminDashboardPage() {
                                                         <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                                                             <th className="py-2">Événement</th>
                                                             <th className="py-2 text-center">Insc.</th>
-                                                            <th className="py-2 text-center">Rempl.</th>
-                                                            <th className="py-2 text-right">CA</th>
+                                                            {eventReportMode === "modules" ? (
+                                                                <>
+                                                                    <th className="py-2 text-center">Rempl.</th>
+                                                                    <th className="py-2 text-right">CA</th>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <th className="py-2 text-right">CA</th>
+                                                                    <th className="py-2 text-right">Dépenses</th>
+                                                                    <th className="py-2 text-right">Marge</th>
+                                                                </>
+                                                            )}
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-slate-50">
@@ -1177,14 +1286,30 @@ export default function AdminDashboardPage() {
                                                                     <td className="py-3 text-center text-slate-600 font-medium">
                                                                         {ev.totalBookings} / {ev.maxPlaces}
                                                                     </td>
-                                                                    <td className="py-3 text-center font-bold">
-                                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] ${badgeColor}`}>
-                                                                            {ev.occupancyRate}%
-                                                                        </span>
-                                                                    </td>
-                                                                    <td className="py-3 text-right text-slate-700 font-semibold">
-                                                                        {formatCurrency(ev.totalRevenueCents)}
-                                                                    </td>
+                                                                    {eventReportMode === "modules" ? (
+                                                                        <>
+                                                                            <td className="py-3 text-center font-bold">
+                                                                                <span className={`px-2 py-0.5 rounded-full text-[10px] ${badgeColor}`}>
+                                                                                    {ev.occupancyRate}%
+                                                                                </span>
+                                                                            </td>
+                                                                            <td className="py-3 text-right text-slate-700 font-semibold">
+                                                                                {formatCurrency(ev.totalRevenueCents)}
+                                                                            </td>
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <td className="py-3 text-right text-slate-700 font-semibold">
+                                                                                {formatCurrency(ev.totalRevenueCents)}
+                                                                            </td>
+                                                                            <td className="py-3 text-right text-rose-600 font-semibold">
+                                                                                {ev.totalExpensesCents > 0 ? `-${formatCurrency(ev.totalExpensesCents)}` : "—"}
+                                                                            </td>
+                                                                            <td className={`py-3 text-right font-bold ${(ev.netMarginCents || 0) >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                                                                                {formatCurrency(ev.netMarginCents || 0)}
+                                                                            </td>
+                                                                        </>
+                                                                    )}
                                                                 </tr>
                                                             );
                                                         })}

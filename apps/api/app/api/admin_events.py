@@ -51,6 +51,24 @@ async def require_manager(request: Request, db: AsyncSession = Depends(get_db)) 
     return user
 
 
+# ---- LIST GROUPS ----
+@router.get("/groups")
+async def list_event_groups(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_manager),
+):
+    """Liste tous les groupes d'événements (événements parents) du tenant"""
+    tenant_id = request.state.tenant_id
+    result = await db.execute(
+        select(EventGroup)
+        .where(EventGroup.tenant_id == tenant_id)
+        .order_by(EventGroup.title.asc())
+    )
+    groups = result.scalars().all()
+    return [{"id": str(g.id), "title": g.title, "payment_link": g.payment_link} for g in groups]
+
+
 # ---- LIST ----
 @router.get("", response_model=List[EventResponse])
 async def list_events(
