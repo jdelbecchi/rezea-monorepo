@@ -1225,7 +1225,7 @@ export default function AdminDashboardPage() {
                                                     <span>🎟️</span> Performance des Événements
                                                 </h3>
                                                 <p className="text-[11px] text-slate-400 font-medium">
-                                                    Inscriptions, taux de remplissage, chiffre d'affaires et marge générée par événement
+                                                    Inscriptions, taux de remplissage, chiffre d'affaires et marge générée par évènement
                                                 </p>
                                             </div>
                                             <div className="inline-flex items-center bg-slate-50 p-1 rounded-xl border border-slate-100">

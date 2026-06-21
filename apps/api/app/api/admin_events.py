@@ -382,7 +382,7 @@ async def cancel_event(
     result = await db.execute(
         select(Event)
         .where(Event.id == event_id, Event.tenant_id == tenant_id)
-        .options(selectinload(Event.registrations))
+        .options(selectinload(Event.registrations).selectinload(EventRegistration.user))
     )
     event = result.scalar_one_or_none()
     if not event:

@@ -27,6 +27,7 @@ const STATUS_LABELS: Record<string, string> = {
     cancelled: "Annulé",
     absent: "Absent",
     event_deleted: "Évènement supprimé",
+    event_cancelled: "Évènement annulé",
 };
 
 const PAYMENT_LABELS: Record<string, string> = {
@@ -479,6 +480,7 @@ export default function AdminEventRegistrationsPage() {
             case "waiting_list": return <span className={`${base} bg-amber-50 text-amber-600 border-amber-100`}>Sur liste</span>;
             case "cancelled": return <span className={`${base} bg-rose-50 text-rose-600 border-rose-100`}>Annulé</span>;
             case "absent": return <span className={`${base} bg-slate-50 text-slate-600 border-slate-200`}>Absent</span>;
+            case "event_cancelled": return <span className={`${base} bg-red-50 text-red-600 border-red-100`}>Évènement annulé</span>;
             default: return <span className={`${base} bg-gray-50 text-gray-500 border-gray-200`}>{reg.status}</span>;
         }
     };
@@ -497,6 +499,9 @@ export default function AdminEventRegistrationsPage() {
     const getEditStatusOptions = (currentStatus: string) => {
         if (currentStatus === "event_deleted") {
             return [{ value: "event_deleted", label: "Supprimée" }];
+        }
+        if (currentStatus === "event_cancelled") {
+            return [{ value: "event_cancelled", label: "Évènement annulé" }];
         }
         return [
             { value: "confirmed", label: "✅ Inscrit" },
@@ -570,6 +575,7 @@ export default function AdminEventRegistrationsPage() {
                                         { id: "waiting_list", label: "Sur liste" },
                                         { id: "cancelled", label: "Annulé" },
                                         { id: "absent", label: "Absent" },
+                                        { id: "event_cancelled", label: "Évènement annulé" },
                                     ]}
                                     selected={filterStatuses}
                                     onChange={setFilterStatuses}

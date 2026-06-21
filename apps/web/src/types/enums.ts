@@ -36,5 +36,6 @@ export enum EventRegistrationStatus {
   CANCELLED = 'cancelled',
   ABSENT = 'absent',
   EVENT_DELETED = 'event_deleted',
+  EVENT_CANCELLED = 'event_cancelled',
   WAITING_LIST = 'waiting_list'
 }

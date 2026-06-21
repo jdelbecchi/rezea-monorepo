@@ -113,6 +113,7 @@ export default function MemberOrdersPage() {
             case 'pending_payment': return 'bg-amber-100 text-amber-700 border-amber-200';
             case 'confirmed': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
             case 'cancelled': return 'bg-slate-100 text-slate-500 border-slate-200';
+            case 'event_cancelled': return 'bg-rose-100 text-rose-700 border-rose-200';
             case 'waiting_list': return 'bg-blue-100 text-blue-700 border-blue-200';
             case 'absent': return 'bg-rose-100 text-rose-700 border-rose-200';
             default: return 'bg-slate-100 text-slate-700 border-slate-200';
@@ -127,6 +128,7 @@ export default function MemberOrdersPage() {
             case 'waiting_list': return 'Liste d\'attente';
             case 'absent': return 'Absent';
             case 'event_deleted': return 'Événement supprimé';
+            case 'event_cancelled': return 'Évènement annulé';
             default: return status;
         }
     };
