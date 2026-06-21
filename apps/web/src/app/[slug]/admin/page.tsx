@@ -1255,7 +1255,7 @@ export default function AdminDashboardPage() {
                                                 <table className="w-full text-left">
                                                     <thead>
                                                         <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                                            <th className="py-2 text-center">Événement</th>
+                                                            <th className="py-2 text-left">Intitulé</th>
                                                             <th className="py-2 text-center">Insc.</th>
                                                             {eventReportMode === "modules" ? (
                                                                 <>
@@ -1280,7 +1280,7 @@ export default function AdminDashboardPage() {
 
                                                             return (
                                                                 <tr key={ev.id} className="text-xs group hover:bg-slate-50 transition-colors">
-                                                                    <td className="py-3 font-semibold text-slate-800 text-center truncate max-w-[110px]" title={ev.title}>
+                                                                    <td className="py-3 font-semibold text-slate-800 text-left truncate max-w-[110px]" title={ev.title}>
                                                                         {ev.title}
                                                                     </td>
                                                                     <td className="py-3 text-center text-slate-600 font-medium">
