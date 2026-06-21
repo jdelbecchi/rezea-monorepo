@@ -99,7 +99,8 @@ async def register(
         facebook_handle=user_data.facebook_handle,
         remind_before_session=user_data.remind_before_session,
         receive_marketing_emails=user_data.receive_marketing_emails,
-        docs_accepted_at=datetime.utcnow() if user_data.docs_accepted else None
+        docs_accepted_at=datetime.utcnow() if user_data.docs_accepted else None,
+        is_active_override=True
     )
     
     db.add(new_user)

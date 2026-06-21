@@ -266,6 +266,20 @@ export default function LoginForm({ initialTenantSlug = "", hideTenantField = fa
             </Link>
           </p>
         </div>
+
+        {hideTenantField && (
+          <div className="text-center pt-3.5 border-t border-slate-100 mt-2.5">
+            <Link 
+              href="/"
+              className="text-xs font-medium text-slate-400 hover:text-slate-600 transition-colors inline-flex items-center justify-center gap-1"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Changer d&apos;établissement
+            </Link>
+          </div>
+        )}
       </form>
 
       <style jsx>{`

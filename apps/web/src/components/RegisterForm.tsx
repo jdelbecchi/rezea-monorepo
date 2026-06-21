@@ -37,6 +37,7 @@ export default function RegisterForm({ initialTenantSlug = "", hideTenantField =
   const [loading, setLoading] = useState(false);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
+  const [isAutoLoggedIn, setIsAutoLoggedIn] = useState(false);
 
   // Debounce tenant lookup
   useEffect(() => {
@@ -95,6 +96,24 @@ export default function RegisterForm({ initialTenantSlug = "", hideTenantField =
 
       await api.register(dataToSave);
       
+      let loggedIn = false;
+      try {
+        const loginResponse = await api.login(
+          formData.email,
+          formData.password,
+          formData.tenant_slug
+        );
+        localStorage.setItem("access_token", loginResponse.access_token);
+        localStorage.setItem("user_id", loginResponse.user_id);
+        localStorage.setItem("tenant_id", loginResponse.tenant_id);
+        localStorage.setItem("tenant_slug", formData.tenant_slug);
+        localStorage.setItem("user_role", loginResponse.role);
+        setIsAutoLoggedIn(true);
+        loggedIn = true;
+      } catch (loginErr) {
+        console.error("Auto-login failed:", loginErr);
+      }
+      
       // Récupérer les dernières infos du tenant pour être sûr d'avoir le welcome_message à jour
       const latestTenant = await api.getTenantBySlug(formData.tenant_slug);
       setTenant(latestTenant);
@@ -102,7 +121,11 @@ export default function RegisterForm({ initialTenantSlug = "", hideTenantField =
       if (latestTenant?.welcome_message) {
         setShowWelcomePopup(true);
       } else {
-        router.push(hideTenantField ? `/${formData.tenant_slug}?registered=true` : "/login?registered=true");
+        if (loggedIn) {
+          router.push(`/${formData.tenant_slug}/home`);
+        } else {
+          router.push(hideTenantField ? `/${formData.tenant_slug}?registered=true` : "/login?registered=true");
+        }
       }
     } catch (err: any) {
       const detail = err.response?.data?.detail;
@@ -420,41 +443,48 @@ export default function RegisterForm({ initialTenantSlug = "", hideTenantField =
 
         {/* Welcome Popup */}
         {showWelcomePopup && tenant && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/40 backdrop-blur-md animate-in fade-in duration-500">
-                <div className="w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl shadow-black/20 overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-10 duration-700">
-                    <div className="relative h-32 w-full overflow-hidden">
-                        {tenant.banner_url ? (
-                            <img src={`${API_URL}${tenant.banner_url}`} className="w-full h-full object-cover" alt="Banner" />
+            <div className="absolute inset-0 z-[100] flex flex-col bg-white rounded-3xl overflow-hidden animate-in fade-in duration-500">
+                <div className="relative flex-1 w-full overflow-hidden min-h-[160px]">
+                    {tenant.login_background_url ? (
+                        <img src={`${API_URL}${tenant.login_background_url}`} className="absolute inset-0 w-full h-full object-cover" alt="Banner" />
+                    ) : tenant.banner_url ? (
+                        <img src={`${API_URL}${tenant.banner_url}`} className="absolute inset-0 w-full h-full object-cover" alt="Banner" />
+                    ) : (
+                        <div className="absolute inset-0 w-full h-full" style={{ backgroundColor: tenant.primary_color || '#0f172a' }} />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-white to-transparent" />
+                </div>
+                
+                <div className="px-6 pb-6 flex flex-col items-center text-center -mt-12 relative z-10 w-full">
+                    <div className="w-20 h-20 bg-white rounded-2xl shadow-lg flex items-center justify-center mb-5 p-3 border border-slate-50 relative z-20 flex-shrink-0">
+                        {tenant.logo_url ? (
+                            <img src={`${API_URL}${tenant.logo_url}`} className="w-full h-full object-contain" alt="Logo" />
                         ) : (
-                            <div className="w-full h-full" style={{ backgroundColor: tenant.primary_color || '#0f172a' }} />
+                            <span className="text-3xl">👋</span>
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-white to-transparent" />
                     </div>
                     
-                    <div className="px-10 pb-10 flex flex-col items-center text-center -mt-12 relative z-10">
-                        <div className="w-24 h-24 bg-white rounded-3xl shadow-xl flex items-center justify-center mb-6 p-4 border border-slate-50">
-                            {tenant.logo_url ? (
-                                <img src={`${API_URL}${tenant.logo_url}`} className="w-full h-full object-contain" alt="Logo" />
-                            ) : (
-                                <span className="text-4xl">👋</span>
-                            )}
-                        </div>
-                        
-                        <h2 className="text-2xl font-bold text-slate-900 mb-4 tracking-tight">
-                            Bienvenue chez {tenant.name} !
-                        </h2>
-                        
-                        <div className="text-slate-600 font-medium leading-relaxed mb-10 whitespace-pre-wrap max-h-[40vh] overflow-y-auto no-scrollbar">
-                            {tenant.welcome_message || "Votre compte a été créé avec succès. Nous sommes ravis de vous accueillir !"}
-                        </div>
-                        
-                        <button
-                            onClick={() => router.push(hideTenantField ? `/${formData.tenant_slug}?registered=true` : "/login?registered=true")}
-                            className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/20 active:scale-[0.98] transition-all hover:bg-slate-800"
-                        >
-                            Commencer l&apos;aventure
-                        </button>
+                    <h2 className="text-xl font-medium text-slate-900 tracking-tight leading-snug mb-4">
+                        Votre compte est créé chez <br />
+                        {tenant.name} <span className="opacity-80 text-[1.1em] ml-1">🎉</span>
+                    </h2>
+
+                    <div className="text-slate-600 font-medium leading-relaxed text-sm whitespace-pre-wrap max-h-[120px] overflow-y-auto no-scrollbar mb-5 px-2">
+                        {tenant.welcome_message || "Votre compte a été créé avec succès. Nous sommes ravis de vous accueillir !"}
                     </div>
+                    
+                    <button
+                        onClick={() => {
+                          if (isAutoLoggedIn) {
+                            router.push(`/${formData.tenant_slug}/home`);
+                          } else {
+                            router.push(hideTenantField ? `/${formData.tenant_slug}?registered=true` : "/login?registered=true");
+                          }
+                        }}
+                        className="w-full py-3.5 bg-slate-900 text-white rounded-xl font-medium text-sm shadow-xl shadow-slate-900/10 active:scale-[0.98] transition-all hover:bg-slate-800"
+                    >
+                        Commencer l&apos;aventure
+                    </button>
                 </div>
             </div>
         )}
