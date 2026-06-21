@@ -38,7 +38,7 @@ export default function AdminDashboardPage() {
     const [offersMap, setOffersMap] = useState<Record<string, string>>({});
     const [eventsList, setEventsList] = useState<any[]>([]);
     const [transactionsList, setTransactionsList] = useState<any[]>([]);
-    const [eventReportMode, setEventReportMode] = useState<"modules" | "parents">("modules");
+    const [eventReportMode, setEventReportMode] = useState<"modules" | "parents">("parents");
 
     // Custom range and Global View states
     const [isGlobalView, setIsGlobalView] = useState(false);
@@ -1219,8 +1219,8 @@ export default function AdminDashboardPage() {
 
                                     {/* Performance des Événements */}
                                     <section className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col lg:col-span-1">
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                                            <div className="space-y-1 text-left">
+                                        <div className="space-y-3 mb-6 text-left">
+                                            <div className="space-y-1">
                                                 <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                                                     <span>🎟️</span> Performance des Événements
                                                 </h3>
@@ -1228,20 +1228,20 @@ export default function AdminDashboardPage() {
                                                     Inscriptions, taux de remplissage, chiffre d'affaires et marge générée par événement
                                                 </p>
                                             </div>
-                                            <div className="flex items-center self-start sm:self-auto bg-slate-50 p-1 rounded-xl border border-slate-100">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setEventReportMode("modules")}
-                                                    className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${eventReportMode === "modules" ? 'bg-white text-slate-800 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
-                                                >
-                                                    Modules
-                                                </button>
+                                            <div className="inline-flex items-center bg-slate-50 p-1 rounded-xl border border-slate-100">
                                                 <button
                                                     type="button"
                                                     onClick={() => setEventReportMode("parents")}
                                                     className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${eventReportMode === "parents" ? 'bg-white text-slate-800 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
                                                 >
-                                                    Parents
+                                                    Évènement
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setEventReportMode("modules")}
+                                                    className={`px-3 py-1 text-[10px] font-bold rounded-lg transition-all ${eventReportMode === "modules" ? 'bg-white text-slate-800 shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
+                                                >
+                                                    Module
                                                 </button>
                                             </div>
                                         </div>
@@ -1255,18 +1255,18 @@ export default function AdminDashboardPage() {
                                                 <table className="w-full text-left">
                                                     <thead>
                                                         <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                                            <th className="py-2">Événement</th>
+                                                            <th className="py-2 text-center">Événement</th>
                                                             <th className="py-2 text-center">Insc.</th>
                                                             {eventReportMode === "modules" ? (
                                                                 <>
                                                                     <th className="py-2 text-center">Rempl.</th>
-                                                                    <th className="py-2 text-right">CA</th>
+                                                                    <th className="py-2 text-center">CA</th>
                                                                 </>
                                                             ) : (
                                                                 <>
-                                                                    <th className="py-2 text-right">CA</th>
-                                                                    <th className="py-2 text-right">Dépenses</th>
-                                                                    <th className="py-2 text-right">Marge</th>
+                                                                    <th className="py-2 text-center">CA</th>
+                                                                    <th className="py-2 text-center">Dépenses</th>
+                                                                    <th className="py-2 text-center">Marge</th>
                                                                 </>
                                                             )}
                                                         </tr>
@@ -1280,7 +1280,7 @@ export default function AdminDashboardPage() {
 
                                                             return (
                                                                 <tr key={ev.id} className="text-xs group hover:bg-slate-50 transition-colors">
-                                                                    <td className="py-3 font-semibold text-slate-800 truncate max-w-[110px]" title={ev.title}>
+                                                                    <td className="py-3 font-semibold text-slate-800 text-center truncate max-w-[110px]" title={ev.title}>
                                                                         {ev.title}
                                                                     </td>
                                                                     <td className="py-3 text-center text-slate-600 font-medium">
@@ -1293,19 +1293,19 @@ export default function AdminDashboardPage() {
                                                                                     {ev.occupancyRate}%
                                                                                 </span>
                                                                             </td>
-                                                                            <td className="py-3 text-right text-slate-700 font-semibold">
+                                                                            <td className="py-3 text-center text-slate-700 font-semibold">
                                                                                 {formatCurrency(ev.totalRevenueCents)}
                                                                             </td>
                                                                         </>
                                                                     ) : (
                                                                         <>
-                                                                            <td className="py-3 text-right text-slate-700 font-semibold">
+                                                                            <td className="py-3 text-center text-slate-700 font-semibold">
                                                                                 {formatCurrency(ev.totalRevenueCents)}
                                                                             </td>
-                                                                            <td className="py-3 text-right text-rose-600 font-semibold">
+                                                                            <td className="py-3 text-center text-rose-600 font-semibold">
                                                                                 {ev.totalExpensesCents > 0 ? `-${formatCurrency(ev.totalExpensesCents)}` : "—"}
                                                                             </td>
-                                                                            <td className={`py-3 text-right font-bold ${(ev.netMarginCents || 0) >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                                                                            <td className={`py-3 text-center font-bold ${(ev.netMarginCents || 0) >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
                                                                                 {formatCurrency(ev.netMarginCents || 0)}
                                                                             </td>
                                                                         </>

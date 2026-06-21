@@ -34,7 +34,7 @@ async def sync_revenues_to_finance(db: AsyncSession, tenant_id: str):
     # ----------------------------------------------------------------
     CANONICAL_OFFER_NAME = "Offres et forfaits de crédits"
     LEGACY_OFFER_NAMES   = {"Ventes Offres", "Offre de cours", "Offres", "Ventes", CANONICAL_OFFER_NAME}
-    CANONICAL_EVENT_NAME = "Événements"
+    CANONICAL_EVENT_NAME = "Évènements"
     LEGACY_EVENT_NAMES   = {"Événements", "Évènements", "Evenements", "Events", "Evenement", "Événement", "Évènement"}
 
     # Cherche parmi tous les noms connus en une seule requête
@@ -306,8 +306,8 @@ async def list_categories(
     RENAMES = {
         "Offre de cours": "Offres et forfaits de crédits",
         "Ventes Offres": "Offres et forfaits de crédits",
-        "Evenements": "Événements",
-        "Évènements": "Événements",
+        "Evenements": "Évènements",
+        "Événements": "Évènements",
     }
     for old_name, new_name in RENAMES.items():
         res = await db.execute(
@@ -356,7 +356,7 @@ async def seed_categories(
         
         # Recettes
         {"name": "Offres et forfaits de crédits", "type": FinanceTransactionType.INCOME, "color": "#3b82f6"},
-        {"name": "Événements", "type": FinanceTransactionType.INCOME, "color": "#8b5cf6"},
+        {"name": "Évènements", "type": FinanceTransactionType.INCOME, "color": "#8b5cf6"},
         {"name": "Ventes Boutique", "type": FinanceTransactionType.INCOME, "color": "#10b981"},
         {"name": "Subventions", "type": FinanceTransactionType.INCOME, "color": "#ec4899"},
     ]
