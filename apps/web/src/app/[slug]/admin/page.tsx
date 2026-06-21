@@ -35,6 +35,8 @@ export default function AdminDashboardPage() {
     const [eventRegistrations, setEventRegistrations] = useState<AdminEventRegistrationItem[]>([]);
     const [campaigns, setCampaigns] = useState<any[]>([]);
     const [recentComments, setRecentComments] = useState<any[]>([]);
+    const [offersMap, setOffersMap] = useState<Record<string, string>>({});
+    const [eventsList, setEventsList] = useState<any[]>([]);
 
     // Custom range and Global View states
     const [isGlobalView, setIsGlobalView] = useState(false);
@@ -107,7 +109,7 @@ export default function AdminDashboardPage() {
                 }
 
                 // Fetch secondary stats in parallel
-                const [segmentsData, sessionsData, ordersData, campaignsData, eventsData] = await Promise.all([
+                const [segmentsData, sessionsData, ordersData, campaignsData, eventsData, offersData, adminEventsData] = await Promise.all([
                     api.getSegmentsStats().catch(err => {
                         console.warn("Segments stats fetch failed:", err);
                         return { prospect: 0, decouverte_1: 0, decouverte_2: 0, post_essai: 0, actif: 0, occasionnel: 0, distant: 0, inactif: 0, archive: 0 };
@@ -130,6 +132,14 @@ export default function AdminDashboardPage() {
                     api.getAdminEventRegistrations().catch(err => {
                         console.warn("Event registrations fetch failed:", err);
                         return [];
+                    }),
+                    api.getOffers(true).catch(err => {
+                        console.warn("Offers fetch failed:", err);
+                        return [];
+                    }),
+                    api.getAdminEvents().catch(err => {
+                        console.warn("Admin events fetch failed:", err);
+                        return [];
                     })
                 ]);
 
@@ -138,6 +148,16 @@ export default function AdminDashboardPage() {
                 if (ordersData) setOrders(ordersData);
                 if (campaignsData) setCampaigns(campaignsData);
                 if (eventsData) setEventRegistrations(eventsData);
+                if (adminEventsData) setEventsList(adminEventsData);
+                if (offersData) {
+                    const mapping: Record<string, string> = {};
+                    offersData.forEach((o: any) => {
+                        if (o.id && o.engagement_type) {
+                            mapping[o.id] = o.engagement_type;
+                        }
+                    });
+                    setOffersMap(mapping);
+                }
 
                 // Fetch survey campaign comments
                 if (campaignsData && campaignsData.length > 0) {
@@ -277,6 +297,189 @@ export default function AdminDashboardPage() {
     const totalActiveOffers = useMemo(() => {
         return activeOffersStats.reduce((sum, item) => sum + item.count, 0);
     }, [activeOffersStats]);
+
+    // 4b. Performance of Activities/Sessions
+    const activityPerformanceStats = useMemo(() => {
+        const stats: Record<string, { sessionCount: number; totalBookings: number; totalCapacity: number }> = {};
+        
+        currentSessions.forEach(s => {
+            const name = s.activity_type?.trim() || s.title?.trim() || "Sans titre";
+            if (!stats[name]) {
+                stats[name] = { sessionCount: 0, totalBookings: 0, totalCapacity: 0 };
+            }
+            stats[name].sessionCount += 1;
+            stats[name].totalBookings += s.current_participants || 0;
+            stats[name].totalCapacity += s.max_participants || 0;
+        });
+        
+        return Object.entries(stats).map(([name, val]) => {
+            const occupancyRate = val.totalCapacity > 0 ? Math.round((val.totalBookings / val.totalCapacity) * 100) : 0;
+            return {
+                name,
+                sessionCount: val.sessionCount,
+                totalBookings: val.totalBookings,
+                totalCapacity: val.totalCapacity,
+                occupancyRate
+            };
+        }).sort((a, b) => b.totalBookings - a.totalBookings); // Sorted by absolute bookings count
+    }, [currentSessions]);
+
+    // 4b-2. Performance of Events (Global View)
+    const eventPerformanceStats = useMemo(() => {
+        let rangeStart: Date;
+        let rangeEnd: Date;
+        if (isGlobalView) {
+            rangeStart = new Date(customStartDate + "T00:00:00");
+            rangeEnd = new Date(customEndDate + "T23:59:59");
+        } else {
+            rangeStart = new Date(selectedYear, selectedMonth - 1, 1, 0, 0, 0);
+            rangeEnd = new Date(selectedYear, selectedMonth, 0, 23, 59, 59);
+        }
+
+        const activeEvents = eventsList.filter(e => {
+            const date = new Date(e.event_date);
+            return !isNaN(date.getTime()) && date >= rangeStart && date <= rangeEnd;
+        });
+
+        return activeEvents.map(e => {
+            const regs = eventRegistrations.filter(r => r.event_id === e.id && r.status !== 'cancelled');
+            const totalRevenueCents = regs.reduce((sum, r) => sum + (r.price_paid_cents || 0), 0);
+            const totalBookings = regs.length;
+            const occupancyRate = e.max_places > 0 ? Math.round((totalBookings / e.max_places) * 100) : 0;
+
+            return {
+                id: e.id,
+                title: e.title,
+                date: e.event_date,
+                totalBookings,
+                maxPlaces: e.max_places,
+                occupancyRate,
+                totalRevenueCents
+            };
+        }).sort((a, b) => b.totalRevenueCents - a.totalRevenueCents);
+    }, [eventsList, eventRegistrations, isGlobalView, customStartDate, customEndDate, selectedMonth, selectedYear]);
+
+    // 4c. Monthly Seasonality (frequency and sales by category)
+    const monthlySeasonalityStats = useMemo(() => {
+        const stats: Record<string, { 
+            monthLabel: string;
+            registrationCount: number;
+            salesCount: number;
+            essaiSales: number;
+            regulierSales: number;
+            ponctuelSales: number;
+            eventSales: number;
+            totalRevenueCents: number;
+        }> = {};
+
+        const getYearMonthKey = (date: Date) => {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            return `${y}-${m}`;
+        };
+
+        const getMonthLabel = (date: Date) => {
+            return date.toLocaleDateString("fr-FR", { month: "short", year: "numeric" });
+        };
+
+        // Determine active range
+        let rangeStart: Date;
+        let rangeEnd: Date;
+        if (isGlobalView) {
+            rangeStart = new Date(customStartDate + "T00:00:00");
+            rangeEnd = new Date(customEndDate + "T23:59:59");
+        } else {
+            rangeStart = new Date(selectedYear, selectedMonth - 1, 1, 0, 0, 0);
+            rangeEnd = new Date(selectedYear, selectedMonth, 0, 23, 59, 59);
+        }
+
+        // Initialize months in range to keep it continuous
+        const temp = new Date(rangeStart);
+        // Avoid infinite loop if dates are invalid
+        if (!isNaN(temp.getTime())) {
+            const maxIterations = 36; // Limit to 3 years max to prevent any browser hangs
+            let iterations = 0;
+            while (temp <= rangeEnd && iterations < maxIterations) {
+                const key = getYearMonthKey(temp);
+                if (!stats[key]) {
+                    stats[key] = {
+                        monthLabel: getMonthLabel(temp),
+                        registrationCount: 0,
+                        salesCount: 0,
+                        essaiSales: 0,
+                        regulierSales: 0,
+                        ponctuelSales: 0,
+                        eventSales: 0,
+                        totalRevenueCents: 0,
+                    };
+                }
+                temp.setMonth(temp.getMonth() + 1);
+                iterations++;
+            }
+        }
+
+        // 1. Process registrations
+        currentSessions.forEach(s => {
+            const sessionDate = new Date(s.start_time);
+            if (!isNaN(sessionDate.getTime()) && sessionDate >= rangeStart && sessionDate <= rangeEnd) {
+                const key = getYearMonthKey(sessionDate);
+                if (stats[key]) {
+                    stats[key].registrationCount += s.current_participants || 0;
+                }
+            }
+        });
+
+        // 2. Process orders
+        currentOrders.forEach(o => {
+            const orderDate = new Date(o.created_at || o.start_date);
+            if (!isNaN(orderDate.getTime()) && orderDate >= rangeStart && orderDate <= rangeEnd) {
+                const key = getYearMonthKey(orderDate);
+                if (stats[key]) {
+                    stats[key].salesCount += 1;
+                    stats[key].totalRevenueCents += o.price_cents || 0;
+                    
+                    const type = offersMap[o.offer_id] || 'regulier';
+                    if (type === 'essai') {
+                        stats[key].essaiSales += 1;
+                    } else if (type === 'ponctuel') {
+                        stats[key].ponctuelSales += 1;
+                    } else {
+                        stats[key].regulierSales += 1;
+                    }
+                }
+            }
+        });
+
+        // 3. Process event registrations
+        eventRegistrations.forEach(r => {
+            const regDate = new Date(r.created_at);
+            if (!isNaN(regDate.getTime()) && regDate >= rangeStart && regDate <= rangeEnd) {
+                const key = getYearMonthKey(regDate);
+                if (stats[key]) {
+                    stats[key].salesCount += 1;
+                    stats[key].eventSales += 1;
+                    stats[key].totalRevenueCents += r.price_paid_cents || 0;
+                }
+            }
+        });
+
+        return Object.entries(stats)
+            .sort((a, b) => a[0].localeCompare(b[0]))
+            .map(([_, val]) => val);
+    }, [currentSessions, currentOrders, eventRegistrations, offersMap, isGlobalView, customStartDate, customEndDate, selectedMonth, selectedYear]);
+
+    // Max values for monthly seasonality progress bars
+    const maxSeasonalityValues = useMemo(() => {
+        let maxReg = 0;
+        let maxSales = 0;
+        let maxRevenue = 0;
+        monthlySeasonalityStats.forEach(item => {
+            if (item.registrationCount > maxReg) maxReg = item.registrationCount;
+            if (item.salesCount > maxSales) maxSales = item.salesCount;
+            if (item.totalRevenueCents > maxRevenue) maxRevenue = item.totalRevenueCents;
+        });
+        return { maxReg, maxSales, maxRevenue };
+    }, [monthlySeasonalityStats]);
 
     // 5. Payments to regularize (all periods, combining orders and events)
     const regularizePayments = useMemo(() => {
@@ -804,6 +1007,281 @@ export default function AdminDashboardPage() {
                                 </div>
                             </section>
                         </div>
+
+                    {/* Performance & Saisonnalité des Activités */}
+                    <div className="space-y-4">
+                        <h2 className="text-xs font-medium text-slate-400 uppercase tracking-widest px-1">Performance</h2>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            {/* Performance des séances */}
+                            <section className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col lg:col-span-1">
+                                <div className="space-y-2 mb-6 text-left">
+                                    <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                                        <span>📈</span> Performance des Activités / Séances
+                                    </h3>
+                                    <p className="text-[11px] text-slate-400 font-medium">
+                                        Classement par volume de réservations absolu et efficacité de remplissage sur la période
+                                    </p>
+                                </div>
+
+                                <div className="flex-1 overflow-x-auto text-left">
+                                    {activityPerformanceStats.length === 0 ? (
+                                        <div className="flex-1 flex flex-col items-center justify-center text-slate-400 italic text-xs py-8">
+                                            Aucune séance trouvée sur cette période
+                                        </div>
+                                    ) : (
+                                        <table className="w-full text-left">
+                                            <thead>
+                                                <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                    <th className="py-2">Activité / Séance</th>
+                                                    <th className="py-2 text-center">Séances</th>
+                                                    <th className="py-2 text-center">Insc.</th>
+                                                    <th className="py-2 text-right">Rempl.</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {activityPerformanceStats.map((act) => {
+                                                    let badgeColor = "bg-slate-100 text-slate-700";
+                                                    if (act.occupancyRate >= 80) badgeColor = "bg-emerald-50 text-emerald-700 border border-emerald-100";
+                                                    else if (act.occupancyRate >= 50) badgeColor = "bg-amber-50 text-amber-700 border border-amber-100";
+                                                    else badgeColor = "bg-rose-50 text-rose-700 border border-rose-100";
+
+                                                    return (
+                                                        <tr key={act.name} className="text-xs group hover:bg-slate-50 transition-colors">
+                                                            <td className="py-3 font-semibold text-slate-800 truncate max-w-[150px]" title={act.name}>
+                                                                {act.name}
+                                                            </td>
+                                                            <td className="py-3 text-center text-slate-500 font-medium">{act.sessionCount}</td>
+                                                            <td className="py-3 text-center text-slate-900 font-bold">{act.totalBookings}</td>
+                                                            <td className="py-3 text-right font-bold">
+                                                                <span className={`px-2 py-0.5 rounded-full text-[10px] ${badgeColor}`}>
+                                                                    {act.occupancyRate}%
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    )}
+                                </div>
+                            </section>
+
+                            {/* Note / Espace vide comblé en vue mensuelle */}
+                            {!isGlobalView && (
+                                <div className="lg:col-span-2 border-2 border-dashed border-slate-200 rounded-3xl p-8 flex flex-col items-center justify-center text-center bg-slate-50/50 min-h-[300px]">
+                                    <span className="text-3xl mb-4">📊</span>
+                                    <p className="text-xs text-slate-400 max-w-md leading-relaxed">
+                                        Activez la <strong className="text-slate-500 font-semibold">Vue Globale (date à date)</strong> en haut à droite pour débloquer les analyses avancées de <strong>Performance des Événements</strong>, de <strong>Saisonnalité de la Fréquentation</strong> et de <strong>Saisonnalité des Ventes & CA</strong>.
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Saisonnalité & Performance des Événements - Affichées uniquement en vue globale (date à date longue période) */}
+                            {isGlobalView && (
+                                <>
+                                    {/* Saisonnalité de la Fréquentation */}
+                                    <section className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col lg:col-span-2">
+                                        <div className="space-y-2 mb-6 text-left">
+                                            <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                                                <span>👤</span> Saisonnalité de la Fréquentation
+                                            </h3>
+                                            <p className="text-[11px] text-slate-400 font-medium">
+                                                Nombre mensuel d'inscriptions aux séances et comparaison de l'activité sur la période
+                                            </p>
+                                        </div>
+
+                                        <div className="flex-1 overflow-x-auto text-left">
+                                            {monthlySeasonalityStats.length === 0 ? (
+                                                <div className="flex-1 flex flex-col items-center justify-center text-slate-400 italic text-xs py-8">
+                                                    Aucune donnée mensuelle disponible sur cette période
+                                                </div>
+                                            ) : (
+                                                <table className="w-full text-left">
+                                                    <thead>
+                                                        <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                            <th className="py-2 w-24">Mois</th>
+                                                            <th className="py-2 text-center w-24">Inscriptions</th>
+                                                            <th className="py-2 text-left">Intensité de fréquentation</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-50">
+                                                        {monthlySeasonalityStats.map((item) => {
+                                                            const maxReg = maxSeasonalityValues.maxReg || 1;
+                                                            const pct = Math.round((item.registrationCount / maxReg) * 100);
+                                                            return (
+                                                                <tr key={item.monthLabel} className="text-xs group hover:bg-slate-50 transition-colors">
+                                                                    <td className="py-3 font-semibold text-slate-800 capitalize">
+                                                                        {item.monthLabel}
+                                                                    </td>
+                                                                    <td className="py-3 text-center font-semibold text-slate-700">
+                                                                        {item.registrationCount}
+                                                                    </td>
+                                                                    <td className="py-3 text-left pr-4">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className="h-4 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100 max-w-sm">
+                                                                                <div 
+                                                                                    className="h-full rounded-full bg-sky-500 transition-all duration-1000" 
+                                                                                    style={{ width: `${pct}%` }} 
+                                                                                />
+                                                                            </div>
+                                                                            <span className="text-[10px] text-slate-400 font-semibold">{item.registrationCount} inscr.</span>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            )}
+                                        </div>
+                                    </section>
+
+                                    {/* Performance des Événements */}
+                                    <section className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col lg:col-span-1">
+                                        <div className="space-y-2 mb-6 text-left">
+                                            <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                                                <span>🎟️</span> Performance des Événements
+                                            </h3>
+                                            <p className="text-[11px] text-slate-400 font-medium">
+                                                Inscriptions, taux de remplissage et chiffre d'affaires généré par événement
+                                            </p>
+                                        </div>
+
+                                        <div className="flex-1 overflow-x-auto text-left">
+                                            {eventPerformanceStats.length === 0 ? (
+                                                <div className="flex-1 flex flex-col items-center justify-center text-slate-400 italic text-xs py-8">
+                                                    Aucun événement trouvé sur cette période
+                                                </div>
+                                            ) : (
+                                                <table className="w-full text-left">
+                                                    <thead>
+                                                        <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                            <th className="py-2">Événement</th>
+                                                            <th className="py-2 text-center">Insc.</th>
+                                                            <th className="py-2 text-center">Rempl.</th>
+                                                            <th className="py-2 text-right">CA</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-50">
+                                                        {eventPerformanceStats.map((ev) => {
+                                                            let badgeColor = "bg-slate-100 text-slate-700";
+                                                            if (ev.occupancyRate >= 80) badgeColor = "bg-emerald-50 text-emerald-700 border border-emerald-100";
+                                                            else if (ev.occupancyRate >= 50) badgeColor = "bg-amber-50 text-amber-700 border border-amber-100";
+                                                            else badgeColor = "bg-rose-50 text-rose-700 border border-rose-100";
+
+                                                            return (
+                                                                <tr key={ev.id} className="text-xs group hover:bg-slate-50 transition-colors">
+                                                                    <td className="py-3 font-semibold text-slate-800 truncate max-w-[110px]" title={ev.title}>
+                                                                        {ev.title}
+                                                                    </td>
+                                                                    <td className="py-3 text-center text-slate-600 font-medium">
+                                                                        {ev.totalBookings} / {ev.maxPlaces}
+                                                                    </td>
+                                                                    <td className="py-3 text-center font-bold">
+                                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] ${badgeColor}`}>
+                                                                            {ev.occupancyRate}%
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="py-3 text-right text-slate-700 font-semibold">
+                                                                        {formatCurrency(ev.totalRevenueCents)}
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            )}
+                                        </div>
+                                    </section>
+
+                                    {/* Saisonnalité des Ventes */}
+                                    <section className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col lg:col-span-2 text-left">
+                                        <div className="space-y-2 mb-6">
+                                            <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                                                <span>💳</span> Saisonnalité des Ventes & CA
+                                            </h3>
+                                            <p className="text-[11px] text-slate-400 font-medium">
+                                                Volume des ventes et Chiffre d'Affaires estimé par mois, avec répartition des typologies d'offres (hors événements)
+                                            </p>
+                                        </div>
+
+                                        <div className="flex-1 overflow-x-auto">
+                                            {monthlySeasonalityStats.length === 0 ? (
+                                                <div className="flex flex-col items-center justify-center text-slate-400 italic text-xs py-8">
+                                                    Aucune donnée mensuelle disponible sur cette période
+                                                </div>
+                                            ) : (
+                                                <table className="w-full text-left table-auto">
+                                                    <thead>
+                                                        <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                            <th className="py-2 w-20">Mois</th>
+                                                            <th className="py-2 text-center w-20">Ventes Totales</th>
+                                                            <th className="py-2 text-left w-auto">Comparatif Volume & CA</th>
+                                                            <th className="py-2 text-center w-24">CA Estimé</th>
+                                                            <th className="py-2 text-center text-emerald-600 w-14">Essai</th>
+                                                            <th className="py-2 text-center text-indigo-600 w-14">Régul.</th>
+                                                            <th className="py-2 text-center text-amber-600 w-14">Ponct.</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-50">
+                                                        {monthlySeasonalityStats.map((item) => {
+                                                            const maxSales = maxSeasonalityValues.maxSales || 1;
+                                                            const maxRevenue = maxSeasonalityValues.maxRevenue || 1;
+                                                            const salesPct = Math.round((item.salesCount / maxSales) * 100);
+                                                            const revenuePct = Math.round((item.totalRevenueCents / maxRevenue) * 100);
+
+                                                            return (
+                                                                <tr key={item.monthLabel} className="text-xs group hover:bg-slate-50 transition-colors">
+                                                                    <td className="py-3 font-semibold text-slate-800 capitalize">
+                                                                        {item.monthLabel}
+                                                                    </td>
+                                                                    <td className="py-3 text-center font-semibold text-slate-700">
+                                                                        {item.salesCount}
+                                                                    </td>
+                                                                    <td className="py-3 pr-2">
+                                                                        <div className="space-y-1.5 w-full">
+                                                                            {/* Progress bar for Sales Volume */}
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="text-[9px] text-slate-400 font-bold uppercase w-8">Vol:</span>
+                                                                                <div className="h-2 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100">
+                                                                                    <div 
+                                                                                        className="h-full rounded-full bg-slate-500 transition-all duration-1000" 
+                                                                                        style={{ width: `${salesPct}%` }} 
+                                                                                    />
+                                                                                </div>
+                                                                                <span className="text-[9px] text-slate-400 font-semibold w-12 text-left shrink-0">{item.salesCount} v.</span>
+                                                                            </div>
+                                                                            {/* Progress bar for Estimated Revenue */}
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="text-[9px] text-slate-400 font-bold uppercase w-8">CA:</span>
+                                                                                <div className="h-2 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100">
+                                                                                    <div 
+                                                                                        className="h-full rounded-full bg-emerald-500 transition-all duration-1000" 
+                                                                                        style={{ width: `${revenuePct}%` }} 
+                                                                                    />
+                                                                                </div>
+                                                                                <span className="text-[9px] text-slate-400 font-semibold w-20 text-left shrink-0">{formatCurrency(item.totalRevenueCents)}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="py-3 text-center text-slate-700 font-semibold">
+                                                                        {formatCurrency(item.totalRevenueCents)}
+                                                                    </td>
+                                                                    <td className="py-3 text-center text-emerald-600 font-semibold">{item.essaiSales}</td>
+                                                                    <td className="py-3 text-center text-indigo-600 font-semibold">{item.regulierSales}</td>
+                                                                    <td className="py-3 text-center text-amber-600 font-semibold">{item.ponctuelSales}</td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            )}
+                                        </div>
+                                    </section>
+                                </>
+                            )}
+                        </div>
+                    </div>
 
                     {/* Suivi des paiements non perçus */}
                     <div className="space-y-4">
