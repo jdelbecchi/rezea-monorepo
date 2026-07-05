@@ -32,12 +32,12 @@ export default function SysAdminLoginPage() {
             <div className="max-w-md w-full mx-4">
                 {/* Header */}
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 mb-4 shadow-lg shadow-amber-500/20">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/10 border border-white/20 mb-4 shadow-lg">
                         <span className="text-2xl">🛡️</span>
                     </div>
-                    <h1 className="text-3xl font-bold text-white tracking-tight">REZEA</h1>
-                    <div className="mt-2 inline-block px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
-                        <span className="text-amber-400 text-sm font-semibold">Administration Système</span>
+                    <h1 className="text-3xl font-medium text-white tracking-tight">REZEA</h1>
+                    <div className="mt-2 inline-block px-3 py-1 rounded-full bg-white/5 border border-white/10">
+                        <span className="text-slate-300 text-sm font-medium">Administration Système</span>
                     </div>
                 </div>
 
@@ -46,7 +46,7 @@ export default function SysAdminLoginPage() {
                     <form onSubmit={handleSubmit} className="space-y-5">
                         {error && (
                             <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-4">
-                                <p className="text-sm text-red-400">{error}</p>
+                                <p className="text-sm text-red-400 font-medium">{error}</p>
                             </div>
                         )}
 
@@ -58,7 +58,7 @@ export default function SysAdminLoginPage() {
                                 id="email"
                                 type="email"
                                 required
-                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all"
+                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all font-medium"
                                 placeholder="admin@rezea.app"
                                 value={formData.email}
                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -73,7 +73,7 @@ export default function SysAdminLoginPage() {
                                 id="password"
                                 type="password"
                                 required
-                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all"
+                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all font-medium"
                                 placeholder="••••••••"
                                 value={formData.password}
                                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
@@ -83,14 +83,14 @@ export default function SysAdminLoginPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-3 px-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold rounded-xl shadow-lg shadow-amber-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full py-3 px-4 bg-white hover:bg-white/90 text-slate-900 font-medium rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {loading ? "Connexion..." : "Se connecter"}
                         </button>
                     </form>
                 </div>
 
-                <p className="text-center text-slate-600 text-xs mt-6">
+                <p className="text-center text-slate-600 text-xs mt-6 font-medium">
                     Accès réservé aux administrateurs système REZEA
                 </p>
             </div>

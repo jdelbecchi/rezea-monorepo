@@ -132,3 +132,7 @@ input[type="color"]::-webkit-color-swatch {
   border: 1px solid #e2e8f0;
   border-radius: inherit;
 }
+
+body, button, input, textarea, select, table, th, td {
+  font-family: var(--font-livvic), sans-serif !important;
+}

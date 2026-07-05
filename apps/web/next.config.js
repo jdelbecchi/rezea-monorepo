@@ -16,12 +16,12 @@ const nextConfig = {
   async redirects() {
     return [
       {
-        source: '/:slug/dashboard/:path*',
+        source: '/:slug((?!sysadmin)[^/]+)/dashboard/:path*',
         destination: '/:slug/:path*',
         permanent: true,
       },
       {
-        source: '/:slug/dashboard',
+        source: '/:slug((?!sysadmin)[^/]+)/dashboard',
         destination: '/:slug/home',
         permanent: true,
       },

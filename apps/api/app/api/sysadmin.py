@@ -1,5 +1,6 @@
 """Routes sysadmin — gestion globale des tenants (hors-tenant)"""
-from datetime import timedelta
+from datetime import timedelta, datetime
+import secrets
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -97,7 +98,14 @@ async def create_tenant(
             detail="Ce slug est déjà utilisé"
         )
 
-    tenant = Tenant(**tenant_in.model_dump())
+    # Préparer le nouveau tenant
+    tenant_dict = tenant_in.model_dump()
+    
+    # Générer le token d'invitation (valable 7 jours par défaut)
+    tenant_dict["invitation_token"] = secrets.token_urlsafe(32)
+    tenant_dict["invitation_expires_at"] = datetime.utcnow() + timedelta(days=7)
+
+    tenant = Tenant(**tenant_dict)
     db.add(tenant)
     await db.commit()
     await db.refresh(tenant)
@@ -137,7 +145,11 @@ async def update_tenant(
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant non trouvé")
 
-    allowed_fields = {"name", "description", "is_active", "max_users", "max_sessions_per_day"}
+    allowed_fields = {
+        "name", "description", "is_active", "max_users", "max_sessions_per_day",
+        "client_first_name", "client_last_name", "client_email", "client_phone",
+        "client_address", "sysadmin_notes"
+    }
     for field, value in update_data.items():
         if field in allowed_fields:
             setattr(tenant, field, value)
@@ -160,3 +172,27 @@ async def get_tenant_stats(
     user_count = result.scalar() or 0
 
     return {"tenant_id": tenant_id, "user_count": user_count}
+
+
+@router.post("/tenants/{tenant_id}/generate-token", response_model=TenantResponse)
+async def generate_invitation_token(
+    tenant_id: str,
+    _=Depends(get_current_sysadmin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Génère ou régénère un token d'invitation pour le tenant"""
+    result = await db.execute(
+        select(Tenant).where(Tenant.id == tenant_id)
+    )
+    tenant = result.scalar_one_or_none()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant non trouvé")
+
+    tenant.invitation_token = secrets.token_urlsafe(32)
+    tenant.invitation_expires_at = datetime.utcnow() + timedelta(days=7)
+    
+    await db.commit()
+    await db.refresh(tenant)
+    
+    logger.info("Token d'invitation régénéré par sysadmin", tenant_id=str(tenant.id))
+    return tenant

@@ -134,6 +134,17 @@ class TenantBase(BaseModel):
     slug: str = Field(..., min_length=3, max_length=100)
     description: Optional[str] = None
     email: Optional[EmailStr] = None
+    
+    # Infos de contact client
+    client_first_name: Optional[str] = None
+    client_last_name: Optional[str] = None
+    client_email: Optional[EmailStr] = None
+    client_phone: Optional[str] = None
+    client_address: Optional[str] = None
+    sysadmin_notes: Optional[str] = None
+    max_users: Optional[int] = 100
+    max_sessions_per_day: Optional[int] = 10
+    
     user_header_show_logo: Optional[bool] = True
     user_header_show_name: Optional[bool] = True
     user_home_layout: Optional[str] = "both"
@@ -260,7 +271,28 @@ class TenantResponse(TenantBase):
     enable_review_prompts: bool = False
     google_review_url: Optional[str] = None
     review_prompt_threshold: int = 5
+    
+    # Infos de contact client et d'invitation
+    client_first_name: Optional[str] = None
+    client_last_name: Optional[str] = None
+    client_email: Optional[str] = None
+    client_phone: Optional[str] = None
+    client_address: Optional[str] = None
+    sysadmin_notes: Optional[str] = None
+    invitation_token: Optional[str] = None
+    invitation_expires_at: Optional[datetime] = None
+    claimed_at: Optional[datetime] = None
+    
     created_at: datetime
+
+
+class TenantClaim(BaseModel):
+    """Requête d'initialisation de tenant par le premier administrateur"""
+    token: str
+    email: EmailStr
+    password: str = Field(..., min_length=8)
+    first_name: str = Field(..., min_length=1, max_length=100)
+    last_name: str = Field(..., min_length=1, max_length=100)
 
 
 # ==================== SysAdmin ====================

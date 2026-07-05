@@ -164,6 +164,17 @@ class Tenant(Base):
     payment_redirect_link = Column(String(500), nullable=True)
     pay_now_instructions = Column(Text, nullable=True)
     
+    # Contact client et invitation
+    client_first_name = Column(String(255), nullable=True)
+    client_last_name = Column(String(255), nullable=True)
+    client_email = Column(String(255), nullable=True)
+    client_phone = Column(String(50), nullable=True)
+    client_address = Column(Text, nullable=True)
+    sysadmin_notes = Column(Text, nullable=True)
+    invitation_token = Column(String(100), unique=True, index=True, nullable=True)
+    invitation_expires_at = Column(DateTime, nullable=True)
+    claimed_at = Column(DateTime, nullable=True)
+    
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

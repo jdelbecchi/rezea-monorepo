@@ -1,12 +1,15 @@
 """Routes tenants"""
 from typing import List
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, Request, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 
 from app.db.session import get_db
-from app.models.models import Tenant, User, UserRole
-from app.schemas.schemas import TenantResponse, TenantCreate, TenantSettingsUpdate
+from app.models.models import Tenant, User, UserRole, CreditAccount
+from app.schemas.schemas import TenantResponse, TenantCreate, TenantSettingsUpdate, TenantClaim, TokenResponse
+from app.core.security import get_password_hash, create_access_token
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -197,3 +200,120 @@ async def search_tenants(
     
     result = await db.execute(query)
     return result.scalars().all()
+
+
+@router.get("/claim/verify", response_model=TenantResponse)
+async def verify_claim_token(
+    token: str = Query(...),
+    db: AsyncSession = Depends(get_db)
+):
+    """Vérifie si un token d'invitation est valide et retourne le tenant associé (Public)"""
+    result = await db.execute(
+        select(Tenant).where(Tenant.invitation_token == token)
+    )
+    tenant = result.scalar_one_or_none()
+    if not tenant:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Jeton d'invitation invalide"
+        )
+    
+    if tenant.invitation_expires_at and tenant.invitation_expires_at < datetime.utcnow():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Jeton d'invitation expiré"
+        )
+    
+    return tenant
+
+
+@router.post("/claim", response_model=TokenResponse)
+async def claim_tenant(
+    claim_in: TenantClaim,
+    db: AsyncSession = Depends(get_db)
+):
+    """Initialise le premier administrateur du tenant et consomme le jeton (Public)"""
+    # 1. Vérifier le token
+    result = await db.execute(
+        select(Tenant).where(Tenant.invitation_token == claim_in.token)
+    )
+    tenant = result.scalar_one_or_none()
+    if not tenant:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Jeton d'invitation invalide"
+        )
+    
+    if tenant.invitation_expires_at and tenant.invitation_expires_at < datetime.utcnow():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Jeton d'invitation expiré"
+        )
+        
+    # 2. Vérifier que l'email n'est pas déjà utilisé au sein de ce tenant
+    result = await db.execute(
+        select(User).where(
+            User.tenant_id == tenant.id,
+            User.email == claim_in.email
+        )
+    )
+    existing_user = result.scalar_one_or_none()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cet email est déjà utilisé pour cet établissement"
+        )
+        
+    # 3. Créer l'utilisateur Administrateur (Role owner)
+    new_user = User(
+        tenant_id=tenant.id,
+        email=claim_in.email,
+        hashed_password=get_password_hash(claim_in.password),
+        first_name=claim_in.first_name,
+        last_name=claim_in.last_name,
+        role=UserRole.OWNER,
+        is_active=True,
+        is_active_override=True,
+        email_verified=True,
+        created_by_admin=False
+    )
+    db.add(new_user)
+    await db.flush()  # Obtenir l'ID
+    
+    # 4. Créer le compte de crédits associé
+    credit_account = CreditAccount(
+        tenant_id=tenant.id,
+        user_id=new_user.id,
+        balance=0
+    )
+    db.add(credit_account)
+    
+    # 5. Consommer le token
+    tenant.invitation_token = None
+    tenant.invitation_expires_at = None
+    tenant.claimed_at = datetime.utcnow()
+    
+    await db.commit()
+    await db.refresh(new_user)
+    
+    # 6. Générer le JWT token de connexion immédiate
+    access_token = create_access_token(
+        data={
+            "sub": str(new_user.id),
+            "tenant_id": str(tenant.id),
+            "role": new_user.role.value
+        },
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    
+    # Mettre à jour last_login
+    new_user.last_login = datetime.utcnow()
+    await db.commit()
+    
+    return TokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        user_id=new_user.id,
+        tenant_id=tenant.id,
+        role=new_user.role
+    )
