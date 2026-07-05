@@ -82,13 +82,13 @@ async def shop_checkout(
     is_pay_later_allowed = tenant.allow_pay_later_offers
     effective_pay_later = (checkout.pay_later and is_pay_later_allowed) or is_link_missing
     
-    # Determine price and payment status based on chosen pricing_type
+    # Determine price based on chosen pricing_type
     if checkout.pricing_type == "recurring" and offer.price_recurring_cents:
         price_cents = offer.price_recurring_cents
-        payment_status = OrderPaymentStatus.INSTALLMENT
     else:
         price_cents = offer.price_lump_sum_cents or offer.price_recurring_cents or 0
-        payment_status = OrderPaymentStatus.WAITING if effective_pay_later else OrderPaymentStatus.PENDING
+
+    payment_status = OrderPaymentStatus.WAITING if effective_pay_later else OrderPaymentStatus.PENDING
 
     if price_cents == 0:
         payment_status = OrderPaymentStatus.PAID
@@ -103,6 +103,10 @@ async def shop_checkout(
         credits_total=offer.classes_included,
         is_unlimited=offer.is_unlimited,
         price_cents=price_cents,
+        price_recurring_cents=offer.price_recurring_cents,
+        recurring_count=offer.recurring_count,
+        featured_pricing=checkout.pricing_type,
+        period=offer.period,
         payment_status=payment_status,
         status="active",
         created_by_admin=False,

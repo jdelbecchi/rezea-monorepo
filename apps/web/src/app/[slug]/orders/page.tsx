@@ -108,6 +108,11 @@ export default function MemberOrdersPage() {
         }
     };
 
+    const formatExternalUrl = (url: string) => {
+        if (!url) return "";
+        return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+    };
+
     const getEventRegistrationStatusStyle = (status: string) => {
         switch (status) {
             case 'pending_payment': return 'bg-amber-100 text-amber-700 border-amber-200';
@@ -340,7 +345,7 @@ export default function MemberOrdersPage() {
                                         onMouseLeave={() => setHoveredCardId(null)}
                                         className="bg-white p-5 md:p-6 rounded-3xl border transition-all duration-300 relative overflow-hidden group"
                                         style={{ 
-                                            boxShadow: `4px 6px 18px -2px ${(tenant?.primary_color || '#2563eb')}45`,
+                                            boxShadow: `2px 4px 12px -2px ${(tenant?.primary_color || '#2563eb')}25`,
                                             borderColor: hoveredCardId === order.id 
                                                 ? tenant?.primary_color || '#2563eb' 
                                                 : `${(tenant?.primary_color || '#2563eb')}20`,
@@ -425,7 +430,7 @@ export default function MemberOrdersPage() {
                                                         <div className="flex flex-col md:flex-row justify-center md:justify-end items-center gap-3">
                                                             {(order.payment_status?.toLowerCase().includes('attente')) && tenant?.payment_redirect_link && (
                                                                 <a 
-                                                                    href={tenant.payment_redirect_link}
+                                                                    href={formatExternalUrl(tenant.payment_redirect_link)}
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
                                                                     className="w-full md:w-auto px-6 py-2.5 bg-slate-900 text-white text-[11px] font-medium rounded-xl transition-all shadow-lg flex items-center justify-center gap-4 group/btn active:scale-95"
@@ -457,7 +462,7 @@ export default function MemberOrdersPage() {
                                         onMouseLeave={() => setHoveredCardId(null)}
                                         className="bg-white p-5 md:p-6 rounded-3xl border transition-all duration-300 relative overflow-hidden group"
                                         style={{ 
-                                            boxShadow: `4px 6px 18px -2px ${(tenant?.primary_color || '#2563eb')}45`,
+                                            boxShadow: `2px 4px 12px -2px ${(tenant?.primary_color || '#2563eb')}25`,
                                             borderColor: hoveredCardId === reg.id 
                                                 ? tenant?.primary_color || '#2563eb' 
                                                 : `${(tenant?.primary_color || '#2563eb')}20`,
@@ -538,7 +543,7 @@ export default function MemberOrdersPage() {
                                                 {/* Bouton Payer */}
                                                 {(reg.payment_status?.toLowerCase().includes('attente') || reg.status?.toLowerCase().includes('payment')) && tenant?.payment_redirect_link && (
                                                     <a 
-                                                        href={tenant.payment_redirect_link}
+                                                        href={formatExternalUrl(tenant.payment_redirect_link)}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="px-6 py-3 bg-slate-900 text-white text-[11px] font-medium rounded-xl transition-all shadow-lg flex items-center justify-center gap-4 group/btn active:scale-95 mx-auto"
@@ -608,7 +613,7 @@ export default function MemberOrdersPage() {
                                          <p className="text-sm font-medium text-slate-900 leading-none">
                                             {selectedOrder.offer_snap_is_validity_unlimited ? 'Illimitée' : 
                                              (selectedOrder.offer_snap_validity_days ? 
-                                              `${selectedOrder.offer_snap_validity_days} ${selectedOrder.offer_snap_validity_unit === 'months' ? 'mois' : 'jours'}` : 
+                                              `${selectedOrder.offer_snap_validity_unit === 'months' ? Math.round(selectedOrder.offer_snap_validity_days / 30) : selectedOrder.offer_snap_validity_unit === 'weeks' ? Math.round(selectedOrder.offer_snap_validity_days / 7) : selectedOrder.offer_snap_validity_days} ${selectedOrder.offer_snap_validity_unit === 'months' ? 'mois' : selectedOrder.offer_snap_validity_unit === 'weeks' ? 'semaines' : 'jours'}` : 
                                               (selectedOrder.is_validity_unlimited ? 'Illimitée' : 
                                                (selectedOrder.end_date ? new Date(selectedOrder.end_date).toLocaleDateString("fr-FR") : "N/A")))}
                                          </p>

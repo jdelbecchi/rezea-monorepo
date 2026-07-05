@@ -592,7 +592,7 @@ export default function GestionInscriptionsPage() {
                                                 key={session.id} 
                                                 className="bg-white rounded-2xl border transition-all duration-500 hover:shadow-xl overflow-hidden group"
                                                 style={{ 
-                                                    boxShadow: `3px 4px 14px -2px ${(tenant?.primary_color || '#2563eb')}40`,
+                                                    boxShadow: `2px 3px 10px -2px ${(tenant?.primary_color || '#2563eb')}25`,
                                                     borderColor: `${(tenant?.primary_color || '#2563eb')}20`
                                                 }}
                                             >

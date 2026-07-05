@@ -84,7 +84,11 @@ export default function CheckoutPage() {
 
     const handleFinalRedirect = () => {
         if (successData?.redirect_url && tenant?.payment_redirect_link) {
-            window.open(successData.redirect_url, '_blank');
+            let url = successData.redirect_url;
+            if (!/^https?:\/\//i.test(url)) {
+                url = `https://${url}`;
+            }
+            window.open(url, '_blank');
             router.push(`/${params.slug}/home`);
         } else {
             router.push(`/${params.slug}/home`);

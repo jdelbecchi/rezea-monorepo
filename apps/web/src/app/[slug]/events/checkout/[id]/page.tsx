@@ -59,7 +59,8 @@ export default function EventCheckoutPage() {
             if (!payLater) {
                 const finalLink = event?.payment_link || tenant?.payment_redirect_link;
                 if (finalLink) {
-                    window.location.href = finalLink;
+                    const formattedLink = /^https?:\/\//i.test(finalLink) ? finalLink : `https://${finalLink}`;
+                    window.location.href = formattedLink;
                     return;
                 }
             }
