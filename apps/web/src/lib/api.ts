@@ -16,6 +16,47 @@ export const apiClient: AxiosInstance = axios.create({
   },
 });
 
+export function getTenantSlug(): string {
+  if (typeof window === 'undefined') return '';
+  
+  // 1. Extraction depuis le sous-domaine (ex: mon-club.rezea.com)
+  const hostname = window.location.hostname;
+  const parts = hostname.split('.');
+  if (parts.length > 2 && parts[0] !== 'www' && parts[0] !== 'sysadmin') {
+    return parts[0];
+  }
+  
+  // 2. Extraction depuis les paramètres d'URL (?club=mon-club)
+  const searchParams = new URLSearchParams(window.location.search);
+  const querySlug = searchParams.get('club');
+  if (querySlug) return querySlug;
+
+  // 3. Fallback sur le localStorage
+  const storedSlug = localStorage.getItem('tenant_slug');
+  if (storedSlug) return storedSlug;
+  
+  // 4. Fallback sur le premier segment d'URL (compatibilité dev local)
+  const segments = window.location.pathname.split('/');
+  const pathSlug = segments[1];
+  const reservedPaths = ['login', 'register', 'sysadmin', 'dashboard', 'reset-password', 'forgot-password', 'planning', 'bookings', 'admin', 'home', 'credits', 'profile', 'orders', 'feedback', 'contacts', 'gestion-inscriptions'];
+  if (pathSlug && !reservedPaths.includes(pathSlug)) {
+    return pathSlug;
+  }
+  
+  return '';
+}
+
+export function logout(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("sysadmin_token");
+  localStorage.removeItem("user_id");
+  localStorage.removeItem("user_role");
+  localStorage.removeItem("default_view");
+  localStorage.removeItem("seenAlerts");
+  window.location.href = "/login";
+}
+
 // Intercepteur pour ajouter le token JWT
 apiClient.interceptors.request.use(
   (config) => {
@@ -35,17 +76,8 @@ apiClient.interceptors.request.use(
       }
 
       // Injection automatique du X-Tenant-Slug
-      const segments = window.location.pathname.split('/');
-      let slug = segments[1];
-
-      // Si le slug n'est pas dans l'URL (ex: route racine ou réservée), on le récupère du localStorage
-      const reservedPaths = ['login', 'register', 'sysadmin', 'dashboard', 'reset-password', 'forgot-password'];
-      if (!slug || reservedPaths.includes(slug)) {
-        const storedSlug = localStorage.getItem('tenant_slug');
-        if (storedSlug) slug = storedSlug;
-      }
-
-      if (slug && !reservedPaths.includes(slug)) {
+      const slug = getTenantSlug();
+      if (slug) {
         config.headers['X-Tenant-Slug'] = slug;
       }
     }
@@ -97,18 +129,7 @@ apiClient.interceptors.response.use(
         const currentSlug = segments[1];
         const reservedPaths = ['login', 'register', 'sysadmin', 'dashboard', 'reset-password', 'forgot-password'];
 
-        if (currentSlug && !reservedPaths.includes(currentSlug)) {
-          window.location.href = `/${currentSlug}`;
-        } else {
-          const storedSlug = localStorage.getItem('tenant_slug');
-          if (storedSlug) {
-            window.location.href = `/${storedSlug}`;
-          } else {
-            window.location.href = '/';
-          }
-        }
-
-        localStorage.removeItem('tenant_slug');
+        window.location.href = '/login';
       }
     }
 
@@ -141,6 +162,7 @@ export interface User {
   is_active_member?: boolean;
   email_verified?: boolean;
   balance?: number;
+  has_unlimited_credits?: boolean;
   created_at?: string;
   last_login?: string;
   past_bookings_count?: number;
@@ -172,6 +194,7 @@ export interface Session {
   location?: string;
   waitlist_count?: number;
   waitlist_users?: { first_name: string; last_name: string; email: string }[];
+  deleted_at?: string | null;
 }
 
 export interface EventRegistration {
@@ -485,6 +508,7 @@ export interface AdminEventRegistrationItem {
   event_time: string;
   event_title: string;
   event_parent_title?: string | null;
+  event_location?: string | null;
   user_phone: string | null;
   instagram_handle: string | null;
   facebook_handle: string | null;
@@ -505,6 +529,8 @@ export interface CreditAccount {
   total_purchased: number;
   total_used: number;
   balances_by_activity?: Record<string, number | null>;
+  frozen_balance?: number;
+  frozen_by_activity?: Record<string, number>;
 }
 
 // API Functions
@@ -628,9 +654,11 @@ export const api = {
     activity_type?: string;
     available_only?: boolean;
     status?: string;
+    include_deleted?: boolean;
   }): Promise<Session[]> => {
     const params: Record<string, any> = { ...filters };
     if (filters?.available_only !== undefined) params.available_only = String(filters.available_only);
+    if (filters?.include_deleted !== undefined) params.include_deleted = String(filters.include_deleted);
 
     const response = await apiClient.get('/api/planning', { params });
     return response.data;
@@ -646,7 +674,7 @@ export const api = {
     return response.data;
   },
 
-  reactivateSession: async (sessionId: string): Promise<Session> => {
+  reactivateSession: async (sessionId: string): Promise<any> => {
     const response = await apiClient.post(`/api/planning/${sessionId}/reactivate`);
     return response.data;
   },
@@ -897,9 +925,8 @@ export const api = {
     return response.data;
   },
 
-  // Admin - Events
-  getAdminEvents: async (): Promise<any[]> => {
-    const response = await apiClient.get('/api/admin/events');
+  getAdminEvents: async (params?: { include_inactive?: boolean, include_deleted?: boolean }): Promise<any[]> => {
+    const response = await apiClient.get('/api/admin/events', { params });
     return response.data;
   },
   getAdminEventGroups: async (): Promise<any[]> => {
@@ -1122,13 +1149,14 @@ export const api = {
     return response.data;
   },
 
-  getAdminBookings: async (filters?: string | { status?: string, session_id?: string }): Promise<AdminBookingItem[]> => {
+  getAdminBookings: async (filters?: string | { status?: string, session_id?: string, include_deleted?: boolean }): Promise<AdminBookingItem[]> => {
     const params: Record<string, string> = {};
     if (typeof filters === 'string') {
       params.status = filters;
     } else if (filters) {
       if (filters.status) params.status = filters.status;
       if (filters.session_id) params.session_id = filters.session_id;
+      if (filters.include_deleted !== undefined) params.include_deleted = String(filters.include_deleted);
     }
     const response = await apiClient.get('/api/admin/bookings', { params });
     return response.data;
@@ -1149,11 +1177,12 @@ export const api = {
   },
 
   // ==================== Admin Event Registrations ====================
-  getAdminEventRegistrations: async (filters?: { status?: string, payment?: string, event_id?: string }): Promise<AdminEventRegistrationItem[]> => {
+  getAdminEventRegistrations: async (filters?: { status?: string, payment?: string, event_id?: string, include_deleted?: boolean }): Promise<AdminEventRegistrationItem[]> => {
     const params: Record<string, string> = {};
     if (filters?.status) params.status = filters.status;
     if (filters?.payment) params.payment = filters.payment;
     if (filters?.event_id) params.event_id = filters.event_id;
+    if (filters?.include_deleted !== undefined) params.include_deleted = String(filters.include_deleted);
     const response = await apiClient.get('/api/admin/event-registrations', { params });
     return response.data;
   },

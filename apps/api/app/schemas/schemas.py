@@ -99,6 +99,7 @@ class UserResponse(UserBase):
     created_by_admin: bool = False
     is_active_member: bool = False
     balance: Optional[Decimal] = None
+    has_unlimited_credits: bool = False
     segment: Optional[str] = None
     email_verified: bool
     docs_accepted_at: Optional[datetime] = None
@@ -369,11 +370,14 @@ class SessionResponse(SessionBase):
     available_spots: int = 0
     is_full: bool = False
     waitlist_count: int = 0
+    deleted_at: Optional[datetime] = None
+    failed_restorations: Optional[List[dict]] = None
     
     def model_post_init(self, __context):
         """Calcul des champs dérivés"""
         self.available_spots = self.max_participants - self.current_participants
         self.is_full = self.current_participants >= self.max_participants
+
 
 
 # ==================== Booking ====================
@@ -414,6 +418,8 @@ class CreditAccountResponse(BaseModel):
     total_purchased: Decimal
     total_used: Decimal
     balances_by_activity: Optional[Dict[str, Optional[Decimal]]] = None
+    frozen_balance: Decimal = Decimal(0)
+    frozen_by_activity: Optional[Dict[str, Decimal]] = None
     created_at: datetime
     
 
@@ -457,7 +463,7 @@ class OfferBase(BaseModel):
     recurring_count: Optional[int] = Field(None, ge=1)
     featured_pricing: str = "lump_sum"
     period: Optional[str] = Field(None, max_length=50)
-    classes_included: Optional[int] = Field(None, gt=0)
+    classes_included: Optional[Decimal] = Field(None, gt=0)
     is_unlimited: bool = False
     validity_days: Optional[int] = Field(None, ge=0)
     validity_unit: str = "days"
@@ -488,7 +494,7 @@ class OfferUpdate(BaseModel):
     recurring_count: Optional[int] = Field(None, ge=1)
     featured_pricing: Optional[str] = None
     period: Optional[str] = Field(None, max_length=50)
-    classes_included: Optional[int] = Field(None, gt=0)
+    classes_included: Optional[Decimal] = Field(None, gt=0)
     is_unlimited: Optional[bool] = None
     validity_days: Optional[int] = None
     validity_unit: Optional[str] = None
@@ -648,6 +654,7 @@ class EventResponse(BaseModel):
     allow_waitlist: bool = True
     is_active: bool = True
     payment_link: Optional[str] = None
+    deleted_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 

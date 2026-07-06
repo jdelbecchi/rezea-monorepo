@@ -200,23 +200,28 @@ async def list_users(
         grace_mode = tenant_obj.grace_period_mode if tenant_obj else "days"
 
         orders_result = await db.execute(
-            select(Order.user_id, Order.end_date, Order.is_validity_unlimited)
+            select(Order.user_id, Order.end_date, Order.is_validity_unlimited, Order.is_unlimited)
             .where(Order.user_id.in_(user_ids), Order.status == "active")
         )
         
         from collections import defaultdict
         active_orders_count = defaultdict(int)
+        active_unlimited_credits_map = defaultdict(bool)
         today_val = date.today()
         for row in orders_result.all():
-            u_id, end_d, is_unlim = row
+            u_id, end_d, is_validity_unlim, is_unlim = row
             eff_end = order_service.compute_effective_end_date(end_d, grace_days, grace_mode)
-            if not is_unlim and eff_end and eff_end < today_val:
+            if not is_validity_unlim and eff_end and eff_end < today_val:
                 continue
             active_orders_count[u_id] += 1
+            if is_unlim:
+                active_unlimited_credits_map[u_id] = True
             
         active_orders_map = active_orders_count
 
     for user in users:
+        # Initialiser par défaut
+        user.has_unlimited_credits = active_unlimited_credits_map.get(user.id, False) if user_ids else False
         # 1. Manager/Staff -> Toujours Actif
         if user.role in (UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF):
             user.is_active = True
@@ -362,20 +367,23 @@ async def get_user(
     grace_mode = tenant_obj.grace_period_mode if tenant_obj else "days"
 
     orders_res = await db.execute(
-        select(Order.end_date, Order.is_validity_unlimited)
+        select(Order.end_date, Order.is_validity_unlimited, Order.is_unlimited)
         .where(Order.user_id == user.id, Order.status == "active")
     )
     has_active_order = False
+    has_unlimited_credits = False
     today_val = date.today()
     for row in orders_res.all():
-        end_d, is_unlim = row
+        end_d, is_validity_unlim, is_unlim = row
         eff_end = order_service.compute_effective_end_date(end_d, grace_days, grace_mode)
-        if not is_unlim and eff_end and eff_end < today_val:
+        if not is_validity_unlim and eff_end and eff_end < today_val:
             continue
         has_active_order = True
-        break
+        if is_unlim:
+            has_unlimited_credits = True
 
     user.is_active_member = has_active_order
+    user.has_unlimited_credits = has_unlimited_credits
     
     if user.role in (UserRole.OWNER, UserRole.MANAGER, UserRole.STAFF):
         user.is_active = True

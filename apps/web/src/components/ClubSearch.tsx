@@ -86,7 +86,16 @@ export default function ClubSearch() {
       localStorage.removeItem("remembered_tenant_name");
     }
 
-    router.push(`/${tenant.slug}`);
+    localStorage.setItem("tenant_slug", tenant.slug);
+    const hostname = window.location.hostname;
+    const isLocal = hostname === "localhost" || hostname === "127.0.0.1";
+    if (isLocal) {
+      window.location.href = `/?club=${tenant.slug}`;
+    } else {
+      const domainParts = hostname.split('.');
+      const mainDomain = domainParts.slice(-2).join('.');
+      window.location.href = `${window.location.protocol}//${tenant.slug}.${mainDomain}/`;
+    }
   };
 
   return (

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useParams } from "next/navigation";
-import { api } from "@/lib/api";
+import { api, getTenantSlug, logout } from "@/lib/api";
 
 interface User {
     id: string;
@@ -33,31 +33,29 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
     const pathname = usePathname();
     const router = useRouter();
     const params = useParams();
-    const slug = params?.slug as string;
+    const slug = getTenantSlug();
     const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
     const [localTenant, setLocalTenant] = useState<any>(null);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     useEffect(() => {
-        if (!tenant && slug) {
-            api.getTenantBySlug(slug).then(setLocalTenant).catch(console.error);
+        if (!tenant) {
+            if (slug) {
+                api.getTenantBySlug(slug).then(setLocalTenant).catch(console.error);
+            } else {
+                api.getTenantSettings().then(setLocalTenant).catch(console.error);
+            }
         }
     }, [tenant, slug]);
 
     const activeTenant = tenant || localTenant;
 
     const handleLogout = () => {
-        // Remove session and view preferences on manual logout
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("user_id");
-        localStorage.removeItem("tenant_id");
-        localStorage.removeItem("default_view");
-        localStorage.removeItem("user_role");
-        window.location.href = basePath || "/";
+        logout();
     };
 
-    const basePath = slug ? `/${slug}` : "";
-    const homePath = slug ? `/${slug}/home` : "/home";
+    const basePath = "";
+    const homePath = "/home";
 
     const isActive = (path: string) => {
         if (path === homePath || path === basePath) {

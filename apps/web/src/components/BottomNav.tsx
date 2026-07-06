@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { api, Tenant } from "@/lib/api";
+import { api, Tenant, logout } from "@/lib/api";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -19,23 +19,22 @@ export default function BottomNav({ userRole }: BottomNavProps) {
     const [tenant, setTenant] = useState<Tenant | null>(null);
 
     useEffect(() => {
-        api.getTenantSettings().then(setTenant).catch(() => {});
+        api.getTenantSettings().then((t) => {
+            setTenant(t);
+            if (t && t.primary_color) {
+                document.documentElement.style.setProperty('--primary-color', t.primary_color);
+            }
+        }).catch(() => {});
     }, []);
 
     const handleLogout = () => {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("user_id");
-        localStorage.removeItem("tenant_id");
-        localStorage.removeItem("default_view");
-        localStorage.removeItem("user_role");
-        localStorage.removeItem("seenAlerts");
-        router.push(`/${slug}`);
+        logout();
     };
 
-    const primaryColor = tenant?.primary_color || "#2563eb";
+    const primaryColor = "var(--primary-color, #2563eb)";
 
-    const basePath = slug ? `/${slug}` : "";
-    const homePath = slug ? `/${slug}/home` : "/home";
+    const basePath = "";
+    const homePath = "/home";
 
     const navItems = [
         { 

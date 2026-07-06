@@ -5,7 +5,7 @@ Centralizes status calculation, response building and database normalization.
 from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
 from typing import Optional, List
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -265,7 +265,7 @@ async def expire_user_credits_if_needed(db: AsyncSession, user_id, tenant_id):
                 order_credits_total = order.credits_total or 0
                 unused = order_credits_total - credits_used
                 if unused > 0:
-                    amount_to_deduct = min(unused, float(account.balance))
+                    amount_to_deduct = min(Decimal(unused), Decimal(account.balance))
                     if amount_to_deduct > 0:
                         account.balance -= amount_to_deduct
                         tx = CreditTransaction(
@@ -317,12 +317,17 @@ async def compute_fifo_balances(
             "credits_total": int,
             "credits_used": int,
             "balance": int,
+            "frozen": int,
             "is_blocked": bool
         }
       - global_balance: sum of balances of all active/non-blocked orders of the user.
       - success: bool (whether all bookings, including bookings_to_add, were successfully allocated)
+      - balances_by_activity: dict of activity -> available_balance
+      - global_frozen: sum of frozen credits of the user
+      - frozen_by_activity: dict of activity -> frozen_balance
     """
     from datetime import date, datetime
+    from decimal import Decimal
     from app.models.models import Order, Booking, Session, Tenant, BookingStatus
     
     # 1. Get grace period parameters
@@ -347,7 +352,7 @@ async def compute_fifo_balances(
     )
     orders = orders_res.scalars().all()
     
-    # 3. Load all existing bookings of the user
+    # 3. Load all existing bookings of the user (confirmed, completed, and active pending waitlist entries)
     bookings_res = await db.execute(
         select(Booking)
         .join(Session)
@@ -355,7 +360,13 @@ async def compute_fifo_balances(
             and_(
                 Booking.user_id == user_id,
                 Booking.tenant_id == tenant_id,
-                Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.COMPLETED])
+                or_(
+                    Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.COMPLETED]),
+                    and_(
+                        Booking.status == BookingStatus.PENDING,
+                        Session.start_time >= datetime.utcnow()
+                    )
+                )
             )
         )
         .order_by(Session.start_time.asc())
@@ -363,7 +374,7 @@ async def compute_fifo_balances(
     bookings = bookings_res.scalars().all()
     
     # Let's build the list of all allocations:
-    # Each item: {"id": uuid, "date": date, "credits": int, "activity_type": str}
+    # Each item: {"id": uuid, "date": date, "credits": Decimal, "activity_type": str, "is_pending": bool}
     items_to_allocate = []
     for b in bookings:
         if exclude_booking_id and b.id == exclude_booking_id:
@@ -378,8 +389,9 @@ async def compute_fifo_balances(
             items_to_allocate.append({
                 "id": str(b.id),
                 "date": session_start.date(),
-                "credits": int(b.credits_used or 1),
-                "activity_type": session_activity
+                "credits": Decimal(b.credits_used) if b.credits_used is not None else Decimal(1),
+                "activity_type": session_activity,
+                "is_pending": b.status == BookingStatus.PENDING
             })
             
     # Add temporary bookings (to validate new booking request)
@@ -387,8 +399,9 @@ async def compute_fifo_balances(
         items_to_allocate.append({
             "id": temp.get("id"),
             "date": temp.get("date"),
-            "credits": temp.get("credits", 1),
-            "activity_type": temp.get("activity_type")
+            "credits": Decimal(temp.get("credits", 1)),
+            "activity_type": temp.get("activity_type"),
+            "is_pending": temp.get("is_pending", False)
         })
         
     # Sort all items to allocate by date ascending
@@ -396,7 +409,8 @@ async def compute_fifo_balances(
     
     # Initialize allocation tracker for each order
     # order_allocations maps str(order.id) -> credits_allocated
-    order_allocations = {str(o.id): 0 for o in orders}
+    order_allocations = {str(o.id): Decimal(0) for o in orders}
+    order_frozen_allocations = {str(o.id): Decimal(0) for o in orders}
     
     # Determine which orders are blocked *today*
     today = date.today()
@@ -456,21 +470,25 @@ async def compute_fifo_balances(
                 # Unlimited credits orders have infinite capacity
                 if o.is_unlimited:
                     allocated = True
-                    item_credits = 0
+                    item_credits = Decimal(0)
                     break
                 else:
-                    credits_init = int(o.credits_total or 0)
+                    credits_init = Decimal(o.credits_total or 0)
                     credits_used = order_allocations[o_id]
                     if credits_used < credits_init:
                         # Allocate as much as possible
                         available = credits_init - credits_used
                         if item_credits <= available:
                             order_allocations[o_id] += item_credits
-                            item_credits = 0
+                            if item.get("is_pending"):
+                                order_frozen_allocations[o_id] += item_credits
+                            item_credits = Decimal(0)
                             allocated = True
                             break
                         else:
                             order_allocations[o_id] += available
+                            if item.get("is_pending"):
+                                order_frozen_allocations[o_id] += available
                             item_credits -= available
                             # continue to next order for remaining item_credits
                             
@@ -479,30 +497,36 @@ async def compute_fifo_balances(
             
     # Compute balances for each order & balances by activity
     orders_balances = {}
-    global_balance = 0
+    global_balance = Decimal(0)
+    global_frozen = Decimal(0)
     balances_by_activity = {}
-    from decimal import Decimal
+    frozen_by_activity = {}
     
     for o in orders:
         o_id = str(o.id)
-        credits_init = int(o.credits_total or 0)
+        credits_init = Decimal(o.credits_total or 0)
         credits_used = order_allocations[o_id]
+        frozen_used = order_frozen_allocations[o_id]
         
         if o.is_unlimited:
             bal = None
+            froz_bal = Decimal(0)
         else:
-            bal = max(0, credits_init - credits_used)
+            bal = max(Decimal(0), credits_init - credits_used)
+            froz_bal = frozen_used
             
         is_blocked = orders_blocked_status[o_id]
         
-        # Sum to global_balance if NOT blocked and NOT unlimited
+        # Sum to global_balance and global_frozen if NOT blocked and NOT unlimited
         if not is_blocked and bal is not None:
             global_balance += bal
+            global_frozen += froz_bal
             
         orders_balances[o_id] = {
             "credits_total": o.credits_total,
             "credits_used": credits_used,
             "balance": bal,
+            "frozen": froz_bal,
             "is_blocked": is_blocked
         }
         
@@ -517,6 +541,8 @@ async def compute_fifo_balances(
             label = ", ".join(allowed_acts) if allowed_acts else "Toutes activités"
             if label not in balances_by_activity:
                 balances_by_activity[label] = None if o.is_unlimited else Decimal(0)
+            if label not in frozen_by_activity:
+                frozen_by_activity[label] = Decimal(0)
             
             if balances_by_activity[label] is not None:
                 if o.is_unlimited:
@@ -524,6 +550,43 @@ async def compute_fifo_balances(
                 else:
                     balances_by_activity[label] += Decimal(bal)
             
-    return orders_balances, global_balance, success, balances_by_activity
+            frozen_by_activity[label] += Decimal(froz_bal)
+            
+    return orders_balances, global_balance, success, balances_by_activity, global_frozen, frozen_by_activity
+
+
+async def sync_user_credit_balance(db: AsyncSession, user_id, tenant_id):
+    """
+    Recalculates the user's credit balance using compute_fifo_balances
+    and updates/creates their CreditAccount record.
+    """
+    # Recalculate FIFO balances
+    _, global_balance, _, _, _, _ = await compute_fifo_balances(db, user_id, tenant_id)
+    
+    # Fetch or create CreditAccount
+    result = await db.execute(
+        select(CreditAccount).where(
+            and_(
+                CreditAccount.tenant_id == tenant_id,
+                CreditAccount.user_id == user_id
+            )
+        )
+    )
+    account = result.scalar_one_or_none()
+    
+    if not account:
+        account = CreditAccount(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            balance=global_balance,
+            total_purchased=global_balance,
+            total_used=0
+        )
+        db.add(account)
+    else:
+        account.balance = global_balance
+    
+    await db.flush()
+
 
 

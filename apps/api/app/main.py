@@ -123,7 +123,7 @@ async def inject_tenant_context(request: Request, call_next):
     public_paths = [
         "/api/auth/login", "/api/auth/register", "/api/auth/forgot-password", 
         "/api/auth/reset-password", "/health", "/docs", "/openapi.json", 
-        "/api/sysadmin/login"
+        "/api/sysadmin/login", "/api/bookings/cron/cleanup-waitlist"
     ]
     
     is_public = (

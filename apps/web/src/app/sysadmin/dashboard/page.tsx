@@ -78,19 +78,36 @@ export default function SysAdminDashboardPage() {
         fetchTenants();
     }, []);
 
+    const getErrorText = (err: any, defaultMsg: string): string => {
+        if (!err.response?.data?.detail) return defaultMsg;
+        const detail = err.response.data.detail;
+        if (typeof detail === 'string') return detail;
+        if (Array.isArray(detail)) {
+            return detail.map((e: any) => {
+                const path = e.loc ? e.loc.filter((x: any) => x !== 'body').join('.') : '';
+                return `${path ? path + ': ' : ''}${e.msg}`;
+            }).join(', ');
+        }
+        return JSON.stringify(detail);
+    };
+
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
         setCreating(true);
         setMessage(null);
 
+        const payload: any = { ...newTenant };
+        if (payload.client_email === "") payload.client_email = null;
+        if (payload.email === "") payload.email = null;
+
         try {
-            await apiClient.post("/api/sysadmin/tenants", newTenant, sysadminClient());
+            await apiClient.post("/api/sysadmin/tenants", payload, sysadminClient());
             setMessage({ type: "success", text: `Établissement créé avec le code "${newTenant.slug}" !` });
             setNewTenant(DEFAULT_NEW_TENANT);
             setShowCreate(false);
             await fetchTenants();
         } catch (err: any) {
-            setMessage({ type: "error", text: err.response?.data?.detail || "Erreur lors de la création" });
+            setMessage({ type: "error", text: getErrorText(err, "Erreur lors de la création") });
         } finally {
             setCreating(false);
         }
@@ -102,17 +119,21 @@ export default function SysAdminDashboardPage() {
         setSaving(true);
         setMessage(null);
 
+        const payload: any = { ...editingTenant };
+        if (payload.client_email === "") payload.client_email = null;
+        if (payload.email === "") payload.email = null;
+
         try {
             await apiClient.patch(
                 `/api/sysadmin/tenants/${editingTenant.id}`,
-                editingTenant,
+                payload,
                 sysadminClient()
             );
             setMessage({ type: "success", text: `Établissement "${editingTenant.slug}" mis à jour !` });
             setEditingTenant(null);
             await fetchTenants();
         } catch (err: any) {
-            setMessage({ type: "error", text: err.response?.data?.detail || "Erreur lors de la modification" });
+            setMessage({ type: "error", text: getErrorText(err, "Erreur lors de la modification") });
         } finally {
             setSaving(false);
         }

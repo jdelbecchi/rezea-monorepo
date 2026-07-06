@@ -274,10 +274,13 @@ class User(Base):
     
     # Relations
     tenant = relationship("Tenant", back_populates="users")
-    credit_accounts = relationship("CreditAccount", back_populates="user")
-    bookings = relationship("Booking", back_populates="user")
-    waitlist_entries = relationship("WaitlistEntry", back_populates="user")
-    orders = relationship("Order", back_populates="user")
+    credit_accounts = relationship("CreditAccount", back_populates="user", cascade="all, delete-orphan")
+    bookings = relationship("Booking", back_populates="user", cascade="all, delete-orphan")
+    waitlist_entries = relationship("WaitlistEntry", back_populates="user", cascade="all, delete-orphan")
+    orders = relationship("Order", back_populates="user", cascade="all, delete-orphan")
+    event_registrations = relationship("EventRegistration", back_populates="user", cascade="all, delete-orphan")
+    survey_responses = relationship("SurveyResponse", back_populates="user", cascade="all, delete-orphan")
+    staff_notes = relationship("StaffNote", back_populates="author", foreign_keys="[StaffNote.author_id]", cascade="all, delete-orphan")
     
     # Index pour RLS et performances
     __table_args__ = (
@@ -314,6 +317,7 @@ class Session(Base):
     # Configuration
     allow_waitlist = Column(Boolean, default=True)
     is_active = Column(Boolean, default=True)
+    deleted_at = Column(DateTime, nullable=True)
     
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -354,7 +358,7 @@ class CreditAccount(Base):
     
     # Relations
     user = relationship("User", back_populates="credit_accounts")
-    transactions = relationship("CreditTransaction", back_populates="account")
+    transactions = relationship("CreditTransaction", back_populates="account", cascade="all, delete-orphan")
     
     __table_args__ = (
         Index("idx_credit_accounts_tenant_user", "tenant_id", "user_id", unique=True),
@@ -424,7 +428,7 @@ class Offer(Base):
     period = Column(String(50))  # Période tarifaire (ex: /mois, /an)
     
     # Crédits
-    classes_included = Column(Integer, nullable=True)  # Nombre de crédits (null si illimité)
+    classes_included = Column(Numeric(10, 2), nullable=True)  # Nombre de crédits (null si illimité)
     is_unlimited = Column(Boolean, default=False)  # Crédits illimités
     
     # Validité (l'un des deux doit être renseigné)
@@ -577,6 +581,7 @@ class Event(Base):
     description = Column(Text)
     allow_waitlist = Column(Boolean, default=True)
     is_active = Column(Boolean, default=True)
+    deleted_at = Column(DateTime, nullable=True)
     payment_link = Column(String(500), nullable=True) # Lien de paiement dédié à l'événement
 
     # Metadata
@@ -632,7 +637,7 @@ class EventRegistration(Base):
     reminder_sent_at = Column(DateTime, nullable=True)
 
     # Relations
-    user = relationship("User")
+    user = relationship("User", back_populates="event_registrations")
     event = relationship("Event", back_populates="registrations")
 
     __table_args__ = (
@@ -657,7 +662,7 @@ class Order(Base):
     is_validity_unlimited = Column(Boolean, default=False)
 
     # Crédits (copiés de l'offre à la création)
-    credits_total = Column(Integer)  # null si illimité
+    credits_total = Column(Numeric(10, 2))  # null si illimité
     is_unlimited = Column(Boolean, default=False)
 
     # Tarif (copié de l'offre ou personnalisé)
@@ -884,7 +889,7 @@ class SurveyResponse(Base):
     
     # Relations
     campaign = relationship("SurveyCampaign", back_populates="responses")
-    user = relationship("User")
+    user = relationship("User", back_populates="survey_responses")
 
     __table_args__ = (
         Index("idx_survey_response_tenant", "tenant_id"),
@@ -914,7 +919,7 @@ class StaffNote(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relations
-    author = relationship("User", foreign_keys=[author_id])
+    author = relationship("User", foreign_keys=[author_id], back_populates="staff_notes")
     resolver = relationship("User", foreign_keys=[resolved_by])
 
     __table_args__ = (

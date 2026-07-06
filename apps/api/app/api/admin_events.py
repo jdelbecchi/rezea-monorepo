@@ -5,7 +5,7 @@ from datetime import datetime, time
 from io import BytesIO
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select, func, and_, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -73,16 +73,25 @@ async def list_event_groups(
 @router.get("", response_model=List[EventResponse])
 async def list_events(
     request: Request,
+    include_inactive: Optional[bool] = Query(None),
+    include_deleted: bool = Query(False),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_manager),
 ):
     """Liste tous les événements du tenant (du plus récent au plus ancien)"""
     tenant_id = request.state.tenant_id
+    query = select(Event).options(selectinload(Event.event_group)).where(Event.tenant_id == tenant_id)
+    if include_inactive is not None:
+        if include_inactive:
+            query = query.where(Event.is_active == False)
+        else:
+            query = query.where(Event.is_active == True)
+        
+    if not include_deleted:
+        query = query.where(Event.deleted_at.is_(None))
+        
     result = await db.execute(
-        select(Event)
-        .options(selectinload(Event.event_group))
-        .where(Event.tenant_id == tenant_id)
-        .order_by(Event.event_date.desc(), Event.event_time.desc())
+        query.order_by(Event.event_date.desc(), Event.event_time.desc())
     )
     events = result.scalars().all()
     return [_format_event_response(e) for e in events]
@@ -455,7 +464,6 @@ async def reactivate_event(
     }
 
 
-# ---- DELETE ----
 @router.delete("/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_event(
     event_id: str,
@@ -463,35 +471,26 @@ async def delete_event(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_manager),
 ):
-    """Supprime un événement"""
+    """Supprime logiquement un événement (Soft Delete)"""
     tenant_id = request.state.tenant_id
     result = await db.execute(
-        select(Event).where(Event.id == event_id, Event.tenant_id == tenant_id)
+        select(Event)
+        .where(Event.id == event_id, Event.tenant_id == tenant_id)
+        .options(selectinload(Event.registrations))
     )
     event = result.scalar_one_or_none()
     if not event:
         raise HTTPException(status_code=404, detail="Événement non trouvé")
 
-    # Nullify SurveyCampaign event references
-    from app.models.models import SurveyCampaign, FinanceTransaction
-    await db.execute(
-        update(SurveyCampaign)
-        .where(SurveyCampaign.event_id == event.id)
-        .values(event_id=None)
-    )
-
-    # Get registrations of this event to nullify finance references
-    reg_res = await db.execute(
-        select(EventRegistration.id).where(EventRegistration.event_id == event.id)
-    )
-    reg_ids = [r[0] for r in reg_res.all()]
-    if reg_ids:
-        await db.execute(
-            update(FinanceTransaction)
-            .where(FinanceTransaction.registration_id.in_(reg_ids))
-            .values(registration_id=None)
-        )
-
-    await db.delete(event)
+    # Soft Delete : masquer l'événement sans casser les relations financières
+    event.is_active = False
+    event.deleted_at = datetime.utcnow()
+    
+    # Marquer les inscriptions comme annulées par la suppression de l'événement
+    for reg in event.registrations:
+        if reg.status in [EventRegistrationStatus.CONFIRMED, EventRegistrationStatus.PENDING_PAYMENT]:
+            reg.status = EventRegistrationStatus.EVENT_CANCELLED
+    
     await db.commit()
+    return None
 

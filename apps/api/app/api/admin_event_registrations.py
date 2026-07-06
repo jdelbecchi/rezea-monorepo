@@ -112,12 +112,16 @@ async def list_registrations(
     status_filter: Optional[str] = Query(None, alias="status"),
     payment_status_filter: Optional[str] = Query(None, alias="payment"),
     event_id: Optional[str] = Query(None, alias="event_id"),
+    include_deleted: bool = Query(False),
 ):
     tenant_id = request.state.tenant_id
     query = (
         select(EventRegistration)
         .where(EventRegistration.tenant_id == tenant_id)
     )
+
+    if not include_deleted:
+        query = query.join(Event).where(Event.deleted_at.is_(None))
 
     if event_id:
         query = query.where(EventRegistration.event_id == event_id)

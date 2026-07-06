@@ -168,6 +168,7 @@ async def list_bookings(
     current_user: User = Depends(require_manager),
     status_filter: Optional[str] = Query(None, alias="status"),
     session_id: Optional[str] = Query(None, alias="session_id"),
+    include_deleted: bool = Query(False),
 ):
     tenant_id = request.state.tenant_id
     if isinstance(tenant_id, str):
@@ -179,6 +180,9 @@ async def list_bookings(
         .options(joinedload(Booking.session), joinedload(Booking.user))
         .order_by(Booking.created_at.desc())
     )
+
+    if not include_deleted:
+        query = query.join(Session).where(Session.deleted_at.is_(None))
 
     if status_filter:
         if status_filter == "confirmed":
@@ -301,33 +305,31 @@ async def create_booking(
     transaction_id = None
     credits_used = session.credits_required
     if credits_used > 0:
-        acct = await db.execute(
-            select(CreditAccount).where(
-                CreditAccount.tenant_id == tenant_id,
-                CreditAccount.user_id == data.user_id,
-            )
+        from app.services import orders as order_service
+        from app.api.bookings import consume_credits_fifo
+        
+        # Simuler la file d'attente FIFO en ajoutant la réservation demandée
+        orders_balances, global_balance, success, *_ = await order_service.compute_fifo_balances(
+            db,
+            data.user_id,
+            tenant_id,
+            bookings_to_add=[{
+                "id": "new_booking",
+                "date": session.start_time.date(),
+                "credits": credits_used,
+                "activity_type": session.activity_type
+            }]
         )
-        account = acct.scalar_one_or_none()
-
-        if account:
-            # Débit systématique (permet le négatif pour le manager)
-            account.balance -= credits_used
-            account.total_used += credits_used
-            tx = CreditTransaction(
-                tenant_id=tenant_id,
-                account_id=account.id,
-                transaction_type=CreditTransactionType.BOOKING,
-                amount=-credits_used,
-                balance_after=account.balance,
-                description=f"Réservation de séance ({booking_status.value})",
-                consumed_at=datetime.utcnow(),
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Le solde de crédits de l'utilisateur est insuffisant pour effectuer cette réservation."
             )
-            db.add(tx)
-            await db.flush()
-            transaction_id = tx.id
-        else:
-            # Si pas de compte crédit, on ne peut pas débiter (cas rare)
-            credits_used = 0
+            
+        # Consommer les crédits
+        transaction_id = await consume_credits_fifo(
+            db, tenant_id, data.user_id, credits_used, global_balance
+        )
 
     booking = Booking(
         tenant_id=tenant_id,
@@ -446,31 +448,31 @@ async def update_booking(
                 # Débiter les crédits SEULEMENT si ils n'ont pas déjà été débités (cas d'une reprise après annulation)
                 credits_to_deduct = booking.session.credits_required if booking.session else 0
                 if credits_to_deduct > 0 and (booking.credits_used == 0 or booking.transaction_id is None):
-                    acct = await db.execute(
-                        select(CreditAccount).where(
-                            CreditAccount.tenant_id == tenant_id,
-                            CreditAccount.user_id == booking.user_id,
-                        )
+                    from app.services import orders as order_service
+                    from app.api.bookings import consume_credits_fifo
+                    
+                    orders_balances, global_balance, success, *_ = await order_service.compute_fifo_balances(
+                        db,
+                        booking.user_id,
+                        tenant_id,
+                        bookings_to_add=[{
+                            "id": "new_booking",
+                            "date": booking.session.start_time.date(),
+                            "credits": credits_to_deduct,
+                            "activity_type": booking.session.activity_type
+                        }]
                     )
-                    account = acct.scalar_one_or_none()
-                    if account:
-                        # On permet le débit même si balance < credits (flexibilité manager)
-                        account.balance -= credits_to_deduct
-                        account.total_used += credits_to_deduct
-                        tx = CreditTransaction(
-                            tenant_id=tenant_id,
-                            account_id=account.id,
-                            transaction_type=CreditTransactionType.BOOKING,
-                            amount=-credits_to_deduct,
-                            balance_after=account.balance,
-                            description=f"Débit: Statut passé de {old_status} à {new_status}",
-                            consumed_at=datetime.utcnow(),
-                            reference=str(booking.id)
+                    if not success:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Le solde de crédits de l'utilisateur est insuffisant pour effectuer cette réservation."
                         )
-                        db.add(tx)
-                        await db.flush()
-                        booking.transaction_id = tx.id
-                        booking.credits_used = credits_to_deduct
+                    
+                    tx_id = await consume_credits_fifo(
+                        db, tenant_id, booking.user_id, credits_to_deduct, global_balance
+                    )
+                    booking.transaction_id = tx_id
+                    booking.credits_used = credits_to_deduct
 
             booking.status = new_status
 

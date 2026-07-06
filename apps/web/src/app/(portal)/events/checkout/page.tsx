@@ -1,0 +1,339 @@
+"use client";
+
+import { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { api, Event, Tenant, User } from "@/lib/api";
+import { formatPrice } from "@/lib/formatters";
+import BottomNav from "@/components/BottomNav";
+import ConfirmModal from "@/components/ConfirmModal";
+
+function EventCheckoutPageContent() {
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const eventId = searchParams.get('id') as string;
+
+    const [event, setEvent] = useState<Event | null>(null);
+    const [tenant, setTenant] = useState<Tenant | null>(null);
+    const [user, setUser] = useState<User | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
+    const [tariff, setTariff] = useState<'member' | 'external'>('member');
+    const [error, setError] = useState<string | null>(null);
+    const [payLater, setPayLater] = useState(false);
+
+    const [showSuccess, setShowSuccess] = useState(false);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [eventData, tenantData, userData] = await Promise.all([
+                    api.getEvent(eventId),
+                    api.getTenantSettings(),
+                    api.getCurrentUser()
+                ]);
+                setEvent(eventData);
+                setTenant(tenantData);
+                setUser(userData);
+                
+                // If both global and event-specific payment links are missing, force payLater
+                if (!tenantData.payment_redirect_link && !eventData.payment_link) {
+                    setPayLater(true);
+                }
+            } catch (err) {
+                console.error(err);
+                setError("Impossible de charger les détails de l'événement.");
+            } finally {
+                setLoading(false);
+            }
+        };
+        if (eventId) fetchData();
+    }, [eventId]);
+
+    const handleConfirm = async () => {
+        setSubmitting(true);
+        setError(null);
+        try {
+            await api.checkoutEvent(eventId, tariff, payLater);
+            
+            if (!payLater) {
+                const finalLink = event?.payment_link || tenant?.payment_redirect_link;
+                if (finalLink) {
+                    const formattedLink = /^https?:\/\//i.test(finalLink) ? finalLink : `https://${finalLink}`;
+                    window.location.href = formattedLink;
+                    return;
+                }
+            }
+
+            setShowSuccess(true);
+        } catch (err: any) {
+            setError(err.response?.data?.detail || "Une erreur est survenue lors de l'inscription.");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    if (loading) return <div className="p-8 text-center bg-gray-50 min-h-screen">Chargement...</div>;
+
+    return (
+        <div className="min-h-screen bg-white flex flex-col md:flex-row pb-20 md:pb-0 overflow-x-hidden">
+            <main className="flex-1 px-5 pb-5 md:p-12 pt-4 md:pt-12">
+                <div className="max-w-3xl mx-auto">
+                    <header className="flex items-center justify-between pb-3 border-b border-slate-200 mb-6 gap-4">
+                        <h1 className="text-[14px] sm:text-base md:text-lg font-medium text-slate-900 tracking-tight">Récapitulatif d'inscription</h1>
+                        <Link href="/planning" className="flex items-center gap-1 text-[10px] md:text-xs font-medium text-slate-400 hover:text-slate-800 transition-colors group border border-slate-200 rounded-full px-2.5 py-1 hover:border-slate-300">
+                            <svg viewBox="0 0 24 24" fill="none" className="w-3 h-3 transition-transform group-hover:-translate-x-0.5" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                            <span>Retour</span>
+                        </Link>
+                    </header>
+
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden relative">
+                        <div className="p-6 md:p-8">
+                            {/* Événement Badge (Top Right) */}
+                            <div 
+                                className="absolute top-2 right-2 px-3 py-1 rounded-full text-[10px] font-bold shadow-sm"
+                                style={{ 
+                                    backgroundColor: `${(tenant?.primary_color || '#2563eb')}15`,
+                                    color: tenant?.primary_color || '#2563eb'
+                                }}
+                            >
+                                Événement
+                            </div>
+
+                            <div className="flex flex-col items-center text-center gap-6 pb-6 border-b border-slate-100">
+                                <div className="mt-4 flex flex-col items-center">
+                                    {event?.event_group?.title && (
+                                        <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-[0.25em] mb-2.5 flex items-center gap-1.5 justify-center">
+                                            ✨ {event.event_group.title}
+                                        </span>
+                                    )}
+                                    <h2 className="text-[22px] md:text-[26px] font-semibold text-slate-900 tracking-tight leading-tight">
+                                        {event?.title}
+                                    </h2>
+                                    <p className="text-sm md:text-base font-normal text-slate-600 mt-1.5">
+                                        par <span className="font-semibold" style={{ color: tenant?.primary_color || '#2563eb' }}>{event?.instructor_name || tenant?.name}</span>
+                                    </p>
+                                    
+                                    <div className="w-24 h-px bg-slate-300 mx-auto mt-6"></div>
+
+                                    {event?.description && (
+                                        <p className="text-slate-600 text-xs md:text-sm font-normal leading-relaxed max-w-sm mx-auto mt-7">
+                                            {event.description}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="w-full max-w-sm mx-auto mt-3 text-left relative pl-10 py-1">
+                                    {/* Sidebar accent color - thinner and more subtle */}
+                                    <div 
+                                        className="absolute left-2 top-0 bottom-0 w-[3px] rounded-full"
+                                        style={{ 
+                                            background: `linear-gradient(to bottom, ${tenant?.primary_color || '#2563eb'}, ${(tenant?.primary_color || '#2563eb')}10)`,
+                                            boxShadow: `0 0 10px ${(tenant?.primary_color || '#2563eb')}10`
+                                        }}
+                                    ></div>
+
+                                    <div className="space-y-4">
+                                        {/* Date Row */}
+                                        <div className="flex items-center gap-5 group">
+                                            <div className="w-10 h-10 rounded-xl bg-slate-50/50 flex items-center justify-center text-lg shadow-sm border border-slate-100/50 group-hover:scale-105 transition-transform duration-300">📅</div>
+                                            <div className="space-y-0.5">
+                                                <p className="text-[10px] font-medium text-slate-400 uppercase tracking-[0.15em]">Date</p>
+                                                <p className="text-[15px] font-medium text-slate-700 leading-tight">
+                                                    {event?.event_date ? new Date(event.event_date).toLocaleDateString("fr-FR", { weekday: 'long', day: 'numeric', month: 'long' }) : ""}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Time Row */}
+                                        <div className="flex items-center gap-5 group">
+                                            <div className="w-10 h-10 rounded-xl bg-slate-50/50 flex items-center justify-center text-lg shadow-sm border border-slate-100/50 group-hover:scale-105 transition-transform duration-300">🕒</div>
+                                            <div className="space-y-0.5">
+                                                <p className="text-[10px] font-medium text-slate-400 uppercase tracking-[0.15em]">Horaire</p>
+                                                <p className="text-[15px] font-medium text-slate-700 leading-tight">{event?.event_time}</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Location Row */}
+                                        {event?.location && (
+                                            <div className="flex items-center gap-5 group">
+                                                <div className="w-10 h-10 rounded-xl bg-slate-50/50 flex items-center justify-center text-lg shadow-sm border border-slate-100/50 group-hover:scale-105 transition-transform duration-300">📍</div>
+                                                <div className="space-y-0.5">
+                                                    <p className="text-[10px] font-medium text-slate-400 uppercase tracking-[0.15em]">Lieu</p>
+                                                    <p className="text-[15px] font-medium text-slate-700 leading-tight">{event.location}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {event?.price_member_cents === event?.price_external_cents && (
+                                    <div className="pt-2">
+                                        <p className="text-2xl font-bold text-slate-900 leading-none">
+                                            {formatPrice(event?.price_member_cents)}
+                                        </p>
+                                        <p className="text-[10px] text-slate-500 font-medium mt-1.5 opacity-60">Tarif unique</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Error Message if any */}
+                            {error && (
+                                <div className="mt-6 p-4 bg-rose-50 border border-rose-100 text-rose-700 rounded-2xl text-xs font-semibold flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                                    <span>⚠️</span> {error}
+                                </div>
+                            )}
+
+                            {/* Tariff Selection (only if different) */}
+                            {event?.price_member_cents !== event?.price_external_cents ? (
+                                <div className="mt-8 space-y-4 animate-in fade-in duration-500">
+                                    <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-widest px-1">Tarifs disponibles</h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <button
+                                            onClick={() => setTariff('member')}
+                                            className="p-4 rounded-2xl border transition-all flex items-center justify-center gap-4 h-16 shadow-sm"
+                                            style={{ 
+                                                borderColor: tariff === 'member' ? (tenant?.primary_color || '#2563eb') : '#f1f5f9',
+                                                backgroundColor: tariff === 'member' ? `${(tenant?.primary_color || '#2563eb')}10` : '#ffffff',
+                                                borderWidth: tariff === 'member' ? '1.5px' : '1px'
+                                            }}
+                                        >
+                                            <p className={`text-[10px] font-semibold uppercase tracking-widest ${tariff === 'member' ? 'text-black' : 'text-slate-400'}`}>Tarif Membre</p>
+                                            <div className="w-px h-4 bg-slate-200"></div>
+                                            <p className={`text-base font-semibold ${tariff === 'member' ? 'text-black' : 'text-slate-900'}`}>{formatPrice(event?.price_member_cents)}</p>
+                                        </button>
+
+                                        <button
+                                            onClick={() => setTariff('external')}
+                                            className="p-4 rounded-2xl border transition-all flex items-center justify-center gap-4 h-16 shadow-sm"
+                                            style={{ 
+                                                borderColor: tariff === 'external' ? (tenant?.primary_color || '#2563eb') : '#f1f5f9',
+                                                backgroundColor: tariff === 'external' ? `${(tenant?.primary_color || '#2563eb')}10` : '#ffffff',
+                                                borderWidth: tariff === 'external' ? '1.5px' : '1px'
+                                            }}
+                                        >
+                                            <p className={`text-[10px] font-semibold uppercase tracking-widest ${tariff === 'external' ? 'text-black' : 'text-slate-400'}`}>Tarif Extérieur</p>
+                                            <div className="w-px h-4 bg-slate-200"></div>
+                                            <p className={`text-base font-semibold ${tariff === 'external' ? 'text-black' : 'text-slate-900'}`}>{formatPrice(event?.price_external_cents)}</p>
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 italic px-2">
+                                        Note : Le manager se réserve le droit de modifier le tarif si celui-ci ne correspond pas à votre statut réel.
+                                    </p>
+                                </div>
+                            ) : null}
+
+                            {/* Confirmation Section */}
+                            <div className="mt-10 md:mt-16 space-y-6">
+                                <div className="space-y-4">
+                                    {(tenant?.payment_redirect_link || event?.payment_link) ? (
+                                        <>
+                                            {tenant?.allow_pay_later_events ? (
+                                                <>
+                                                    <label className="flex items-center justify-center md:justify-start gap-3 cursor-pointer group">
+                                                        <div className="relative flex items-center h-5">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={payLater}
+                                                                onChange={(e) => setPayLater(e.target.checked)}
+                                                                className="peer h-5 w-5 cursor-pointer appearance-none rounded border border-slate-300 transition-all checked:border-slate-900 checked:bg-slate-900"
+                                                            />
+                                                            <span className="absolute text-white opacity-0 peer-checked:opacity-100 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-opacity pointer-events-none">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor" stroke="currentColor" strokeWidth="1">
+                                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                                </svg>
+                                                            </span>
+                                                        </div>
+                                                        <span className="text-sm font-semibold text-slate-700">Option &quot;Payer plus tard&quot;</span>
+                                                    </label>
+
+                                                    {payLater && (
+                                                        <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300">
+                                                            <p className="text-xs text-amber-800 leading-relaxed text-center md:text-left">
+                                                                <span className="font-bold">Attention !</span> Si vous choisissez le paiement différé, vous n&apos;êtes pas redirigé vers le lien de paiement. Votre inscription est enregistrée et le règlement sera à effectuer selon les conditions de l&apos;établissement.
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <div className="text-center md:text-left">
+                                                    <p className="text-[11px] text-slate-400 italic">
+                                                        Le paiement immédiat est requis pour cet événement.
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-xl animate-in fade-in slide-in-from-top-1 duration-300">
+                                            <p className="text-xs text-blue-800 leading-relaxed text-center md:text-left">
+                                                Le règlement en ligne n&apos;est pas proposé pour le moment. Votre inscription sera validée immédiatement et le règlement sera à effectuer selon les modalités de l&apos;établissement.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="mt-8 flex flex-col items-center">
+                                    <button
+                                        onClick={handleConfirm}
+                                        disabled={submitting}
+                                        className="w-full md:max-w-sm py-4 rounded-2xl bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 shadow-xl shadow-slate-100 transition-all active:scale-[0.98] disabled:opacity-50"
+                                    >
+                                        {submitting ? "Traitement..." : "Confirmez votre inscription"}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-slate-50 p-6 border-t border-slate-100 flex flex-col items-center justify-center gap-2 text-center">
+                            <div className="text-xl opacity-50">🛡️</div>
+                            <p className="text-xs text-slate-500 leading-relaxed font-medium max-w-sm">
+                                En confirmant votre commande, vous acceptez nos conditions générales de vente.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <BottomNav userRole={user?.role} />
+
+            <ConfirmModal
+                isOpen={showSuccess}
+                title="C'est validé !"
+                message={
+                    <>
+                        Votre inscription à l'événement{" "}
+                        <strong className="font-semibold" style={{ color: tenant?.primary_color || "#2563eb" }}>
+                            {event?.title}
+                        </strong>{" "}
+                        est bien enregistrée.
+                        {!(tenant?.payment_redirect_link || event?.payment_link) && (
+                            <p className="text-xs text-slate-400 mt-2 italic leading-relaxed">
+                                Le règlement sera à effectuer selon les modalités de l'établissement.
+                            </p>
+                        )}
+                    </>
+                }
+                type="success-stars"
+                confirmLabel="Retour au planning"
+                onConfirm={() => router.push(`/planning`)}
+            />
+
+            <style jsx global>{`
+                @supports (-webkit-touch-callout: none) {
+                    .safe-top { padding-top: env(safe-area-inset-top); }
+                    .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+                }
+            `}</style>
+        </div>
+    );
+}
+
+export default function EventCheckoutPage() {
+    return (
+        <Suspense fallback={<div className="p-8 text-center bg-gray-50 min-h-screen">Chargement...</div>}>
+            <EventCheckoutPageContent />
+        </Suspense>
+    );
+}

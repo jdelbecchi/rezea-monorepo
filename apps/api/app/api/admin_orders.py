@@ -156,7 +156,7 @@ async def list_orders(
         if u_id not in fifo_cache:
             fifo_cache[u_id] = await order_service.compute_fifo_balances(db, order.user_id, tenant_id)
             
-        user_fifo_balances, _, _, _ = fifo_cache[u_id]
+        user_fifo_balances, _, _, *_ = fifo_cache[u_id]
         order_fifo = user_fifo_balances.get(str(order.id), {})
         order_balance = order_fifo.get("balance")
         order_used = order_fifo.get("credits_used", 0)
@@ -285,7 +285,9 @@ async def create_order(
 
     # Note: Installments are now only generated when moving to INSTALLMENT status in update_order
 
+    await order_service.sync_user_credit_balance(db, order.user_id, tenant_id)
     await db.commit()
+
     await db.refresh(order)
 
     # Reload with relations
@@ -297,7 +299,7 @@ async def create_order(
     order = result.unique().scalar_one()
 
     # Get FIFO balances
-    user_fifo_balances, _, _, _ = await order_service.compute_fifo_balances(db, order.user_id, tenant_id)
+    user_fifo_balances, _, _, *_ = await order_service.compute_fifo_balances(db, order.user_id, tenant_id)
     order_fifo = user_fifo_balances.get(str(order.id), {})
     order_balance = order_fifo.get("balance")
     order_used = order_fifo.get("credits_used", 0)
@@ -390,7 +392,9 @@ async def update_order(
                     detail="Impossible de régénérer l'échéancier : une ou plusieurs échéances ont déjà été payées ou marquées en erreur."
                 )
 
+    await order_service.sync_user_credit_balance(db, order.user_id, tenant_id)
     await db.commit()
+
     await db.refresh(order)
 
     # Reload with relations
@@ -402,7 +406,7 @@ async def update_order(
     order = result.unique().scalar_one()
 
     # Get FIFO balances
-    user_fifo_balances, _, _, _ = await order_service.compute_fifo_balances(db, order.user_id, tenant_id)
+    user_fifo_balances, _, _, *_ = await order_service.compute_fifo_balances(db, order.user_id, tenant_id)
     order_fifo = user_fifo_balances.get(str(order.id), {})
     order_balance = order_fifo.get("balance")
     order_used = order_fifo.get("credits_used", 0)
@@ -455,8 +459,11 @@ async def delete_order(
         await db.delete(tx)
 
     await db.flush()
+    user_id = order.user_id
     await db.delete(order)
+    await order_service.sync_user_credit_balance(db, user_id, tenant_id)
     await db.commit()
+
 
 
 # ---- INSTALLMENTS ----

@@ -61,7 +61,8 @@ async def list_upcoming_events(
         .where(
             and_(
                 Event.tenant_id == tenant_id,
-                Event.event_date >= date.today()
+                Event.event_date >= date.today(),
+                Event.is_active == True
             )
         )
         .order_by(Event.event_date.asc(), Event.event_time.asc())

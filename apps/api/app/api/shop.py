@@ -219,7 +219,7 @@ async def shop_checkout(
     grace_mode = tenant.grace_period_mode if tenant else "days"
 
     # Get FIFO balances
-    user_fifo_balances, _, _, _ = await order_service.compute_fifo_balances(db, order.user_id, order.tenant_id)
+    user_fifo_balances, _, _, *_ = await order_service.compute_fifo_balances(db, order.user_id, order.tenant_id)
     order_fifo = user_fifo_balances.get(str(order.id), {})
     order_balance = order_fifo.get("balance")
     order_used = order_fifo.get("credits_used", 0)
@@ -273,7 +273,7 @@ async def list_my_orders(
     grace_mode = tenant.grace_period_mode if tenant else "days"
 
     # Get FIFO balances
-    user_fifo_balances, _, _, _ = await order_service.compute_fifo_balances(db, user_id, tenant_id)
+    user_fifo_balances, _, _, *_ = await order_service.compute_fifo_balances(db, user_id, tenant_id)
 
     # Mapper vers OrderResponse en utilisant le service partagé
     res = []

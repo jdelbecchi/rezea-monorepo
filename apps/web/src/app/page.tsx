@@ -1,8 +1,20 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import ClubSearch from "@/components/ClubSearch";
+import TenantPortal from "@/app/login/page";
+import { getTenantSlug } from "@/lib/api";
 
 export default function Home() {
+  const [slug, setSlug] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSlug(getTenantSlug());
+  }, []);
+
+  if (slug) {
+    return <TenantPortal />;
+  }
   return (
     <main className="min-h-screen relative overflow-hidden bg-[#fbfcfd] flex items-center justify-center p-4">
       {/* Background Abstract Shapes - Zen Blobs */}

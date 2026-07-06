@@ -11,6 +11,8 @@ interface ConfirmModalProps {
   cancelLabel?: string;
   onConfirm: () => void;
   onCancel?: () => void;
+  error?: string | null;
+  saving?: boolean;
 }
 
 export default function ConfirmModal({
@@ -22,6 +24,8 @@ export default function ConfirmModal({
   cancelLabel,
   onConfirm,
   onCancel,
+  error,
+  saving,
 }: ConfirmModalProps) {
   if (!isOpen) return null;
 
@@ -79,6 +83,14 @@ export default function ConfirmModal({
             <div className="text-slate-500 text-sm leading-relaxed text-center sm:text-left">
               {message}
             </div>
+            {error && (
+              <div className="mt-3 p-3 rounded-xl bg-red-50 text-red-600 text-xs border border-red-100 flex items-start gap-2 animate-in fade-in duration-200 text-left">
+                <svg className="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>{error}</span>
+              </div>
+            )}
           </div>
         </div>
         <div className="px-6 pb-6 pt-1 flex flex-wrap gap-2.5 justify-center sm:justify-end items-center">
@@ -87,25 +99,28 @@ export default function ConfirmModal({
               <button
                 type="button"
                 onClick={onCancel}
-                className="px-5 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl font-medium hover:bg-slate-50 transition-all text-xs shadow-sm active:scale-95"
+                disabled={saving}
+                className="px-5 py-2.5 bg-white text-slate-700 border border-slate-200 rounded-xl font-medium hover:bg-slate-50 transition-all text-xs shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {cancelLabel}
               </button>
               <button
                 type="button"
                 onClick={onConfirm}
-                className={`px-5 py-2.5 rounded-xl font-medium transition-all text-xs ${getConfirmButtonClass()}`}
+                disabled={saving}
+                className={`px-5 py-2.5 rounded-xl font-medium transition-all text-xs disabled:opacity-50 disabled:cursor-not-allowed ${getConfirmButtonClass()}`}
               >
-                {confirmLabel}
+                {saving ? "Suppression en cours..." : confirmLabel}
               </button>
             </>
           ) : (
             <button
               type="button"
               onClick={onConfirm}
-              className={`px-5 py-2.5 rounded-xl font-medium transition-all text-xs w-auto ${getConfirmButtonClass()}`}
+              disabled={saving}
+              className={`px-5 py-2.5 rounded-xl font-medium transition-all text-xs w-auto disabled:opacity-50 disabled:cursor-not-allowed ${getConfirmButtonClass()}`}
             >
-              {confirmLabel}
+              {saving ? "Chargement..." : confirmLabel}
             </button>
           )}
         </div>

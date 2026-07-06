@@ -1,7 +1,7 @@
 """Routes réservations avec gestion FIFO des crédits"""
 from datetime import datetime, timedelta
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Request, HTTPException, status
+from fastapi import APIRouter, Depends, Request, HTTPException, status, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
 from uuid import UUID
@@ -91,6 +91,9 @@ async def auto_restitute_expired_waitlist(
                     consumed_at=now
                 )
                 db.add(tx)
+                booking.status = BookingStatus.CANCELLED
+                booking.cancelled_at = now
+                booking.cancellation_type = "system_expiration"
                 count += 1
                 
     if count > 0:
@@ -117,7 +120,7 @@ async def consume_credits_fifo(
                 CreditAccount.tenant_id == tenant_id,
                 CreditAccount.user_id == user_id
             )
-        )
+        ).with_for_update()
     )
     account = result.scalar_one_or_none()
     
@@ -257,7 +260,7 @@ async def create_booking(
     
     try:
         # Simuler la file d'attente FIFO en ajoutant la réservation demandée
-        orders_balances, global_balance, success, _ = await order_service.compute_fifo_balances(
+        orders_balances, global_balance, success, _, _, _ = await order_service.compute_fifo_balances(
             db,
             user_id,
             tenant_id,
@@ -265,7 +268,8 @@ async def create_booking(
                 "id": "new_booking",
                 "date": session.start_time.date(),
                 "credits": session.credits_required,
-                "activity_type": session.activity_type
+                "activity_type": session.activity_type,
+                "is_pending": booking_status == BookingStatus.PENDING
             }]
         )
         if not success:
@@ -296,6 +300,8 @@ async def create_booking(
         # Incrémenter le compteur seulement si confirmé
         if booking_status == BookingStatus.CONFIRMED:
             session.current_participants += 1
+        else:
+            session.waitlist_count += 1
         
         await db.commit()
         await db.refresh(booking)
@@ -331,8 +337,8 @@ async def list_bookings(
     tenant_id = request.state.tenant_id
     user_id = request.state.user_id
     
-    # Restitution automatique des crédits pour les listes d'attente expirées
-    await auto_restitute_expired_waitlist(db, tenant_id, user_id)
+    # Restitution automatique déplacée vers l'endpoint cron dédié pour de meilleures performances
+    pass
     
     # Expirer les crédits expirés si nécessaire (obsolète avec FIFO dynamique)
 
@@ -365,6 +371,7 @@ async def list_bookings(
 async def cancel_booking(
     booking_id: UUID,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
     """Annule une réservation et rembourse les crédits"""
@@ -417,6 +424,7 @@ async def cancel_booking(
         )
     
     was_confirmed = booking.status == BookingStatus.CONFIRMED
+    was_pending = booking.status == BookingStatus.PENDING
     
     # Annuler la réservation
     booking.status = BookingStatus.CANCELLED
@@ -429,6 +437,8 @@ async def cancel_booking(
     # Décrémenter le compteur si confirmé
     if was_confirmed:
         session.current_participants = max(0, session.current_participants - 1)
+    elif was_pending:
+        session.waitlist_count = max(0, session.waitlist_count - 1)
     
     # Rembourser les crédits
     if booking.credits_used > 0:
@@ -445,7 +455,7 @@ async def cancel_booking(
         if account:
             # Recompute global_balance dynamically
             from app.services import orders as order_service
-            _, global_balance, _, _ = await order_service.compute_fifo_balances(db, user_id, tenant_id)
+            _, global_balance, _, _, _, _ = await order_service.compute_fifo_balances(db, user_id, tenant_id)
             
             account.balance = global_balance
             account.total_used -= booking.credits_used
@@ -481,6 +491,7 @@ async def cancel_booking(
         if next_booking:
             next_booking.status = BookingStatus.CONFIRMED
             session.current_participants += 1
+            session.waitlist_count = max(0, session.waitlist_count - 1)
             # Redondant car déjà débité lors de l'entrée en liste d'attente
             
             logger.info(
@@ -500,10 +511,9 @@ async def cancel_booking(
             tenant = tenant_res.scalar_one_or_none()
             
             if promoted_user and tenant:
-                try:
-                    await EmailService.send_session_promotion(promoted_user, tenant, session)
-                except Exception as e:
-                    logger.error("Error sending session promotion email", error=str(e), booking_id=str(next_booking.id))
+                background_tasks.add_task(
+                    EmailService.send_session_promotion, promoted_user, tenant, session
+                )
     
     await db.commit()
     
@@ -515,4 +525,23 @@ async def cancel_booking(
     )
     
     return None
+
+
+@router.post("/cron/cleanup-waitlist")
+async def cleanup_expired_waitlists(
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Tâche planifiée (cron) pour restituer les crédits des listes d'attente expirées
+    sur l'ensemble des tenants de la plateforme.
+    """
+    result = await db.execute(select(Tenant.id))
+    tenant_ids = result.scalars().all()
+    
+    total_processed = 0
+    for tenant_id in tenant_ids:
+        processed = await auto_restitute_expired_waitlist(db, tenant_id)
+        total_processed += processed
+        
+    return {"status": "success", "processed_bookings_count": total_processed}
 

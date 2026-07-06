@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Request, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 from app.db.session import get_db
 from app.models.models import Session, Booking, BookingStatus, CreditAccount, CreditTransaction, CreditTransactionType
 from app.schemas.schemas import SessionResponse, SessionCreate, SessionUpdate, SessionDuplicateRequest
@@ -22,7 +22,8 @@ async def list_sessions(
     end_date: datetime = Query(None),
     activity_type: str = Query(None),
     available_only: bool = Query(False),
-    status_filter: str = Query("active", alias="status")
+    status_filter: str = Query("active", alias="status"),
+    include_deleted: bool = Query(False)
 ):
     """
     Liste les séances du planning
@@ -57,6 +58,9 @@ async def list_sessions(
         query = query.where(Session.is_active == False)
     # else: "all", no filter on is_active
     
+    if not include_deleted:
+        query = query.where(Session.deleted_at.is_(None))
+        
     if activity_type:
         query = query.where(Session.activity_type == activity_type)
     
@@ -197,12 +201,14 @@ async def delete_session(
     tenant_id = request.state.tenant_id
     
     result = await db.execute(
-        select(Session).where(
+        select(Session)
+        .where(
             and_(
                 Session.id == session_id,
                 Session.tenant_id == tenant_id
             )
         )
+        .options(selectinload(Session.bookings))
     )
     session = result.scalar_one_or_none()
     
@@ -212,11 +218,48 @@ async def delete_session(
             detail="Séance non trouvée"
         )
     
-    # Soft delete (ou annulation sans remboursement si on veut juste masquer)
-    # Note: On utilise cancel_session pour une annulation propre avec remboursement
-    session.is_active = False
-    await db.commit()
+    # Empêcher la suppression des séances passées
+    if session.start_time < datetime.utcnow():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Impossible de supprimer une séance dont la date est passée"
+        )
     
+    # Soft delete
+    session.is_active = False
+    session.deleted_at = datetime.utcnow()
+    
+    # Gérer les inscriptions (Remboursement des crédits si applicable)
+    for booking in session.bookings:
+        if booking.status in [BookingStatus.CONFIRMED, BookingStatus.PENDING]:
+            if booking.credits_used > 0:
+                acct_result = await db.execute(
+                    select(CreditAccount).where(
+                        and_(
+                            CreditAccount.user_id == booking.user_id,
+                            CreditAccount.tenant_id == tenant_id
+                        )
+                    )
+                )
+                account = acct_result.scalar_one_or_none()
+                if account:
+                    account.balance += booking.credits_used
+                    account.total_used -= booking.credits_used
+                    
+                    tx = CreditTransaction(
+                        tenant_id=tenant_id,
+                        account_id=account.id,
+                        transaction_type=CreditTransactionType.REFUND,
+                        amount=booking.credits_used,
+                        balance_after=account.balance,
+                        description=f"Remboursement : séance '{session.title}' supprimée",
+                        reference=str(booking.id)
+                    )
+                    db.add(tx)
+            
+            booking.status = BookingStatus.SESSION_CANCELLED
+            
+    await db.commit()
     return None
 
 
@@ -305,7 +348,7 @@ async def reactivate_session(
     result = await db.execute(
         select(Session)
         .where(and_(Session.id == session_id, Session.tenant_id == tenant_id))
-        .options(selectinload(Session.bookings))
+        .options(selectinload(Session.bookings).joinedload(Booking.user))
     )
     session = result.scalar_one_or_none()
     
@@ -321,6 +364,7 @@ async def reactivate_session(
     session.is_active = True
     
     # Restaurer les inscriptions qui étaient 'session_cancelled'
+    failed_restorations = []
     for booking in session.bookings:
         if booking.status == BookingStatus.SESSION_CANCELLED:
             # Re-consommer les crédits
@@ -350,7 +394,12 @@ async def reactivate_session(
                     db.add(tx)
                     booking.status = BookingStatus.CONFIRMED
                 else:
-                    # Pas assez de crédits ou compte non trouvé, on laisse en 'session_cancelled'
+                    # Pas assez de crédits ou compte non trouvé, on laisse en 'session_cancelled' et on l'ajoute à la liste des échecs
+                    failed_restorations.append({
+                        "user_id": str(booking.user_id),
+                        "first_name": booking.user.first_name if booking.user else "Utilisateur",
+                        "last_name": booking.user.last_name if booking.user else "Inconnu"
+                    })
                     logger.warning(
                         "Impossible de restaurer l'inscription: crédits insuffisants",
                         user_id=str(booking.user_id),
@@ -363,7 +412,9 @@ async def reactivate_session(
     await db.commit()
     await db.refresh(session)
     
-    return SessionResponse.model_validate(session)
+    response = SessionResponse.model_validate(session)
+    response.failed_restorations = failed_restorations
+    return response
 
 
 @router.post("/duplicate", status_code=status.HTTP_201_CREATED)
