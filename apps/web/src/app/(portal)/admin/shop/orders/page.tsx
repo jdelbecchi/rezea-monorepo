@@ -8,6 +8,7 @@ import Sidebar from "@/components/Sidebar";
 import ConfirmModal from "@/components/ConfirmModal";
 import { formatCredits } from "@/lib/formatters";
 import MultiSelect from "@/components/MultiSelect";
+import { getSessionFilter, setSessionFilter, updateLastActivity } from "@/lib/sessionFilters";
 
 const PAYMENT_LABELS: Record<string, string> = {
     a_valider: "À valider",
@@ -69,14 +70,56 @@ export default function AdminShopOrdersPage() {
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
 
     // Filters
-    const [searchTerm, setSearchTerm] = useState("");
-    const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
-    const [dynamicStatuses, setDynamicStatuses] = useState<string[]>(["active", "termine"]);
-    const [filterPayments, setFilterPayments] = useState<string[]>([]);
-    const [filterExpiry, setFilterExpiry] = useState("");
-    const [exportFrom, setExportFrom] = useState("");
-    const [exportTo, setExportTo] = useState("");
+    const [searchTerm, setSearchTerm] = useState(() => getSessionFilter("orders_search", ""));
+    const [filterStatuses, setFilterStatuses] = useState<string[]>(() => getSessionFilter("orders_filterStatuses", []));
+    const [dynamicStatuses, setDynamicStatuses] = useState<string[]>(() => getSessionFilter("orders_dynamicStatuses", ["active", "termine"]));
+    const [filterPayments, setFilterPayments] = useState<string[]>(() => getSessionFilter("orders_filterPayments", []));
+    const [filterExpiry, setFilterExpiry] = useState(() => getSessionFilter("orders_filterExpiry", ""));
+    const [exportFrom, setExportFrom] = useState(() => getSessionFilter("orders_exportFrom", ""));
+    const [exportTo, setExportTo] = useState(() => getSessionFilter("orders_exportTo", ""));
     const [showCustomStatus, setShowCustomStatus] = useState(false);
+
+    // Sync filters to sessionStorage
+    useEffect(() => {
+        setSessionFilter("orders_search", searchTerm);
+    }, [searchTerm]);
+
+    useEffect(() => {
+        setSessionFilter("orders_filterStatuses", filterStatuses);
+    }, [filterStatuses]);
+
+    useEffect(() => {
+        setSessionFilter("orders_dynamicStatuses", dynamicStatuses);
+    }, [dynamicStatuses]);
+
+    useEffect(() => {
+        setSessionFilter("orders_filterPayments", filterPayments);
+    }, [filterPayments]);
+
+    useEffect(() => {
+        setSessionFilter("orders_filterExpiry", filterExpiry);
+    }, [filterExpiry]);
+
+    useEffect(() => {
+        setSessionFilter("orders_exportFrom", exportFrom);
+    }, [exportFrom]);
+
+    useEffect(() => {
+        setSessionFilter("orders_exportTo", exportTo);
+    }, [exportTo]);
+
+    // Handle global activity listener to update inactivity timestamp
+    useEffect(() => {
+        const handleActivity = () => {
+            updateLastActivity();
+        };
+        window.addEventListener("click", handleActivity);
+        window.addEventListener("keypress", handleActivity);
+        return () => {
+            window.removeEventListener("click", handleActivity);
+            window.removeEventListener("keypress", handleActivity);
+        };
+    }, []);
 
     // Create modal
     const [showCreate, setShowCreate] = useState(false);
@@ -646,7 +689,7 @@ export default function AdminShopOrdersPage() {
             new Date(o.start_date).toLocaleDateString("fr-FR"),
             o.end_date ? o.end_date.split('-').reverse().join('/') : "Illimité",
             (o.price_cents / 100).toFixed(2).replace('.', ','),
-            o.is_unlimited ? "∞" : o.credits_total,
+            o.is_unlimited ? "∞" : formatCredits(o.credits_total),
             o.is_unlimited ? "∞" : formatCredits(o.balance),
             PAYMENT_LABELS[o.payment_status],
             STATUS_LABELS[o.status] || o.status,
@@ -910,11 +953,11 @@ export default function AdminShopOrdersPage() {
                                                         <span className="text-slate-400">—</span>
                                                     )}
                                                 </td>
-                                                <td className="px-3 py-2.5 whitespace-nowrap text-slate-700 hidden sm:table-cell text-center">
+                                                <td className="px-3 py-2.5 whitespace-nowrap text-slate-700 hidden sm:table-cell text-left">
                                                     {formatPrice(order)}
                                                 </td>
                                                 <td className="px-3 py-2.5 whitespace-nowrap text-sm text-slate-700 hidden xl:table-cell text-center">
-                                                    {order.is_unlimited ? "∞" : order.credits_total}
+                                                    {order.is_unlimited ? "∞" : formatCredits(order.credits_total)}
                                                 </td>
                                                 <td className="px-3 py-2.5 whitespace-nowrap hidden sm:table-cell text-center">
                                                     {order.is_unlimited ? (

@@ -112,14 +112,13 @@ export default function CreditsPage() {
                                             if (b === "Toutes activités") return 1;
                                             return a.localeCompare(b);
                                         });
-                                    if (activities.length === 0 && frozenBalance === 0) return null;
+                                    if (activities.length === 0) return null;
                                     if (activities.length > 1) {
                                         return (
                                             <div className="flex flex-col items-center gap-1.5 max-w-md w-full">
                                                 <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">Mes soldes de crédits</span>
                                                 <div className="flex flex-wrap justify-center gap-2">
                                                     {activities.map(([activity, bal]) => {
-                                                        const actFrozen = frozenByActivity[activity] || 0;
                                                         return (
                                                             <div 
                                                                 key={activity} 
@@ -132,11 +131,6 @@ export default function CreditsPage() {
                                                                 <span className="text-xs md:text-sm font-medium text-slate-900 leading-none">
                                                                     {bal === null ? "Illimité" : formatCredits(Number(bal))}
                                                                 </span>
-                                                                {Number(actFrozen) > 0 && (
-                                                                    <span className="text-[10px] text-slate-400 font-normal flex items-center gap-0.5" title={`${formatCredits(Number(actFrozen))} crédit(s) bloqué(s) en liste d'attente`}>
-                                                                        (🔒{formatCredits(Number(actFrozen))})
-                                                                    </span>
-                                                                )}
                                                                 <span className="text-slate-500 text-[10px] capitalize font-medium">
                                                                     {activity}
                                                                 </span>
@@ -150,7 +144,6 @@ export default function CreditsPage() {
                                     const singleAct = activities[0];
                                     const label = singleAct && singleAct[0] !== "Toutes activités" ? ` (${singleAct[0]})` : "";
                                     const balValue = singleAct ? (singleAct[1] === null ? "Illimité" : formatCredits(Number(singleAct[1]))) : formatCredits(balance);
-                                    const singleActFrozen = singleAct ? (frozenByActivity[singleAct[0]] || 0) : frozenBalance;
                                     return (
                                         <div className="flex flex-col items-center gap-1.5">
                                             <div 
@@ -168,11 +161,6 @@ export default function CreditsPage() {
                                                     )}
                                                 </div>
                                             </div>
-                                            {Number(singleActFrozen) > 0 && (
-                                                <p className="text-[10px] text-slate-400 font-medium flex items-center gap-0.5" title="Ces crédits sont bloqués pour des réservations en liste d'attente.">
-                                                    🔒 {formatCredits(Number(singleActFrozen))} crédit{Number(singleActFrozen) > 1 ? 's' : ''} gelé{Number(singleActFrozen) > 1 ? 's' : ''} en liste d'attente
-                                                </p>
-                                            )}
                                         </div>
                                     );
                                 })()}
@@ -266,7 +254,7 @@ export default function CreditsPage() {
                                                             <div className="flex items-center gap-1.5 text-slate-500 justify-center">
                                                                 <span className="text-xs">💎</span>
                                                                 <span className="text-xs font-medium">
-                                                                    {offer.is_unlimited ? "Crédits illimités" : `${offer.classes_included || 0} crédit${(offer.classes_included || 0) > 1 ? 's' : ''}`}
+                                                                    {offer.is_unlimited ? "Crédits illimités" : `${formatCredits(offer.classes_included)} crédit${Number(offer.classes_included || 0) > 1 ? 's' : ''}`}
                                                                 </span>
                                                             </div>
                                                             

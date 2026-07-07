@@ -387,13 +387,21 @@ export default function PlanningPage() {
                       }
                       return (
                           <div className="flex flex-col gap-1.5 mt-1">
-                              {sortedActs.map(([activity, bal]) => (
-                                  <div key={activity} className="flex items-center gap-2 text-xs text-slate-700 bg-white shadow-sm border border-slate-200/80 px-3 py-1.5 rounded-xl">
-                                      <DiamondToken className="w-3.5 h-3.5 text-slate-400" />
-                                      <span className="font-semibold text-slate-900">{bal === null ? "Illimité" : formatCredits(Number(bal))}</span>
-                                      <span className="text-slate-600 text-xs truncate max-w-[150px] capitalize">{activity}</span>
-                                  </div>
-                              ))}
+                              {sortedActs.map(([activity, bal]) => {
+                                  const actFrozen = credits.frozen_by_activity?.[activity] || 0;
+                                  return (
+                                      <div key={activity} className="flex items-center gap-2 text-xs text-slate-700 bg-white shadow-sm border border-slate-200/80 px-3 py-1.5 rounded-xl">
+                                          <DiamondToken className="w-3.5 h-3.5 text-slate-400" />
+                                          <span className="font-semibold text-slate-900">{bal === null ? "Illimité" : formatCredits(Number(bal))}</span>
+                                          <span className="text-slate-600 text-xs truncate max-w-[150px] capitalize">{activity}</span>
+                                          {Number(actFrozen) > 0 && (
+                                              <span className="text-[10px] text-slate-400 font-normal flex items-center gap-0.5" title={`${formatCredits(Number(actFrozen))} crédit(s) en liste d'attente`}>
+                                                  (<span className="opacity-40">⏳</span>{formatCredits(Number(actFrozen))})
+                                              </span>
+                                          )}
+                                      </div>
+                                  );
+                              })}
                           </div>
                       );
                   })()}
@@ -416,13 +424,21 @@ export default function PlanningPage() {
                     }
                     return (
                         <div className="flex flex-wrap justify-end gap-1.5 py-1">
-                            {sortedActs.map(([activity, bal]) => (
-                                <div key={activity} className="flex items-center gap-1 text-[10px] text-slate-700 bg-slate-50 border border-slate-200/80 px-2 py-0.5 rounded-lg">
-                                    <DiamondToken className="w-2.5 h-2.5 text-slate-400" />
-                                    <span className="font-semibold text-slate-900">{bal === null ? "Illimité" : formatCredits(Number(bal))}</span>
-                                    <span className="text-slate-600 text-[10px] truncate max-w-[100px] capitalize">{activity}</span>
-                                </div>
-                            ))}
+                            {sortedActs.map(([activity, bal]) => {
+                                const actFrozen = credits.frozen_by_activity?.[activity] || 0;
+                                return (
+                                    <div key={activity} className="flex items-center gap-1 text-[10px] text-slate-700 bg-slate-50 border border-slate-200/80 px-2 py-0.5 rounded-lg">
+                                        <DiamondToken className="w-2.5 h-2.5 text-slate-400" />
+                                        <span className="font-semibold text-slate-900">{bal === null ? "Illimité" : formatCredits(Number(bal))}</span>
+                                        <span className="text-slate-600 text-[10px] truncate max-w-[100px] capitalize">{activity}</span>
+                                        {Number(actFrozen) > 0 && (
+                                            <span className="text-[9px] text-slate-400 font-normal flex items-center gap-0.5" title={`${formatCredits(Number(actFrozen))} crédit(s) en liste d'attente`}>
+                                                (<span className="opacity-40">⏳</span>{formatCredits(Number(actFrozen))})
+                                            </span>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     );
                 })()}
@@ -574,8 +590,8 @@ export default function PlanningPage() {
                       const getStatusBadgeStyle = (label: string) => {
                           switch (label) {
                               case 'Inscrit': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
-                              case 'Sur liste': return 'bg-blue-50 text-blue-600 border-blue-100';
-                              case 'Annulé': return 'bg-yellow-50 text-yellow-600 border-yellow-100';
+                              case 'Sur liste': return 'bg-amber-50 text-amber-600 border-amber-100';
+                              case 'Annulé': return 'bg-blue-50 text-blue-600 border-blue-100';
                               case 'Absent': return 'bg-orange-50 text-orange-600 border-orange-100';
                               default: return 'bg-slate-50 text-slate-400 border-slate-100';
                           }
@@ -663,8 +679,8 @@ export default function PlanningPage() {
                           {/* 4. ACTION FOOTER (Séparateur + Places + Bouton) */}
                           <div className="px-5 py-2.5 bg-slate-50/10 flex items-center justify-between gap-4 mt-auto">
                             <span 
-                              className={`text-xs md:text-sm font-medium tracking-tight ${
-                                isFull ? 'text-slate-500 font-medium' : (spotsLeft <= 3 ? 'text-amber-500' : 'text-emerald-500')
+                              className={`text-xs md:text-sm font-semibold tracking-tight ${
+                                isFull ? 'text-amber-600' : (spotsLeft <= 3 ? 'text-amber-500' : 'text-emerald-500')
                               }`}
                             >
                               {isFull ? (isEvent ? 'Événement complet' : 'Séance complète') : `${spotsLeft} place${spotsLeft > 1 ? 's' : ''} dispo${spotsLeft > 1 ? 's' : ''}`}
@@ -680,26 +696,23 @@ export default function PlanningPage() {
                                     Fermé
                                   </div>
                                 ) : canWaitlist ? (
-                                   <div className="flex items-center gap-3">
-                                       <span className="text-[10px] md:text-xs text-slate-500 italic font-medium">S'inscrire en liste d'attente ?</span>
-                                       {isEvent ? (
-                                          <button 
-                                              disabled={bookingLoading === item.id}
-                                              onClick={() => handleWaitlistEvent(item.id)}
-                                              className="px-4 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium rounded-full text-[11px] transition-all active:scale-95 border border-amber-200/50"
-                                          >
-                                              {bookingLoading === item.id ? "..." : "oui"}
-                                          </button>
-                                       ) : (
-                                         <button 
-                                             disabled={bookingLoading === item.id}
-                                             onClick={() => handleBooking(item.id)}
-                                             className="px-4 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium rounded-full text-[11px] transition-all active:scale-95 border border-amber-200/50"
-                                         >
-                                             {bookingLoading === item.id ? "..." : "oui"}
-                                         </button>
-                                       )}
-                                   </div>
+                                  isEvent ? (
+                                      <button 
+                                          disabled={bookingLoading === item.id}
+                                          onClick={() => handleWaitlistEvent(item.id)}
+                                          className="py-2 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 font-normal rounded-xl text-[11px] transition-all active:scale-95 border border-amber-200/80 shadow-sm whitespace-nowrap text-center"
+                                      >
+                                          {bookingLoading === item.id ? "..." : "S'inscrire sur liste d'attente"}
+                                      </button>
+                                   ) : (
+                                     <button 
+                                         disabled={bookingLoading === item.id}
+                                         onClick={() => handleBooking(item.id)}
+                                         className="py-2 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 font-normal rounded-xl text-[11px] transition-all active:scale-95 border border-amber-200/80 shadow-sm whitespace-nowrap text-center"
+                                     >
+                                         {bookingLoading === item.id ? "..." : "S'inscrire sur liste d'attente"}
+                                     </button>
+                                  )
                                 ) : isFull ? (
                                    <span className="text-[10px] text-slate-300 italic">Complet</span>
                                 ) : (

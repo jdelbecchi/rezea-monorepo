@@ -300,15 +300,6 @@ export default function AdminSettingsPage() {
                             <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-slate-900">⚙️ Paramètres</h1>
                             <p className="text-base font-normal text-slate-500 mt-1">Gérez l&apos;identité, les règles et les options de votre club</p>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={handleSave}
-                                disabled={saving}
-                                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium text-sm transition-all shadow-sm shadow-slate-200 disabled:opacity-50 flex items-center gap-2 active:scale-95"
-                            >
-                                {saving ? "Enregistrement..." : "Enregistrer les modifications"}
-                            </button>
-                        </div>
                     </div>
 
                     {/* Status message */}
@@ -1996,6 +1987,17 @@ export default function AdminSettingsPage() {
                         </div>
                     );
                 })()}
+
+                {/* Save button at the bottom */}
+                <div className="flex justify-end mt-8 pt-6 border-t border-slate-200">
+                    <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium text-sm transition-all shadow-sm shadow-slate-200 disabled:opacity-50 flex items-center gap-2 active:scale-95"
+                    >
+                        {saving ? "Enregistrement..." : "Enregistrer les modifications"}
+                    </button>
+                </div>
             </main>
 
             <style jsx global>{`

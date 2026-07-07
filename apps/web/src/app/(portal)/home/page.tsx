@@ -348,15 +348,23 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                                 
                                 {showCreditDetails && (
                                     <div className="absolute top-10 left-1/2 -translate-x-1/2 flex flex-col gap-1.5 w-48 mt-2 animate-in fade-in slide-in-from-top-1 duration-200 z-50">
-                                        {sortedActivities.map(([activity, bal]) => (
-                                            <div key={activity} className="flex items-center justify-between text-[11px] text-slate-700 bg-white shadow-sm border border-slate-200/80 px-2.5 py-1 rounded-xl">
-                                                <span className="text-slate-500 text-[10px] truncate max-w-[100px] capitalize">{activity}</span>
-                                                <div className="flex items-center gap-1">
-                                                    <span>💎</span>
-                                                    <span className="font-bold text-slate-900">{bal === null ? "Illimité" : formatCredits(Number(bal))}</span>
+                                        {sortedActivities.map(([activity, bal]) => {
+                                            const actFrozen = credits.frozen_by_activity?.[activity] || 0;
+                                            return (
+                                                <div key={activity} className="flex items-center justify-between text-[11px] text-slate-700 bg-white shadow-sm border border-slate-200/80 px-2.5 py-1 rounded-xl">
+                                                    <div className="flex items-center gap-1 truncate max-w-[130px]">
+                                                        <span>💎</span>
+                                                        <span className="font-bold text-slate-900">{bal === null ? "Illimité" : formatCredits(Number(bal))}</span>
+                                                        <span className="text-slate-500 text-[10px] truncate capitalize">{activity}</span>
+                                                        {Number(actFrozen) > 0 && (
+                                                            <span className="text-[9px] text-slate-400 font-normal flex items-center gap-0.5" title={`${formatCredits(Number(actFrozen))} crédit(s) en liste d'attente`}>
+                                                                (<span className="opacity-40">⏳</span>{formatCredits(Number(actFrozen))})
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>
@@ -662,13 +670,21 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                         
                         {showCreditDetails && (
                             <div className="flex flex-wrap justify-end gap-1.5 max-w-xs mt-2 animate-in fade-in slide-in-from-top-1 duration-200">
-                                {sortedActivities.map(([activity, bal]) => (
-                                    <div key={activity} className="flex items-center gap-1 text-[11px] text-slate-700 bg-white shadow-sm border border-slate-200/80 px-2.5 py-1 rounded-xl">
-                                        <span>💎</span>
-                                        <span className="font-bold text-slate-900">{bal === null ? "Illimité" : formatCredits(Number(bal))}</span>
-                                        <span className="text-slate-500 text-[10px] truncate max-w-[100px] capitalize">{activity}</span>
-                                    </div>
-                                ))}
+                                {sortedActivities.map(([activity, bal]) => {
+                                    const actFrozen = credits.frozen_by_activity?.[activity] || 0;
+                                    return (
+                                        <div key={activity} className="flex items-center gap-1 text-[11px] text-slate-700 bg-white shadow-sm border border-slate-200/80 px-2.5 py-1 rounded-xl">
+                                            <span>💎</span>
+                                            <span className="font-bold text-slate-900">{bal === null ? "Illimité" : formatCredits(Number(bal))}</span>
+                                            <span className="text-slate-500 text-[10px] truncate max-w-[100px] capitalize">{activity}</span>
+                                            {Number(actFrozen) > 0 && (
+                                                <span className="text-[9px] text-slate-400 font-normal flex items-center gap-0.5" title={`${formatCredits(Number(actFrozen))} crédit(s) en liste d'attente`}>
+                                                    (<span className="opacity-40">⏳</span>{formatCredits(Number(actFrozen))})
+                                                </span>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -676,6 +692,28 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
             })()}
 
             {/* 5. Quick Actions Stack */}
+            {nextRDV && (
+                <div className="mb-3 px-1 lg:px-0 w-full">
+                    <div 
+                        className="flex items-center justify-between py-2 border-y border-slate-200/80 text-xs px-4"
+                        style={{
+                            background: 'linear-gradient(90deg, rgba(16, 185, 129, 0.02) 0%, rgba(16, 185, 129, 0.05) 50%, rgba(16, 185, 129, 0.02) 100%)'
+                        }}
+                    >
+                        <div className="flex items-center gap-2 min-w-0 mr-3">
+                            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider whitespace-nowrap shrink-0">Prochain RDV</span>
+                            <span className="text-slate-300 shrink-0">|</span>
+                            <span className="font-semibold text-slate-800 truncate">
+                                {nextRDV.title}
+                            </span>
+                        </div>
+                        <span className="text-slate-500 font-medium whitespace-nowrap shrink-0 capitalize">
+                            {nextRDV.date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })} à {nextRDV.date.getMinutes() === 0 ? `${nextRDV.date.getHours()}h` : `${nextRDV.date.getHours()}h${nextRDV.date.getMinutes().toString().padStart(2, '0')}`}
+                        </span>
+                    </div>
+                </div>
+            )}
+
             <div className="grid grid-cols-2 gap-2.5 mb-4 w-full mx-auto lg:mx-0 px-1 lg:px-0 lg:mt-0">
 
                 {/* Staff: Gestion des inscriptions */}
@@ -713,16 +751,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                             <span className="text-base font-medium text-slate-800 tracking-tight leading-none group-hover:text-slate-900 transition-colors">
                                 Planning & réservations
                             </span>
-                            {nextRDV ? (
-                                <div className="flex items-center gap-2">
-                                    <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                    <span className="text-xs font-medium text-emerald-600 bg-emerald-50/80 px-2 py-0.5 rounded-full">
-                                        Prochain RDV : {nextRDV.date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} à {nextRDV.date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} · {nextRDV.title}
-                                    </span>
-                                </div>
-                            ) : (
-                                <span className="text-xs font-normal text-slate-600">Réservez votre prochaine séance</span>
-                            )}
+                            <span className="text-xs font-normal text-slate-600">Réservez votre prochaine séance</span>
                         </div>
                     </div>
                     <div className="absolute -right-6 -bottom-6 w-28 h-28 rounded-full blur-3xl opacity-0 group-hover:opacity-[0.06] transition-opacity duration-700" style={{ backgroundColor: primaryColor }} />

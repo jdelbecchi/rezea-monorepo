@@ -6,6 +6,8 @@ import { api, User, Offer, Tenant } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import MultiSelect from "@/components/MultiSelect";
 import ConfirmModal from "@/components/ConfirmModal";
+import { formatCredits } from "@/lib/formatters";
+import { getSessionFilter, setSessionFilter, updateLastActivity } from "@/lib/sessionFilters";
 
 const emptyForm = {
     offer_code: "",
@@ -46,8 +48,30 @@ function AdminOffersContent() {
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-    const [searchTerm, setSearchTerm] = useState("");
-    const [statusFilter, setStatusFilter] = useState("active");
+    const [searchTerm, setSearchTerm] = useState(() => getSessionFilter("offers_search", ""));
+    const [statusFilter, setStatusFilter] = useState(() => getSessionFilter("offers_statusFilter", "active"));
+
+    // Sync filters to sessionStorage
+    useEffect(() => {
+        setSessionFilter("offers_search", searchTerm);
+    }, [searchTerm]);
+
+    useEffect(() => {
+        setSessionFilter("offers_statusFilter", statusFilter);
+    }, [statusFilter]);
+
+    // Handle global activity listener to update inactivity timestamp
+    useEffect(() => {
+        const handleActivity = () => {
+            updateLastActivity();
+        };
+        window.addEventListener("click", handleActivity);
+        window.addEventListener("keypress", handleActivity);
+        return () => {
+            window.removeEventListener("click", handleActivity);
+            window.removeEventListener("keypress", handleActivity);
+        };
+    }, []);
     
     const [formData, setFormData] = useState({ ...emptyForm });
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -384,7 +408,7 @@ function AdminOffersContent() {
                                                         <span className="text-purple-600 font-normal text-lg leading-none">∞</span>
                                                     ) : (
                                                         <span className="text-sm font-normal text-slate-700">
-                                                            {o.classes_included || 0} <span className="text-[11px] text-slate-400 font-normal">crédits</span>
+                                                            {formatCredits(o.classes_included)} <span className="text-[11px] text-slate-400 font-normal">crédits</span>
                                                         </span>
                                                     )}
                                                 </td>

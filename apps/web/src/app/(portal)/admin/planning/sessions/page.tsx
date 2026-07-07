@@ -338,7 +338,7 @@ function AdminSessionsContent() {
     
     const handleExport = () => {
         const BOM = "\uFEFF";
-        const header = "Date;Heure;Intitulé;Durée;Lieu;Intervenant;Inscriptions;Crédits;Statut";
+        const header = "Date;Heure;Intitulé;Durée;Lieu;Activité;Intervenant;Inscriptions;Crédits;Statut";
         const rows = sessions.filter(s => {
             const q = searchTerm.toLowerCase();
             const matchesSearch = s.title.toLowerCase().includes(q) || (s.description || "").toLowerCase().includes(q) || ((s as any).instructor_name || "").toLowerCase().includes(q);
@@ -363,6 +363,7 @@ function AdminSessionsContent() {
                 s.title,
                 formatDuration(Math.round((new Date(s.end_time).getTime() - date.getTime())/60000)),
                 s.location || "",
+                s.activity_type || "",
                 (s as any).instructor_name || "",
                 `${s.current_participants}/${s.max_participants}`,
                 s.credits_required,
@@ -531,63 +532,68 @@ function AdminSessionsContent() {
                     {/* Table Style Harmonized */}
                     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                         <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-slate-100 border-b border-slate-200">
-                                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">date</th>
-                                    <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">heure</th>
-                                    <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest w-[200px]">intitulé</th>
-                                    <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">durée</th>
-                                    <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">lieu</th>
-                                    <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">attribution</th>
-                                    <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">inscriptions</th>
-                                    <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">crédits</th>
-                                    <th className="px-3 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {filteredSessions.map(s => {
-                                    const date = new Date(s.start_time);
-                                    const fillPercent = (s.current_participants / s.max_participants) * 100;
-                                    
-                                    return (
-                                        <tr key={s.id} className="hover:bg-slate-50 transition-colors group">
-                                            <td className="px-3 py-2.5 whitespace-nowrap text-sm text-slate-700">{format(date, "dd/MM/yyyy")}</td>
-                                            <td className="px-3 py-2.5 whitespace-nowrap text-sm font-medium text-slate-900 text-center">{format(date, "HH:mm")}</td>
-                                            <td className="px-3 py-2.5 whitespace-nowrap max-w-[200px] truncate">
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`text-sm font-medium text-slate-900 ${!s.is_active ? 'line-through text-slate-400' : ''}`}>{s.title}</span>
-                                                    {s.description && s.description.trim().length > 0 && (
-                                                        <span title={`Informations : ${s.description}`} className="text-blue-400 cursor-help">
-                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                                                            </svg>
-                                                        </span>
-                                                    )}
-                                                    {sessionNoteIds.has(s.id) && (
-                                                        <span title="Post-it en attente" className="text-amber-400 cursor-help shrink-0">
-                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                                        </svg>
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="px-3 py-2.5 whitespace-nowrap text-sm font-normal text-slate-500 text-center">{formatDuration(Math.round((new Date(s.end_time).getTime() - date.getTime())/60000))}</td>
-                                            <td className="px-3 py-2.5 whitespace-nowrap text-center">
-                                                <div className="flex flex-col gap-1 items-center">
-                                                    {s.location ? (
-                                                        <span className="text-[11px] text-slate-500 flex items-center gap-1 font-medium bg-slate-100 px-2 py-0.5 rounded-md">
-                                                            📍 {s.location}
-                                                        </span>
-                                                    ) : null}
-                                                    {s.activity_type ? (
-                                                        <span className="text-[11px] text-slate-500 flex items-center gap-1 font-medium bg-slate-100 px-2 py-0.5 rounded-md capitalize">
-                                                            🏷️ {s.activity_type}
-                                                        </span>
-                                                    ) : null}
-                                                </div>
-                                            </td>
-                                            <td className="px-3 py-2.5 text-sm font-normal text-slate-500 whitespace-nowrap text-center">{(s as any).instructor_name || "—"}</td>
+                                    <thead>
+                                        <tr className="bg-slate-100 border-b border-slate-200">
+                                            <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">date</th>
+                                            <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">heure</th>
+                                            <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest w-[200px]">intitulé</th>
+                                            <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">durée</th>
+                                            <th className="px-1 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest w-[100px]">lieu</th>
+                                            <th className="px-1 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest w-[100px]">activité</th>
+                                            <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">attribution</th>
+                                            <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">inscriptions</th>
+                                            <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">crédits</th>
+                                            <th className="px-3 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {filteredSessions.map(s => {
+                                            const date = new Date(s.start_time);
+                                            const fillPercent = (s.current_participants / s.max_participants) * 100;
+                                            
+                                            return (
+                                                <tr key={s.id} className="hover:bg-slate-50 transition-colors group">
+                                                    <td className="px-3 py-2.5 whitespace-nowrap text-sm text-slate-700">{format(date, "dd/MM/yyyy")}</td>
+                                                    <td className="px-3 py-2.5 whitespace-nowrap text-sm font-medium text-slate-900 text-center">{format(date, "HH:mm")}</td>
+                                                    <td className="px-3 py-2.5 whitespace-nowrap max-w-[200px] truncate">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`text-sm font-medium text-slate-900 ${!s.is_active ? 'line-through text-slate-400' : ''}`}>{s.title}</span>
+                                                            {s.description && s.description.trim().length > 0 && (
+                                                                <span title={`Informations : ${s.description}`} className="text-blue-400 cursor-help">
+                                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                                                    </svg>
+                                                                </span>
+                                                            )}
+                                                            {sessionNoteIds.has(s.id) && (
+                                                                <span title="Post-it en attente" className="text-amber-400 cursor-help shrink-0">
+                                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                                                </svg>
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-3 py-2.5 whitespace-nowrap text-sm font-normal text-slate-500 text-center">{formatDuration(Math.round((new Date(s.end_time).getTime() - date.getTime())/60000))}</td>
+                                                    <td className="px-1 py-2.5 whitespace-nowrap text-center">
+                                                        {s.location ? (
+                                                            <span className="inline-flex items-center gap-1.5 text-xs text-slate-600 font-light bg-slate-50 border border-slate-100/60 px-2 py-1 rounded-md">
+                                                                📍 {s.location}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-slate-300 text-xs italic">—</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-1 py-2.5 whitespace-nowrap text-center">
+                                                        {s.activity_type ? (
+                                                            <span className="inline-flex items-center gap-1.5 text-xs text-slate-600 font-light bg-slate-50 border border-slate-100/60 px-2 py-1 rounded-md capitalize">
+                                                                🏷️ {s.activity_type}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-slate-300 text-xs italic">—</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-3 py-2.5 text-sm font-normal text-slate-500 whitespace-nowrap text-center">{(s as any).instructor_name || "—"}</td>
                                             <td className="px-3 py-2.5 text-center whitespace-nowrap">
                                                 <span className={`inline-flex items-center justify-center px-4 py-1 rounded-full text-xs font-normal border ${
                                                     !s.is_active ? "bg-slate-100 text-slate-400 border-slate-200" :

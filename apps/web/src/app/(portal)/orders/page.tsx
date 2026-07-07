@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { api, User, Tenant, EventRegistration } from "@/lib/api";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import { formatCredits } from "@/lib/formatters";
 
 export default function MemberOrdersPage() {
     const params = useParams();
@@ -84,17 +85,22 @@ export default function MemberOrdersPage() {
         }
     };
 
+    const formatPriceClean = (cents: number) => {
+        const amount = cents / 100;
+        return amount % 1 === 0 ? amount.toString() : amount.toFixed(2);
+    };
+
     const formatPrice = (order: any) => {
         if (order.offer_featured_pricing === "recurring" && order.offer_price_recurring_cents) {
-            const amount = (order.offer_price_recurring_cents / 100).toFixed(2);
+            const amount = formatPriceClean(order.offer_price_recurring_cents);
             const period = order.offer_period || "";
             const recurrence = order.offer_recurring_count ? ` x${order.offer_recurring_count}` : "";
             return `${amount}€/${period}${recurrence}`.trim();
         }
         if (order.offer_featured_pricing === "lump_sum" && order.offer_price_lump_sum_cents) {
-            return `${(order.offer_price_lump_sum_cents / 100).toFixed(2)}€`;
+            return `${formatPriceClean(order.offer_price_lump_sum_cents)}€`;
         }
-        return `${(order.price_cents / 100).toFixed(2)}€`;
+        return `${formatPriceClean(order.price_cents)}€`;
     };
 
     const getGeneralStatusLabel = (status: string) => {
@@ -601,7 +607,7 @@ export default function MemberOrdersPage() {
                                      <div className="flex flex-col">
                                          <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium leading-none mb-1">Crédits inclus</span>
                                          <p className="text-sm font-medium text-slate-900 leading-none">
-                                            {selectedOrder.is_unlimited ? 'Illimité' : `${selectedOrder.credits_total} crédits`}
+                                            {selectedOrder.is_unlimited ? 'Illimité' : `${formatCredits(selectedOrder.credits_total)} crédits`}
                                          </p>
                                      </div>
                                  </div>

@@ -7,6 +7,7 @@ import { api, User, AdminBookingItem } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import MultiSelect from "@/components/MultiSelect";
 import ConfirmModal from "@/components/ConfirmModal";
+import { getSessionFilter, setSessionFilter, updateLastActivity } from "@/lib/sessionFilters";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -30,12 +31,46 @@ export default function AdminBookingsPage() {
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
     // Filters
-    const [searchTerm, setSearchTerm] = useState("");
-    const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
-    const [locationFilter, setLocationFilter] = useState<string[]>([]);
+    const [searchTerm, setSearchTerm] = useState(() => getSessionFilter("bookings_search", ""));
+    const [filterStatuses, setFilterStatuses] = useState<string[]>(() => getSessionFilter("bookings_filterStatuses", []));
+    const [locationFilter, setLocationFilter] = useState<string[]>(() => getSessionFilter("bookings_locationFilter", []));
     const [tenant, setTenant] = useState<any>(null);
-    const [dateFrom, setDateFrom] = useState("");
-    const [dateTo, setDateTo] = useState("");
+    const [dateFrom, setDateFrom] = useState(() => getSessionFilter("bookings_dateFrom", ""));
+    const [dateTo, setDateTo] = useState(() => getSessionFilter("bookings_dateTo", ""));
+
+    // Sync filters to sessionStorage
+    useEffect(() => {
+        setSessionFilter("bookings_search", searchTerm);
+    }, [searchTerm]);
+
+    useEffect(() => {
+        setSessionFilter("bookings_filterStatuses", filterStatuses);
+    }, [filterStatuses]);
+
+    useEffect(() => {
+        setSessionFilter("bookings_locationFilter", locationFilter);
+    }, [locationFilter]);
+
+    useEffect(() => {
+        setSessionFilter("bookings_dateFrom", dateFrom);
+    }, [dateFrom]);
+
+    useEffect(() => {
+        setSessionFilter("bookings_dateTo", dateTo);
+    }, [dateTo]);
+
+    // Handle global activity listener to update inactivity timestamp
+    useEffect(() => {
+        const handleActivity = () => {
+            updateLastActivity();
+        };
+        window.addEventListener("click", handleActivity);
+        window.addEventListener("keypress", handleActivity);
+        return () => {
+            window.removeEventListener("click", handleActivity);
+            window.removeEventListener("keypress", handleActivity);
+        };
+    }, []);
 
     // Create modal
     const [showCreate, setShowCreate] = useState(false);
@@ -470,7 +505,7 @@ export default function AdminBookingsPage() {
                                         <option value="">Sélectionner un utilisateur...</option>
                                         {users.map(u => (
                                             <option key={u.id} value={u.id}>
-                                                {u.first_name} {u.last_name} ({u.has_unlimited_credits ? "crédits illimités" : `${u.balance || 0} crédits`})
+                                                {u.first_name} {u.last_name}
                                             </option>
                                         ))}
                                     </select>
@@ -485,7 +520,7 @@ export default function AdminBookingsPage() {
                                     >
                                         <option value="">Sélectionner une séance...</option>
                                         {sessions.map(s => (
-                                            <option key={s.id} value={s.id}>{format(parseISO(s.start_time), "dd/MM", { locale: fr })} - {s.title} ({s.current_participants}/{s.max_participants}) - {s.credits_required || 0} crédits</option>
+                                            <option key={s.id} value={s.id}>{format(parseISO(s.start_time), "dd/MM", { locale: fr })} - {s.title} ({s.current_participants}/{s.max_participants})</option>
                                         ))}
                                     </select>
                                 </div>

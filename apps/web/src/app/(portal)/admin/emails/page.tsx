@@ -1636,7 +1636,7 @@ function AdminEmailsContent() {
                                         <button
                                             onClick={handleSend}
                                             disabled={isSending}
-                                            className={`w-full md:w-auto px-10 py-4 rounded-xl font-bold text-white shadow-lg shadow-indigo-200/50 transition-all text-sm active:scale-95 ${isSending ? "bg-slate-400 cursor-not-allowed" : "bg-slate-900 hover:bg-slate-800"}`}
+                                            className={`w-full md:w-auto px-10 py-4 rounded-xl font-semibold text-white shadow-lg shadow-indigo-200/50 transition-all text-sm active:scale-95 ${isSending ? "bg-slate-400 cursor-not-allowed" : "bg-slate-900 hover:bg-slate-800"}`}
                                         >
                                             {isSending ? "Envoi en cours..." : "Diffuser la newsletter"}
                                         </button>
@@ -1912,7 +1912,7 @@ function AdminEmailsContent() {
                                 <button
                                     onClick={handleSend}
                                     disabled={isSending}
-                                    className={`w-full md:w-auto px-10 py-4 rounded-xl font-bold text-white shadow-lg shadow-indigo-200/50 transition-all text-sm ${isSending ? "bg-slate-400 cursor-not-allowed" : "bg-slate-900 hover:bg-slate-800"}`}
+                                    className={`w-full md:w-auto px-10 py-4 rounded-xl font-semibold text-white shadow-lg shadow-indigo-200/50 transition-all text-sm ${isSending ? "bg-slate-400 cursor-not-allowed" : "bg-slate-900 hover:bg-slate-800"}`}
                                 >
                                     {isSending ? "Envoi en cours..." : "Diffuser le message"}
                                 </button>

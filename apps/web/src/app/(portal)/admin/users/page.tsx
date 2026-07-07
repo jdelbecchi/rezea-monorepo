@@ -4,6 +4,7 @@ import Sidebar from "@/components/Sidebar";
 import MultiSelect from "@/components/MultiSelect";
 import ConfirmModal from "@/components/ConfirmModal";
 import { useEffect, useState, useCallback, useRef, Suspense } from "react";
+import { getSessionFilter, setSessionFilter, updateLastActivity } from "@/lib/sessionFilters";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { api, User, OrderItem, AdminBookingItem, AdminEventRegistrationItem } from "@/lib/api";
 
@@ -52,9 +53,35 @@ function AdminUsersPageContent() {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState(searchParams?.get("search") || "");
-    const [roleFilter, setRoleFilter] = useState<string[]>([]);
-    const [segmentFilter, setSegmentFilter] = useState<string[]>([]);
+    const [search, setSearch] = useState(() => getSessionFilter("users_search", searchParams?.get("search") || ""));
+    const [roleFilter, setRoleFilter] = useState<string[]>(() => getSessionFilter("users_roleFilter", []));
+    const [segmentFilter, setSegmentFilter] = useState<string[]>(() => getSessionFilter("users_segmentFilter", []));
+
+    // Sync filters to sessionStorage
+    useEffect(() => {
+        setSessionFilter("users_search", search);
+    }, [search]);
+
+    useEffect(() => {
+        setSessionFilter("users_roleFilter", roleFilter);
+    }, [roleFilter]);
+
+    useEffect(() => {
+        setSessionFilter("users_segmentFilter", segmentFilter);
+    }, [segmentFilter]);
+
+    // Handle global activity listener to update inactivity timestamp
+    useEffect(() => {
+        const handleActivity = () => {
+            updateLastActivity();
+        };
+        window.addEventListener("click", handleActivity);
+        window.addEventListener("keypress", handleActivity);
+        return () => {
+            window.removeEventListener("click", handleActivity);
+            window.removeEventListener("keypress", handleActivity);
+        };
+    }, []);
     const [totalCount, setTotalCount] = useState(0);
 
     const shouldAutoOpenRef = useRef(!!(searchParams?.get("search")));

@@ -444,6 +444,17 @@ async def delete_order(
     if not order:
         raise HTTPException(status_code=404, detail="Commande non trouvée")
 
+    # Vérifier si des crédits de cette commande ont déjà été consommés
+    user_fifo_balances, _, _, *_ = await order_service.compute_fifo_balances(db, order.user_id, tenant_id)
+    order_id_str = str(order.id)
+    if order_id_str in user_fifo_balances:
+        credits_used = user_fifo_balances[order_id_str].get("credits_used", 0)
+        if credits_used > 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Impossible de supprimer cette commande car elle est utilisée pour des réservations (passées ou futures). Veuillez d'abord gérer ces réservations."
+            )
+
     # Supprimer d'abord les échéances liées
     inst_result = await db.execute(
         select(Installment).where(Installment.order_id == order_id, Installment.tenant_id == tenant_id)

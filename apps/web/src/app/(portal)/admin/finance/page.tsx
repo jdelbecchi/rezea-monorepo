@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api, FinanceCategory, FinanceAccount, FinanceTransaction, FinanceDashboard, User, getTenantSlug } from "@/lib/api";
 import { format } from "date-fns";
@@ -23,6 +23,11 @@ export default function TreasuryPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [isExporting, setIsExporting] = useState(false);
     const [selectedMonthStr, setSelectedMonthStr] = useState<string>(format(new Date(), "yyyy-MM"));
+    
+    // States for annual overview
+    const [annualStartDateStr, setAnnualStartDateStr] = useState<string>(`${new Date().getFullYear()}-01-01`);
+    const [annualTransactions, setAnnualTransactions] = useState<FinanceTransaction[]>([]);
+    const [annualLoading, setAnnualLoading] = useState(false);
     const getSafeDate = (monthStr: string) => {
         if (!monthStr || typeof monthStr !== 'string' || !monthStr.includes('-')) {
             return new Date();
@@ -110,6 +115,36 @@ export default function TreasuryPage() {
         return () => clearTimeout(timer);
     }, [searchTerm, user]);
 
+    const refreshAnnualData = async () => {
+        if (!user || !annualStartDateStr) return;
+        setAnnualLoading(true);
+        try {
+            const start = new Date(annualStartDateStr);
+            if (!isNaN(start.getTime())) {
+                const end = new Date(start);
+                end.setFullYear(end.getFullYear() + 1);
+                end.setDate(end.getDate() - 1);
+                
+                const startStr = format(start, "yyyy-MM-dd");
+                const endStr = format(end, "yyyy-MM-dd");
+                const data = await api.getFinanceTransactions({
+                    start_date: startStr,
+                    end_date: endStr,
+                    show_future: true
+                });
+                setAnnualTransactions(data);
+            }
+        } catch (error) {
+            console.error("Error loading annual transactions:", error);
+        } finally {
+            setAnnualLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        refreshAnnualData();
+    }, [annualStartDateStr, user]);
+
     useEffect(() => {
         if (user) {
             api.getFinanceDashboard(selectedMonthStr, 30).then(setDashboard);
@@ -130,10 +165,147 @@ export default function TreasuryPage() {
             setAccounts(accs);
             setTransactions(trans);
             setEventGroups(groups);
+            
+            // Trigger refetch of annual transactions
+            const start = new Date(annualStartDateStr);
+            if (!isNaN(start.getTime())) {
+                const end = new Date(start);
+                end.setFullYear(end.getFullYear() + 1);
+                end.setDate(end.getDate() - 1);
+                
+                const startStr = format(start, "yyyy-MM-dd");
+                const endStr = format(end, "yyyy-MM-dd");
+                api.getFinanceTransactions({
+                    start_date: startStr,
+                    end_date: endStr,
+                    show_future: true
+                }).then(setAnnualTransactions).catch(console.error);
+            }
         } catch (error) {
             console.error("Error loading treasury data:", error);
         }
     };
+
+    const annualStats = useMemo(() => {
+        // Generate list of 12 months starting from annualStartDateStr
+        const monthsList: { key: string; label: string; date: Date }[] = [];
+        const start = new Date(annualStartDateStr);
+        if (!isNaN(start.getTime())) {
+            for (let i = 0; i < 12; i++) {
+                const d = new Date(start);
+                d.setMonth(d.getMonth() + i);
+                const key = format(d, "yyyy-MM");
+                const label = format(d, "MMM yy", { locale: fr });
+                monthsList.push({ key, label, date: d });
+            }
+        }
+
+        // Keep track of unique category names for income and expense
+        const incomeCategoriesMap = new Map<string, string>(); // name -> color
+        const expenseCategoriesMap = new Map<string, string>(); // name -> color
+
+        // Matrix structures: matrix[categoryName][monthKey] = amount_cents
+        const incomeMatrix: Record<string, Record<string, number>> = {};
+        const expenseMatrix: Record<string, Record<string, number>> = {};
+
+        // Totals per month
+        const monthlyTotalIncome: Record<string, number> = {};
+        const monthlyTotalExpense: Record<string, number> = {};
+        
+        // Initialize monthly totals
+        monthsList.forEach(m => {
+            monthlyTotalIncome[m.key] = 0;
+            monthlyTotalExpense[m.key] = 0;
+        });
+
+        annualTransactions.forEach(tx => {
+            const amount = tx.amount_cents;
+            const categoryName = tx.category_name || "Non catégorisé";
+            const catObj = categories.find(c => c.name === categoryName);
+            const color = catObj?.color || "#94a3b8";
+
+            const txMonthKey = tx.date.substring(0, 7); // "yyyy-MM"
+            const hasMonth = monthsList.some(m => m.key === txMonthKey);
+            if (!hasMonth) return;
+
+            if (tx.type === "income") {
+                incomeCategoriesMap.set(categoryName, color);
+                if (!incomeMatrix[categoryName]) {
+                    incomeMatrix[categoryName] = {};
+                    monthsList.forEach(m => { incomeMatrix[categoryName][m.key] = 0; });
+                }
+                incomeMatrix[categoryName][txMonthKey] += amount;
+                monthlyTotalIncome[txMonthKey] += amount;
+            } else if (tx.type === "expense") {
+                expenseCategoriesMap.set(categoryName, color);
+                if (!expenseMatrix[categoryName]) {
+                    expenseMatrix[categoryName] = {};
+                    monthsList.forEach(m => { expenseMatrix[categoryName][m.key] = 0; });
+                }
+                expenseMatrix[categoryName][txMonthKey] += amount;
+                monthlyTotalExpense[txMonthKey] += amount;
+            }
+        });
+
+        // Initialize known categories from state to keep view complete
+        categories.forEach(c => {
+            const color = c.color || "#94a3b8";
+            if (c.type === "income" && !incomeCategoriesMap.has(c.name)) {
+                incomeCategoriesMap.set(c.name, color);
+                incomeMatrix[c.name] = {};
+                monthsList.forEach(m => { incomeMatrix[c.name][m.key] = 0; });
+            } else if (c.type === "expense" && !expenseCategoriesMap.has(c.name)) {
+                expenseCategoriesMap.set(c.name, color);
+                expenseMatrix[c.name] = {};
+                monthsList.forEach(m => { expenseMatrix[c.name][m.key] = 0; });
+            }
+        });
+
+        // Sort categories alphabetically
+        const sortedIncomeCategories = Array.from(incomeCategoriesMap.entries()).map(([name, color]) => ({ name, color })).sort((a, b) => a.name.localeCompare(b.name));
+        const sortedExpenseCategories = Array.from(expenseCategoriesMap.entries()).map(([name, color]) => ({ name, color })).sort((a, b) => a.name.localeCompare(b.name));
+
+        // Calculate category annual totals
+        const incomeCategoryTotals: Record<string, number> = {};
+        sortedIncomeCategories.forEach(cat => {
+            let total = 0;
+            monthsList.forEach(m => {
+                total += incomeMatrix[cat.name]?.[m.key] || 0;
+            });
+            incomeCategoryTotals[cat.name] = total;
+        });
+
+        const expenseCategoryTotals: Record<string, number> = {};
+        sortedExpenseCategories.forEach(cat => {
+            let total = 0;
+            monthsList.forEach(m => {
+                total += expenseMatrix[cat.name]?.[m.key] || 0;
+            });
+            expenseCategoryTotals[cat.name] = total;
+        });
+
+        // Calculate overall totals
+        let totalIncomeAll = 0;
+        let totalExpenseAll = 0;
+        monthsList.forEach(m => {
+            totalIncomeAll += monthlyTotalIncome[m.key];
+            totalExpenseAll += monthlyTotalExpense[m.key];
+        });
+
+        return {
+            months: monthsList,
+            incomeCategories: sortedIncomeCategories,
+            expenseCategories: sortedExpenseCategories,
+            incomeMatrix,
+            expenseMatrix,
+            monthlyTotalIncome,
+            monthlyTotalExpense,
+            incomeCategoryTotals,
+            expenseCategoryTotals,
+            totalIncomeAll,
+            totalExpenseAll
+        };
+    }, [annualTransactions, annualStartDateStr, categories]);
 
     const openTransModal = (trans: FinanceTransaction | null = null) => {
         setEditingTrans(trans);
@@ -390,10 +562,7 @@ export default function TreasuryPage() {
                                     {/* Navigation Mois */}
                                     <div className="flex items-center justify-between mb-8">
                                         <h2 className="text-lg font-medium text-slate-700 flex items-center gap-2">
-                                            <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                            </svg>
-                                            Synthèse mensuelle
+                                            📈 Synthèse mensuelle
                                         </h2>
                                         <div className="flex items-center gap-4 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm">
                                             <button 
@@ -594,14 +763,147 @@ export default function TreasuryPage() {
                                     </div>
                                 </div>
 
+                                {/* Synthèse Annuelle */}
+                                <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm flex flex-col gap-8">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        <div>
+                                            <h2 className="text-lg font-medium text-slate-700 flex items-center gap-2">
+                                                ⚖️ Synthèse annuelle
+                                            </h2>
+                                            <p className="text-xs text-slate-400 mt-1">Recettes, dépenses et balance mensuelle sur 12 mois sous forme de tableau matriciel.</p>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <label className="text-xs font-semibold text-slate-500 uppercase">Début de l'exercice :</label>
+                                            <input 
+                                                type="date" 
+                                                value={annualStartDateStr}
+                                                onChange={(e) => setAnnualStartDateStr(e.target.value)}
+                                                className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                                            />
+                                        </div>
+                                    </div>
+                                    
+                                    {annualLoading ? (
+                                        <div className="h-48 flex items-center justify-center text-slate-400 italic text-sm">Chargement des données annuelles...</div>
+                                    ) : (
+                                        <div className="w-full overflow-hidden">
+                                            <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+                                                <table className="w-full text-left border-collapse min-w-[1000px]">
+                                                    <thead>
+                                                        <tr className="bg-slate-50 border-b border-slate-200">
+                                                            <th className="sticky left-0 bg-slate-50 border-r border-slate-200 py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-[200px] z-10">Catégorie</th>
+                                                            {annualStats.months.map(m => (
+                                                                <th key={m.key} className="py-3 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">{m.label}</th>
+                                                            ))}
+                                                            <th className="py-3 px-4 text-xs font-bold text-slate-700 uppercase tracking-wider text-right bg-slate-50/80">Total annuel</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100">
+                                                        {/* SECTION RECETTES */}
+                                                        <tr className="bg-emerald-50/30">
+                                                            <td colSpan={14} className="py-2 px-4 text-[11px] font-bold text-emerald-800 uppercase tracking-wider sticky left-0">💰 Recettes</td>
+                                                        </tr>
+                                                        {annualStats.incomeCategories.map(cat => (
+                                                            <tr key={cat.name} className="hover:bg-slate-50/50 transition-colors">
+                                                                <td className="sticky left-0 bg-white border-r border-slate-200 py-2 px-4 text-xs font-medium text-slate-700 flex items-center gap-2 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.03)] min-h-[36px]">
+                                                                    <span className="w-2 h-2 rounded-full inline-block shrink-0" style={{ backgroundColor: cat.color }} />
+                                                                    <span className="truncate">{cat.name}</span>
+                                                                </td>
+                                                                {annualStats.months.map(m => {
+                                                                    const val = annualStats.incomeMatrix[cat.name]?.[m.key] || 0;
+                                                                    return (
+                                                                        <td key={m.key} className="py-2 px-3 text-xs text-slate-600 text-right">
+                                                                            {val > 0 ? formatCurrency(val) : "-"}
+                                                                        </td>
+                                                                    );
+                                                                })}
+                                                                <td className="py-2 px-4 text-xs font-semibold text-slate-900 text-right bg-slate-50/40">
+                                                                    {formatCurrency(annualStats.incomeCategoryTotals[cat.name] || 0)}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                        {/* Total Recettes */}
+                                                        <tr className="bg-emerald-50/50 border-t border-emerald-100">
+                                                            <td className="sticky left-0 bg-emerald-50 border-r border-slate-200 py-2.5 px-4 text-xs font-semibold text-emerald-800 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.03)]">
+                                                                Total Recettes
+                                                            </td>
+                                                            {annualStats.months.map(m => (
+                                                                <td key={m.key} className="py-2.5 px-3 text-xs font-semibold text-emerald-700 text-right">
+                                                                    {formatCurrency(annualStats.monthlyTotalIncome[m.key] || 0)}
+                                                                </td>
+                                                            ))}
+                                                            <td className="py-2.5 px-4 text-xs font-bold text-emerald-800 text-right bg-emerald-50">
+                                                                {formatCurrency(annualStats.totalIncomeAll)}
+                                                            </td>
+                                                        </tr>
+
+                                                        {/* SECTION DEPENSES */}
+                                                        <tr className="bg-rose-50/30">
+                                                            <td colSpan={14} className="py-2 px-4 text-[11px] font-bold text-rose-800 uppercase tracking-wider sticky left-0">💸 Dépenses</td>
+                                                        </tr>
+                                                        {annualStats.expenseCategories.map(cat => (
+                                                            <tr key={cat.name} className="hover:bg-slate-50/50 transition-colors">
+                                                                <td className="sticky left-0 bg-white border-r border-slate-200 py-2 px-4 text-xs font-medium text-slate-700 flex items-center gap-2 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.03)] min-h-[36px]">
+                                                                    <span className="w-2 h-2 rounded-full inline-block shrink-0" style={{ backgroundColor: cat.color }} />
+                                                                    <span className="truncate">{cat.name}</span>
+                                                                </td>
+                                                                {annualStats.months.map(m => {
+                                                                    const val = annualStats.expenseMatrix[cat.name]?.[m.key] || 0;
+                                                                    return (
+                                                                        <td key={m.key} className="py-2 px-3 text-xs text-slate-600 text-right">
+                                                                            {val > 0 ? formatCurrency(val) : "-"}
+                                                                        </td>
+                                                                    );
+                                                                })}
+                                                                <td className="py-2 px-4 text-xs font-semibold text-slate-900 text-right bg-slate-50/40">
+                                                                    {formatCurrency(annualStats.expenseCategoryTotals[cat.name] || 0)}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                        {/* Total Dépenses */}
+                                                        <tr className="bg-rose-50/50 border-t border-rose-100">
+                                                            <td className="sticky left-0 bg-rose-50 border-r border-slate-200 py-2.5 px-4 text-xs font-semibold text-rose-800 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.03)]">
+                                                                Total Dépenses
+                                                            </td>
+                                                            {annualStats.months.map(m => (
+                                                                <td key={m.key} className="py-2.5 px-3 text-xs font-semibold text-rose-700 text-right">
+                                                                    {formatCurrency(annualStats.monthlyTotalExpense[m.key] || 0)}
+                                                                </td>
+                                                            ))}
+                                                            <td className="py-2.5 px-4 text-xs font-bold text-rose-800 text-right bg-rose-50">
+                                                                {formatCurrency(annualStats.totalExpenseAll)}
+                                                            </td>
+                                                        </tr>
+
+                                                        {/* NET BALANCE */}
+                                                        <tr className="bg-slate-100 border-t-2 border-slate-300">
+                                                            <td className="sticky left-0 bg-slate-100 border-r border-slate-200 py-3 px-4 text-xs font-semibold text-slate-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.03)]">
+                                                                Balance mensuelle
+                                                            </td>
+                                                            {annualStats.months.map(m => {
+                                                                const bal = (annualStats.monthlyTotalIncome[m.key] || 0) - (annualStats.monthlyTotalExpense[m.key] || 0);
+                                                                return (
+                                                                    <td key={m.key} className={`py-3 px-3 text-xs font-semibold text-right ${bal >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                                                                        {bal > 0 ? "+" : ""}{formatCurrency(bal)}
+                                                                    </td>
+                                                                );
+                                                            })}
+                                                            <td className={`py-3 px-4 text-xs font-bold text-right bg-slate-100 ${annualStats.totalIncomeAll - annualStats.totalExpenseAll >= 0 ? "text-emerald-800" : "text-rose-800"}`}>
+                                                                {annualStats.totalIncomeAll - annualStats.totalExpenseAll > 0 ? "+" : ""}{formatCurrency(annualStats.totalIncomeAll - annualStats.totalExpenseAll)}
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
                                 {/* Previsions (Projected Trend) & A Venir */}
                                 <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm flex flex-col gap-8">
                                     <div className="flex items-center justify-between">
                                         <h2 className="text-lg font-medium text-slate-700 flex items-center gap-2">
-                                            <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                                            </svg>
-                                            Prévisions de recettes
+                                            🔭 Prévisions de recettes
                                         </h2>
                                     </div>
                                     <div className="flex flex-col lg:flex-row gap-8">
@@ -639,87 +941,6 @@ export default function TreasuryPage() {
                                                     Aucune prévision disponible.
                                                 </div>
                                             )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Historique Comparatif */}
-                                <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
-                                    <div className="flex items-center justify-between mb-8">
-                                        <h2 className="text-lg font-medium text-slate-700 flex items-center gap-2">
-                                            <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-                                            </svg>
-                                            Évolution recettes/dépenses
-                                        </h2>
-                                        <div className="flex items-center gap-2">
-                                            <button 
-                                                onClick={() => setTrendPage(p => p + 1)}
-                                                disabled={!dashboard?.monthly_trend || (trendPage + 1) * 6 >= dashboard.monthly_trend.length}
-                                                className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-lg transition-all disabled:opacity-30"
-                                            >
-                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                                </svg>
-                                            </button>
-                                            <span className="text-xs font-semibold text-slate-500 px-2 uppercase">Historique</span>
-                                            <button 
-                                                onClick={() => setTrendPage(p => Math.max(0, p - 1))}
-                                                disabled={trendPage === 0}
-                                                className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-lg transition-all disabled:opacity-30"
-                                            >
-                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {dashboard?.monthly_trend && dashboard.monthly_trend.length > 0 ? (
-                                        <div className="flex items-end justify-between gap-2 h-48 mt-4 pt-6">
-                                            {(() => {
-                                                const allTrend = dashboard.monthly_trend;
-                                                const startIndex = Math.max(0, allTrend.length - (trendPage + 1) * 6);
-                                                const endIndex = allTrend.length - trendPage * 6;
-                                                const visibleTrend = allTrend.slice(startIndex, endIndex);
-                                                const maxAmount = Math.max(...visibleTrend.map(t => Math.max(t.income, t.expense)), 1);
-                                                
-                                                return visibleTrend.map(t => (
-                                                    <div key={t.month} className="flex flex-col items-center gap-3 flex-1 h-full">
-                                                        <div className="flex items-end justify-center gap-3 w-full h-full pb-2">
-                                                            <div className="w-[40%] max-w-[56px] flex flex-col justify-end items-center h-full relative group">
-                                                                <span className="absolute bottom-1 text-[11px] text-white whitespace-nowrap z-10 [text-shadow:_0_1px_2px_rgb(0_0_0_/_40%)] font-medium">{formatNumberShort(t.income)}</span>
-                                                                <div 
-                                                                    className="w-full bg-emerald-400 rounded-t-sm transition-all hover:bg-emerald-500" 
-                                                                    style={{ height: `${Math.max(2, (t.income / maxAmount) * 100)}%` }} 
-                                                                />
-                                                            </div>
-                                                            <div className="w-[40%] max-w-[56px] flex flex-col justify-end items-center h-full relative group">
-                                                                <span className="absolute bottom-1 text-[11px] text-white whitespace-nowrap z-10 [text-shadow:_0_1px_2px_rgb(0_0_0_/_40%)] font-medium">{formatNumberShort(t.expense)}</span>
-                                                                <div 
-                                                                    className="w-full bg-rose-400 rounded-t-sm transition-all hover:bg-rose-500" 
-                                                                    style={{ height: `${Math.max(2, (t.expense / maxAmount) * 100)}%` }} 
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                        <span className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">{format(new Date(t.month + "-01"), "MMM yy", { locale: fr })}</span>
-                                                    </div>
-                                                ));
-                                            })()}
-                                        </div>
-                                    ) : (
-                                        <div className="h-48 flex items-center justify-center text-slate-400 italic text-sm">
-                                            Aucune donnée historique.
-                                        </div>
-                                    )}
-                                    <div className="flex items-center justify-center gap-8 mt-6">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-3 h-3 rounded-sm bg-emerald-400"></div>
-                                            <span className="text-xs text-slate-600 font-medium">Revenus</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-3 h-3 rounded-sm bg-rose-400"></div>
-                                            <span className="text-xs text-slate-600 font-medium">Dépenses</span>
                                         </div>
                                     </div>
                                 </div>

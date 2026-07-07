@@ -356,6 +356,7 @@ class SessionUpdate(BaseModel):
     is_active: Optional[bool] = None
     location: Optional[str] = None
     allow_waitlist: Optional[bool] = None
+    activity_type: Optional[str] = None
 
 
 class SessionResponse(SessionBase):

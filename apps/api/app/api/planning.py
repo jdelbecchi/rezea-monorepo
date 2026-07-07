@@ -173,6 +173,22 @@ async def update_session(
     
     # Mise à jour des champs
     update_dict = update_data.model_dump(exclude_unset=True)
+    
+    # Sécurité : Bloquer la modification du type d'activité s'il y a déjà des inscriptions
+    if "activity_type" in update_dict and update_dict["activity_type"] != session.activity_type:
+        from app.models.models import Booking
+        from sqlalchemy import func
+        bookings_count_res = await db.execute(
+            select(func.count(Booking.id)).where(
+                Booking.session_id == session.id
+            )
+        )
+        if bookings_count_res.scalar() > 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Impossible de modifier le type d'activité de cette séance car elle comporte déjà des inscriptions. Veuillez d'abord gérer ces inscriptions."
+            )
+
     if update_dict.get('start_time') and update_dict['start_time'].tzinfo:
         update_dict['start_time'] = update_dict['start_time'].replace(tzinfo=None)
     if update_dict.get('end_time') and update_dict['end_time'].tzinfo:
