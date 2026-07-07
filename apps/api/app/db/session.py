@@ -1,7 +1,9 @@
 """
 Gestion des sessions de base de données avec SQLAlchemy async
 """
-from typing import AsyncGenerator
+import contextvars
+from typing import AsyncGenerator, Optional
+from uuid import UUID
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     create_async_engine,
@@ -11,6 +13,9 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.pool import NullPool
 
 from app.core.config import settings
+
+# ContextVar pour stocker le tenant_id de la requête en cours
+tenant_context: contextvars.ContextVar[Optional[UUID]] = contextvars.ContextVar("tenant_context", default=None)
 
 # Création du moteur async
 engine = create_async_engine(
@@ -44,6 +49,9 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             ...
     """
     async with AsyncSessionLocal() as session:
+        t_id = tenant_context.get()
+        if t_id:
+            await set_tenant_context(session, str(t_id))
         try:
             yield session
             await session.commit()

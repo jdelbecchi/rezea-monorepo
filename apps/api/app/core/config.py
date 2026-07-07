@@ -53,6 +53,9 @@ class Settings(BaseSettings):
     MAX_BOOKINGS_PER_USER: int = 50
     WAITLIST_CHECK_INTERVAL: int = 300  # 5 minutes
     
+    # Redis (Arq Worker)
+    REDIS_URL: str = "redis://localhost:6379/0"
+    
     class Config:
         env_file = ".env"
         case_sensitive = True

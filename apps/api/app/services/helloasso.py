@@ -144,6 +144,9 @@ class HelloAssoService:
         import hashlib
         
         if not settings.HELLOASSO_WEBHOOK_SECRET:
+            if settings.ENVIRONMENT == "production":
+                logger.error("HELLOASSO_WEBHOOK_SECRET must be configured in production")
+                return False
             logger.warning("HELLOASSO_WEBHOOK_SECRET not configured, skipping signature verification")
             return True
         

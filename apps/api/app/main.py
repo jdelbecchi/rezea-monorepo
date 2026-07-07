@@ -31,10 +31,11 @@ async def lifespan(app: FastAPI):
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
     
-    # Lancement des tâches de fond
-    import asyncio
-    from app.services.tasks import run_background_tasks
-    asyncio.create_task(run_background_tasks())
+    # Lancement des tâches de fond (seulement en dev, géré par arq worker en prod)
+    if settings.ENVIRONMENT == "development":
+        import asyncio
+        from app.services.tasks import run_background_tasks
+        asyncio.create_task(run_background_tasks())
     
     yield
     
@@ -157,9 +158,14 @@ async def inject_tenant_context(request: Request, call_next):
                 content={"detail": "Session expirée ou invalide"}
             )
 
-    # 5. Appel de la suite
-    response = await call_next(request)
-    return response
+    # 5. Appel de la suite avec injection du tenant_context pour la DB
+    from app.db.session import tenant_context
+    token = tenant_context.set(request.state.tenant_id)
+    try:
+        response = await call_next(request)
+        return response
+    finally:
+        tenant_context.reset(token)
 
 
 @app.exception_handler(Exception)

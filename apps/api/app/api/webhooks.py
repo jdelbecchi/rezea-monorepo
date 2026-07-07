@@ -83,6 +83,11 @@ async def handle_order_event(data: dict, db: AsyncSession):
     if not transaction:
         logger.error(f"Transaction {transaction_id} not found")
         return
+        
+    # Idempotence: Si la transaction a déjà un payment_id, elle a déjà été traitée
+    if transaction.payment_id:
+        logger.info(f"Transaction {transaction_id} already processed with payment_id {transaction.payment_id}")
+        return
     
     # Vérifier que le paiement est confirmé
     order_state = order_data.get('state')

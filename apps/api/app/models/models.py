@@ -6,7 +6,8 @@ from datetime import datetime
 from typing import Optional
 from sqlalchemy import (
     Column, String, Integer, DateTime, Boolean, ForeignKey,
-    Numeric, Text, Enum as SQLEnum, Index, CheckConstraint, Date, Time
+    Numeric, Text, Enum as SQLEnum, Index, CheckConstraint, Date, Time,
+    UniqueConstraint
 )
 from sqlalchemy.dialects.postgresql import UUID, JSON
 from sqlalchemy.orm import relationship
@@ -834,6 +835,9 @@ class FinanceTransaction(Base):
     __table_args__ = (
         Index("idx_fin_trans_tenant_date", "tenant_id", "date"),
         Index("idx_fin_trans_type", "tenant_id", "type"),
+        UniqueConstraint("order_id", name="uq_finance_transactions_order_id"),
+        UniqueConstraint("registration_id", name="uq_finance_transactions_registration_id"),
+        UniqueConstraint("installment_id", name="uq_finance_transactions_installment_id"),
     )
 
 
