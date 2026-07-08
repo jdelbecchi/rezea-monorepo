@@ -1044,7 +1044,7 @@ export default function AdminSettingsPage() {
                                                             <button 
                                                                 type="button"
                                                                 onClick={() => setActivePaymentConfig(activePaymentConfig === 'stripe' ? null : 'stripe')}
-                                                                className={`w-full py-2 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all border ${
+                                                                className={`self-start px-6 py-2 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all border ${
                                                                     activePaymentConfig === 'stripe' 
                                                                         ? 'bg-slate-200 text-slate-700 border-slate-300' 
                                                                         : 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
@@ -1071,7 +1071,7 @@ export default function AdminSettingsPage() {
                                                             <button 
                                                                 type="button"
                                                                 onClick={() => setActivePaymentConfig(activePaymentConfig === 'helloasso' ? null : 'helloasso')}
-                                                                className={`w-full py-2 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all border ${
+                                                                className={`self-start px-6 py-2 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all border ${
                                                                     activePaymentConfig === 'helloasso' 
                                                                         ? 'bg-slate-200 text-slate-700 border-slate-300' 
                                                                         : 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700'
