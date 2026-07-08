@@ -207,7 +207,9 @@ class EmailService:
             session_obj = session_res.scalar_one_or_none()
             
             if user and tenant and session_obj:
-                await cls.send_session_promotion(user, tenant, session_obj)
+                success = await cls.send_session_promotion(user, tenant, session_obj)
+                if not success:
+                    raise RuntimeError("Failed to send session promotion email")
             else:
                 logger.error("ARQ Task Failed: Missing user, tenant, or session", user_id=user_id, tenant_id=tenant_id, session_id=session_id)
 
@@ -289,7 +291,9 @@ class EmailService:
             tenant = (await db.execute(select(Tenant).where(Tenant.id == tenant_id))).scalar_one_or_none()
             order = (await db.execute(select(Order).where(Order.id == order_id))).scalar_one_or_none()
             if user and tenant and order:
-                await cls.send_order_receipt(user, tenant, order, offer_name)
+                success = await cls.send_order_receipt(user, tenant, order, offer_name)
+                if not success:
+                    raise RuntimeError("Failed to send order receipt email")
 
     @classmethod
     async def send_event_registration_task(cls, ctx, user_id: str, tenant_id: str, event_id: str, registration_id: str):
@@ -302,7 +306,9 @@ class EmailService:
             event = (await db.execute(select(Event).where(Event.id == event_id))).scalar_one_or_none()
             registration = (await db.execute(select(EventRegistration).where(EventRegistration.id == registration_id))).scalar_one_or_none()
             if user and tenant and event and registration:
-                await cls.send_event_registration(user, tenant, event, registration)
+                success = await cls.send_event_registration(user, tenant, event, registration)
+                if not success:
+                    raise RuntimeError("Failed to send event registration email")
 
     @classmethod
     async def send_bulk_event_cancellation_task(cls, ctx, user_ids: list[str], tenant_id: str, event_id: str):
@@ -315,7 +321,9 @@ class EmailService:
             tenant = (await db.execute(select(Tenant).where(Tenant.id == tenant_id))).scalar_one_or_none()
             event = (await db.execute(select(Event).where(Event.id == event_id))).scalar_one_or_none()
             if users and tenant and event:
-                await cls.send_bulk_event_cancellation(users, tenant, event)
+                success = await cls.send_bulk_event_cancellation(users, tenant, event)
+                if not success:
+                    raise RuntimeError("Failed to send bulk event cancellation email")
 
     @classmethod
     async def send_bulk_event_modification_task(cls, ctx, user_ids: list[str], tenant_id: str, event_id: str):
@@ -328,7 +336,9 @@ class EmailService:
             tenant = (await db.execute(select(Tenant).where(Tenant.id == tenant_id))).scalar_one_or_none()
             event = (await db.execute(select(Event).where(Event.id == event_id))).scalar_one_or_none()
             if users and tenant and event:
-                await cls.send_bulk_event_modification(users, tenant, event)
+                success = await cls.send_bulk_event_modification(users, tenant, event)
+                if not success:
+                    raise RuntimeError("Failed to send bulk event modification email")
 
     @classmethod
     async def send_event_promotion_task(cls, ctx, user_id: str, tenant_id: str, event_id: str, registration_id: str):
@@ -341,5 +351,7 @@ class EmailService:
             event = (await db.execute(select(Event).where(Event.id == event_id))).scalar_one_or_none()
             registration = (await db.execute(select(EventRegistration).where(EventRegistration.id == registration_id))).scalar_one_or_none()
             if user and tenant and event and registration:
-                await cls.send_event_promotion(user, tenant, event, registration)
+                success = await cls.send_event_promotion(user, tenant, event, registration)
+                if not success:
+                    raise RuntimeError("Failed to send event promotion email")
 
