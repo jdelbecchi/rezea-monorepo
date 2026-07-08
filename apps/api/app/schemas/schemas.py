@@ -4,7 +4,7 @@ Schémas Pydantic pour validation des requêtes/réponses
 from datetime import datetime, date as py_date
 from typing import Optional, List, Dict
 from decimal import Decimal
-from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator, field_serializer
 from uuid import UUID
 
 from app.models.models import UserRole, BookingStatus, CreditTransactionType, WaitlistStatus, OrderPaymentStatus, FinanceTransactionType, FinancePaymentMethod
@@ -200,6 +200,12 @@ class TenantSettingsUpdate(BaseModel):
     allow_pay_later_events: Optional[bool] = None
     payment_redirect_link: Optional[str] = None
     pay_now_instructions: Optional[str] = None
+    stripe_publishable_key: Optional[str] = None
+    stripe_secret_key: Optional[str] = None
+    helloasso_client_id: Optional[str] = None
+    helloasso_client_secret: Optional[str] = None
+    helloasso_organization_slug: Optional[str] = None
+    helloasso_webhook_secret: Optional[str] = None
     locations: Optional[List[str]] = Field(default_factory=list)
     activity_types: Optional[List[str]] = Field(default_factory=list)
     show_logo: Optional[bool] = None
@@ -272,6 +278,20 @@ class TenantResponse(TenantBase):
     enable_review_prompts: bool = False
     google_review_url: Optional[str] = None
     review_prompt_threshold: int = 5
+    
+    # Configuration des paiements (Stripe)
+    stripe_publishable_key: Optional[str] = None
+    stripe_secret_key: Optional[str] = None
+    
+    # Configuration des paiements (HelloAsso)
+    helloasso_client_id: Optional[str] = None
+    helloasso_client_secret: Optional[str] = None
+    helloasso_organization_slug: Optional[str] = None
+    helloasso_webhook_secret: Optional[str] = None
+
+    @field_serializer('stripe_secret_key', 'helloasso_client_secret', 'helloasso_webhook_secret')
+    def serialize_secret(self, val: Optional[str]) -> Optional[str]:
+        return "••••••••••••" if val else None
     
     # Infos de contact client et d'invitation
     client_first_name: Optional[str] = None

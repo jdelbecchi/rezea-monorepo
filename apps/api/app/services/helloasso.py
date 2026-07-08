@@ -16,33 +16,30 @@ class HelloAssoService:
     def __init__(self):
         self.api_url = settings.HELLOASSO_API_URL or "https://api.helloasso-sandbox.com/v5"
         self.oauth_url = settings.HELLOASSO_OAUTH_URL or "https://api.helloasso-sandbox.com/oauth2/token"
-        self.client_id = settings.HELLOASSO_CLIENT_ID
-        self.client_secret = settings.HELLOASSO_CLIENT_SECRET
-        self.organization_slug = settings.HELLOASSO_ORGANIZATION_SLUG
         self.return_url = settings.HELLOASSO_RETURN_URL or "http://localhost:3000/dashboard/credits/callback"
         self.error_url = settings.HELLOASSO_ERROR_URL or "http://localhost:3000/dashboard/credits/error"
         
-        # Cache du token
-        self._access_token: Optional[str] = None
-        self._token_expires_at: Optional[datetime] = None
+        # Cache des tokens par client_id : {client_id: (token, expires_at)}
+        self._tokens_cache: Dict[str, tuple[str, datetime]] = {}
     
-    async def get_access_token(self) -> str:
+    async def get_access_token(self, client_id: str, client_secret: str) -> str:
         """
-        Obtient un token d'accès OAuth 2.0
-        Utilise le cache si le token est encore valide
+        Obtient un token d'accès OAuth 2.0 pour un client_id / client_secret donné.
+        Utilise le cache si le token est encore valide.
         """
         # Vérifier si le token en cache est encore valide
-        if self._access_token and self._token_expires_at:
-            if datetime.now() < self._token_expires_at - timedelta(minutes=5):
-                return self._access_token
+        if client_id in self._tokens_cache:
+            token, expires_at = self._tokens_cache[client_id]
+            if datetime.now() < expires_at - timedelta(minutes=5):
+                return token
         
         # Obtenir un nouveau token
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 self.oauth_url,
                 data={
-                    "client_id": self.client_id,
-                    "client_secret": self.client_secret,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
                     "grant_type": "client_credentials"
                 },
                 headers={"Content-Type": "application/x-www-form-urlencoded"}
@@ -53,12 +50,14 @@ class HelloAssoService:
                 raise Exception(f"Failed to get HelloAsso access token: {response.status_code}")
             
             data = response.json()
-            self._access_token = data["access_token"]
+            token = data["access_token"]
             expires_in = data.get("expires_in", 1800)  # Default 30 minutes
-            self._token_expires_at = datetime.now() + timedelta(seconds=expires_in)
+            expires_at = datetime.now() + timedelta(seconds=expires_in)
+            
+            self._tokens_cache[client_id] = (token, expires_at)
             
             logger.info("HelloAsso access token obtained successfully")
-            return self._access_token
+            return token
     
     async def create_checkout_intent(
         self,
@@ -66,22 +65,28 @@ class HelloAssoService:
         user_email: str,
         user_first_name: str,
         user_last_name: str,
+        client_id: str,
+        client_secret: str,
+        organization_slug: str,
         metadata: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
-        Crée une intention de paiement (checkout intent)
+        Crée une intention de paiement (checkout intent) avec les identifiants d'un tenant.
         
         Args:
             amount_cents: Montant en centimes (ex: 5000 pour 50€)
             user_email: Email de l'utilisateur
             user_first_name: Prénom
             user_last_name: Nom
+            client_id: Client ID HelloAsso du tenant
+            client_secret: Client Secret HelloAsso du tenant
+            organization_slug: Slug de l'association HelloAsso
             metadata: Métadonnées additionnelles (ex: user_id, transaction_id)
         
         Returns:
             Dict contenant l'URL de redirection et l'ID du checkout
         """
-        token = await self.get_access_token()
+        token = await self.get_access_token(client_id, client_secret)
         
         # Construire le payload
         payload = {
@@ -105,7 +110,7 @@ class HelloAssoService:
         
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"{self.api_url}/organizations/{self.organization_slug}/checkout-intents",
+                f"{self.api_url}/organizations/{organization_slug}/checkout-intents",
                 json=payload,
                 headers={
                     "Authorization": f"Bearer {token}",
@@ -127,23 +132,25 @@ class HelloAssoService:
                 "expires_at": data.get("expiresAt")
             }
     
-    def verify_webhook_signature(self, payload: str, signature: str) -> bool:
+    def verify_webhook_signature(self, payload: str, signature: str, webhook_secret: Optional[str] = None) -> bool:
         """
         Vérifie la signature d'un webhook HelloAsso
         
         Args:
             payload: Corps de la requête (string)
             signature: Signature fournie dans le header
+            webhook_secret: Secret de webhook spécifique au tenant
         
         Returns:
             True si la signature est valide
         """
-        # TODO: Implémenter la vérification de signature
-        # HelloAsso utilise HMAC-SHA256 avec le webhook secret
         import hmac
         import hashlib
         
-        if not settings.HELLOASSO_WEBHOOK_SECRET:
+        # Priorité au secret du tenant, sinon fallback sur settings globale
+        secret = webhook_secret or settings.HELLOASSO_WEBHOOK_SECRET
+        
+        if not secret:
             if settings.ENVIRONMENT == "production":
                 logger.error("HELLOASSO_WEBHOOK_SECRET must be configured in production")
                 return False
@@ -151,7 +158,7 @@ class HelloAssoService:
             return True
         
         expected_signature = hmac.new(
-            settings.HELLOASSO_WEBHOOK_SECRET.encode(),
+            secret.encode(),
             payload.encode(),
             hashlib.sha256
         ).hexdigest()

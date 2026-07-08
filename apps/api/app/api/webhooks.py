@@ -26,16 +26,7 @@ async def helloasso_webhook(
     body = await request.body()
     body_str = body.decode('utf-8')
     
-    # Vérifier la signature (si configurée)
-    signature = request.headers.get('X-HelloAsso-Signature', '')
-    if not helloasso_service.verify_webhook_signature(body_str, signature):
-        logger.warning("Invalid HelloAsso webhook signature")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid signature"
-        )
-    
-    # Parser le JSON
+    # Parser le JSON d'abord pour identifier le tenant
     import json
     try:
         data = json.loads(body_str)
@@ -43,6 +34,33 @@ async def helloasso_webhook(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid JSON"
+        )
+        
+    # Extraire le tenant_id depuis les métadonnées de l'offre
+    metadata = data.get('data', {}).get('metadata', {})
+    tenant_id = metadata.get('tenant_id')
+    
+    webhook_secret = None
+    if tenant_id:
+        from uuid import UUID
+        from app.models.models import Tenant
+        try:
+            tenant_res = await db.execute(
+                select(Tenant).where(Tenant.id == UUID(tenant_id))
+            )
+            tenant_obj = tenant_res.scalar_one_or_none()
+            if tenant_obj:
+                webhook_secret = tenant_obj.helloasso_webhook_secret
+        except Exception as e:
+            logger.error(f"Error fetching tenant {tenant_id} for webhook verification: {str(e)}")
+    
+    # Vérifier la signature (si configurée)
+    signature = request.headers.get('X-HelloAsso-Signature', '')
+    if not helloasso_service.verify_webhook_signature(body_str, signature, webhook_secret):
+        logger.warning("Invalid HelloAsso webhook signature")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid signature"
         )
     
     event_type = data.get('eventType')

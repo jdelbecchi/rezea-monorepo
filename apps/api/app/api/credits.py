@@ -174,6 +174,17 @@ async def purchase_credits(
     # Intégration HelloAsso
     if purchase.payment_provider == "helloasso":
         from app.services.helloasso import helloasso_service
+        from app.models.models import Tenant
+        
+        # Récupérer le tenant pour charger ses clés d'API
+        tenant_res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+        tenant_obj = tenant_res.scalar_one_or_none()
+        
+        if not tenant_obj or not tenant_obj.helloasso_client_id or not tenant_obj.helloasso_client_secret or not tenant_obj.helloasso_organization_slug:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Le paiement HelloAsso n'est pas configuré par l'établissement."
+            )
         
         try:
             checkout_data = await helloasso_service.create_checkout_intent(
@@ -181,6 +192,9 @@ async def purchase_credits(
                 user_email=user.email,
                 user_first_name=user.first_name,
                 user_last_name=user.last_name,
+                client_id=tenant_obj.helloasso_client_id,
+                client_secret=tenant_obj.helloasso_client_secret,
+                organization_slug=tenant_obj.helloasso_organization_slug,
                 metadata={
                     "transaction_id": str(transaction.id),
                     "user_id": str(user_id),

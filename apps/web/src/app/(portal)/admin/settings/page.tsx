@@ -58,6 +58,7 @@ export default function AdminSettingsPage() {
     const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("mobile");
 
     const [editingLocIndex, setEditingLocIndex] = useState<number | null>(null);
+    const [activePaymentConfig, setActivePaymentConfig] = useState<'stripe' | 'helloasso' | null>(null);
     const [editingLocValue, setEditingLocValue] = useState("");
     const [editingActIndex, setEditingActIndex] = useState<number | null>(null);
     const [editingActValue, setEditingActValue] = useState("");
@@ -1016,7 +1017,7 @@ export default function AdminSettingsPage() {
                                         <div className="p-6 bg-white rounded-3xl border border-slate-200 space-y-5">
                                             <div className="flex items-start gap-4">
                                                 <div className="text-xl -mt-0.5 leading-none">⚡</div>
-                                                <div className="flex-1 space-y-4">
+                                                <div className="flex-1 space-y-5">
                                                     <div>
                                                         <h4 className="font-semibold text-slate-900 text-base">Paiements automatisés (Rapprochement automatique)</h4>
                                                         <div className="text-xs text-slate-500 font-normal leading-relaxed mt-1 space-y-1">
@@ -1041,10 +1042,15 @@ export default function AdminSettingsPage() {
                                                                 </p>
                                                             </div>
                                                             <button 
-                                                                disabled
-                                                                className="w-full py-2 bg-slate-100 text-slate-400 border border-slate-200 rounded-xl text-[9px] font-bold uppercase tracking-wider cursor-not-allowed"
+                                                                type="button"
+                                                                onClick={() => setActivePaymentConfig(activePaymentConfig === 'stripe' ? null : 'stripe')}
+                                                                className={`w-full py-2 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all border ${
+                                                                    activePaymentConfig === 'stripe' 
+                                                                        ? 'bg-slate-200 text-slate-700 border-slate-300' 
+                                                                        : 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
+                                                                }`}
                                                             >
-                                                                Bientôt disponible
+                                                                {activePaymentConfig === 'stripe' ? 'Fermer' : 'Configurer'}
                                                             </button>
                                                         </div>
 
@@ -1063,13 +1069,122 @@ export default function AdminSettingsPage() {
                                                                 </p>
                                                             </div>
                                                             <button 
-                                                                disabled
-                                                                className="w-full py-2 bg-slate-100 text-slate-400 border border-slate-200 rounded-xl text-[9px] font-bold uppercase tracking-wider cursor-not-allowed"
+                                                                type="button"
+                                                                onClick={() => setActivePaymentConfig(activePaymentConfig === 'helloasso' ? null : 'helloasso')}
+                                                                className={`w-full py-2 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all border ${
+                                                                    activePaymentConfig === 'helloasso' 
+                                                                        ? 'bg-slate-200 text-slate-700 border-slate-300' 
+                                                                        : 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700'
+                                                                }`}
                                                             >
-                                                                Bientôt disponible
+                                                                {activePaymentConfig === 'helloasso' ? 'Fermer' : 'Configurer'}
                                                             </button>
                                                         </div>
                                                     </div>
+
+                                                    {/* Configuration forms */}
+                                                    {activePaymentConfig === 'stripe' && (
+                                                        <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                            <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
+                                                                <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Configuration de Stripe</h5>
+                                                                <span className="text-[10px] text-blue-600 font-medium">Automatisation des paiements</span>
+                                                            </div>
+                                                            
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                <div className="space-y-1">
+                                                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Clé publique (Publishable key)</label>
+                                                                    <input 
+                                                                        type="text"
+                                                                        placeholder="pk_live_..."
+                                                                        value={formData.stripe_publishable_key || ""}
+                                                                        onChange={e => setFormData({ ...formData, stripe_publishable_key: e.target.value })}
+                                                                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-4 focus:ring-blue-100 transition-all font-normal shadow-inner"
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-1">
+                                                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Clé secrète (Secret key)</label>
+                                                                    <input 
+                                                                        type="password"
+                                                                        placeholder={formData.stripe_secret_key ? "••••••••••••" : "sk_live_..."}
+                                                                        value={formData.stripe_secret_key || ""}
+                                                                        onChange={e => setFormData({ ...formData, stripe_secret_key: e.target.value })}
+                                                                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-4 focus:ring-blue-100 transition-all font-normal shadow-inner"
+                                                                    />
+                                                                </div>
+                                                            </div>
+
+                                                            {/* User Guide for Stripe */}
+                                                            <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100/60 text-[11px] text-slate-600 space-y-1.5 font-normal">
+                                                                <span className="font-semibold text-blue-700 flex items-center gap-1.5">💡 Comment trouver vos clés d&apos;API Stripe ?</span>
+                                                                <p className="leading-relaxed">1. Connectez-vous à votre <a href="https://dashboard.stripe.com" target="_blank" rel="noopener noreferrer" className="underline font-semibold text-blue-600 hover:text-blue-800">Tableau de bord Stripe</a>.</p>
+                                                                <p className="leading-relaxed">2. En haut à droite, activez le mode Live/Production, puis cliquez sur <strong>Développeurs</strong> et enfin sur <strong>Clés API</strong> dans le menu de gauche.</p>
+                                                                <p className="leading-relaxed">3. Copiez la <strong>Clé de publication</strong> (commence par <code>pk_live_</code>) et collez-la dans le premier champ ci-dessus.</p>
+                                                                <p className="leading-relaxed">4. Cliquez sur <strong>Révéler la clé secrète</strong> (commence par <code>sk_live_</code>), copiez-la et collez-la dans le deuxième champ ci-dessus.</p>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {activePaymentConfig === 'helloasso' && (
+                                                        <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                            <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
+                                                                <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Configuration de HelloAsso</h5>
+                                                                <span className="text-[10px] text-emerald-600 font-medium">Rapprochement via Webhooks</span>
+                                                            </div>
+                                                            
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                <div className="space-y-1">
+                                                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">ID Client (Client ID)</label>
+                                                                    <input 
+                                                                        type="text"
+                                                                        placeholder="ID Client API obtenu sur HelloAsso"
+                                                                        value={formData.helloasso_client_id || ""}
+                                                                        onChange={e => setFormData({ ...formData, helloasso_client_id: e.target.value })}
+                                                                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-4 focus:ring-blue-100 transition-all font-normal shadow-inner"
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-1">
+                                                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Clé secrète (Client Secret)</label>
+                                                                    <input 
+                                                                        type="password"
+                                                                        placeholder={formData.helloasso_client_secret ? "••••••••••••" : "Clé secrète de l'API"}
+                                                                        value={formData.helloasso_client_secret || ""}
+                                                                        onChange={e => setFormData({ ...formData, helloasso_client_secret: e.target.value })}
+                                                                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-4 focus:ring-blue-100 transition-all font-normal shadow-inner"
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-1">
+                                                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Slug de l&apos;association</label>
+                                                                    <input 
+                                                                        type="text"
+                                                                        placeholder="ex: mon-club-de-sport"
+                                                                        value={formData.helloasso_organization_slug || ""}
+                                                                        onChange={e => setFormData({ ...formData, helloasso_organization_slug: e.target.value })}
+                                                                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-4 focus:ring-blue-100 transition-all font-normal shadow-inner"
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-1">
+                                                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Secret de signature du Webhook</label>
+                                                                    <input 
+                                                                        type="password"
+                                                                        placeholder={formData.helloasso_webhook_secret ? "••••••••••••" : "Clé de validation des signatures"}
+                                                                        value={formData.helloasso_webhook_secret || ""}
+                                                                        onChange={e => setFormData({ ...formData, helloasso_webhook_secret: e.target.value })}
+                                                                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-4 focus:ring-blue-100 transition-all font-normal shadow-inner"
+                                                                    />
+                                                                </div>
+                                                            </div>
+
+                                                            {/* User Guide for HelloAsso */}
+                                                            <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/60 text-[11px] text-slate-600 space-y-1.5 font-normal">
+                                                                <span className="font-semibold text-emerald-700 flex items-center gap-1.5">💡 Comment trouver vos identifiants d&apos;API HelloAsso ?</span>
+                                                                <p className="leading-relaxed">1. Connectez-vous à votre espace <a href="https://www.helloasso.com" target="_blank" rel="noopener noreferrer" className="underline font-semibold text-emerald-600 hover:text-emerald-800">HelloAsso</a>.</p>
+                                                                <p className="leading-relaxed">2. Dans le menu latéral de gauche, allez dans <strong>Mon compte</strong> puis cliquez sur <strong>Intégrations et API</strong>.</p>
+                                                                <p className="leading-relaxed">3. Copiez l&apos;<strong>ID Client</strong> et le <strong>Secret Client</strong> du tableau, puis collez-les dans les champs correspondants ci-dessus.</p>
+                                                                <p className="leading-relaxed">4. Le <strong>Slug de l&apos;association</strong> correspond au nom de votre association tel qu&apos;il apparaît dans l&apos;URL de votre page publique HelloAsso (ex: <code>mon-association-sportive</code>).</p>
+                                                                <p className="leading-relaxed">5. <strong>Activez le Webhook automatique</strong> : Dans la même page d&apos;intégrations sur HelloAsso, ajoutez une URL de notification pointant vers : <code className="bg-slate-200/60 px-1 py-0.5 rounded text-[10px] select-all font-mono">https://api.votre-domaine.com/api/webhooks/helloasso</code>. HelloAsso générera une clé secrète de signature, qu&apos;il vous faudra coller dans le champ &quot;Secret de signature du Webhook&quot; ci-dessus.</p>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>

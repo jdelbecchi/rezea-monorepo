@@ -132,6 +132,16 @@ class Tenant(Base):
     cgv_url = Column(String(500), nullable=True)
     rules_url = Column(String(500), nullable=True)
     
+    # Configuration des paiements (Stripe)
+    stripe_publishable_key = Column(String(255), nullable=True)
+    stripe_secret_key = Column(String(255), nullable=True)
+    
+    # Configuration des paiements (HelloAsso)
+    helloasso_client_id = Column(String(255), nullable=True)
+    helloasso_client_secret = Column(String(255), nullable=True)
+    helloasso_organization_slug = Column(String(255), nullable=True)
+    helloasso_webhook_secret = Column(String(255), nullable=True)
+    
     # Informations légales (facturation)
     legal_name = Column(String(255), nullable=True)          # Raison sociale
     legal_form = Column(String(100), nullable=True)          # Forme juridique (ex: Association loi 1901)

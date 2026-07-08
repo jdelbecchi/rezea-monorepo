@@ -96,6 +96,14 @@ async def update_tenant_settings(
     # Appliquer les modifications
     update_data = settings_in.model_dump(exclude_unset=True)
     
+    # Éviter d'écraser les secrets s'ils sont renvoyés masqués par le frontend
+    if "stripe_secret_key" in update_data and update_data["stripe_secret_key"] == "••••••••••••":
+        update_data.pop("stripe_secret_key")
+    if "helloasso_client_secret" in update_data and update_data["helloasso_client_secret"] == "••••••••••••":
+        update_data.pop("helloasso_client_secret")
+    if "helloasso_webhook_secret" in update_data and update_data["helloasso_webhook_secret"] == "••••••••••••":
+        update_data.pop("helloasso_webhook_secret")
+    
     # Detect renamed locations to update sessions and events
     if "locations" in update_data and tenant.locations:
         old_locs = tenant.locations
