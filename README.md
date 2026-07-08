@@ -1,4 +1,4 @@
-# REZEA - SaaS Multi-tenant pour Associations Sportives
+# REZEA - SaaS Multi-tenant pour la gestion de réservations
 
 ## Architecture
 
