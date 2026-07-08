@@ -1019,9 +1019,10 @@ export default function AdminSettingsPage() {
                                                 <div className="flex-1 space-y-4">
                                                     <div>
                                                         <h4 className="font-semibold text-slate-900 text-base">Paiements automatisés (Rapprochement automatique)</h4>
-                                                        <p className="text-xs text-slate-500 font-normal leading-relaxed mt-1">
-                                                            Configurez votre plateforme de paiement Stripe ou HelloAsso pour gérer votre boutique en ligne. Le statut de la commande est mis à jour automatiquement à <span className="font-semibold text-emerald-600">&quot;Payé&quot;</span> ou <span className="font-semibold text-emerald-600">&quot;Echelonné&quot;</span> après le règlement, sans action manuelle de votre part.
-                                                        </p>
+                                                        <div className="text-xs text-slate-500 font-normal leading-relaxed mt-1 space-y-1">
+                                                            <p>• Configurez votre plateforme de paiement Stripe ou HelloAsso pour gérer votre boutique en ligne.</p>
+                                                            <p>• Le statut de la commande est mis à jour automatiquement à <span className="font-semibold text-emerald-600">&quot;Payé&quot;</span> ou <span className="font-semibold text-emerald-600">&quot;Echelonné&quot;</span> après le règlement, sans action manuelle de votre part.</p>
+                                                        </div>
                                                     </div>
 
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
