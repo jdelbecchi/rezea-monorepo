@@ -6,7 +6,7 @@ from dateutil.relativedelta import relativedelta
 from typing import Optional, List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status, BackgroundTasks
 from sqlalchemy import select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
@@ -25,6 +25,7 @@ router = APIRouter()
 async def shop_checkout(
     checkout: ShopCheckoutRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -191,7 +192,10 @@ async def shop_checkout(
     # 3.8 Envoi de l'email de confirmation
     try:
         from app.services.email_service import EmailService
-        await EmailService.send_order_receipt(order.user, tenant, order, offer.name)
+        background_tasks.add_task(
+            EmailService.send_order_receipt,
+            order.user, tenant, order, offer.name
+        )
     except Exception as e:
         # On log l'erreur mais on ne bloque pas la réponse API
         logger.error("❌ Erreur lors de l'envoi de l'email de confirmation", error=str(e), order_id=str(order.id))

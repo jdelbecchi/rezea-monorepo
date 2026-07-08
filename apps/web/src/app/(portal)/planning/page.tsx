@@ -150,6 +150,7 @@ export default function PlanningPage() {
 
 
   const handleBooking = async (sessionId: string) => {
+    if (bookingLoading) return;
     setBookingLoading(sessionId);
     setError(null);
     setSuccess(null);
@@ -180,7 +181,7 @@ export default function PlanningPage() {
   };
 
   const handleCancelBooking = async () => {
-    if (!bookingToCancel) return;
+    if (!bookingToCancel || bookingLoading) return;
     
     setBookingLoading(bookingToCancel.id);
     setError(null);
@@ -209,6 +210,7 @@ export default function PlanningPage() {
   };
 
   const handleWaitlistEvent = async (eventId: string) => {
+    if (bookingLoading) return;
     setBookingLoading(eventId);
     setError(null);
     setSuccess(null);

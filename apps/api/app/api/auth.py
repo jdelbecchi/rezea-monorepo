@@ -127,8 +127,13 @@ async def register(
     return new_user
 
 
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from app.main import limiter
+
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit("5/minute")
 async def login(
+    request: Request,
     credentials: LoginRequest,
     db: AsyncSession = Depends(get_db)
 ):

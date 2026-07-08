@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status, BackgroundTasks
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
@@ -198,6 +198,7 @@ async def event_checkout(
     event_id: UUID,
     tariff: str, # "member" or "external"
     request: Request,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     pay_later: bool = False,
 ):
@@ -305,7 +306,10 @@ async def event_checkout(
         user_res = await db.execute(select(User).where(User.id == user_id))
         user = user_res.scalar_one_or_none()
         if user:
-            await EmailService.send_event_registration(user, tenant, event, registration)
+            background_tasks.add_task(
+                EmailService.send_event_registration,
+                user, tenant, event, registration
+            )
     except Exception as e:
         # On log l'erreur mais on ne bloque pas la réponse API
         import structlog

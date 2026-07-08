@@ -14,6 +14,8 @@ from sqlalchemy.pool import NullPool
 
 from app.core.config import settings
 
+from sqlalchemy import text
+
 # ContextVar pour stocker le tenant_id de la requête en cours
 tenant_context: contextvars.ContextVar[Optional[UUID]] = contextvars.ContextVar("tenant_context", default=None)
 
@@ -59,6 +61,12 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.rollback()
             raise
         finally:
+            # Nettoyage du contexte pour éviter les fuites si la connexion est réutilisée
+            if t_id:
+                try:
+                    await session.execute(text("RESET app.current_tenant"))
+                except Exception:
+                    pass
             await session.close()
 
 
@@ -71,6 +79,6 @@ async def set_tenant_context(session: AsyncSession, tenant_id: str):
         tenant_id: ID du tenant à définir
     """
     await session.execute(
-        "SET LOCAL app.current_tenant = :tenant_id",
+        text("SET LOCAL app.current_tenant = :tenant_id"),
         {"tenant_id": tenant_id}
     )

@@ -12,6 +12,11 @@ import structlog
 
 from app.core.config import settings
 from app.core.security import verify_token
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+limiter = Limiter(key_func=get_remote_address)
 from app.db.session import engine, Base, AsyncSessionLocal
 from app.models.models import User, UserRole, Order, Offer, Booking, BookingStatus, OrderPaymentStatus, Installment, Tenant
 from app.api import auth, users, tenants, bookings, credits, planning, events
@@ -46,12 +51,15 @@ async def lifespan(app: FastAPI):
 # Initialisation FastAPI
 app = FastAPI(
     title="REZEA API",
-    description="SaaS Multi-tenant pour Établissements Sportifs",
+    description="API for the REZEA Multi-tenant platform",
     version="1.0.0",
     lifespan=lifespan,
     docs_url="/docs" if settings.ENVIRONMENT == "development" else None,
     redoc_url="/redoc" if settings.ENVIRONMENT == "development" else None,
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 @app.middleware("http")
 async def inject_tenant_context(request: Request, call_next):
@@ -62,6 +70,7 @@ async def inject_tenant_context(request: Request, call_next):
     # 0. Initialisation SYSTEMATIQUE du state pour éviter AttributeError
     request.state.tenant_id = None
     request.state.user_id = None
+    structlog.contextvars.clear_contextvars()
 
     if request.method == "OPTIONS":
         return await call_next(request)
@@ -112,6 +121,12 @@ async def inject_tenant_context(request: Request, call_next):
                         logger.debug("Middleware: Resolved tenant from slug", slug=tenant_slug, tenant_id=str(t_id))
             except Exception as e:
                 logger.error("Erreur lors de la résolution du tenant par slug", error=str(e))
+
+    # Inject variables into structlog context for the entire request
+    if request.state.tenant_id:
+        structlog.contextvars.bind_contextvars(tenant_id=str(request.state.tenant_id))
+    if request.state.user_id:
+        structlog.contextvars.bind_contextvars(user_id=str(request.state.user_id))
 
     # DEBUG - Résumé du contexte résolu
     if not request.state.tenant_id:

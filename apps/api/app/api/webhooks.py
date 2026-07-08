@@ -71,12 +71,12 @@ async def handle_order_event(data: dict, db: AsyncSession):
         logger.warning("No transaction_id in order metadata")
         return
     
-    # Récupérer la transaction
+    # Récupérer la transaction avec verrou pour éviter les race conditions
     from uuid import UUID
     result = await db.execute(
-        select(CreditTransaction).where(
-            CreditTransaction.id == UUID(transaction_id)
-        )
+        select(CreditTransaction)
+        .where(CreditTransaction.id == UUID(transaction_id))
+        .with_for_update()
     )
     transaction = result.scalar_one_or_none()
     
@@ -95,11 +95,11 @@ async def handle_order_event(data: dict, db: AsyncSession):
         logger.info(f"Order state is {order_state}, waiting for Authorized")
         return
     
-    # Récupérer le compte de crédits
+    # Récupérer le compte de crédits avec verrouillage
     result = await db.execute(
-        select(CreditAccount).where(
-            CreditAccount.id == transaction.account_id
-        )
+        select(CreditAccount)
+        .where(CreditAccount.id == transaction.account_id)
+        .with_for_update()
     )
     account = result.scalar_one_or_none()
     
