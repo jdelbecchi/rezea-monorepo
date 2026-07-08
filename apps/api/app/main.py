@@ -12,11 +12,8 @@ import structlog
 
 from app.core.config import settings
 from app.core.security import verify_token
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from app.core.rate_limit import limiter
 from slowapi.errors import RateLimitExceeded
-
-limiter = Limiter(key_func=get_remote_address)
 from app.db.session import engine, Base, AsyncSessionLocal
 from app.models.models import User, UserRole, Order, Offer, Booking, BookingStatus, OrderPaymentStatus, Installment, Tenant
 from app.api import auth, users, tenants, bookings, credits, planning, events
@@ -71,6 +68,7 @@ app = FastAPI(
     redoc_url="/redoc" if settings.ENVIRONMENT == "development" else None,
 )
 
+from slowapi import _rate_limit_exceeded_handler
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -319,11 +317,7 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 # CORSMiddleware added last to be outermost
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://0.0.0.0:3000",
-    ],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

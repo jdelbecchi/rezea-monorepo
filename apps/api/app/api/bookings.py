@@ -10,11 +10,13 @@ from app.db.session import get_db
 from app.models.models import Booking, Session, BookingStatus, Tenant
 from app.schemas.schemas import BookingCreate, BookingResponse, BookingListResponse
 from app.services.booking_service import BookingService
+from app.core.rate_limit import limiter
 
 logger = structlog.get_logger()
 router = APIRouter()
 
 @router.post("", response_model=BookingResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")
 async def create_booking(
     booking_data: BookingCreate,
     request: Request,

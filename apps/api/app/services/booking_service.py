@@ -172,67 +172,67 @@ class BookingService:
                 detail="Vos crédits sont suspendus ou bloqués."
             )
 
-        result = await db.execute(
-            select(Session)
-            .where(
-                and_(
-                    Session.id == session_id,
-                    Session.tenant_id == tenant_id,
-                    Session.is_active == True
-                )
-            )
-            .with_for_update()
-        )
-        session = result.scalar_one_or_none()
-        
-        if not session:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Séance non trouvée"
-            )
-        
-        if session.current_participants >= session.max_participants and not session.allow_waitlist:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Séance complète"
-            )
-        
-        result = await db.execute(
-            select(Booking).where(
-                and_(
-                    Booking.tenant_id == tenant_id,
-                    Booking.user_id == user_id,
-                    Booking.session_id == session_id,
-                    Booking.status.in_([BookingStatus.PENDING, BookingStatus.CONFIRMED])
-                )
-            )
-        )
-        existing_booking = result.scalar_one_or_none()
-        
-        if existing_booking:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Vous avez déjà une réservation pour cette séance"
-            )
-
-        tenant_res = await db.execute(select(Tenant.registration_limit_mins).where(Tenant.id == tenant_id))
-        reg_limit_mins = tenant_res.scalar() or 0
-        
-        now = datetime.utcnow()
-        reg_limit_time = session.start_time - timedelta(minutes=reg_limit_mins)
-        if now > reg_limit_time:
-            detail = "Le délai d'inscription est dépassé."
-            if reg_limit_mins > 0:
-                detail = f"Le délai d'inscription est dépassé ({reg_limit_mins} min avant le début)."
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=detail
-            )
-
-        is_full = session.current_participants >= session.max_participants
-        booking_status = BookingStatus.CONFIRMED if not is_full else BookingStatus.PENDING
-        
         try:
+            result = await db.execute(
+                select(Session)
+                .where(
+                    and_(
+                        Session.id == session_id,
+                        Session.tenant_id == tenant_id,
+                        Session.is_active == True
+                    )
+                )
+                .with_for_update()
+            )
+            session = result.scalar_one_or_none()
+            
+            if not session:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Séance non trouvée"
+                )
+            
+            if session.current_participants >= session.max_participants and not session.allow_waitlist:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Séance complète"
+                )
+            
+            result = await db.execute(
+                select(Booking).where(
+                    and_(
+                        Booking.tenant_id == tenant_id,
+                        Booking.user_id == user_id,
+                        Booking.session_id == session_id,
+                        Booking.status.in_([BookingStatus.PENDING, BookingStatus.CONFIRMED])
+                    )
+                )
+            )
+            existing_booking = result.scalar_one_or_none()
+            
+            if existing_booking:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Vous avez déjà une réservation pour cette séance"
+                )
+
+            tenant_res = await db.execute(select(Tenant.registration_limit_mins).where(Tenant.id == tenant_id))
+            reg_limit_mins = tenant_res.scalar() or 0
+            
+            now = datetime.utcnow()
+            reg_limit_time = session.start_time - timedelta(minutes=reg_limit_mins)
+            if now > reg_limit_time:
+                detail = "Le délai d'inscription est dépassé."
+                if reg_limit_mins > 0:
+                    detail = f"Le délai d'inscription est dépassé ({reg_limit_mins} min avant le début)."
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=detail
+                )
+
+            is_full = session.current_participants >= session.max_participants
+            booking_status = BookingStatus.CONFIRMED if not is_full else BookingStatus.PENDING
+            
             orders_balances, global_balance, success, _, _, _ = await order_service.compute_fifo_balances(
                 db,
                 user_id,
@@ -272,11 +272,7 @@ class BookingService:
             else:
                 session.waitlist_count += 1
             
-            try:
-                await db.commit()
-            except Exception:
-                await db.rollback()
-                raise
+            await db.commit()
             await db.refresh(booking)
             
             logger.info(
@@ -289,6 +285,7 @@ class BookingService:
             return booking
             
         except HTTPException:
+            await db.rollback()
             raise
         except Exception as e:
             await db.rollback()
