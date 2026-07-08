@@ -188,6 +188,30 @@ class EmailService:
         )
 
     @classmethod
+    async def send_session_promotion_task(cls, ctx, user_id: str, tenant_id: str, session_id: str):
+        """
+        Tâche ARQ pour envoyer l'email de promotion.
+        """
+        db_factory = ctx['db_factory']
+        from sqlalchemy import select
+        from app.models.models import Session
+        
+        async with db_factory() as db:
+            user_res = await db.execute(select(User).where(User.id == user_id))
+            user = user_res.scalar_one_or_none()
+            
+            tenant_res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+            tenant = tenant_res.scalar_one_or_none()
+            
+            session_res = await db.execute(select(Session).where(Session.id == session_id))
+            session_obj = session_res.scalar_one_or_none()
+            
+            if user and tenant and session_obj:
+                await cls.send_session_promotion(user, tenant, session_obj)
+            else:
+                logger.error("ARQ Task Failed: Missing user, tenant, or session", user_id=user_id, tenant_id=tenant_id, session_id=session_id)
+
+    @classmethod
     async def send_session_promotion(cls, user: User, tenant: Tenant, session: any):
         """
         Envoie un email de promotion (liste d'attente -> confirmé) pour une séance.
@@ -252,3 +276,70 @@ class EmailService:
             tenant=tenant,
             context=context
         )
+
+    # --- ARQ Tasks Wrappers ---
+
+    @classmethod
+    async def send_order_receipt_task(cls, ctx, user_id: str, tenant_id: str, order_id: str, offer_name: str):
+        db_factory = ctx['db_factory']
+        from sqlalchemy import select
+        from app.models.models import Order
+        async with db_factory() as db:
+            user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+            tenant = (await db.execute(select(Tenant).where(Tenant.id == tenant_id))).scalar_one_or_none()
+            order = (await db.execute(select(Order).where(Order.id == order_id))).scalar_one_or_none()
+            if user and tenant and order:
+                await cls.send_order_receipt(user, tenant, order, offer_name)
+
+    @classmethod
+    async def send_event_registration_task(cls, ctx, user_id: str, tenant_id: str, event_id: str, registration_id: str):
+        db_factory = ctx['db_factory']
+        from sqlalchemy import select
+        from app.models.models import Event, EventRegistration
+        async with db_factory() as db:
+            user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+            tenant = (await db.execute(select(Tenant).where(Tenant.id == tenant_id))).scalar_one_or_none()
+            event = (await db.execute(select(Event).where(Event.id == event_id))).scalar_one_or_none()
+            registration = (await db.execute(select(EventRegistration).where(EventRegistration.id == registration_id))).scalar_one_or_none()
+            if user and tenant and event and registration:
+                await cls.send_event_registration(user, tenant, event, registration)
+
+    @classmethod
+    async def send_bulk_event_cancellation_task(cls, ctx, user_ids: list[str], tenant_id: str, event_id: str):
+        db_factory = ctx['db_factory']
+        from sqlalchemy import select
+        from app.models.models import Event
+        async with db_factory() as db:
+            users_res = await db.execute(select(User).where(User.id.in_(user_ids)))
+            users = list(users_res.scalars().all())
+            tenant = (await db.execute(select(Tenant).where(Tenant.id == tenant_id))).scalar_one_or_none()
+            event = (await db.execute(select(Event).where(Event.id == event_id))).scalar_one_or_none()
+            if users and tenant and event:
+                await cls.send_bulk_event_cancellation(users, tenant, event)
+
+    @classmethod
+    async def send_bulk_event_modification_task(cls, ctx, user_ids: list[str], tenant_id: str, event_id: str):
+        db_factory = ctx['db_factory']
+        from sqlalchemy import select
+        from app.models.models import Event
+        async with db_factory() as db:
+            users_res = await db.execute(select(User).where(User.id.in_(user_ids)))
+            users = list(users_res.scalars().all())
+            tenant = (await db.execute(select(Tenant).where(Tenant.id == tenant_id))).scalar_one_or_none()
+            event = (await db.execute(select(Event).where(Event.id == event_id))).scalar_one_or_none()
+            if users and tenant and event:
+                await cls.send_bulk_event_modification(users, tenant, event)
+
+    @classmethod
+    async def send_event_promotion_task(cls, ctx, user_id: str, tenant_id: str, event_id: str, registration_id: str):
+        db_factory = ctx['db_factory']
+        from sqlalchemy import select
+        from app.models.models import Event, EventRegistration
+        async with db_factory() as db:
+            user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+            tenant = (await db.execute(select(Tenant).where(Tenant.id == tenant_id))).scalar_one_or_none()
+            event = (await db.execute(select(Event).where(Event.id == event_id))).scalar_one_or_none()
+            registration = (await db.execute(select(EventRegistration).where(EventRegistration.id == registration_id))).scalar_one_or_none()
+            if user and tenant and event and registration:
+                await cls.send_event_promotion(user, tenant, event, registration)
+

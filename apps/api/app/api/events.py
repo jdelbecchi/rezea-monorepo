@@ -306,10 +306,20 @@ async def event_checkout(
         user_res = await db.execute(select(User).where(User.id == user_id))
         user = user_res.scalar_one_or_none()
         if user:
-            background_tasks.add_task(
-                EmailService.send_event_registration,
-                user, tenant, event, registration
-            )
+            redis_pool = getattr(request.app.state, 'redis', None)
+            if redis_pool:
+                await redis_pool.enqueue_job(
+                    'send_event_registration_task',
+                    str(user.id),
+                    str(tenant.id),
+                    str(event.id),
+                    str(registration.id)
+                )
+            else:
+                background_tasks.add_task(
+                    EmailService.send_event_registration,
+                    user, tenant, event, registration
+                )
     except Exception as e:
         # On log l'erreur mais on ne bloque pas la réponse API
         import structlog

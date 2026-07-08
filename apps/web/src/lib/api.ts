@@ -6,6 +6,7 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 import { UserRole, PaymentStatus, BookingStatus, EventRegistrationStatus } from '../types/enums';
+import toast from 'react-hot-toast';
 
 // Instance Axios configurée
 export const apiClient: AxiosInstance = axios.create({
@@ -98,6 +99,9 @@ apiClient.interceptors.response.use(
     // On ne touche PAS au token, on laisse la page gérer l'erreur.
     if (!error.response) {
       console.warn('[API] Erreur réseau — le serveur est probablement inaccessible.', error.message);
+      if (typeof window !== 'undefined') {
+        toast.error('Erreur réseau : Impossible de contacter le serveur.');
+      }
       return Promise.reject(error);
     }
 
@@ -136,6 +140,9 @@ apiClient.interceptors.response.use(
     // 500+ = Erreur serveur. On ne touche pas au token.
     if (status >= 500) {
       console.error(`[API] Erreur serveur ${status} sur ${url}`);
+      if (typeof window !== 'undefined') {
+        toast.error('Une erreur interne est survenue sur le serveur.');
+      }
     }
 
     return Promise.reject(error);

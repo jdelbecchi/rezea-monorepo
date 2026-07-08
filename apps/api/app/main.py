@@ -42,9 +42,22 @@ async def lifespan(app: FastAPI):
         from app.services.tasks import run_background_tasks
         asyncio.create_task(run_background_tasks())
     
+    # Initialisation Redis pour ARQ
+    from arq import create_pool
+    from app.worker import parse_redis_url
+    try:
+        app.state.redis = await create_pool(parse_redis_url(settings.REDIS_URL))
+        logger.info("🟢 Connecté à Redis (ARQ)")
+    except Exception as e:
+        logger.warning("🔴 Impossible de se connecter à Redis", error=str(e))
+        app.state.redis = None
+    
     yield
     
     logger.info("🛑 Arrêt de REZEA API")
+    if hasattr(app.state, 'redis') and app.state.redis:
+        app.state.redis.close()
+        await app.state.redis.wait_closed()
     await engine.dispose()
 
 

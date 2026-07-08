@@ -22,6 +22,45 @@ services:
     networks:
       - rezea_network
 
+  # Redis Message Broker
+  redis:
+    image: redis:7-alpine
+    container_name: rezea_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rezea_network
+
+  # ARQ Worker
+  worker:
+    build:
+      context: ../apps/api
+      dockerfile: Dockerfile
+    container_name: rezea_worker
+    environment:
+      DATABASE_URL: postgresql+asyncpg://rezea:rezea_password@postgres:5432/rezea
+      REDIS_URL: redis://redis:6379
+      SECRET_KEY: dev-secret-key-change-in-production-min-32-chars
+      ENVIRONMENT: development
+    volumes:
+      - ../apps/api:/app
+      - /app/venv
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: arq app.worker.WorkerSettings
+    networks:
+      - rezea_network
+
   # FastAPI Backend
   api:
     build:
@@ -69,6 +108,7 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
 
 networks:
   rezea_network:

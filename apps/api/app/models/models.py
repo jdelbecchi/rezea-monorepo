@@ -111,16 +111,16 @@ class Tenant(Base):
     user_header_show_name = Column(Boolean, default=True, server_default="true", nullable=False)
     
     # Personnalisation de l'accueil utilisateur
-    user_home_layout = Column(String(50), default="both", server_default="'both'", nullable=False)
+    user_home_layout = Column(String(50), default="both", server_default="both", nullable=False)
     header_title = Column(String(255), nullable=True)
     header_subtitle = Column(String(500), nullable=True)
-    header_text_color = Column(String(7), default="#ffffff", server_default="'#ffffff'", nullable=False)
-    header_text_bg = Column(String(50), default="none", server_default="'none'", nullable=False)
-    header_text_pos_y = Column(String(50), default="center", server_default="'center'", nullable=False)
-    header_text_pos_x = Column(String(50), default="center", server_default="'center'", nullable=False)
-    header_text_animation = Column(String(50), default="none", server_default="'none'", nullable=False)
-    vignettes = Column(JSON, default=list, server_default="'[]'", nullable=False)
-    vignettes_title = Column(String(255), default="À la une", server_default="'À la une'", nullable=False)
+    header_text_color = Column(String(7), default="#ffffff", server_default="#ffffff", nullable=False)
+    header_text_bg = Column(String(50), default="none", server_default="none", nullable=False)
+    header_text_pos_y = Column(String(50), default="center", server_default="center", nullable=False)
+    header_text_pos_x = Column(String(50), default="center", server_default="center", nullable=False)
+    header_text_animation = Column(String(50), default="none", server_default="none", nullable=False)
+    vignettes = Column(JSON, default=list, server_default="[]", nullable=False)
+    vignettes_title = Column(String(255), default="À la une", server_default="À la une", nullable=False)
     
     # Réseaux sociaux & Site Web
     website_url = Column(String(500), nullable=True)
@@ -192,7 +192,7 @@ class EmailTemplate(Base):
     __tablename__ = "email_templates"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
     
     name = Column(String(255), nullable=False)
     subject = Column(String(255), nullable=False)
@@ -227,7 +227,7 @@ class User(Base):
     __tablename__ = "users"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
     
     # Authentification
     email = Column(String(255), nullable=False)
@@ -295,7 +295,7 @@ class Session(Base):
     __tablename__ = "sessions"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
     
     # Informations
     title = Column(String(255), nullable=False)
@@ -345,8 +345,8 @@ class CreditAccount(Base):
     __tablename__ = "credit_accounts"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     
     # Crédits
     balance = Column(Numeric(10, 2), default=0, nullable=False)
@@ -372,8 +372,8 @@ class CreditTransaction(Base):
     __tablename__ = "credit_transactions"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
-    account_id = Column(UUID(as_uuid=True), ForeignKey("credit_accounts.id"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    account_id = Column(UUID(as_uuid=True), ForeignKey("credit_accounts.id", ondelete="CASCADE"), nullable=False)
     
     # Transaction
     transaction_type = Column(SQLEnum(CreditTransactionType), nullable=False)
@@ -388,7 +388,7 @@ class CreditTransaction(Base):
     payment_provider = Column(String(50))  # HelloAsso, Stripe
     payment_id = Column(String(255))
     payment_amount = Column(Numeric(10, 2))  # Montant en euros
-    offer_id = Column(UUID(as_uuid=True), ForeignKey("offers.id"))  # Offre achetée
+    offer_id = Column(UUID(as_uuid=True), ForeignKey("offers.id", ondelete="CASCADE"))  # Offre achetée
     
     # FIFO tracking (pour consommation)
     expires_at = Column(DateTime)  # Date d'expiration des crédits
@@ -413,7 +413,7 @@ class Offer(Base):
     __tablename__ = "offers"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
     
     # Identification
     offer_code = Column(String(50), nullable=False)  # Code offre alphanumérique
@@ -468,16 +468,16 @@ class Booking(Base):
     __tablename__ = "bookings"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    session_id = Column(UUID(as_uuid=True), ForeignKey("sessions.id"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    session_id = Column(UUID(as_uuid=True), ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False)
     
     # Statut
     status = Column(SQLEnum(BookingStatus), default=BookingStatus.PENDING, nullable=False)
     
     # Crédits
     credits_used = Column(Numeric(10, 2), nullable=False)
-    transaction_id = Column(UUID(as_uuid=True), ForeignKey("credit_transactions.id"))
+    transaction_id = Column(UUID(as_uuid=True), ForeignKey("credit_transactions.id", ondelete="CASCADE"))
     
     # Admin flag
     created_by_admin = Column(Boolean, default=False)
@@ -508,9 +508,9 @@ class WaitlistEntry(Base):
     __tablename__ = "waitlist_entries"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    session_id = Column(UUID(as_uuid=True), ForeignKey("sessions.id"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    session_id = Column(UUID(as_uuid=True), ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False)
     
     # Statut
     status = Column(SQLEnum(WaitlistStatus), default=WaitlistStatus.WAITING, nullable=False)
@@ -539,7 +539,7 @@ class EventGroup(Base):
     __tablename__ = "event_groups"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
     title = Column(String(255), nullable=False)
     payment_link = Column(String(500), nullable=True)
 
@@ -556,7 +556,7 @@ class Event(Base):
     __tablename__ = "events"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
     event_group_id = Column(UUID(as_uuid=True), ForeignKey("event_groups.id", ondelete="CASCADE"), nullable=True)
 
     # Programmation
@@ -603,9 +603,9 @@ class EventRegistration(Base):
     __tablename__ = "event_registrations"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    event_id = Column(UUID(as_uuid=True), ForeignKey("events.id"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    event_id = Column(UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"), nullable=False)
 
     # Statut
     status = Column(
@@ -653,9 +653,9 @@ class Order(Base):
     __tablename__ = "orders"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    offer_id = Column(UUID(as_uuid=True), ForeignKey("offers.id"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    offer_id = Column(UUID(as_uuid=True), ForeignKey("offers.id", ondelete="CASCADE"), nullable=False)
 
     # Dates
     start_date = Column(Date, nullable=False)
@@ -726,8 +726,8 @@ class Installment(Base):
     __tablename__ = "installments"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
-    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id", ondelete="CASCADE"), nullable=False)
 
     # Échéance
     due_date = Column(Date, nullable=False)  # Date d'anniversaire (le 8 du mois)
@@ -756,7 +756,7 @@ class FinanceAccount(Base):
     __tablename__ = "finance_accounts"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
 
     name = Column(String(100), nullable=False)
     type = Column(SQLEnum(FinancePaymentMethod, values_callable=lambda e: [x.value for x in e]), nullable=True)
@@ -776,7 +776,7 @@ class FinanceCategory(Base):
     __tablename__ = "finance_categories"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
 
     name = Column(String(100), nullable=False)
     type = Column(SQLEnum(FinanceTransactionType, values_callable=lambda e: [x.value for x in e]), nullable=True) # None = Both
@@ -796,12 +796,12 @@ class FinanceTransaction(Base):
     __tablename__ = "finance_transactions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
     
     date = Column(Date, default=datetime.utcnow, nullable=False)
     type = Column(SQLEnum(FinanceTransactionType, values_callable=lambda e: [x.value for x in e]), nullable=False)
-    category_id = Column(UUID(as_uuid=True), ForeignKey("finance_categories.id"), nullable=True)
-    account_id = Column(UUID(as_uuid=True), ForeignKey("finance_accounts.id"), nullable=True)
+    category_id = Column(UUID(as_uuid=True), ForeignKey("finance_categories.id", ondelete="CASCADE"), nullable=True)
+    account_id = Column(UUID(as_uuid=True), ForeignKey("finance_accounts.id", ondelete="CASCADE"), nullable=True)
     
     # Montants
     amount_cents = Column(Integer, nullable=False) # Montant Total (TTC)
@@ -813,9 +813,9 @@ class FinanceTransaction(Base):
     payment_method = Column(SQLEnum(FinancePaymentMethod, values_callable=lambda e: [x.value for x in e]), default=FinancePaymentMethod.OTHER)
     
     # Liens optionnels vers le reste du système
-    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=True)
-    registration_id = Column(UUID(as_uuid=True), ForeignKey("event_registrations.id"), nullable=True)
-    installment_id = Column(UUID(as_uuid=True), ForeignKey("installments.id"), nullable=True)
+    order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id", ondelete="CASCADE"), nullable=True)
+    registration_id = Column(UUID(as_uuid=True), ForeignKey("event_registrations.id", ondelete="CASCADE"), nullable=True)
+    installment_id = Column(UUID(as_uuid=True), ForeignKey("installments.id", ondelete="CASCADE"), nullable=True)
     event_group_id = Column(UUID(as_uuid=True), ForeignKey("event_groups.id", ondelete="SET NULL"), nullable=True)
     
     # Statut & Justificatif
@@ -823,7 +823,7 @@ class FinanceTransaction(Base):
     receipt_url = Column(String(500)) # URL du justificatif (photo/pdf)
     
     # Metadata
-    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -846,15 +846,15 @@ class SurveyCampaign(Base):
     __tablename__ = "survey_campaigns"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
     
     title = Column(String(255), nullable=False) # Ex: "Enquête de satisfaction - Stage Yoga"
     description = Column(Text, nullable=True)
     survey_type = Column(String(50), nullable=False) # 'general' ou 'event'
     
     # Liens contextuels optionnels
-    event_id = Column(UUID(as_uuid=True), ForeignKey("events.id"), nullable=True)
-    session_id = Column(UUID(as_uuid=True), ForeignKey("sessions.id"), nullable=True)
+    event_id = Column(UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"), nullable=True)
+    session_id = Column(UUID(as_uuid=True), ForeignKey("sessions.id", ondelete="CASCADE"), nullable=True)
     
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     is_sent = Column(Boolean, default=False, nullable=False)
@@ -876,9 +876,9 @@ class SurveyResponse(Base):
     __tablename__ = "survey_responses"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
-    campaign_id = Column(UUID(as_uuid=True), ForeignKey("survey_campaigns.id"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    campaign_id = Column(UUID(as_uuid=True), ForeignKey("survey_campaigns.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     
     # Sécurité et validation
     token = Column(String(255), unique=True, nullable=False) # Token à usage unique présent dans le lien
@@ -907,8 +907,8 @@ class StaffNote(Base):
     __tablename__ = "staff_notes"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
-    author_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    author_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
     message = Column(Text, nullable=False)
     entity_type = Column(String(20), nullable=False, default="general")  # 'session' | 'event' | 'general'
@@ -917,7 +917,7 @@ class StaffNote(Base):
 
     is_resolved = Column(Boolean, nullable=False, default=False)
     resolved_at = Column(DateTime, nullable=True)
-    resolved_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    resolved_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

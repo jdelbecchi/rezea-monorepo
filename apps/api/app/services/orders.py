@@ -284,7 +284,11 @@ async def expire_user_credits_if_needed(db: AsyncSession, user_id, tenant_id):
                         if order.status in ["active", None]:
                             order.status = "expiree"
                             
-                        await db.commit()
+                        try:
+                            await db.commit()
+                        except Exception:
+                            await db.rollback()
+                            raise
         else:
             # Order is NOT past (active or extended/unexpired).
             # If an expiration transaction exists, it means the order was extended/restored!
@@ -299,7 +303,11 @@ async def expire_user_credits_if_needed(db: AsyncSession, user_id, tenant_id):
                 if order.status == "expiree":
                     order.status = "active"
                     
-                await db.commit()
+                try:
+                    await db.commit()
+                except Exception:
+                    await db.rollback()
+                    raise
 
 
 async def compute_fifo_balances(

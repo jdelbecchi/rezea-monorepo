@@ -192,10 +192,20 @@ async def shop_checkout(
     # 3.8 Envoi de l'email de confirmation
     try:
         from app.services.email_service import EmailService
-        background_tasks.add_task(
-            EmailService.send_order_receipt,
-            order.user, tenant, order, offer.name
-        )
+        redis_pool = getattr(request.app.state, 'redis', None)
+        if redis_pool:
+            await redis_pool.enqueue_job(
+                'send_order_receipt_task',
+                str(order.user.id),
+                str(tenant.id),
+                str(order.id),
+                offer.name
+            )
+        else:
+            background_tasks.add_task(
+                EmailService.send_order_receipt,
+                order.user, tenant, order, offer.name
+            )
     except Exception as e:
         # On log l'erreur mais on ne bloque pas la réponse API
         logger.error("❌ Erreur lors de l'envoi de l'email de confirmation", error=str(e), order_id=str(order.id))

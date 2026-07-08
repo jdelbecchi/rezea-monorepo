@@ -99,7 +99,11 @@ async def process_reminders():
             except Exception as e:
                 logger.error("Error sending event reminder", error=str(e), reg_id=str(reg.id))
         
-        await db.commit()
+        try:
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            raise
 
 async def process_google_review_prompts():
     """
@@ -154,7 +158,11 @@ async def process_google_review_prompts():
             except Exception as e:
                 logger.error("Error sending Google Review prompt", error=str(e), user_id=str(u.id))
                 
-        await db.commit()
+        try:
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            raise
 
 async def run_background_tasks():
     """

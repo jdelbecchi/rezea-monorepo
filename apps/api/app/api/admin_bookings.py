@@ -19,7 +19,7 @@ from app.models.models import (
 from app.schemas.schemas import (
     AdminBookingCreate, AdminBookingUpdate, AdminBookingResponse,
 )
-from app.api.bookings import auto_restitute_expired_waitlist
+from app.services.booking_service import BookingService
 
 router = APIRouter()
 

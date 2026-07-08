@@ -19,13 +19,18 @@ from sqlalchemy import text
 # ContextVar pour stocker le tenant_id de la requête en cours
 tenant_context: contextvars.ContextVar[Optional[UUID]] = contextvars.ContextVar("tenant_context", default=None)
 
+# Configuration du pool en fonction de l'environnement
+engine_kwargs = {"echo": settings.DB_ECHO}
+if settings.ENVIRONMENT == "test":
+    engine_kwargs["poolclass"] = NullPool
+else:
+    engine_kwargs["pool_size"] = settings.DB_POOL_SIZE
+    engine_kwargs["max_overflow"] = settings.DB_MAX_OVERFLOW
+
 # Création du moteur async
 engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=settings.DB_ECHO,
-    pool_size=settings.DB_POOL_SIZE,
-    max_overflow=settings.DB_MAX_OVERFLOW,
-    poolclass=NullPool if settings.ENVIRONMENT == "test" else None,
+    **engine_kwargs
 )
 
 # Session factory
