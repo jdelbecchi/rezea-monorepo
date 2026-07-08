@@ -1122,4 +1122,14 @@ class StaffNoteOut(BaseModel):
     resolved_at: Optional[datetime] = None
     resolved_by: Optional[UUID] = None
     created_at: datetime
+
+
+class PaymentVerifyRequest(BaseModel):
+    """Schéma de validation pour tester la connexion Stripe ou HelloAsso"""
+    provider: str = Field(..., pattern="^(helloasso|stripe)$")
+    stripe_publishable_key: Optional[str] = None
+    stripe_secret_key: Optional[str] = None
+    helloasso_client_id: Optional[str] = None
+    helloasso_client_secret: Optional[str] = None
+    helloasso_organization_slug: Optional[str] = None
     updated_at: Optional[datetime] = None

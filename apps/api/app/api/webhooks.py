@@ -49,10 +49,11 @@ async def helloasso_webhook(
                 select(Tenant).where(Tenant.id == UUID(tenant_id))
             )
             tenant_obj = tenant_res.scalar_one_or_none()
-            if tenant_obj:
-                webhook_secret = tenant_obj.helloasso_webhook_secret
+            if tenant_obj and tenant_obj.helloasso_webhook_secret:
+                from app.core.security import decrypt_value
+                webhook_secret = decrypt_value(tenant_obj.helloasso_webhook_secret)
         except Exception as e:
-            logger.error(f"Error fetching tenant {tenant_id} for webhook verification: {str(e)}")
+            logger.error(f"Error fetching/decrypting tenant {tenant_id} for webhook verification: {str(e)}")
     
     # Vérifier la signature (si configurée)
     signature = request.headers.get('X-HelloAsso-Signature', '')

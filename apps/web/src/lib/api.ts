@@ -882,6 +882,19 @@ export const api = {
     return response.data;
   },
 
+  verifyPaymentSettings: async (data: {
+    provider: 'stripe' | 'helloasso';
+    stripe_publishable_key?: string;
+    stripe_secret_key?: string;
+    helloasso_client_id?: string;
+    helloasso_client_secret?: string;
+    helloasso_organization_slug?: string;
+  }): Promise<{ status: string; message: string }> => {
+    const response = await apiClient.post('/api/tenants/current/settings/payment/verify', data);
+    return response.data;
+  },
+
+
   uploadBanner: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);

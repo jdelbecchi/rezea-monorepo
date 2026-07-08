@@ -7,7 +7,7 @@ from sqlalchemy import select, or_
 
 from app.db.session import get_db
 from app.models.models import Tenant, User, UserRole, CreditAccount
-from app.schemas.schemas import TenantResponse, TenantCreate, TenantSettingsUpdate, TenantClaim, TokenResponse
+from app.schemas.schemas import TenantResponse, TenantCreate, TenantSettingsUpdate, TenantClaim, TokenResponse, PaymentVerifyRequest
 from app.core.security import get_password_hash, create_access_token
 from app.core.config import settings
 
@@ -103,6 +103,12 @@ async def update_tenant_settings(
         update_data.pop("helloasso_client_secret")
     if "helloasso_webhook_secret" in update_data and update_data["helloasso_webhook_secret"] == "••••••••••••":
         update_data.pop("helloasso_webhook_secret")
+        
+    # Chiffrer les secrets avant l'enregistrement en base
+    from app.core.security import encrypt_value
+    for secret_field in ["stripe_secret_key", "helloasso_client_secret", "helloasso_webhook_secret"]:
+        if secret_field in update_data and update_data[secret_field]:
+            update_data[secret_field] = encrypt_value(update_data[secret_field])
     
     # Detect renamed locations to update sessions and events
     if "locations" in update_data and tenant.locations:
@@ -170,6 +176,68 @@ async def update_tenant_settings(
     await db.commit()
     await db.refresh(tenant)
     return tenant
+
+
+@router.post("/current/settings/payment/verify")
+async def verify_payment_settings(
+    verify_in: PaymentVerifyRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Teste si les identifiants Stripe ou HelloAsso fournis sont valides (Ping initial).
+    """
+    user_id = request.state.user_id
+    tenant_id = request.state.tenant_id
+    
+    # Vérifier l'autorisation (admin requis)
+    result = await db.execute(
+        select(User).where(User.id == user_id, User.tenant_id == tenant_id)
+    )
+    user = result.scalar_one_or_none()
+    if not user or user.role not in (UserRole.OWNER, UserRole.MANAGER):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Accès réservé aux administrateurs du club"
+        )
+
+    if verify_in.provider == "helloasso":
+        client_id = verify_in.helloasso_client_id
+        client_secret = verify_in.helloasso_client_secret
+        
+        # Si le secret n'est pas fourni mais était déjà configuré, charger le secret existant
+        if client_secret == "••••••••••••":
+            tenant_res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+            tenant = tenant_res.scalar_one_or_none()
+            if tenant and tenant.helloasso_client_secret:
+                from app.core.security import decrypt_value
+                client_secret = decrypt_value(tenant.helloasso_client_secret)
+        
+        if not client_id or not client_secret:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="ID Client et Clé secrète requis pour HelloAsso."
+            )
+            
+        from app.services.helloasso import helloasso_service
+        try:
+            # Effectuer un ping (demande de token d'accès)
+            await helloasso_service.get_access_token(client_id, client_secret)
+            return {"status": "success", "message": "Connexion à HelloAsso établie avec succès !"}
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Erreur d'authentification HelloAsso : {str(e)}"
+            )
+            
+    elif verify_in.provider == "stripe":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le mode automatisé Stripe n'est pas disponible pour le moment."
+        )
+
+
+
 
 @router.get("/by-slug/{slug}", response_model=TenantResponse)
 async def get_tenant_by_slug(

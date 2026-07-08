@@ -185,6 +185,32 @@ export default function AdminSettingsPage() {
         }
     };
 
+    const [verifyingPayment, setVerifyingPayment] = useState<boolean>(false);
+    const [paymentVerificationError, setPaymentVerificationError] = useState<string | null>(null);
+    const [paymentVerificationSuccess, setPaymentVerificationSuccess] = useState<string | null>(null);
+
+    const handleVerifyPayment = async (provider: 'stripe' | 'helloasso') => {
+        setVerifyingPayment(true);
+        setPaymentVerificationError(null);
+        setPaymentVerificationSuccess(null);
+        try {
+            const payload = {
+                provider,
+                stripe_publishable_key: formData.stripe_publishable_key,
+                stripe_secret_key: formData.stripe_secret_key,
+                helloasso_client_id: formData.helloasso_client_id,
+                helloasso_client_secret: formData.helloasso_client_secret,
+                helloasso_organization_slug: formData.helloasso_organization_slug,
+            };
+            const res = await api.verifyPaymentSettings(payload);
+            setPaymentVerificationSuccess(res.message);
+        } catch (err: any) {
+            setPaymentVerificationError(err.response?.data?.detail || "Erreur lors du test de connexion");
+        } finally {
+            setVerifyingPayment(false);
+        }
+    };
+
     const handleSave = async () => {
         setSaving(true);
         try {
@@ -1030,9 +1056,14 @@ export default function AdminSettingsPage() {
                                                         {/* Stripe Section */}
                                                         <div className="p-4 rounded-2xl border border-slate-100 bg-slate-50/50 flex flex-col justify-between h-full space-y-3">
                                                             <div className="space-y-1">
-                                                                <div className="flex items-center gap-2">
+                                                                <div className="flex items-center gap-2 flex-wrap">
                                                                     <span className="text-sm font-semibold text-slate-800">Stripe</span>
                                                                     <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[9px] font-bold uppercase tracking-wider">Entreprises</span>
+                                                                    {formData.stripe_publishable_key && formData.stripe_secret_key ? (
+                                                                        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-[9px] font-bold uppercase tracking-wider">Configuré</span>
+                                                                    ) : (
+                                                                        <span className="px-2 py-0.5 bg-amber-50 text-amber-600 rounded-full text-[9px] font-bold uppercase tracking-wider">Non configuré</span>
+                                                                    )}
                                                                 </div>
                                                                 <p className="text-[11px] text-slate-400 font-normal leading-relaxed">
                                                                     Idéal pour les structures commerciales. Expérience utilisateur 100% intégrée.
@@ -1057,9 +1088,14 @@ export default function AdminSettingsPage() {
                                                         {/* HelloAsso Section */}
                                                         <div className="p-4 rounded-2xl border border-slate-100 bg-slate-50/50 flex flex-col justify-between h-full space-y-3">
                                                             <div className="space-y-1">
-                                                                <div className="flex items-center gap-2">
+                                                                <div className="flex items-center gap-2 flex-wrap">
                                                                     <span className="text-sm font-semibold text-slate-800">HelloAsso</span>
                                                                     <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-[9px] font-bold uppercase tracking-wider">Associations</span>
+                                                                    {formData.helloasso_client_id && formData.helloasso_client_secret ? (
+                                                                        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-[9px] font-bold uppercase tracking-wider">Configuré</span>
+                                                                    ) : (
+                                                                        <span className="px-2 py-0.5 bg-amber-50 text-amber-600 rounded-full text-[9px] font-bold uppercase tracking-wider">Non configuré</span>
+                                                                    )}
                                                                 </div>
                                                                 <p className="text-[11px] text-slate-400 font-normal leading-relaxed">
                                                                     Solution gratuite dédiée aux associations loi 1901. Rapprochement automatique par Webhook.
@@ -1111,6 +1147,23 @@ export default function AdminSettingsPage() {
                                                                         className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-4 focus:ring-blue-100 transition-all font-normal shadow-inner"
                                                                     />
                                                                 </div>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-3 pt-1 flex-wrap">
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={verifyingPayment}
+                                                                    onClick={() => handleVerifyPayment('stripe')}
+                                                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold disabled:opacity-50 transition-all shadow-sm"
+                                                                >
+                                                                    {verifyingPayment ? "Vérification..." : "Tester la connexion"}
+                                                                </button>
+                                                                {paymentVerificationSuccess && activePaymentConfig === 'stripe' && (
+                                                                    <span className="text-xs text-emerald-600 font-medium">🟢 {paymentVerificationSuccess}</span>
+                                                                )}
+                                                                {paymentVerificationError && activePaymentConfig === 'stripe' && (
+                                                                    <span className="text-xs text-red-500 font-medium">🔴 {paymentVerificationError}</span>
+                                                                )}
                                                             </div>
 
                                                             {/* User Guide for Stripe */}
@@ -1172,6 +1225,23 @@ export default function AdminSettingsPage() {
                                                                         className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-4 focus:ring-blue-100 transition-all font-normal shadow-inner"
                                                                     />
                                                                 </div>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-3 pt-1 flex-wrap">
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={verifyingPayment}
+                                                                    onClick={() => handleVerifyPayment('helloasso')}
+                                                                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold disabled:opacity-50 transition-all shadow-sm"
+                                                                >
+                                                                    {verifyingPayment ? "Vérification..." : "Tester la connexion"}
+                                                                </button>
+                                                                {paymentVerificationSuccess && activePaymentConfig === 'helloasso' && (
+                                                                    <span className="text-xs text-emerald-600 font-medium">🟢 {paymentVerificationSuccess}</span>
+                                                                )}
+                                                                {paymentVerificationError && activePaymentConfig === 'helloasso' && (
+                                                                    <span className="text-xs text-red-500 font-medium">🔴 {paymentVerificationError}</span>
+                                                                )}
                                                             </div>
 
                                                             {/* User Guide for HelloAsso */}

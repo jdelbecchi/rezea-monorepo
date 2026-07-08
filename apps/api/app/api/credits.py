@@ -185,6 +185,9 @@ async def purchase_credits(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Le paiement HelloAsso n'est pas configuré par l'établissement."
             )
+            
+        from app.core.security import decrypt_value
+        decrypted_secret = decrypt_value(tenant_obj.helloasso_client_secret)
         
         try:
             checkout_data = await helloasso_service.create_checkout_intent(
@@ -193,7 +196,7 @@ async def purchase_credits(
                 user_first_name=user.first_name,
                 user_last_name=user.last_name,
                 client_id=tenant_obj.helloasso_client_id,
-                client_secret=tenant_obj.helloasso_client_secret,
+                client_secret=decrypted_secret,
                 organization_slug=tenant_obj.helloasso_organization_slug,
                 metadata={
                     "transaction_id": str(transaction.id),

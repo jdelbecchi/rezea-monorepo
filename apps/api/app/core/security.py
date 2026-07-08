@@ -202,3 +202,38 @@ def verify_reset_token(token: str) -> str:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Token invalide ou expiré"
         )
+
+
+def get_encryption_fernet() -> "Fernet":
+    """Initialise et retourne l'instance Fernet pour le chiffrement"""
+    from cryptography.fernet import Fernet
+    import base64
+    import hashlib
+    
+    # Dériver une clé Fernet de 32 octets de manière sécurisée et stable à partir de SECRET_KEY
+    key_bytes = hashlib.sha256(settings.SECRET_KEY.encode()).digest()
+    fernet_key = base64.urlsafe_b64encode(key_bytes)
+    return Fernet(fernet_key)
+
+
+def encrypt_value(value: Optional[str]) -> Optional[str]:
+    """Chiffre une chaîne de caractères en AES-128 via Fernet"""
+    if not value or value == "••••••••••••":
+        return value
+    try:
+        fernet = get_encryption_fernet()
+        return fernet.encrypt(value.encode()).decode()
+    except Exception:
+        return value
+
+
+def decrypt_value(value: Optional[str]) -> Optional[str]:
+    """Déchiffre une valeur chiffrée. Retourne la valeur d'origine en cas d'erreur ou si non chiffrée."""
+    if not value or value == "••••••••••••":
+        return value
+    try:
+        fernet = get_encryption_fernet()
+        return fernet.decrypt(value.encode()).decode()
+    except Exception:
+        # Fallback pour les anciennes valeurs stockées en clair
+        return value
