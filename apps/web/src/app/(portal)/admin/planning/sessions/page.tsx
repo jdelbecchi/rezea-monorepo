@@ -609,7 +609,7 @@ function AdminSessionsContent() {
                                                 }`}>
                                                     {s.current_participants}/{s.max_participants}
                                                     {s.allow_waitlist && (s.waitlist_count ?? 0) > 0 && (
-                                                        <span className="flex items-center gap-0.5 ml-1 text-orange-600" title="Liste d'attente">
+                                                        <span className="flex items-center gap-0.5 ml-1 text-slate-500" title="Liste d'attente">
                                                             <span>⏳</span>
                                                             <span className="text-xs">({s.waitlist_count})</span>
                                                         </span>

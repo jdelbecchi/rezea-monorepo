@@ -258,7 +258,7 @@ export default function LoginForm({ initialTenantSlug = "", hideTenantField = fa
           <p className="text-xs font-normal text-slate-400">
             Pas encore de compte ?{" "}
             <Link 
-              href={hideTenantField ? `/${formData.tenant_slug}/register` : "/register"} 
+              href={hideTenantField ? `/register?slug=${formData.tenant_slug}` : "/register"} 
               style={{ color: 'var(--primary-color, #2563eb)' }}
               className="hover:underline font-medium"
             >
@@ -269,10 +269,11 @@ export default function LoginForm({ initialTenantSlug = "", hideTenantField = fa
 
         {hideTenantField && (
           <div className="text-center pt-3.5 border-t border-slate-100 mt-2.5">
-            <Link 
-              href="/"
+            <button 
+              type="button"
               onClick={() => {
                 localStorage.removeItem("tenant_slug");
+                window.location.href = "/";
               }}
               className="text-xs font-medium text-slate-400 hover:text-slate-600 transition-colors inline-flex items-center justify-center gap-1"
             >
@@ -280,7 +281,7 @@ export default function LoginForm({ initialTenantSlug = "", hideTenantField = fa
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
               Changer d&apos;établissement
-            </Link>
+            </button>
           </div>
         )}
       </form>

@@ -739,7 +739,7 @@ export default function AdminAgendaPage() {
 
                                                                     {item.allow_waitlist && (item.waitlist_count > 0 || (item.waitlist_users || []).length > 0) && (
                                                                         <div className="flex items-center gap-1 text-[10px] font-bold animate-pulse">
-                                                                            <span className="text-orange-600">⏳</span>
+                                                                            <span className="text-slate-500">⏳</span>
                                                                             <span className="text-slate-700">{item.waitlist_count || item.waitlist_users?.length}</span>
                                                                         </div>
                                                                     )}

@@ -71,6 +71,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://rezea:rezea_password@postgres:5432/rezea
       SECRET_KEY: dev-secret-key-change-in-production-min-32-chars
       ENVIRONMENT: development
+      REDIS_URL: redis://redis:6379
       DEBUG: "true"
       CORS_ORIGINS: '["http://localhost:3000"]'
     ports:
@@ -102,7 +103,7 @@ services:
       - ../apps/web:/app
       - /app/node_modules
       - /app/.next
-    command: sh -c "if [ ! -d node_modules ]; then npm install; fi; npm run dev"
+    command: sh -c "if [ ! -d node_modules/next ]; then npm install; fi; npm run dev"
     networks:
       - rezea_network
 

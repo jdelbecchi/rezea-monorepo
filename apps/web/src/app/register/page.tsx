@@ -32,6 +32,16 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [lookupLoading, setLookupLoading] = useState(false);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const urlSlug = params.get("slug");
+      if (urlSlug && !formData.tenant_slug) {
+        setFormData(prev => ({ ...prev, tenant_slug: urlSlug }));
+      }
+    }
+  }, []);
+
   // Debounce tenant lookup
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -50,8 +60,11 @@ export default function RegisterPage() {
       const data = await api.getTenantBySlug(slug);
       setTenant(data);
       setError("");
-    } catch (err) {
+    } catch (err: any) {
       setTenant(null);
+      if (!err.response) {
+        setError("Impossible de se connecter au serveur.");
+      }
     } finally {
       setLookupLoading(false);
     }
@@ -92,14 +105,18 @@ export default function RegisterPage() {
       await api.register(dataToSave);
       router.push("/login?registered=true");
     } catch (err: any) {
-      const detail = err.response?.data?.detail;
-      if (typeof detail === "string") {
-          setError(detail);
-      } else if (Array.isArray(detail)) {
-          // Formatage des erreurs de validation Pydantic (type, loc, msg...)
-          setError(detail.map((d: any) => d.msg).join(", "));
+      if (!err.response) {
+          setError("Impossible de se connecter au serveur. Vérifiez votre connexion.");
       } else {
-          setError("Une erreur est survenue lors de l'inscription");
+          const detail = err.response?.data?.detail;
+          if (typeof detail === "string") {
+              setError(detail);
+          } else if (Array.isArray(detail)) {
+              // Formatage des erreurs de validation Pydantic (type, loc, msg...)
+              setError(detail.map((d: any) => d.msg).join(", "));
+          } else {
+              setError("Une erreur est survenue lors de l'inscription");
+          }
       }
     } finally {
       setLoading(false);

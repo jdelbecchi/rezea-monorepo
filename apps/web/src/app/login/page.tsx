@@ -13,7 +13,7 @@ export default function TenantPortal() {
   const slug = getTenantSlug();
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Auto-login check
@@ -34,9 +34,13 @@ export default function TenantPortal() {
       try {
         const data = await api.getTenantBySlug(slug);
         setTenant(data);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Error fetching tenant:", err);
-        setError(true);
+        if (!err.response) {
+          setError("network");
+        } else {
+          setError("not_found");
+        }
       } finally {
         setLoading(false);
       }
@@ -52,14 +56,24 @@ export default function TenantPortal() {
     );
   }
 
-  if (error || !tenant) {
+  if (error || (!tenant && !loading)) {
+    const isNetworkError = error === "network";
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#fbfcfd] p-4 text-center">
         <div className="space-y-4 max-w-sm">
           <h1 className="text-2xl font-bold text-slate-900">Oups !</h1>
-          <p className="text-slate-500 font-medium">Nous n'avons pas trouvé cet établissement.</p>
+          <p className="text-slate-500 font-medium">
+            {isNetworkError 
+              ? "Impossible de se connecter au serveur. Vérifiez votre connexion."
+              : "Nous n'avons pas trouvé cet établissement."}
+          </p>
           <button 
-            onClick={() => router.push("/")}
+            onClick={() => {
+              if (!isNetworkError) {
+                localStorage.removeItem("tenant_slug");
+              }
+              router.push("/");
+            }}
             className="w-full py-3 bg-slate-900 text-white rounded-xl font-medium"
           >
             Retourner à l'accueil
