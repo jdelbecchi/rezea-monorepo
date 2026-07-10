@@ -715,6 +715,7 @@ class Order(Base):
     # Facturation
     invoice_number = Column(String(100), nullable=True)
     invoice_url = Column(String(500), nullable=True)
+    is_exported = Column(Boolean, default=False, nullable=False, server_default="false")
 
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

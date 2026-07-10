@@ -19,10 +19,17 @@ export default function TreasuryPage() {
     const [categories, setCategories] = useState<FinanceCategory[]>([]);
     const [accounts, setAccounts] = useState<FinanceAccount[]>([]);
     const [transactions, setTransactions] = useState<FinanceTransaction[]>([]);
-    const [activeTab, setActiveTab] = useState<"dashboard" | "journal" | "categories" | "accounts">("dashboard");
+    const [activeTab, setActiveTab] = useState<"dashboard" | "journal" | "categories" | "accounts" | "export_compta">("dashboard");
     const [searchTerm, setSearchTerm] = useState("");
     const [isExporting, setIsExporting] = useState(false);
     const [selectedMonthStr, setSelectedMonthStr] = useState<string>(format(new Date(), "yyyy-MM"));
+
+    const [exportComptaFrom, setExportComptaFrom] = useState(format(new Date(), "yyyy-MM") + "-01");
+    const [exportComptaTo, setExportComptaTo] = useState(format(new Date(), "yyyy-MM-dd"));
+    const [isComptaExporting, setIsComptaExporting] = useState(false);
+    const [resetFrom, setResetFrom] = useState(format(new Date(), "yyyy-MM") + "-01");
+    const [resetTo, setResetTo] = useState(format(new Date(), "yyyy-MM-dd"));
+    const [isResetting, setIsResetting] = useState(false);
     
     // States for annual overview
     const [annualStartDateStr, setAnnualStartDateStr] = useState<string>(`${new Date().getFullYear()}-01-01`);
@@ -550,6 +557,12 @@ export default function TreasuryPage() {
                             className={`px-8 py-4 text-sm font-semibold transition-all border-b-2 ${activeTab === "accounts" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}
                         >
                             🏦 Comptes / Banques
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab("export_compta")}
+                            className={`px-8 py-4 text-sm font-semibold transition-all border-b-2 ${activeTab === "export_compta" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}
+                        >
+                            📥 Export Comptable
                         </button>
                     </div>
 
@@ -1206,7 +1219,7 @@ export default function TreasuryPage() {
                                             </div>
                                         </div>
                                     </div>
-                                ) : (
+                                ) : activeTab === "accounts" ? (
                                     <div className="animate-in fade-in slide-in-from-right-4 duration-300">
                                         <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden p-8">
                                             <div className="space-y-8">
@@ -1288,7 +1301,121 @@ export default function TreasuryPage() {
                                             </div>
                                         </div>
                                     </div>
-                                )}
+                                ) : activeTab === "export_compta" ? (
+                                    <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
+                                        {/* SECTION EXPORT */}
+                                        <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-8">
+                                            <div className="space-y-6">
+                                                <div>
+                                                    <h3 className="text-[17px] font-semibold text-slate-900">Générer un export comptable</h3>
+                                                    <p className="text-sm text-slate-500">Téléchargez toutes les commandes payées de la période. Les lignes déjà exportées n'apparaîtront pas dans un nouvel export, même si celui-ci couvre la même période, afin d'éviter toute double facturation.</p>
+                                                </div>
+
+                                                <div className="flex flex-col sm:flex-row gap-4 items-end max-w-xl">
+                                                    <div className="flex-1">
+                                                        <label className="block text-xs font-semibold text-slate-500 mb-1">Du *</label>
+                                                        <input 
+                                                            type="date" 
+                                                            value={exportComptaFrom} 
+                                                            onChange={e => setExportComptaFrom(e.target.value)} 
+                                                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-4 focus:ring-blue-100 transition-all bg-slate-50"
+                                                        />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <label className="block text-xs font-semibold text-slate-500 mb-1">Au *</label>
+                                                        <input 
+                                                            type="date" 
+                                                            value={exportComptaTo} 
+                                                            onChange={e => setExportComptaTo(e.target.value)} 
+                                                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-4 focus:ring-blue-100 transition-all bg-slate-50"
+                                                        />
+                                                    </div>
+                                                    <button 
+                                                        onClick={async () => {
+                                                            setIsComptaExporting(true);
+                                                            try {
+                                                                await api.exportFinanceCompta({
+                                                                    start_date: exportComptaFrom,
+                                                                    end_date: exportComptaTo
+                                                                });
+                                                                refreshData();
+                                                            } catch (err) {
+                                                                alert("Erreur lors de l'exportation");
+                                                            } finally {
+                                                                setIsComptaExporting(false);
+                                                            }
+                                                        }}
+                                                        disabled={isComptaExporting}
+                                                        className="px-6 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-medium text-sm disabled:opacity-50"
+                                                    >
+                                                        {isComptaExporting ? "Exportation..." : "Télécharger CSV"}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* SECTION SECURITE / REINITIALISATION */}
+                                        <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-8">
+                                            <div className="space-y-6">
+                                                <div>
+                                                    <h3 className="text-[17px] font-semibold text-amber-600">Réinitialiser le statut d'export (sécurité)</h3>
+                                                    <p className="text-sm text-slate-500 mb-2">Si vous avez perdu un fichier d'export, vous pouvez réinitialiser le statut d'exportation pour une période donnée. Cela permettra de ré-exporter ces lignes.</p>
+                                                    <p className="text-sm text-slate-500"><strong>Attention :</strong> si vous ré-importez ce fichier dans votre outil de comptabilité (ex: Tiime, Henrri) alors que ces factures y ont déjà été éditées, cela créera des doublons.</p>
+                                                </div>
+
+                                                <div className="flex flex-col sm:flex-row gap-4 items-end max-w-xl">
+                                                    <div className="flex-1">
+                                                        <label className="block text-xs font-semibold text-slate-500 mb-1">Du *</label>
+                                                        <input 
+                                                            type="date" 
+                                                            value={resetFrom} 
+                                                            onChange={e => setResetFrom(e.target.value)} 
+                                                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-4 focus:ring-blue-100 transition-all bg-slate-50"
+                                                        />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <label className="block text-xs font-semibold text-slate-500 mb-1">Au *</label>
+                                                        <input 
+                                                            type="date" 
+                                                            value={resetTo} 
+                                                            onChange={e => setResetTo(e.target.value)} 
+                                                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-4 focus:ring-blue-100 transition-all bg-slate-50"
+                                                        />
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => {
+                                                            setConfirmModal({
+                                                                isOpen: true,
+                                                                title: "Confirmer la réinitialisation",
+                                                                message: "Voulez-vous vraiment réinitialiser le statut d'exportation sur cette période ? Ces commandes apparaîtront de nouveau dans vos prochains exports.",
+                                                                onConfirm: async () => {
+                                                                    setIsResetting(true);
+                                                                    try {
+                                                                        await api.resetFinanceExport({
+                                                                            start_date: resetFrom,
+                                                                            end_date: resetTo
+                                                                        });
+                                                                        alert("Réinitialisation réussie !");
+                                                                    } catch (err) {
+                                                                        alert("Erreur lors de la réinitialisation");
+                                                                    } finally {
+                                                                        setIsResetting(false);
+                                                                        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                                                                    }
+                                                                }
+                                                            });
+                                                        }}
+                                                        disabled={isResetting}
+                                                        className="px-6 py-2.5 bg-amber-50 text-amber-600 border border-amber-100 rounded-xl hover:bg-amber-100 transition-all font-medium text-sm disabled:opacity-50"
+                                                    >
+                                                        {isResetting ? "Réinitialisation..." : "Réinitialiser la période"}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : null
+                                }
                         </div>
                     </div>
                 </main>

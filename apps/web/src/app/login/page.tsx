@@ -83,7 +83,7 @@ export default function TenantPortal() {
     );
   }
 
-  const primaryColor = tenant.login_primary_color || tenant.primary_color || "#0f172a";
+  const primaryColor = tenant?.login_primary_color || tenant?.primary_color || "#0f172a";
 
   return (
     <main 
@@ -93,8 +93,7 @@ export default function TenantPortal() {
       {/* 1. BRANDING PANEL: White background on both Mobile and Desktop */}
       <div className="relative flex-shrink-0 md:w-[35%] flex flex-col justify-center px-6 pt-6 pb-4 md:px-16 md:py-24 z-20 bg-white">
         
-        {/* Decorative elements for when THERE IS NO image (to avoid empty white space) */}
-        {!tenant.login_background_url && (
+        {!tenant?.login_background_url && (
           <div className="absolute inset-0 z-0 opacity-10 overflow-hidden pointer-events-none">
             <div 
               className="absolute top-[-5%] left-[-5%] w-[60%] h-[60%] rounded-full blur-[100px]"
@@ -111,8 +110,8 @@ export default function TenantPortal() {
         <div className="relative z-30 max-w-2xl w-full mx-auto md:mx-0 space-y-6 md:space-y-10">
           {/* Logo & Name Header */}
           <div className="flex flex-col gap-4 md:gap-8 items-center justify-center text-center w-full">
-            {tenant.show_logo !== false && (
-              tenant.logo_url ? (
+            {tenant?.show_logo !== false && (
+              tenant?.logo_url ? (
                 <img 
                   src={`${API_URL}${tenant.logo_url}`} 
                   alt={tenant.name} 
@@ -123,19 +122,19 @@ export default function TenantPortal() {
                     className="h-16 w-16 md:h-20 md:w-20 rounded-2xl flex items-center justify-center text-white text-3xl font-bold shadow-sm"
                     style={{ backgroundColor: primaryColor }}
                   >
-                      {tenant.name.substring(0, 2).toUpperCase()}
+                      {tenant?.name?.substring(0, 2).toUpperCase()}
                   </div>
               )
             )}
             
             <div className="flex flex-col gap-1 md:gap-1.5 items-center justify-center text-center w-full">
-              {tenant.show_name !== false && (
+              {tenant?.show_name !== false && (
                 <h1 className="text-3xl md:text-4xl lg:text-5xl font-medium tracking-tight leading-none text-slate-900">
-                  {tenant.name}
+                  {tenant?.name}
                 </h1>
               )}
               
-              {tenant.show_slogan !== false && tenant.slogan && (
+              {tenant?.show_slogan !== false && tenant?.slogan && (
                 <p className="text-sm md:text-xl font-medium text-slate-400 italic">
                   {tenant.slogan}
                 </p>
@@ -145,12 +144,12 @@ export default function TenantPortal() {
 
           {/* Points Clés / Description Area */}
           <div className="space-y-4 max-w-lg mx-auto">
-            {tenant.login_description ? (
+            {tenant?.login_description ? (
               <div 
                 className="text-[15px] md:text-xl font-medium leading-relaxed portal-description text-slate-500 text-center opacity-90"
                 dangerouslySetInnerHTML={{ __html: tenant.login_description }}
               />
-            ) : tenant.description ? (
+            ) : tenant?.description ? (
               <p 
                 className="text-base md:text-xl font-medium leading-relaxed opacity-80 text-center"
                 style={{ color: "var(--primary-color, #0f172a)" }}
@@ -166,7 +165,7 @@ export default function TenantPortal() {
       <div className="relative flex-1 md:w-[65%] flex flex-col items-center justify-center px-6 pb-6 pt-2 md:p-12 overflow-hidden bg-white min-h-[500px] md:min-h-screen">
         
         {/* Background Image Layer (Mobile: Bottom half / Desktop: Right half) */}
-        {tenant.login_background_url && (
+        {tenant?.login_background_url && (
             <div className="absolute inset-0 z-0">
               <img 
                 src={`${API_URL}${tenant.login_background_url}`} 
@@ -189,8 +188,8 @@ export default function TenantPortal() {
             
             {/* Brand Signature */}
             <div className="mt-8 md:mt-12 flex items-baseline justify-center gap-2.5 opacity-60">
-               <span className={`text-[9px] md:text-[10px] font-bold uppercase tracking-widest leading-none ${tenant.login_background_url ? 'text-white/70' : 'text-slate-500'}`}>Propulsé par</span>
-               <span className={`text-sm md:text-base font-bold tracking-tighter leading-none ${tenant.login_background_url ? 'text-white' : 'text-slate-900'}`}>Rezea</span>
+               <span className={`text-[9px] md:text-[10px] font-bold uppercase tracking-widest leading-none ${tenant?.login_background_url ? 'text-white/70' : 'text-slate-500'}`}>Propulsé par</span>
+               <span className={`text-sm md:text-base font-bold tracking-tighter leading-none ${tenant?.login_background_url ? 'text-white' : 'text-slate-900'}`}>Rezea</span>
             </div>
         </div>
       </div>

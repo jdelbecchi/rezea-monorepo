@@ -710,6 +710,7 @@ class OrderUpdate(BaseModel):
     invoice_number: Optional[str] = None
     invoice_url: Optional[str] = None
     is_blocked: Optional[bool] = None
+    is_exported: Optional[bool] = None
     offer_snap_allowed_activities: Optional[List[str]] = None
 
 
@@ -755,6 +756,7 @@ class OrderResponse(BaseModel):
     invoice_number: Optional[str] = None
     invoice_url: Optional[str] = None
     is_blocked: Optional[bool] = None
+    is_exported: bool = False
     # Champs calculés / joints
     user_name: str = ""
     user_email: str = ""

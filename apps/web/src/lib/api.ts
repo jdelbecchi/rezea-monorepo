@@ -374,7 +374,6 @@ export interface Tenant {
   review_prompt_threshold: number;
   created_at: string;
   
-  // Personnalisation de l'accueil utilisateur
   user_home_layout?: string;
   header_title?: string;
   header_subtitle?: string;
@@ -385,6 +384,14 @@ export interface Tenant {
   header_text_animation?: string;
   vignettes?: Vignette[];
   vignettes_title?: string;
+
+  // Configuration de paiement
+  stripe_publishable_key?: string;
+  stripe_secret_key?: string;
+  helloasso_client_id?: string;
+  helloasso_client_secret?: string;
+  helloasso_organization_slug?: string;
+  helloasso_webhook_secret?: string;
 }
 
 export interface Offer {
@@ -1099,6 +1106,26 @@ export const api = {
     link.click();
     link.remove();
     window.URL.revokeObjectURL(url);
+  },
+
+  exportFinanceCompta: async (params: { start_date?: string, end_date?: string }) => {
+    const response = await apiClient.get('/api/admin/finance/export-compta', {
+      params,
+      responseType: 'blob',
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `export_compta_${params.start_date || 'debut'}_${params.end_date || 'fin'}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
+
+  resetFinanceExport: async (params: { start_date: string, end_date: string }) => {
+    const response = await apiClient.post('/api/admin/finance/reset-export', null, { params });
+    return response.data;
   },
 
   // Admin - Agenda

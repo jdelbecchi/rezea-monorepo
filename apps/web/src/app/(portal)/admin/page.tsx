@@ -9,10 +9,22 @@ import { PaymentStatus } from "@/types/enums";
 
 // Helper to format currency
 const formatCurrency = (cents: number) => {
+    const amount = cents / 100;
+    const isWholeEuro = cents % 100 === 0;
     return new Intl.NumberFormat("fr-FR", {
         style: "currency",
         currency: "EUR",
-    }).format(cents / 100);
+        minimumFractionDigits: isWholeEuro ? 0 : 2,
+        maximumFractionDigits: isWholeEuro ? 0 : 2,
+    }).format(amount);
+};
+
+// Helper to format credits, removing trailing .00 if integer
+const formatCredit = (val: number | string | undefined | null) => {
+    if (val === undefined || val === null) return "0";
+    const num = Number(val);
+    if (isNaN(num)) return String(val);
+    return num % 1 === 0 ? num.toFixed(0) : num.toFixed(2);
 };
 
 export default function AdminDashboardPage() {
@@ -1326,7 +1338,7 @@ export default function AdminDashboardPage() {
                                                 <span>💳</span> Saisonnalité des Ventes & CA
                                             </h3>
                                             <p className="text-[11px] text-slate-400 font-medium">
-                                                Volume des ventes et Chiffre d'Affaires estimé par mois, avec répartition des typologies d'offres (hors événements)
+                                                Volume des ventes et Chiffre d'Affaires estimé par mois, avec répartition des types d'engagement définis dans le catalogue (hors événements)
                                             </p>
                                         </div>
 
@@ -1567,7 +1579,7 @@ export default function AdminDashboardPage() {
                                                             <p className="text-[10px] text-slate-450 truncate max-w-[150px]">{item.offerName}</p>
                                                         </td>
                                                         <td className="py-3 text-center">
-                                                            <p className="font-bold text-slate-700">{item.balance} / {item.creditsTotal}</p>
+                                                            <p className="font-bold text-slate-700">{formatCredit(item.balance)} / {formatCredit(item.creditsTotal)}</p>
                                                             <p className="text-[10px] text-slate-400">Restants ({100 - item.progressConso}%)</p>
                                                         </td>
                                                         <td className="py-3 text-center text-slate-600">
@@ -1625,7 +1637,7 @@ export default function AdminDashboardPage() {
                                                             <p className="text-[10px] text-slate-450 truncate max-w-[150px]">{item.offerName}</p>
                                                         </td>
                                                         <td className="py-3 text-center">
-                                                            <p className="font-bold text-slate-700">{item.balance} / {item.creditsTotal}</p>
+                                                            <p className="font-bold text-slate-700">{formatCredit(item.balance)} / {formatCredit(item.creditsTotal)}</p>
                                                             <p className="text-[10px] text-slate-400">Restants ({100 - item.progressConso}%)</p>
                                                         </td>
                                                         <td className="py-3 text-center text-slate-600">
@@ -1799,7 +1811,7 @@ export default function AdminDashboardPage() {
                                 </div>
 
                                 {/* Communication alert */}
-                                {daysSinceLastEmail && daysSinceLastEmail > 7 && (
+                                {daysSinceLastEmail && daysSinceLastEmail > 30 && (
                                     <div className="mt-6 p-4 bg-amber-50/50 border border-amber-100 rounded-2xl flex items-start gap-3">
                                         <span className="text-base mt-0.5">🔔</span>
                                         <div className="space-y-1">

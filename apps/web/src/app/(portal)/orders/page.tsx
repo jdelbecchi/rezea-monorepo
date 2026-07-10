@@ -149,16 +149,14 @@ export default function MemberOrdersPage() {
         return `${(reg.price_paid_cents / 100).toFixed(2)}€`;
     };
 
-    const downloadInvoice = (order: any) => {
-        const invoiceNumber = order.invoice_number || `FAC-${order.id.slice(-6).toUpperCase()}`;
-        const invoiceDate = new Date(order.created_at).toISOString().split("T")[0];
+    const downloadReceipt = (order: any) => {
+        const receiptNumber = order.invoice_number || `REC-${order.id.slice(-6).toUpperCase()}`;
+        const receiptDate = new Date(order.created_at).toISOString().split("T")[0];
         
         const emitterName = tenant?.legal_name || tenant?.name || "Votre Établissement";
         const legalForm = tenant?.legal_form || "";
         const emitterAddress = tenant?.legal_address || "";
         const siret = tenant?.legal_siret ? `SIRET : ${tenant.legal_siret}` : "";
-        const vatNumber = tenant?.legal_vat_number ? `TVA : ${tenant.legal_vat_number}` : "";
-        const vatMention = tenant?.legal_vat_mention || "";
         
         const recipient = `${user?.first_name} ${user?.last_name}`;
         // Add address to recipient if available
@@ -168,13 +166,23 @@ export default function MemberOrdersPage() {
         }
 
         const description = `${order.offer_name} (${order.offer_code})`;
-        const amountTtc = (order.price_cents / 100).toFixed(2);
+        
+        // Calcul du montant total de l'offre
+        const isRecurring = order.offer_featured_pricing === "recurring" && order.offer_price_recurring_cents && order.offer_recurring_count;
+        const totalCents = isRecurring ? (order.offer_price_recurring_cents * order.offer_recurring_count) : order.price_cents;
+        const amountTtc = (totalCents / 100).toFixed(2);
+        
+        // Calcul du montant payé et restant
+        const paidCents = order.received_cents || (order.payment_status === "paye" ? totalCents : 0);
+        const amountPaid = (paidCents / 100).toFixed(2);
+        const remainingCents = Math.max(0, totalCents - paidCents);
+        const amountRemaining = (remainingCents / 100).toFixed(2);
 
-        const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Facture ${invoiceNumber}</title>
+        const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Justificatif de paiement ${receiptNumber}</title>
 <style>
     body{font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;max-width:800px;margin:40px auto;padding:40px;color:#334155;line-height:1.5;background:#fff}
     .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:60px}
-    .invoice-title{font-size:32px;font-weight:700;color:#0f172a;letter-spacing:-0.025em;margin:0}
+    .invoice-title{font-size:26px;font-weight:700;color:#0f172a;letter-spacing:-0.025em;margin:0}
     .emitter-info{font-size:13px;color:#64748b}
     .emitter-name{font-size:16px;font-weight:700;color:#0f172a;margin-bottom:4px}
     .details{display:flex;justify-content:space-between;margin-bottom:40px;gap:40px}
@@ -185,43 +193,41 @@ export default function MemberOrdersPage() {
     th{padding:12px 16px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;color:#64748b;border-bottom:2px solid #e2e8f0;background:#f8fafc}
     td{padding:16px;font-size:14px;border-bottom:1px solid #f1f5f9}
     .totals{display:flex;flex-direction:column;align-items:flex-end;gap:8px;margin-top:20px}
-    .total-row{display:flex;justify-content:space-between;width:200px;font-size:14px}
-    .total-main{font-size:20px;font-weight:700;color:#0f172a;border-top:2px solid #e2e8f0;padding-top:12px;margin-top:8px}
-    .vat-mention-inline{font-size:11px;color:#64748b;margin-bottom:4px;text-align:right}
+    .total-row{display:flex;justify-content:space-between;width:240px;font-size:14px}
+    .total-main{font-size:18px;font-weight:700;color:#0f172a;border-top:2px solid #e2e8f0;padding-top:12px;margin-top:8px}
     .acquitted-stamp{display:${order.payment_status === "paye" ? "inline-block" : "none"};margin-top:12px;padding:6px 12px;border:2px solid #10b981;color:#10b981;font-size:14px;font-weight:700;text-transform:uppercase;transform:rotate(-5deg);border-radius:8px;opacity:0.9;background:rgba(255,255,255,0.8)}
     .footer{margin-top:80px;padding-top:20px;border-top:1px solid #f1f5f9;text-align:center;font-size:11px;color:#94a3b8}
+    .disclaimer{margin-top:20px;padding:12px;background:#f1f5f9;border-radius:8px;font-size:11px;color:#64748b;text-align:center;font-weight:500}
     @media print{body{margin:0;padding:20px}.acquitted-stamp{opacity:1}}
 </style></head><body>
     <div class="header">
         <div>
-            <h1 class="invoice-title">FACTURE</h1>
-            <div style="margin-top:8px;font-size:14px;font-weight:600;color:#64748b">N° ${invoiceNumber}</div>
+            <h1 class="invoice-title">JUSTIFICATIF DE PAIEMENT</h1>
+            <div style="margin-top:8px;font-size:14px;font-weight:600;color:#64748b">N° ${receiptNumber}</div>
         </div>
         <div class="emitter-info" style="text-align:right">
             <div class="emitter-name">${emitterName}</div>
             ${legalForm ? `<div>${legalForm}</div>` : ""}
             ${emitterAddress ? `<div style="white-space:pre-wrap">${emitterAddress}</div>` : ""}
             <div>${siret}</div>
-            ${vatNumber ? `<div>${vatNumber}</div>` : ""}
         </div>
     </div>
 
     <div class="details">
         <div class="details-box">
-            <div class="details-label">Destinataire</div>
+            <div class="details-label">Adhérent</div>
             <div class="details-value">${recipientFull}</div>
         </div>
         <div class="details-box" style="max-width:200px">
             <div class="details-label">Date d'émission</div>
-            <div class="details-value">${new Date(invoiceDate).toLocaleDateString("fr-FR")}</div>
+            <div class="details-value">${new Date(receiptDate).toLocaleDateString("fr-FR")}</div>
         </div>
     </div>
 
     <table>
         <thead>
             <tr>
-                <th style="width:60%">Description</th>
-                <th style="text-align:right">Total HT</th>
+                <th style="width:70%">Description</th>
                 <th style="text-align:right">Total TTC</th>
             </tr>
         </thead>
@@ -231,21 +237,26 @@ export default function MemberOrdersPage() {
                     <div style="font-weight:600;color:#0f172a">${description}</div>
                     <div style="font-size:12px;color:#64748b;margin-top:4px">Période : ${order.start_date} au ${order.end_date || "Illimité"}</div>
                 </td>
-                <td style="text-align:right">-</td>
                 <td style="text-align:right;font-weight:700;color:#0f172a">${amountTtc} €</td>
             </tr>
         </tbody>
     </table>
 
     <div class="totals">
-        <div class="total-row total-main"><span>Total TTC</span><span>${amountTtc} €</span></div>
-        <div class="acquitted-stamp">Acquittée le ${new Date(invoiceDate).toLocaleDateString("fr-FR")}</div>
+        <div class="total-row"><span>Montant total de l'offre</span><span>${amountTtc} €</span></div>
+        <div class="total-row"><span>Règlements perçus</span><span>${amountPaid} €</span></div>
+        <div class="total-row"><span>Reste à payer</span><span>${amountRemaining} €</span></div>
+        <div class="total-row total-main"><span>Total payé</span><span>${amountPaid} €</span></div>
+        <div class="acquitted-stamp">Réglé le ${new Date(receiptDate).toLocaleDateString("fr-FR")}</div>
+    </div>
+
+    <div class="disclaimer">
+        Ce document est un justificatif de paiement à usage interne et ne constitue pas une facture fiscale.
     </div>
 
     <div class="footer">
         <div>${emitterName} ${legalForm ? " - " + legalForm : ""}</div>
         <div>${emitterAddress.replace(/\n/g, ", ")}</div>
-        ${vatMention ? `<div style="margin-top:8px;font-style:italic;font-size:11px;opacity:0.9">${vatMention}</div>` : ""}
         <div style="margin-top:12px;opacity:0.6">Document généré par Rezea</div>
     </div>
 </body></html>`;
@@ -254,7 +265,7 @@ export default function MemberOrdersPage() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `facture_${invoiceNumber}.html`;
+        a.download = `justificatif_${receiptNumber}.html`;
         a.click();
         URL.revokeObjectURL(url);
     };
@@ -405,21 +416,35 @@ export default function MemberOrdersPage() {
                                                             {order.is_validity_unlimited ? 'Illimitée' : (order.end_date ? new Date(order.end_date).toLocaleDateString("fr-FR") : "N/A")}
                                                         </p>
                                                     </div>
+                                                    <div className="flex items-center gap-2 px-1">
+                                                        <span className="text-sm">💎</span>
+                                                        <p className="text-xs text-slate-600 font-medium tracking-tight">Solde de crédit :</p>
+                                                        <p className="text-sm font-semibold tracking-tight text-slate-900">
+                                                            {order.is_unlimited ? 'Illimité' : `${formatCredits(order.balance)}`}
+                                                        </p>
+                                                    </div>
                                                     <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:justify-end">
-                                                        <span className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold border ${getStatusStyle(order.payment_status)}`}>
-                                                            <span className="opacity-60 mr-1">Paiement :</span>
-                                                            {getStatusLabel(order.payment_status)}
-                                                        </span>
                                                         <span className="px-3 py-1.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-lg text-[10px] font-semibold">
                                                             <span className="opacity-60 mr-1">Statut :</span>
                                                             {getGeneralStatusLabel(order.status)}
                                                         </span>
+                                                        <span className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold border ${getStatusStyle(order.payment_status)}`}>
+                                                            <span className="opacity-60 mr-1">Paiement :</span>
+                                                            {getStatusLabel(order.payment_status)}
+                                                        </span>
+                                                        <button 
+                                                            onClick={() => downloadReceipt(order)}
+                                                            className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition-all hover:scale-110 ml-1 text-lg flex items-center justify-center"
+                                                            title="Télécharger le justificatif de paiement"
+                                                        >
+                                                            🧾
+                                                        </button>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             {/* Divider, Note & Actions */}
-                                            {(order.user_note || (order.payment_status?.toLowerCase().includes('attente') && tenant?.payment_redirect_link) || order.invoice_number) && (
+                                            {(order.user_note || (order.payment_status?.toLowerCase().includes('attente') && tenant?.payment_redirect_link)) && (
                                                 <div className="pt-4 border-t border-dashed border-slate-100 flex flex-col gap-4">
                                                     {order.user_note && (
                                                         <div className="flex items-start gap-2 px-1">
@@ -432,29 +457,19 @@ export default function MemberOrdersPage() {
                                                     )}
 
                                                     {/* Buttons Row */}
-                                                    {((order.payment_status?.toLowerCase().includes('attente') && tenant?.payment_redirect_link) || order.invoice_number) && (
-                                                        <div className="flex flex-col md:flex-row justify-center md:justify-end items-center gap-3">
-                                                            {(order.payment_status?.toLowerCase().includes('attente')) && tenant?.payment_redirect_link && (
-                                                                <a 
-                                                                    href={formatExternalUrl(tenant.payment_redirect_link)}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="w-full md:w-auto px-6 py-2.5 bg-slate-900 text-white text-[11px] font-medium rounded-xl transition-all shadow-lg flex items-center justify-center gap-4 group/btn active:scale-95"
-                                                                >
-                                                                    <span>💳</span>
-                                                                    <span>Payer ma commande</span>
-                                                                </a>
-                                                            )}
-                                                            {order.invoice_number && (
-                                                                <button 
-                                                                    onClick={() => downloadInvoice(order)}
-                                                                    className="w-full md:w-auto px-4 py-2 bg-slate-100 text-slate-600 text-[10px] font-medium rounded-lg hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
-                                                                >
-                                                                    🧾 Facture
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    )}
+                                                    <div className="flex flex-col md:flex-row justify-center md:justify-end items-center gap-3">
+                                                        {(order.payment_status?.toLowerCase().includes('attente')) && tenant?.payment_redirect_link && (
+                                                            <a 
+                                                                href={formatExternalUrl(tenant.payment_redirect_link)}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="w-full md:w-auto px-6 py-2.5 bg-slate-900 text-white text-[11px] font-medium rounded-xl transition-all shadow-lg flex items-center justify-center gap-4 group/btn active:scale-95"
+                                                            >
+                                                                <span>💳</span>
+                                                                <span>Payer ma commande</span>
+                                                            </a>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
@@ -612,6 +627,16 @@ export default function MemberOrdersPage() {
                                      </div>
                                  </div>
                                  
+                                 <div className="flex items-center gap-3">
+                                     <span className="text-lg w-6 text-center">📅</span>
+                                     <div className="flex flex-col">
+                                         <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium leading-none mb-1">Date de début</span>
+                                         <p className="text-sm font-medium text-slate-900 leading-none">
+                                             {selectedOrder.start_date ? new Date(selectedOrder.start_date).toLocaleDateString("fr-FR") : "N/A"}
+                                         </p>
+                                     </div>
+                                 </div>
+
                                  <div className="flex items-center gap-3">
                                      <span className="text-lg w-6 text-center">🕒</span>
                                      <div className="flex flex-col">

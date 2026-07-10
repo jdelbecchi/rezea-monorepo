@@ -1174,3 +1174,120 @@ async def get_finance_dashboard(
         overdue_income_cents=overdue_income,
         projected_trend=sorted_projected
     )
+
+
+# ---- EXPORT COMPTABLE & RESET ----
+
+from fastapi.responses import StreamingResponse
+import io
+import csv
+
+@router.get("/export-compta")
+async def export_compta(
+    request: Request,
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_manager)
+):
+    tenant_id = request.state.tenant_id
+    
+    # Récupérer les commandes payées non exportées
+    query = (
+        select(Order)
+        .options(joinedload(Order.user), joinedload(Order.offer))
+        .where(
+            Order.tenant_id == tenant_id,
+            Order.payment_status == OrderPaymentStatus.PAID,
+            Order.is_exported == False
+        )
+    )
+    
+    if start_date:
+        query = query.where(Order.start_date >= datetime.strptime(start_date, "%Y-%m-%d").date())
+    if end_date:
+        query = query.where(Order.start_date <= datetime.strptime(end_date, "%Y-%m-%d").date())
+        
+    query = query.order_by(Order.created_at.asc())
+    
+    res = await db.execute(query)
+    orders = res.scalars().all()
+    
+    # Génération du CSV en mémoire
+    output = io.StringIO()
+    # Utiliser le point-virgule comme séparateur (standard français Excel)
+    writer = csv.writer(output, delimiter=';')
+    
+    # En-têtes du CSV
+    writer.writerow([
+        "ID Commande", "Date création", "Date début", "Nom Adhérent", "Email Adhérent",
+        "Code Offre", "Intitulé Offre", "Montant TTC (EUR)", "Moyen de paiement", "Statut"
+    ])
+    
+    for o in orders:
+        user_name = f"{o.user.first_name} {o.user.last_name}" if o.user else "Utilisateur supprimé"
+        user_email = o.user.email if (o.user and o.user.email) else ""
+        offer_code = o.offer.offer_code if o.offer else ""
+        offer_name = o.offer.name if o.offer else (o.offer_snap_name or "Offre inconnue")
+        
+        # Moyen de paiement
+        payment_method = "Autre"
+        if o.comment and "Stripe" in o.comment:
+            payment_method = "Stripe"
+        elif o.comment and "HelloAsso" in o.comment:
+            payment_method = "HelloAsso"
+            
+        writer.writerow([
+            str(o.id),
+            o.created_at.strftime("%d/%m/%Y"),
+            o.start_date.strftime("%d/%m/%Y"),
+            user_name,
+            user_email,
+            offer_code,
+            offer_name,
+            f"{(o.price_cents / 100):.2f}".replace('.', ','),
+            payment_method,
+            "Payé"
+        ])
+        
+        # Marquer comme exporté
+        o.is_exported = True
+        
+    await db.commit()
+    
+    # Préparer la réponse en streaming avec BOM UTF-8 pour Excel
+    csv_data = "\uFEFF" + output.getvalue()
+    response = StreamingResponse(io.BytesIO(csv_data.encode("utf-8-sig")), media_type="text/csv")
+    
+    from_str = start_date or "debut"
+    to_str = end_date or "fin"
+    response.headers["Content-Disposition"] = f"attachment; filename=export_compta_{from_str}_{to_str}.csv"
+    return response
+
+
+@router.post("/reset-export")
+async def reset_export(
+    request: Request,
+    start_date: str = Query(...),
+    end_date: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_manager)
+):
+    tenant_id = request.state.tenant_id
+    
+    query = (
+        update(Order)
+        .where(
+            Order.tenant_id == tenant_id,
+            Order.payment_status == OrderPaymentStatus.PAID,
+            Order.start_date >= datetime.strptime(start_date, "%Y-%m-%d").date(),
+            Order.start_date <= datetime.strptime(end_date, "%Y-%m-%d").date()
+        )
+        .values(is_exported=False)
+    )
+    
+    await db.execute(query)
+    await db.commit()
+    
+    return {"message": "Statut d'export réinitialisé avec succès sur la période."}
+

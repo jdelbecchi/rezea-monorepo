@@ -69,7 +69,7 @@ export default function TenantRegisterPage() {
     );
   }
 
-  const primaryColor = tenant.login_primary_color || tenant.primary_color || "#0f172a";
+  const primaryColor = tenant?.login_primary_color || tenant?.primary_color || "#0f172a";
 
   return (
     <main 

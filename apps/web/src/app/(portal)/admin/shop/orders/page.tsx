@@ -155,25 +155,13 @@ export default function AdminShopOrdersPage() {
     // Delete confirm
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-    // Invoice modal
-    const [invoiceOrder, setInvoiceOrder] = useState<OrderItem | null>(null);
-    const [invoiceData, setInvoiceData] = useState({
-        invoice_number: "", 
-        invoice_date: "", 
-        emitter: "", 
-        recipient: "", 
-        description: "", 
-        amount_ht: "", 
-        amount_ttc: "", 
-        notes: "",
-        is_acquitted: true,
-        vat_mention: ""
-    });
+
 
     // Installments modal
     const [installmentsOrder, setInstallmentsOrder] = useState<OrderItem | null>(null);
     const [installments, setInstallments] = useState<InstallmentItem[]>([]);
     const [loadingInstallments, setLoadingInstallments] = useState(false);
+    const [showPercentage, setShowPercentage] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -383,9 +371,9 @@ export default function AdminShopOrdersPage() {
         }
     };
 
-    const openInvoice = (order: OrderItem) => {
-        setInvoiceOrder(order);
-        const today = new Date().toISOString().split("T")[0];
+    const openReceipt = (order: OrderItem) => {
+        const receiptNumber = order.invoice_number || `REC-${order.id.slice(-6).toUpperCase()}`;
+        const receiptDate = new Date(order.created_at).toISOString().split("T")[0];
         
         // Build recipient address string
         let recipientStr = order.user_name;
@@ -398,43 +386,27 @@ export default function AdminShopOrdersPage() {
             recipientStr += "\n" + addrParts.join("\n");
         }
 
-        setInvoiceData({
-            invoice_number: `FAC-${Date.now().toString().slice(-6)}`,
-            invoice_date: today,
-            emitter: tenant?.legal_name || tenant?.name || "Mon Club",
-            recipient: recipientStr,
-            description: `${order.offer_name} (${order.offer_code})`,
-            amount_ht: "",
-            amount_ttc: (order.price_cents / 100).toFixed(2),
-            notes: "",
-            is_acquitted: true,
-            vat_mention: tenant?.legal_vat_mention || ""
-        });
-    };
-
-    const downloadInvoice = async () => {
-        if (!invoiceOrder) return;
-        try {
-            await api.updateAdminOrder(invoiceOrder.id, {
-                invoice_number: invoiceData.invoice_number
-            });
-            fetchData();
-        } catch (err) {
-            console.error("Error saving invoice info:", err);
-        }
-
-        const emitterName = invoiceData.emitter;
+        const emitterName = tenant?.legal_name || tenant?.name || "Mon Club";
         const legalForm = tenant?.legal_form || "";
         const emitterAddress = tenant?.legal_address || "";
         const siret = tenant?.legal_siret ? `SIRET : ${tenant.legal_siret}` : "";
-        const vatNumber = tenant?.legal_vat_number ? `TVA : ${tenant.legal_vat_number}` : "";
-        const vatMention = tenant?.legal_vat_mention || "";
 
-        const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Facture ${invoiceData.invoice_number}</title>
+        // Calcul du montant total de l'offre
+        const isRecurring = order.offer_featured_pricing === "recurring" && !!order.offer_price_recurring_cents && !!order.offer_recurring_count;
+        const totalCents = isRecurring ? ((order.offer_price_recurring_cents || 0) * (order.offer_recurring_count || 0)) : order.price_cents;
+        const amountTtc = (totalCents / 100).toFixed(2);
+        
+        // Calcul du montant payé et restant
+        const paidCents = order.received_cents || (order.payment_status === "paye" ? totalCents : 0);
+        const amountPaid = (paidCents / 100).toFixed(2);
+        const remainingCents = Math.max(0, totalCents - paidCents);
+        const amountRemaining = (remainingCents / 100).toFixed(2);
+
+        const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Justificatif de paiement ${receiptNumber}</title>
 <style>
     body{font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;max-width:800px;margin:40px auto;padding:40px;color:#334155;line-height:1.5;background:#fff}
     .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:60px}
-    .invoice-title{font-size:32px;font-weight:700;color:#0f172a;letter-spacing:-0.025em;margin:0}
+    .invoice-title{font-size:26px;font-weight:700;color:#0f172a;letter-spacing:-0.025em;margin:0}
     .emitter-info{font-size:13px;color:#64748b}
     .emitter-name{font-size:16px;font-weight:700;color:#0f172a;margin-bottom:4px}
     .details{display:flex;justify-content:space-between;margin-bottom:40px;gap:40px}
@@ -445,71 +417,70 @@ export default function AdminShopOrdersPage() {
     th{padding:12px 16px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;color:#64748b;border-bottom:2px solid #e2e8f0;background:#f8fafc}
     td{padding:16px;font-size:14px;border-bottom:1px solid #f1f5f9}
     .totals{display:flex;flex-direction:column;align-items:flex-end;gap:8px;margin-top:20px}
-    .total-row{display:flex;justify-content:space-between;width:200px;font-size:14px}
-    .total-main{font-size:20px;font-weight:700;color:#0f172a;border-top:2px solid #e2e8f0;padding-top:12px;margin-top:8px}
-    .vat-mention-inline{font-size:11px;color:#64748b;margin-bottom:4px;text-align:right}
-    .acquitted-stamp{display:${invoiceData.is_acquitted ? "inline-block" : "none"};margin-top:12px;padding:6px 12px;border:2px solid #10b981;color:#10b981;font-size:14px;font-weight:700;text-transform:uppercase;transform:rotate(-5deg);border-radius:8px;opacity:0.9;background:rgba(255,255,255,0.8)}
-    .notes{margin-top:40px;padding:20px;background:#fffaf0;border:1px solid #feebc8;border-radius:12px;font-size:13px}
+    .total-row{display:flex;justify-content:space-between;width:240px;font-size:14px}
+    .total-main{font-size:18px;font-weight:700;color:#0f172a;border-top:2px solid #e2e8f0;padding-top:12px;margin-top:8px}
+    .acquitted-stamp{display:${order.payment_status === "paye" ? "inline-block" : "none"};margin-top:12px;padding:6px 12px;border:2px solid #10b981;color:#10b981;font-size:14px;font-weight:700;text-transform:uppercase;transform:rotate(-5deg);border-radius:8px;opacity:0.9;background:rgba(255,255,255,0.8)}
     .footer{margin-top:80px;padding-top:20px;border-top:1px solid #f1f5f9;text-align:center;font-size:11px;color:#94a3b8}
+    .disclaimer{margin-top:20px;padding:12px;background:#f1f5f9;border-radius:8px;font-size:11px;color:#64748b;text-align:center;font-weight:500}
     @media print{body{margin:0;padding:20px}.acquitted-stamp{opacity:1}}
 </style></head><body>
     <div class="header">
         <div>
-            <h1 class="invoice-title">FACTURE</h1>
-            <div style="margin-top:8px;font-size:14px;font-weight:600;color:#64748b">N° ${invoiceData.invoice_number}</div>
+            <h1 class="invoice-title">JUSTIFICATIF DE PAIEMENT</h1>
+            <div style="margin-top:8px;font-size:14px;font-weight:600;color:#64748b">N° ${receiptNumber}</div>
         </div>
         <div class="emitter-info" style="text-align:right">
             <div class="emitter-name">${emitterName}</div>
             ${legalForm ? `<div>${legalForm}</div>` : ""}
             ${emitterAddress ? `<div style="white-space:pre-wrap">${emitterAddress}</div>` : ""}
             <div>${siret}</div>
-            ${vatNumber ? `<div>${vatNumber}</div>` : ""}
         </div>
     </div>
 
     <div class="details">
         <div class="details-box">
-            <div class="details-label">Destinataire</div>
-            <div class="details-value">${invoiceData.recipient}</div>
+            <div class="details-label">Adhérent</div>
+            <div class="details-value">${recipientStr}</div>
         </div>
         <div class="details-box" style="max-width:200px">
             <div class="details-label">Date d'émission</div>
-            <div class="details-value">${new Date(invoiceData.invoice_date).toLocaleDateString("fr-FR")}</div>
+            <div class="details-value">${new Date(receiptDate).toLocaleDateString("fr-FR")}</div>
         </div>
     </div>
 
     <table>
         <thead>
             <tr>
-                <th style="width:60%">Description</th>
-                <th style="text-align:right">Total HT</th>
+                <th style="width:70%">Description</th>
                 <th style="text-align:right">Total TTC</th>
             </tr>
         </thead>
         <tbody>
             <tr>
                 <td>
-                    <div style="font-weight:600;color:#0f172a">${invoiceData.description}</div>
-                    <div style="font-size:12px;color:#64748b;margin-top:4px">Période : ${invoiceOrder?.start_date} au ${invoiceOrder?.end_date || "Illimité"}</div>
+                    <div style="font-weight:600;color:#0f172a">${order.offer_name} (${order.offer_code})</div>
+                    <div style="font-size:12px;color:#64748b;margin-top:4px">Période : ${order.start_date} au ${order.end_date || "Illimité"}</div>
                 </td>
-                <td style="text-align:right">${invoiceData.amount_ht ? invoiceData.amount_ht + " €" : "-"}</td>
-                <td style="text-align:right;font-weight:700;color:#0f172a">${invoiceData.amount_ttc} €</td>
+                <td style="text-align:right;font-weight:700;color:#0f172a">${amountTtc} €</td>
             </tr>
         </tbody>
     </table>
 
     <div class="totals">
-        ${invoiceData.amount_ht ? `<div class="total-row"><span>Total HT</span><span>${invoiceData.amount_ht} €</span></div>` : ""}
-        <div class="total-row total-main"><span>Total TTC</span><span>${invoiceData.amount_ttc} €</span></div>
-        <div class="acquitted-stamp">Acquittée le ${new Date(invoiceData.invoice_date).toLocaleDateString("fr-FR")}</div>
+        <div class="total-row"><span>Montant total de l'offre</span><span>${amountTtc} €</span></div>
+        <div class="total-row"><span>Règlements perçus</span><span>${amountPaid} €</span></div>
+        <div class="total-row"><span>Reste à payer</span><span>${amountRemaining} €</span></div>
+        <div class="total-row total-main"><span>Total payé</span><span>${amountPaid} €</span></div>
+        <div class="acquitted-stamp">Réglé le ${new Date(receiptDate).toLocaleDateString("fr-FR")}</div>
     </div>
 
-    ${invoiceData.notes ? `<div class="notes"><strong>Notes complémentaires :</strong><br>${invoiceData.notes}</div>` : ""}
+    <div class="disclaimer">
+        Ce document est un justificatif de paiement à usage interne et ne constitue pas une facture fiscale.
+    </div>
 
     <div class="footer">
         <div>${emitterName} ${legalForm ? " - " + legalForm : ""}</div>
         <div>${emitterAddress.replace(/\n/g, ", ")}</div>
-        ${vatMention ? `<div style="margin-top:8px;font-style:italic;font-size:11px;opacity:0.9">${vatMention}</div>` : ""}
         <div style="margin-top:12px;opacity:0.6">Document généré par Rezea</div>
     </div>
 </body></html>`;
@@ -527,13 +498,11 @@ export default function AdminShopOrdersPage() {
         // Also trigger download
         const a = document.createElement("a");
         a.href = url;
-        a.download = `facture_${invoiceData.invoice_number}.html`;
+        a.download = `justificatif_${receiptNumber}.html`;
         a.click();
         
         // Revoke after a short delay to ensure download started
         setTimeout(() => URL.revokeObjectURL(url), 100);
-        
-        setInvoiceOrder(null);
     };
 
     // Installments
@@ -663,8 +632,27 @@ export default function AdminShopOrdersPage() {
     // Filtering
     const filteredOrders = orders.filter((o) => {
         if (searchTerm) {
-            const q = searchTerm.toLowerCase();
-            if (!o.user_name.toLowerCase().includes(q) && !o.offer_code.toLowerCase().includes(q) && !o.offer_name.toLowerCase().includes(q)) return false;
+            const q = searchTerm.toLowerCase().trim();
+            let matches = o.user_name.toLowerCase().includes(q) || 
+                          o.offer_code.toLowerCase().includes(q) || 
+                          o.offer_name.toLowerCase().includes(q);
+            
+            if (!matches) {
+                if (showPercentage && o.credits_total && Number(o.credits_total) > 0 && !o.is_unlimited) {
+                    const pctConsumed = Math.round(((Number(o.credits_total) - Number(o.balance || 0)) / Number(o.credits_total)) * 100);
+                    const pctString = `${pctConsumed}%`;
+                    const pctStringSpace = `${pctConsumed} %`;
+                    if (pctString.includes(q) || pctStringSpace.includes(q) || String(pctConsumed).includes(q)) {
+                        matches = true;
+                    }
+                } else if (!showPercentage && o.balance !== undefined) {
+                    const balStr = String(o.balance).toLowerCase();
+                    if (balStr.includes(q)) {
+                        matches = true;
+                    }
+                }
+            }
+            if (!matches) return false;
         }
         if (filterStatuses.length > 0 && !filterStatuses.includes(o.status)) return false;
         if (filterPayments.length > 0 && !filterPayments.includes(o.payment_status)) return false;
@@ -863,7 +851,16 @@ export default function AdminShopOrdersPage() {
                                         <th className="px-3 py-[10px] text-center text-xs font-medium text-slate-400 uppercase tracking-widest hidden lg:table-cell whitespace-nowrap">fin</th>
                                         <th className="px-3 py-[10px] text-center text-xs font-medium text-slate-400 uppercase tracking-widest hidden sm:table-cell whitespace-nowrap">tarif</th>
                                         <th className="px-3 py-[10px] text-center text-xs font-medium text-slate-400 uppercase tracking-widest hidden xl:table-cell whitespace-nowrap">crédits</th>
-                                        <th className="px-3 py-[10px] text-center text-xs font-medium text-slate-400 uppercase tracking-widest hidden sm:table-cell whitespace-nowrap">solde</th>
+                                        <th 
+                                            onClick={() => setShowPercentage(!showPercentage)}
+                                            className="px-3 py-[10px] text-center text-xs font-medium text-slate-400 uppercase tracking-widest hidden sm:table-cell whitespace-nowrap cursor-pointer hover:text-slate-600 transition-colors select-none"
+                                            title={showPercentage ? "Afficher en crédits restants" : "Afficher en % consommé"}
+                                        >
+                                            <div className="flex items-center justify-center gap-1.5">
+                                                <span>solde</span>
+                                                <span className="text-[9px] font-semibold text-slate-500 bg-slate-200/50 hover:bg-slate-200 hover:text-slate-700 px-1.5 py-0.5 rounded border border-slate-300/30 transition-all shadow-sm tracking-tight">{showPercentage ? "NB" : "%"}</span>
+                                            </div>
+                                        </th>
                                         <th className="px-3 py-[10px] text-center text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">paiement</th>
                                         <th className="w-8 py-[10px]"></th>
                                         <th className="px-3 py-[10px] text-center text-xs font-medium text-slate-400 uppercase tracking-widest hidden md:table-cell whitespace-nowrap">statut</th>
@@ -971,7 +968,12 @@ export default function AdminShopOrdersPage() {
                                                                     (order.balance ?? 0) <= 2 ? "text-orange-600" :
                                                                         "text-slate-700"
                                                             }`}>
-                                                            <span>{formatCredits(order.balance)}</span>
+                                                            <span>
+                                                                {showPercentage && order.credits_total && Number(order.credits_total) > 0 
+                                                                    ? `${Math.round(((Number(order.credits_total) - Number(order.balance || 0)) / Number(order.credits_total)) * 100)} %` 
+                                                                    : formatCredits(order.balance)
+                                                                }
+                                                            </span>
                                                             {order.is_blocked && <span title="Crédits bloqués" className="ml-0.5">🔒</span>}
                                                             {order.user_is_suspended && <span title="Crédits suspendus">🚫</span>}
                                                         </div>
@@ -995,10 +997,7 @@ export default function AdminShopOrdersPage() {
                                                 <td className="px-1 py-2.5 whitespace-nowrap flex items-center justify-end gap-0.5">
                                                     <button onClick={() => openEdit(order)} className="p-1 hover:bg-blue-50 text-blue-500 rounded-lg transition-all hover:scale-110" title="Modifier">✏️</button>
                                                     <div className="relative">
-                                                        <button onClick={() => openInvoice(order)} className="p-1 hover:bg-slate-100 text-slate-500 rounded-lg transition-all hover:scale-110" title="Facture">🧾</button>
-                                                        {order.invoice_number && (
-                                                            <div className="absolute top-0 right-0 w-2 h-2 bg-rose-500 rounded-full border-2 border-white shadow-sm pointer-events-none animate-in fade-in zoom-in duration-300"></div>
-                                                        )}
+                                                        <button onClick={() => openReceipt(order)} className="p-1 hover:bg-slate-100 text-slate-500 rounded-lg transition-all hover:scale-110" title="Justificatif">🧾</button>
                                                     </div>
                                                     <button onClick={() => setDeleteConfirmId(order.id)} className="p-1 hover:bg-rose-50 text-rose-500 rounded-lg transition-all hover:scale-110" title="Supprimer">🗑️</button>
                                                 </td>
@@ -1425,133 +1424,7 @@ export default function AdminShopOrdersPage() {
 
 
 
-            {/* Invoice Modal */}
-            {invoiceOrder && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[110] p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
-                            <div className="flex items-center gap-3">
-                                <div className="text-xl text-slate-400">🧾</div>
-                                <h3 className="text-lg font-medium text-slate-900 tracking-tight">Générer une facture</h3>
-                            </div>
-                            <button onClick={() => setInvoiceOrder(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
 
-                        <div className="flex-1 overflow-y-auto p-8">
-                            <div className="space-y-10">
-                                {/* Parties */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <div className="space-y-4">
-                                        <h4 className="text-[11px] font-medium text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Émetteur</h4>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Nom / Raison sociale</label>
-                                            <input type="text" value={invoiceData.emitter}
-                                                onChange={(e) => setInvoiceData({ ...invoiceData, emitter: e.target.value })}
-                                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-4">
-                                        <h4 className="text-[11px] font-medium text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Destinataire</h4>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Identité & Adresse</label>
-                                            <textarea value={invoiceData.recipient}
-                                                onChange={(e) => setInvoiceData({ ...invoiceData, recipient: e.target.value })}
-                                                rows={3}
-                                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 resize-none" />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Détails facture */}
-                                <div className="space-y-6">
-                                    <h4 className="text-[11px] font-medium text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Contenu & Tarification</h4>
-                                    
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">N° Facture</label>
-                                            <input type="text" value={invoiceData.invoice_number}
-                                                onChange={(e) => setInvoiceData({ ...invoiceData, invoice_number: e.target.value })}
-                                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Date d'émission</label>
-                                            <input type="date" value={invoiceData.invoice_date}
-                                                onChange={(e) => setInvoiceData({ ...invoiceData, invoice_date: e.target.value })}
-                                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
-                                        </div>
-                                        <div className="md:col-span-2">
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Description de la prestation</label>
-                                            <input type="text" value={invoiceData.description}
-                                                onChange={(e) => setInvoiceData({ ...invoiceData, description: e.target.value })}
-                                                className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Montant HT <span className="text-slate-400 font-normal">(optionnel)</span></label>
-                                            <div className="relative">
-                                                <input type="text" value={invoiceData.amount_ht}
-                                                    onChange={(e) => setInvoiceData({ ...invoiceData, amount_ht: e.target.value })}
-                                                    placeholder="-"
-                                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 pr-8" />
-                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">€</span>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Montant TTC</label>
-                                            <div className="relative">
-                                                <input type="text" value={invoiceData.amount_ttc}
-                                                    onChange={(e) => setInvoiceData({ ...invoiceData, amount_ttc: e.target.value })}
-                                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 pr-8" />
-                                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-700 text-sm">€</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-3 py-2">
-                                        <input 
-                                            type="checkbox"
-                                            id="is_acquitted"
-                                            checked={invoiceData.is_acquitted}
-                                            onChange={(e) => setInvoiceData({ ...invoiceData, is_acquitted: e.target.checked })}
-                                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                        />
-                                        <label htmlFor="is_acquitted" className="text-sm font-medium text-slate-700">Apposer la mention "ACQUITTÉE"</label>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <h4 className="text-[11px] font-medium text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Notes</h4>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Notes complémentaires</label>
-                                        <textarea value={invoiceData.notes}
-                                            onChange={(e) => setInvoiceData({ ...invoiceData, notes: e.target.value })}
-                                            placeholder="Conditions de réglement, sommes déjà versées..."
-                                            className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 resize-none"
-                                            rows={2} />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="p-6 bg-white border-t border-gray-100 flex gap-3 justify-end items-center sticky bottom-0 z-10">
-                            <button onClick={() => setInvoiceOrder(null)}
-                                className="px-5 py-2.5 bg-white text-slate-700 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-all text-sm">
-                                Annuler
-                            </button>
-                            <button onClick={downloadInvoice}
-                                className="px-6 py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all text-sm shadow-sm flex items-center gap-2">
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                </svg>
-                                Générer la facture
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* Installments Modal */}
             {installmentsOrder && (

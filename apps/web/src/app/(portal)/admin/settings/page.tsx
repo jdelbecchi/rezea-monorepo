@@ -1357,14 +1357,14 @@ export default function AdminSettingsPage() {
                         {/* DOCUMENTS TAB */}
                         {activeTab === "docs" && (
                             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                {/* LEGAL INFO SECTION */}
+                                {/* JUSTIFICATIFS SECTION */}
                                 <section className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-8">
                                     <div className="space-y-1">
                                         <h3 className="text-base font-medium flex items-center gap-2 text-slate-800">
                                             <span>🏛️</span>
-                                            <span>Informations de facturation</span>
+                                            <span>Informations de justificatif</span>
                                         </h3>
-                                        <p className="text-xs text-slate-400 font-normal">Ces informations apparaîtront automatiquement sur les factures générées</p>
+                                        <p className="text-xs text-slate-400 font-normal">Ces informations apparaîtront automatiquement sur les reçus de paiement générés</p>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1406,7 +1406,7 @@ export default function AdminSettingsPage() {
                                                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-sm resize-none"
                                             />
                                         </div>
-                                        <div>
+                                        <div className="md:col-span-2">
                                             <label className="block text-sm font-medium text-slate-700 mb-1">SIRET</label>
                                             <input
                                                 type="text"
@@ -1415,29 +1415,6 @@ export default function AdminSettingsPage() {
                                                 placeholder="Ex: 123 456 789 00012"
                                                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-sm"
                                             />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">
-                                                N° TVA intracommunautaire <span className="text-slate-400 text-[10px] font-normal ml-1">(optionnel)</span>
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={formData.legal_vat_number || ""}
-                                                onChange={e => setFormData({ ...formData, legal_vat_number: e.target.value })}
-                                                placeholder="Ex: FR 12 345678901"
-                                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-sm"
-                                            />
-                                        </div>
-                                        <div className="md:col-span-2">
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Mention TVA</label>
-                                            <input
-                                                type="text"
-                                                value={formData.legal_vat_mention || ""}
-                                                onChange={e => setFormData({ ...formData, legal_vat_mention: e.target.value })}
-                                                placeholder="Ex: TVA non applicable, art. 293 B du CGI"
-                                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all font-normal text-sm"
-                                            />
-                                            <p className="text-[10px] text-slate-400 font-normal mt-1.5 ml-1">Cette mention sera affichée en pied de facture. Laissez par défaut si vous êtes en franchise de base.</p>
                                         </div>
                                     </div>
                                 </section>

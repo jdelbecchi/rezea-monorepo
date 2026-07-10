@@ -162,8 +162,10 @@ def build_order_response(
         created_by_admin=order.created_by_admin,
         created_at=order.created_at,
         updated_at=order.updated_at,
-        invoice_number=order.invoice_number,
+        invoice_number=order.invoice_number or f"REC-{str(order.id)[-6:].upper()}",
         invoice_url=order.invoice_url,
+        is_blocked=effective_blocked,
+        is_exported=order.is_exported,
         user_name=f"{order.user.first_name} {order.user.last_name}" if order.user else "Utilisateur supprimé",
         user_email=order.user.email if (order.user and order.user.email) else "",
         user_is_suspended=order.user.is_suspended if order.user else False,
@@ -194,8 +196,7 @@ def build_order_response(
             if getattr(order, 'offer_snap_allowed_activities', None) is not None 
             else (order.offer.allowed_activities if order.offer else [])
         ),
-        installments=order.installments,
-        is_blocked=effective_blocked
+        installments=order.installments
     )
 
 
