@@ -23,6 +23,8 @@ interface Tenant {
     invitation_expires_at?: string | null;
     claimed_at?: string | null;
     email?: string | null;
+    active_users_count?: number;
+    total_users_count?: number;
 }
 
 const DEFAULT_NEW_TENANT = {
@@ -49,6 +51,19 @@ export default function SysAdminDashboardPage() {
     
     const [newTenant, setNewTenant] = useState(DEFAULT_NEW_TENANT);
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+    // États pour la modale d'import Excel
+    const [importTenantId, setImportTenantId] = useState<string | null>(null);
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [importing, setImporting] = useState(false);
+    const [importFile, setImportFile] = useState<File | null>(null);
+    const [importError, setImportError] = useState<string | null>(null);
+    const [importResult, setImportResult] = useState<{
+        success: boolean;
+        imported_users: number;
+        imported_orders: number;
+        errors: string[];
+    } | null>(null);
 
     const sysadminClient = () => {
         const token = localStorage.getItem("sysadmin_token");
@@ -171,6 +186,72 @@ export default function SysAdminDashboardPage() {
         navigator.clipboard.writeText(url);
         setCopiedId(tenantId);
         setTimeout(() => setCopiedId(null), 2000);
+    };
+
+    const handleImport = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!importTenantId || !importFile) return;
+
+        setImporting(true);
+        setImportError(null);
+        setImportResult(null);
+
+        const formData = new FormData();
+        formData.append("file", importFile);
+
+        try {
+            const clientConfig = sysadminClient();
+            const response = await apiClient.post(
+                `/api/sysadmin/tenants/${importTenantId}/import`,
+                formData,
+                {
+                    headers: {
+                        ...clientConfig.headers,
+                        "Content-Type": "multipart/form-data",
+                    },
+                }
+            );
+            setImportResult(response.data);
+            fetchTenants();
+        } catch (err: any) {
+            setImportError(err.response?.data?.detail || "Une erreur est survenue lors de l'importation");
+        } finally {
+            setImporting(false);
+        }
+    };
+    const handleResetOwner = async (tenantId: string) => {
+        if (!window.confirm("Êtes-vous sûr de vouloir réinitialiser le propriétaire de cet établissement ? L'ancien compte propriétaire sera rétrogradé en manager simple. Si le nouveau propriétaire s'enregistre avec la même adresse email, elle sera automatiquement reprise et mise à jour. Un nouveau lien d'accès sera généré pour permettre l'inscription.")) {
+            return;
+        }
+        
+        try {
+            const response = await apiClient.post(
+                `/api/sysadmin/tenants/${tenantId}/reset-owner`,
+                {},
+                sysadminClient()
+            );
+            setMessage({ type: "success", text: `Le propriétaire de l'établissement "${response.data.slug}" a été réinitialisé. Nouveau lien généré !` });
+            setEditingTenant(null);
+            await fetchTenants();
+        } catch (err: any) {
+            setMessage({ type: "error", text: err.response?.data?.detail || "Erreur lors de la réinitialisation du propriétaire" });
+        }
+    };
+
+    const downloadTemplate = () => {
+        const headers = ["Email", "Prénom", "Nom", "Téléphone", "Offre", "Prix", "Statut"];
+        const exampleRow = ["jean.dupont@example.com", "Jean", "Dupont", "0612345678", "Abonnement Annuel", "350", "Payé"];
+        
+        // CSV au format français (séparateur point-virgule et encodage avec BOM pour Excel)
+        const csvContent = "\ufeff" + [headers.join(";"), exampleRow.join(";")].join("\n");
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", "template_import_rezea.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     const handleExportCSV = () => {
@@ -564,6 +645,15 @@ export default function SysAdminDashboardPage() {
                                 >
                                     Annuler
                                 </button>
+                                {editingTenant.claimed_at && (
+                                    <button
+                                        type="button"
+                                        onClick={() => handleResetOwner(editingTenant.id)}
+                                        className="px-6 py-3 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 text-red-400 rounded-xl transition-all text-sm font-medium ml-auto"
+                                    >
+                                        ⚠️ Réinitialiser le Propriétaire
+                                    </button>
+                                )}
                             </div>
                         </form>
                     </div>
@@ -590,13 +680,16 @@ export default function SysAdminDashboardPage() {
                                         <th className="text-left px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-500">
                                             Email Contact
                                         </th>
-                                        <th className="text-left px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-500">
+                                        <th className="text-center px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-500">
+                                            Users
+                                        </th>
+                                        <th className="text-center px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-500">
                                             Statut
                                         </th>
-                                        <th className="text-left px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-500">
+                                        <th className="text-center px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-500">
                                             Lien d&apos;accès
                                         </th>
-                                        <th className="text-left px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-500">
+                                        <th className="text-center px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-500">
                                             Créé le
                                         </th>
                                         <th className="text-right px-6 py-4 text-xs font-medium uppercase tracking-wider text-slate-500">
@@ -620,7 +713,7 @@ export default function SysAdminDashboardPage() {
                                             </td>
                                             
                                             {/* Contact Client */}
-                                            <td className="px-6 py-4 text-sm">
+                                            <td className="px-6 py-4 text-sm whitespace-nowrap">
                                                 {tenant.client_first_name || tenant.client_last_name ? (
                                                     <p className="text-white font-medium">
                                                         {tenant.client_first_name} {tenant.client_last_name}
@@ -635,13 +728,25 @@ export default function SysAdminDashboardPage() {
                                                 {tenant.client_email || <span className="text-slate-600 italic">Non renseigné</span>}
                                             </td>
 
+                                            {/* Users */}
+                                            <td className="px-6 py-4 text-sm whitespace-nowrap text-center">
+                                                <div className="flex items-baseline justify-center gap-0.5">
+                                                    <span className="text-violet-400 font-bold text-base">
+                                                        {tenant.active_users_count ?? 0}
+                                                    </span>
+                                                    <span className="text-slate-500 text-xs font-medium">
+                                                        /{tenant.total_users_count ?? 0}
+                                                    </span>
+                                                </div>
+                                            </td>
+
                                             {/* Statut */}
-                                            <td className="px-6 py-4 text-sm">
+                                            <td className="px-6 py-4 text-sm whitespace-nowrap text-center">
                                                 {(() => {
                                                     const isExpired = tenant.invitation_expires_at && new Date(tenant.invitation_expires_at) < new Date();
                                                     if (tenant.claimed_at) {
                                                         return (
-                                                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap">
                                                                 <span className="w-1.5 h-1.5 rounded-full mr-1.5 bg-emerald-400" />
                                                                 Initialisé
                                                             </span>
@@ -649,14 +754,14 @@ export default function SysAdminDashboardPage() {
                                                     } else if (tenant.invitation_token) {
                                                         if (isExpired) {
                                                             return (
-                                                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
+                                                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20 whitespace-nowrap">
                                                                     <span className="w-1.5 h-1.5 rounded-full mr-1.5 bg-red-400" />
                                                                     Expiré
                                                                 </span>
                                                             );
                                                         } else {
                                                             return (
-                                                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 whitespace-nowrap">
                                                                     <span className="w-1.5 h-1.5 rounded-full mr-1.5 bg-amber-400" />
                                                                     En attente
                                                                 </span>
@@ -664,7 +769,7 @@ export default function SysAdminDashboardPage() {
                                                         }
                                                     } else {
                                                         return (
-                                                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
+                                                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20 whitespace-nowrap">
                                                                 <span className="w-1.5 h-1.5 rounded-full mr-1.5 bg-red-400" />
                                                                 Lien non généré
                                                             </span>
@@ -674,7 +779,7 @@ export default function SysAdminDashboardPage() {
                                             </td>
 
                                             {/* Lien d'accès */}
-                                            <td className="px-6 py-4 text-sm">
+                                            <td className="px-6 py-4 text-sm whitespace-nowrap text-center">
                                                 {(() => {
                                                     const isExpired = tenant.invitation_expires_at && new Date(tenant.invitation_expires_at) < new Date();
                                                     if (tenant.claimed_at) {
@@ -684,23 +789,23 @@ export default function SysAdminDashboardPage() {
                                                             return (
                                                                 <button
                                                                     onClick={() => handleRegenerateToken(tenant.id)}
-                                                                    className="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 border border-white/20 text-slate-300 font-medium rounded-lg transition-all"
+                                                                    className="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 border border-white/20 text-slate-300 font-medium rounded-lg transition-all whitespace-nowrap"
                                                                 >
                                                                     ⚡ Renouveler le lien
                                                                 </button>
                                                             );
                                                         } else {
                                                             return (
-                                                                <div className="flex gap-2">
+                                                                <div className="flex gap-2 flex-nowrap justify-center">
                                                                     <button
                                                                         onClick={() => copyToClipboard(tenant.invitation_token!, tenant.id)}
-                                                                        className="px-2.5 py-1.5 text-xs bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg border border-white/10 font-medium transition-all"
+                                                                        className="px-2.5 py-1.5 text-xs bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg border border-white/10 font-medium transition-all whitespace-nowrap"
                                                                     >
                                                                         {copiedId === tenant.id ? "✅ Copié !" : "📋 Copier le lien"}
                                                                     </button>
                                                                     <button
                                                                         onClick={() => handleRegenerateToken(tenant.id)}
-                                                                        className="px-2.5 py-1.5 text-xs bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg border border-white/10 font-medium transition-all"
+                                                                        className="px-2.5 py-1.5 text-xs bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg border border-white/10 font-medium transition-all whitespace-nowrap"
                                                                         title="Régénérer le lien d'accès"
                                                                     >
                                                                         🔄 Régénérer
@@ -712,7 +817,7 @@ export default function SysAdminDashboardPage() {
                                                         return (
                                                             <button
                                                                 onClick={() => handleRegenerateToken(tenant.id)}
-                                                                className="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 border border-white/20 text-slate-300 font-medium rounded-lg transition-all"
+                                                                className="px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 border border-white/20 text-slate-300 font-medium rounded-lg transition-all whitespace-nowrap"
                                                             >
                                                                 ⚡ Générer un lien d&apos;accès
                                                             </button>
@@ -722,25 +827,37 @@ export default function SysAdminDashboardPage() {
                                             </td>
 
                                             {/* Créé le */}
-                                            <td className="px-6 py-4 text-sm text-slate-300 font-mono font-medium">
+                                            <td className="px-6 py-4 text-sm text-slate-300 font-mono font-medium text-center">
                                                 {new Date(tenant.created_at).toLocaleDateString("fr-FR")}
                                             </td>
 
                                             {/* Actions */}
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex justify-end gap-2">
+                                            <td className="px-6 py-4 text-right whitespace-nowrap">
+                                                <div className="flex justify-end gap-2 flex-nowrap">
+                                                    <button
+                                                        onClick={() => {
+                                                            setImportTenantId(tenant.id);
+                                                            setShowImportModal(true);
+                                                            setImportFile(null);
+                                                            setImportError(null);
+                                                            setImportResult(null);
+                                                        }}
+                                                        className="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 border border-violet-500/20 whitespace-nowrap"
+                                                    >
+                                                        📥 Importer
+                                                    </button>
                                                     <button
                                                         onClick={() => {
                                                             setShowCreate(false);
                                                             setEditingTenant(tenant);
                                                         }}
-                                                        className="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20"
+                                                        className="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 whitespace-nowrap"
                                                     >
                                                         Modifier
                                                     </button>
                                                     <button
                                                         onClick={() => toggleActive(tenant.id, tenant.is_active)}
-                                                        className={`px-2.5 py-1.5 text-xs font-medium rounded-lg transition-all ${tenant.is_active
+                                                        className={`px-2.5 py-1.5 text-xs font-medium rounded-lg transition-all whitespace-nowrap ${tenant.is_active
                                                             ? "bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20"
                                                             : "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20"
                                                             }`}
@@ -756,6 +873,113 @@ export default function SysAdminDashboardPage() {
                         </div>
                     )}
                 </div>
+
+                {/* Modal d'import Excel */}
+                {showImportModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+                        <div className="relative w-full max-w-2xl bg-slate-900 border border-white/10 rounded-2xl overflow-hidden shadow-2xl p-6 space-y-6">
+                            
+                            {/* Header */}
+                            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                    📥 Initialisation et Importation de données
+                                </h3>
+                                <button
+                                    onClick={() => setShowImportModal(false)}
+                                    className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-all"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+
+                            {/* Info text & Template download */}
+                            <div className="space-y-3">
+                                <p className="text-sm text-slate-300">
+                                    Utilisez cet outil pour injecter une liste d&apos;utilisateurs et leurs commandes actives. Le système accepte les fichiers Excel (<strong>.xlsx</strong>) et CSV (<strong>.csv</strong>).
+                                </p>
+                                <div className="bg-violet-500/5 border border-violet-500/10 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                    <div>
+                                        <p className="text-xs font-semibold text-violet-300 uppercase tracking-wider">Modèle recommandé</p>
+                                        <p className="text-sm text-slate-300 mt-1">Téléchargez le gabarit pré-rempli pour structurer vos colonnes.</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={downloadTemplate}
+                                        className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold rounded-lg shadow transition-all whitespace-nowrap"
+                                    >
+                                        📋 Télécharger le Modèle
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Form */}
+                            <form onSubmit={handleImport} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm text-slate-400 mb-1.5 font-medium">Sélectionnez le fichier *</label>
+                                    <input
+                                        required
+                                        type="file"
+                                        accept=".xlsx, .xls, .csv"
+                                        onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 transition-all text-sm font-medium file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 file:cursor-pointer"
+                                    />
+                                </div>
+
+                                {/* Status / Error / Success Message */}
+                                {importError && (
+                                    <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl">
+                                        ❌ {importError}
+                                    </div>
+                                )}
+
+                                {importResult && (
+                                    <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm rounded-xl space-y-2">
+                                        <p className="font-semibold">✅ Importation terminée avec succès !</p>
+                                        <ul className="list-disc list-inside text-xs text-emerald-300/90 space-y-1 mt-1">
+                                            <li>Utilisateurs importés/créés : {importResult.imported_users}</li>
+                                            <li>Commandes / Formules générées : {importResult.imported_orders}</li>
+                                        </ul>
+                                        {importResult.errors && importResult.errors.length > 0 && (
+                                            <div className="mt-3 pt-3 border-t border-emerald-500/20">
+                                                <p className="text-xs font-semibold text-amber-400">Alertes / Remarques :</p>
+                                                <ul className="list-disc list-inside text-[11px] text-amber-300 space-y-1 mt-1 max-h-24 overflow-y-auto">
+                                                    {importResult.errors.map((err: string, i: number) => (
+                                                        <li key={i}>{err}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Action buttons */}
+                                <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowImportModal(false)}
+                                        className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white transition-all"
+                                    >
+                                        Fermer
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={importing || !importFile}
+                                        className="px-5 py-2 bg-violet-600 hover:bg-violet-500 disabled:bg-violet-950 disabled:text-slate-500 text-white text-sm font-semibold rounded-lg shadow transition-all flex items-center gap-2"
+                                    >
+                                        {importing ? (
+                                            <>
+                                                <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                                Importation...
+                                            </>
+                                        ) : (
+                                            "Lancer l'importation"
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
             </main>
         </div>
     );

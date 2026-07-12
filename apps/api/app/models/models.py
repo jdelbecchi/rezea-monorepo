@@ -288,7 +288,7 @@ class User(Base):
     credit_accounts = relationship("CreditAccount", back_populates="user", cascade="all, delete-orphan")
     bookings = relationship("Booking", back_populates="user", cascade="all, delete-orphan")
     waitlist_entries = relationship("WaitlistEntry", back_populates="user", cascade="all, delete-orphan")
-    orders = relationship("Order", back_populates="user", cascade="all, delete-orphan")
+    orders = relationship("Order", back_populates="user", foreign_keys="[Order.user_id]", cascade="all, delete-orphan")
     event_registrations = relationship("EventRegistration", back_populates="user", cascade="all, delete-orphan")
     survey_responses = relationship("SurveyResponse", back_populates="user", cascade="all, delete-orphan")
     staff_notes = relationship("StaffNote", back_populates="author", foreign_keys="[StaffNote.author_id]", cascade="all, delete-orphan")
@@ -705,6 +705,7 @@ class Order(Base):
 
     # Snapshot des infos de l'offre au moment de l'achat (Contractuel)
     offer_snap_name = Column(String(100))
+    offer_snap_code = Column(String(50))
     offer_snap_description = Column(Text)
     offer_snap_validity_days = Column(Integer)
     offer_snap_validity_unit = Column(String(20))
@@ -720,9 +721,11 @@ class Order(Base):
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_modified_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Relations
-    user = relationship("User", back_populates="orders")
+    user = relationship("User", back_populates="orders", foreign_keys=[user_id])
+    last_modified_by = relationship("User", foreign_keys=[last_modified_by_id])
     offer = relationship("Offer", back_populates="orders")
     installments = relationship("Installment", back_populates="order", cascade="all, delete-orphan")
 

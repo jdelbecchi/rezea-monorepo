@@ -326,7 +326,7 @@ async def claim_tenant(
             detail="Jeton d'invitation expiré"
         )
         
-    # 2. Vérifier que l'email n'est pas déjà utilisé au sein de ce tenant
+    # 2. Vérifier si l'email est déjà utilisé au sein de ce tenant (si oui, on écrase son profil en tant que nouveau propriétaire)
     result = await db.execute(
         select(User).where(
             User.tenant_id == tenant.id,
@@ -334,35 +334,54 @@ async def claim_tenant(
         )
     )
     existing_user = result.scalar_one_or_none()
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cet email est déjà utilisé pour cet établissement"
-        )
-        
-    # 3. Créer l'utilisateur Administrateur (Role owner)
-    new_user = User(
-        tenant_id=tenant.id,
-        email=claim_in.email,
-        hashed_password=get_password_hash(claim_in.password),
-        first_name=claim_in.first_name,
-        last_name=claim_in.last_name,
-        role=UserRole.OWNER,
-        is_active=True,
-        is_active_override=True,
-        email_verified=True,
-        created_by_admin=False
-    )
-    db.add(new_user)
-    await db.flush()  # Obtenir l'ID
     
-    # 4. Créer le compte de crédits associé
-    credit_account = CreditAccount(
-        tenant_id=tenant.id,
-        user_id=new_user.id,
-        balance=0
-    )
-    db.add(credit_account)
+    if existing_user:
+        # Écraser/Mettre à jour le compte existant en tant que propriétaire
+        existing_user.first_name = claim_in.first_name
+        existing_user.last_name = claim_in.last_name
+        existing_user.hashed_password = get_password_hash(claim_in.password)
+        existing_user.role = UserRole.OWNER
+        existing_user.is_active = True
+        existing_user.is_archived = False
+        existing_user.email_verified = True
+        
+        # Vérifier si un compte de crédit existe déjà
+        credit_check = await db.execute(
+            select(CreditAccount).where(CreditAccount.user_id == existing_user.id)
+        )
+        if not credit_check.scalar_one_or_none():
+            credit_account = CreditAccount(
+                tenant_id=tenant.id,
+                user_id=existing_user.id,
+                balance=0
+            )
+            db.add(credit_account)
+            
+        new_user = existing_user
+    else:
+        # 3. Créer l'utilisateur Administrateur (Role owner)
+        new_user = User(
+            tenant_id=tenant.id,
+            email=claim_in.email,
+            hashed_password=get_password_hash(claim_in.password),
+            first_name=claim_in.first_name,
+            last_name=claim_in.last_name,
+            role=UserRole.OWNER,
+            is_active=True,
+            is_active_override=True,
+            email_verified=True,
+            created_by_admin=False
+        )
+        db.add(new_user)
+        await db.flush()  # Obtenir l'ID
+        
+        # 4. Créer le compte de crédits associé
+        credit_account = CreditAccount(
+            tenant_id=tenant.id,
+            user_id=new_user.id,
+            balance=0
+        )
+        db.add(credit_account)
     
     # 5. Consommer le token
     tenant.invitation_token = None

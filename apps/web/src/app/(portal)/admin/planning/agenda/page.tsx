@@ -88,13 +88,14 @@ export default function AdminAgendaPage() {
     const [contactUser, setContactUser] = useState<any>(null);
     const [includeWaitlistInEmail, setIncludeWaitlistInEmail] = useState(false);
 
-    // Confirmation Modal
     const [confirmModal, setConfirmModal] = useState<{
         show: boolean;
         title: string;
         message: string;
         onConfirm: () => void;
         type: 'danger' | 'warning' | 'info';
+        confirmLabel?: string;
+        cancelLabel?: string;
     }>({ show: false, title: "", message: "", onConfirm: () => { }, type: 'info' });
 
     const weekDays = useMemo(() => {
@@ -1212,8 +1213,8 @@ export default function AdminAgendaPage() {
                 title={confirmModal.title}
                 message={confirmModal.message}
                 type={confirmModal.type as any}
-                confirmLabel="Confirmer"
-                cancelLabel="Annuler"
+                confirmLabel={confirmModal.confirmLabel || "Confirmer"}
+                cancelLabel={confirmModal.cancelLabel || "Annuler"}
                 onConfirm={confirmModal.onConfirm}
                 onCancel={() => setConfirmModal(prev => ({ ...prev, show: false }))}
             />
@@ -1485,42 +1486,56 @@ export default function AdminAgendaPage() {
                         <div className="flex-1 overflow-y-auto p-8">
                             <form id="eventForm" onSubmit={async (e) => {
                                 e.preventDefault();
-                                setSavingEvent(true);
-                                try {
-                                    const data = {
-                                        group_title: eventGroupTitle || eventModules[0].title || "Nouvel Événement",
-                                        payment_link: eventPaymentLink || null,
-                                        modules: eventModules.map(m => {
-                                            const memberVal = (m.price_member_cents || "0").toString().replace(',', '.');
-                                            const externalVal = (m.price_external_cents || "0").toString().replace(',', '.');
-                                            return {
-                                                event_date: m.event_date,
-                                                event_time: m.event_time,
-                                                title: m.title || eventGroupTitle || "Module",
-                                                duration_minutes: parseInt(m.duration_minutes),
-                                                price_member_cents: Math.round(parseFloat(memberVal) * 100),
-                                                price_external_cents: Math.round(parseFloat(externalVal) * 100),
-                                                instructor_name: m.instructor_name,
-                                                max_places: parseInt(m.max_places),
-                                                location: m.location || null,
-                                                description: m.description || null,
-                                                allow_waitlist: m.allow_waitlist,
-                                            };
-                                        })
-                                    };
-                                    await api.createAdminEventBulk(data);
-                                    await fetchData();
-                                    setShowEventForm(false);
-                                    setEventGroupTitle("");
-                                    setEventPaymentLink("");
-                                    setEventModules([{ ...emptyEventForm }]);
-                                    setEventActiveTab(0);
-                                    setMessage({ type: 'success', text: "Évènement(s) créé(s) avec succès !" });
-                                } catch (err: any) {
-                                    setMessage({ type: 'error', text: err.response?.data?.detail || "Erreur lors de la création de l'évènement" });
-                                } finally {
-                                    setSavingEvent(false);
-                                }
+                                
+                                const executeCreation = async () => {
+                                    setSavingEvent(true);
+                                    try {
+                                        const data = {
+                                            group_title: eventGroupTitle || eventModules[0].title || "Nouvel Événement",
+                                            payment_link: eventPaymentLink || null,
+                                            modules: eventModules.map(m => {
+                                                const memberVal = (m.price_member_cents || "0").toString().replace(',', '.');
+                                                const externalVal = (m.price_external_cents || "0").toString().replace(',', '.');
+                                                return {
+                                                    event_date: m.event_date,
+                                                    event_time: m.event_time,
+                                                    title: m.title || eventGroupTitle || "Module",
+                                                    duration_minutes: parseInt(m.duration_minutes),
+                                                    price_member_cents: Math.round(parseFloat(memberVal) * 100),
+                                                    price_external_cents: Math.round(parseFloat(externalVal) * 100),
+                                                    instructor_name: m.instructor_name,
+                                                    max_places: parseInt(m.max_places),
+                                                    location: m.location || null,
+                                                    description: m.description || null,
+                                                    allow_waitlist: m.allow_waitlist,
+                                                };
+                                            })
+                                        };
+                                        await api.createAdminEventBulk(data);
+                                        await fetchData();
+                                        setShowEventForm(false);
+                                        setEventGroupTitle("");
+                                        setEventPaymentLink("");
+                                        setEventModules([{ ...emptyEventForm }]);
+                                        setEventActiveTab(0);
+                                        setMessage({ type: 'success', text: "Évènement(s) créé(s) avec succès !" });
+                                    } catch (err: any) {
+                                        setMessage({ type: 'error', text: err.response?.data?.detail || "Erreur lors de la création de l'évènement" });
+                                    } finally {
+                                        setSavingEvent(false);
+                                        setConfirmModal(prev => ({ ...prev, show: false }));
+                                    }
+                                };
+
+                                setConfirmModal({
+                                    show: true,
+                                    title: "Création de l'événement",
+                                    message: "Avez-vous bien créé tous les modules/ateliers que vous souhaitiez ?",
+                                    type: "info",
+                                    confirmLabel: "Oui",
+                                    cancelLabel: "Non, je complète",
+                                    onConfirm: executeCreation
+                                });
                             }} className="space-y-8">
                                 {/* Section: Événement Global */}
                                 <div className="space-y-4">

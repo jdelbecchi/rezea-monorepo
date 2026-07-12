@@ -106,9 +106,9 @@ def build_order_response(
         
     effective_blocked = is_blocked_val if is_blocked_val is not None else blocked
 
-    if display_status and display_status not in ["active"]:
-        # Tout statut autre que "active" est considéré comme un choix manuel 
-        # ou un état figé que l'on ne recalcule pas automatiquement.
+    if display_status and display_status not in ["active", "expiree", "termine"]:
+        # Tout statut autre que "active", "expiree" ou "termine" est considéré comme un choix manuel 
+        # ou un état figé que l'on ne recalcule pas automatiquement (ex: resiliee, en_pause).
         pass
     elif is_past:
         if balance == 0:
@@ -172,8 +172,8 @@ def build_order_response(
         user_street=order.user.street if order.user else None,
         user_zip_code=order.user.zip_code if order.user else None,
         user_city=order.user.city if order.user else None,
-        offer_code=order.offer.offer_code if order.offer else "",
-        offer_name=order.offer.name if order.offer else (order.offer_snap_name or "Offre inconnue"),
+        offer_code=order.offer_snap_code or (order.offer.offer_code if order.offer else ""),
+        offer_name=order.offer_snap_name or (order.offer.name if order.offer else "Offre inconnue"),
         offer_period=order.period,
         offer_featured_pricing=order.featured_pricing,
         offer_price_recurring_cents=order.price_recurring_cents,
@@ -187,6 +187,7 @@ def build_order_response(
         error_cents=error_cents,
         # Snapshots
         offer_snap_name=order.offer_snap_name,
+        offer_snap_code=order.offer_snap_code,
         offer_snap_description=order.offer_snap_description,
         offer_snap_validity_days=order.offer_snap_validity_days,
         offer_snap_validity_unit=order.offer_snap_validity_unit,
@@ -301,14 +302,14 @@ async def expire_user_credits_if_needed(db: AsyncSession, user_id, tenant_id):
                 # Delete the expiration transaction to clean up
                 await db.delete(exp_tx)
                 
-                if order.status == "expiree":
-                    order.status = "active"
-                    
-                try:
-                    await db.commit()
-                except Exception:
-                    await db.rollback()
-                    raise
+            if order.status == "expiree":
+                order.status = "active"
+                
+            try:
+                await db.commit()
+            except Exception:
+                await db.rollback()
+                raise
 
 
 async def compute_fifo_balances(

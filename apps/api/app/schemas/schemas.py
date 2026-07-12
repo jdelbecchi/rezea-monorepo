@@ -239,6 +239,8 @@ class TenantResponse(TenantBase):
     is_active: bool
     max_users: int
     max_sessions_per_day: int
+    active_users_count: int = 0
+    total_users_count: int = 0
     logo_url: Optional[str] = None
     banner_url: Optional[str] = None
     slogan: Optional[str] = None
@@ -711,6 +713,8 @@ class OrderUpdate(BaseModel):
     invoice_url: Optional[str] = None
     is_blocked: Optional[bool] = None
     is_exported: Optional[bool] = None
+    offer_snap_name: Optional[str] = None
+    offer_snap_code: Optional[str] = None
     offer_snap_allowed_activities: Optional[List[str]] = None
 
 
@@ -776,6 +780,7 @@ class OrderResponse(BaseModel):
     status: str = "active"
     # Snapshots contractuels (Optionnels pour compatibilité avec anciennes commandes)
     offer_snap_name: Optional[str] = None
+    offer_snap_code: Optional[str] = None
     offer_snap_description: Optional[str] = None
     offer_snap_validity_days: Optional[int] = None
     offer_snap_validity_unit: Optional[str] = None

@@ -97,13 +97,14 @@ services:
       NODE_ENV: development
       WATCHPACK_POLLING: "true"
       CHOKIDAR_USEPOLLING: "true"
+      HOSTNAME: 0.0.0.0
     ports:
       - "3000:3000"
     volumes:
       - ../apps/web:/app
       - /app/node_modules
       - /app/.next
-    command: sh -c "if [ ! -d node_modules/next ]; then npm install; fi; npm run dev"
+    command: sh -c "if [ ! -d node_modules/next ]; then npm install; fi; npm run dev -- -H 0.0.0.0"
     networks:
       - rezea_network
 

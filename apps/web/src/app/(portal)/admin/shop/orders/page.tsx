@@ -145,6 +145,8 @@ export default function AdminShopOrdersPage() {
         payment_status: "",
         comment: "",
         user_note: "",
+        offer_snap_code: "",
+        offer_snap_name: "",
         is_blocked: false,
         allowed_activities: [] as string[]
     });
@@ -293,6 +295,8 @@ export default function AdminShopOrdersPage() {
             payment_status: order.payment_status,
             comment: order.comment || "",
             user_note: order.user_note || "",
+            offer_snap_code: order.offer_snap_code || order.offer_code || "",
+            offer_snap_name: order.offer_snap_name || order.offer_name || "",
             is_blocked: order.is_blocked === true || (order.is_blocked === null && order.status === "expiree"),
             allowed_activities: order.allowed_activities || []
         });

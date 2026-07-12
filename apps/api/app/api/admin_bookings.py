@@ -306,7 +306,8 @@ async def create_booking(
     credits_used = session.credits_required
     if credits_used > 0:
         from app.services import orders as order_service
-        from app.api.bookings import consume_credits_fifo
+        from app.services.booking_service import BookingService
+        consume_credits_fifo = BookingService.consume_credits_fifo
         
         # Simuler la file d'attente FIFO en ajoutant la réservation demandée
         orders_balances, global_balance, success, *_ = await order_service.compute_fifo_balances(
@@ -449,7 +450,8 @@ async def update_booking(
                 credits_to_deduct = booking.session.credits_required if booking.session else 0
                 if credits_to_deduct > 0 and (booking.credits_used == 0 or booking.transaction_id is None):
                     from app.services import orders as order_service
-                    from app.api.bookings import consume_credits_fifo
+                    from app.services.booking_service import BookingService
+                    consume_credits_fifo = BookingService.consume_credits_fifo
                     
                     orders_balances, global_balance, success, *_ = await order_service.compute_fifo_balances(
                         db,

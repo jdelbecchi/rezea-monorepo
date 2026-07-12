@@ -274,6 +274,7 @@ async def create_order(
         status=order_service.normalize_status(initial_status),
         created_by_admin=True,
         offer_snap_name=offer.name,
+        offer_snap_code=offer.offer_code,
         offer_snap_description=offer.description,
         offer_snap_validity_days=offer.validity_days,
         offer_snap_validity_unit=offer.validity_unit,
@@ -349,6 +350,9 @@ async def update_order(
 
     for field, value in update_data.items():
         setattr(order, field, value)
+
+    # Record the manager who performed the edit
+    order.last_modified_by_id = current_user.id
 
     # Force payment status to PAID if final price is 0
     if order.price_cents == 0:

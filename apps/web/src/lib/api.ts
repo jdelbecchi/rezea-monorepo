@@ -460,6 +460,7 @@ export interface OrderItem {
   error_cents: number;
   // Snapshots contractuels
   offer_snap_name: string | null;
+  offer_snap_code: string | null;
   offer_snap_description: string | null;
   offer_snap_validity_days: number | null;
   offer_snap_validity_unit: string | null;

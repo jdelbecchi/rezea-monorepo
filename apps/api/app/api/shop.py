@@ -113,6 +113,7 @@ async def shop_checkout(
         created_by_admin=False,
         # Snapshot des infos de l'offre
         offer_snap_name=offer.name,
+        offer_snap_code=offer.offer_code,
         offer_snap_description=offer.description,
         offer_snap_validity_days=offer.validity_days,
         offer_snap_validity_unit=offer.validity_unit,

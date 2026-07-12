@@ -1,10 +1,23 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Toaster } from "react-hot-toast";
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      const activeEl = document.activeElement;
+      if (activeEl && activeEl.tagName === "INPUT" && (activeEl as HTMLInputElement).type === "number") {
+        (activeEl as HTMLInputElement).blur();
+      }
+    };
+    document.addEventListener("wheel", handleWheel, { passive: true });
+    return () => {
+      document.removeEventListener("wheel", handleWheel);
+    };
+  }, []);
+
   const [queryClient] = useState(
     () =>
       new QueryClient({

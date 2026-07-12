@@ -134,7 +134,7 @@ async def sync_revenues_to_finance(db: AsyncSession, tenant_id: str):
             existing_tx_inst[tx.installment_id] = tx
 
     for inst_id, inst in paid_installments.items():
-        offer_code = inst.order.offer.offer_code if inst.order.offer.offer_code else inst.order.offer.name[:10]
+        offer_code = inst.order.offer_snap_code or (inst.order.offer.offer_code if inst.order.offer and inst.order.offer.offer_code else (inst.order.offer_snap_name or "Offre")[:10])
         desc_text = f"Paiement échéance {offer_code}"
         if inst.order.user:
             desc_text += f" - {inst.order.user.first_name} {inst.order.user.last_name}"
@@ -199,7 +199,7 @@ async def sync_revenues_to_finance(db: AsyncSession, tenant_id: str):
             existing_tx_order[tx.order_id] = tx
 
     for order_id, order in paid_lump_orders.items():
-        offer_code = order.offer.offer_code if order.offer.offer_code else order.offer.name[:10]
+        offer_code = order.offer_snap_code or (order.offer.offer_code if order.offer and order.offer.offer_code else (order.offer_snap_name or "Offre")[:10])
         desc_text = f"Paiement commande {offer_code}"
         if order.user:
             desc_text += f" - {order.user.first_name} {order.user.last_name}"
@@ -1227,8 +1227,8 @@ async def export_compta(
     for o in orders:
         user_name = f"{o.user.first_name} {o.user.last_name}" if o.user else "Utilisateur supprimé"
         user_email = o.user.email if (o.user and o.user.email) else ""
-        offer_code = o.offer.offer_code if o.offer else ""
-        offer_name = o.offer.name if o.offer else (o.offer_snap_name or "Offre inconnue")
+        offer_code = o.offer_snap_code or (o.offer.offer_code if o.offer else "")
+        offer_name = o.offer_snap_name or (o.offer.name if o.offer else "Offre inconnue")
         
         # Moyen de paiement
         payment_method = "Autre"
