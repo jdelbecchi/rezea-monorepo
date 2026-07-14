@@ -301,8 +301,8 @@ function AdminSessionsContent() {
 
     const handleDeleteSession = async (session: Session) => {
         const isPast = new Date(session.start_time) < new Date();
-        if (isPast) {
-            setMessage({ type: 'error', text: "Impossible de supprimer une séance passée." });
+        if (isPast && session.current_participants > 0) {
+            setMessage({ type: 'error', text: "Impossible de supprimer une séance passée contenant des inscriptions." });
             return;
         }
         setConfirmModal({
@@ -639,7 +639,7 @@ function AdminSessionsContent() {
                                                         🔄
                                                     </button>
                                                 )}
-                                                 {new Date(s.start_time) >= new Date() && (
+                                                 {(new Date(s.start_time) >= new Date() || s.current_participants === 0) && (
                                                     <button 
                                                         onClick={() => handleDeleteSession(s)}
                                                         className="p-0.5 hover:bg-rose-50 text-rose-500 rounded-lg transition-all hover:scale-105" 

@@ -67,6 +67,7 @@ def build_booking_response(booking: Booking, users_with_pending: set = None) -> 
         session_time=session.start_time.strftime("%H:%M") if (session and session.start_time) else "",
         session_title=session.title if (session and session.title) else "",
         session_location=session.location if (session and session.location) else "",
+        session_activity_type=session.activity_type if (session and session.activity_type) else None,
         user_name=f"{user.first_name} {user.last_name}" if (user and user.first_name and user.last_name) else (user.first_name or user.last_name or "") if user else "",
         user_phone=user.phone if user else None,
         instagram_handle=user.instagram_handle if user else None,
@@ -240,6 +241,7 @@ async def list_bookings(
                 session_date="0000-00-00",
                 session_time="00:00",
                 session_location="DB",
+                session_activity_type=None,
                 has_pending_order=False
             ))
     
@@ -279,19 +281,20 @@ async def create_booking(
         raise HTTPException(status_code=404, detail="Séance non trouvée")
 
     # Vérifier si l'utilisateur n'est pas déjà inscrit
-    existing = await db.execute(
+    existing_result = await db.execute(
         select(Booking).where(
             Booking.tenant_id == tenant_id,
             Booking.user_id == data.user_id,
             Booking.session_id == data.session_id,
-            Booking.status.in_([BookingStatus.PENDING, BookingStatus.CONFIRMED]),
         )
     )
-    if existing.scalar_one_or_none():
-        raise HTTPException(
-            status_code=409,
-            detail="Cet utilisateur est déjà inscrit à cette séance",
-        )
+    existing = existing_result.scalar_one_or_none()
+    if existing:
+        if existing.status in [BookingStatus.PENDING, BookingStatus.CONFIRMED]:
+            raise HTTPException(
+                status_code=409,
+                detail="Cet utilisateur est déjà inscrit à cette séance",
+            )
 
     # Déterminer le statut : confirmé si place dispo, en attente sinon
     if session.current_participants < session.max_participants:
@@ -332,17 +335,28 @@ async def create_booking(
             db, tenant_id, data.user_id, credits_used, global_balance
         )
 
-    booking = Booking(
-        tenant_id=tenant_id,
-        user_id=data.user_id,
-        session_id=data.session_id,
-        status=booking_status,
-        credits_used=credits_used,
-        transaction_id=transaction_id,
-        notes=data.notes,
-        created_by_admin=True,
-    )
-    db.add(booking)
+    if existing:
+        booking = existing
+        booking.status = booking_status
+        booking.credits_used = credits_used
+        booking.transaction_id = transaction_id
+        booking.notes = data.notes
+        booking.created_at = datetime.utcnow()
+        booking.cancelled_at = None
+        booking.cancellation_type = None
+        booking.created_by_admin = True
+    else:
+        booking = Booking(
+            tenant_id=tenant_id,
+            user_id=data.user_id,
+            session_id=data.session_id,
+            status=booking_status,
+            credits_used=credits_used,
+            transaction_id=transaction_id,
+            notes=data.notes,
+            created_by_admin=True,
+        )
+        db.add(booking)
     await db.commit()
 
     # Reload avec relations

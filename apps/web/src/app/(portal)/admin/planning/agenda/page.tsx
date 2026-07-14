@@ -219,7 +219,7 @@ export default function AdminAgendaPage() {
         } catch (err: any) {
             console.error(err);
             if (err.response?.status === 401) {
-                router.push(`/${params.slug}`);
+                router.push("/login");
             }
         } finally {
             setLoading(false);
@@ -938,7 +938,7 @@ export default function AdminAgendaPage() {
                                                                 <div className="flex-1">
                                                                     <div className="flex items-center gap-2">
                                                                         <Link
-                                                                            href={`/${params.slug}/admin/users?search=${encodeURIComponent(`${u.first_name} ${u.last_name}`)}`}
+                                                                            href={`/admin/users?search=${encodeURIComponent(`${u.first_name} ${u.last_name}`)}`}
                                                                             target="_blank"
                                                                             rel="noopener noreferrer"
                                                                             className="text-sm font-medium text-slate-900 hover:text-blue-600 hover:underline transition-colors"

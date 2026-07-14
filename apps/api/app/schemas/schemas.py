@@ -488,6 +488,9 @@ class OfferBase(BaseModel):
     period: Optional[str] = Field(None, max_length=50)
     classes_included: Optional[Decimal] = Field(None, gt=0)
     is_unlimited: bool = False
+    limit_amount: Optional[Decimal] = Field(None, ge=0)
+    limit_period: Optional[str] = Field(None, max_length=50)
+    limit_rollover: Optional[bool] = False
     validity_days: Optional[int] = Field(None, ge=0)
     validity_unit: str = "days"
     deadline_date: Optional[py_date] = None
@@ -519,6 +522,9 @@ class OfferUpdate(BaseModel):
     period: Optional[str] = Field(None, max_length=50)
     classes_included: Optional[Decimal] = Field(None, gt=0)
     is_unlimited: Optional[bool] = None
+    limit_amount: Optional[Decimal] = Field(None, ge=0)
+    limit_period: Optional[str] = Field(None, max_length=50)
+    limit_rollover: Optional[bool] = None
     validity_days: Optional[int] = None
     validity_unit: Optional[str] = None
     deadline_date: Optional[py_date] = None
@@ -713,8 +719,14 @@ class OrderUpdate(BaseModel):
     invoice_url: Optional[str] = None
     is_blocked: Optional[bool] = None
     is_exported: Optional[bool] = None
+    limit_amount: Optional[Decimal] = None
+    limit_period: Optional[str] = None
+    limit_rollover: Optional[bool] = None
     offer_snap_name: Optional[str] = None
     offer_snap_code: Optional[str] = None
+    offer_snap_limit_amount: Optional[Decimal] = None
+    offer_snap_limit_period: Optional[str] = None
+    offer_snap_limit_rollover: Optional[bool] = None
     offer_snap_allowed_activities: Optional[List[str]] = None
 
 
@@ -722,6 +734,7 @@ class InstallmentResponse(BaseModel):
     """Réponse échéance pour la modale échéancier"""
     id: UUID
     order_id: UUID
+    sequence_number: Optional[int] = None
     due_date: py_date
     amount_cents: int
     is_paid: bool = False
@@ -745,6 +758,12 @@ class OrderResponse(BaseModel):
     is_validity_unlimited: bool = False
     credits_total: Optional[Decimal] = None
     is_unlimited: bool = False
+    limit_amount: Optional[Decimal] = None
+    limit_period: Optional[str] = None
+    limit_rollover: Optional[bool] = False
+    offer_snap_limit_amount: Optional[Decimal] = None
+    offer_snap_limit_period: Optional[str] = None
+    offer_snap_limit_rollover: Optional[bool] = False
     price_cents: int
     price_recurring_cents: Optional[int] = None
     recurring_count: Optional[int] = None
@@ -832,6 +851,7 @@ class AdminBookingResponse(BaseModel):
     session_time: str = ""        # heure de la séance
     session_title: str = ""       # intitulé de la séance
     session_location: str = ""    # lieu de la séance
+    session_activity_type: Optional[str] = None # type d'activité de la séance
     user_name: str = ""           # prénom + nom
     user_phone: Optional[str] = None
     instagram_handle: Optional[str] = None

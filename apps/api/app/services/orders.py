@@ -108,7 +108,7 @@ def build_order_response(
 
     if display_status and display_status not in ["active", "expiree", "termine"]:
         # Tout statut autre que "active", "expiree" ou "termine" est considéré comme un choix manuel 
-        # ou un état figé que l'on ne recalcule pas automatiquement (ex: resiliee, en_pause).
+        # ou un état figé que l'on ne recalculcule pas automatiquement (ex: resiliee, en_pause).
         pass
     elif is_past:
         if balance == 0:
@@ -118,6 +118,18 @@ def build_order_response(
     else:
         # L'ordre reste "active" ou le devient s'il n'avait pas de statut
         display_status = "active"
+
+    normalized_status = normalize_status(display_status)
+    if normalized_status in ["en_pause", "resiliee", "expiree"]:
+        effective_blocked = True
+    elif order.is_blocked is True:
+        effective_blocked = True
+    elif order.is_blocked is False:
+        effective_blocked = False
+    else: # order.is_blocked is None
+        effective_blocked = is_blocked_val if is_blocked_val is not None else blocked
+
+
 
     # Installments status logic
     # Perçu = J+7 passés (non erreur) OR resolved_at
@@ -197,6 +209,12 @@ def build_order_response(
             if getattr(order, 'offer_snap_allowed_activities', None) is not None 
             else (order.offer.allowed_activities if order.offer else [])
         ),
+        limit_amount=order.limit_amount,
+        limit_period=order.limit_period,
+        limit_rollover=order.limit_rollover,
+        offer_snap_limit_amount=order.offer_snap_limit_amount,
+        offer_snap_limit_period=order.offer_snap_limit_period,
+        offer_snap_limit_rollover=order.offer_snap_limit_rollover,
         installments=order.installments
     )
 
@@ -317,7 +335,8 @@ async def compute_fifo_balances(
     user_id, 
     tenant_id, 
     bookings_to_add: list = [],
-    exclude_booking_id = None
+    exclude_booking_id = None,
+    return_unfunded_ids: bool = False
 ):
     """
     Calculates remaining credits for each order of the user using FIFO.
@@ -353,8 +372,7 @@ async def compute_fifo_balances(
         .where(
             and_(
                 Order.user_id == user_id,
-                Order.tenant_id == tenant_id,
-                Order.status != "resiliee"
+                Order.tenant_id == tenant_id
             )
         )
         .options(selectinload(Order.offer))
@@ -429,17 +447,22 @@ async def compute_fifo_balances(
         effective_end = compute_effective_end_date(o.end_date, grace_days, grace_mode)
         is_past = not o.is_validity_unlimited and effective_end and effective_end < today
         
-        # An order is blocked if:
-        # 1. is_blocked is True
-        # 2. is_blocked is None/null AND the order is past
-        blocked = (o.is_blocked is True) or (o.is_blocked is None and is_past)
-        # If the order is explicitly paused/resigned, it's also blocked
-        if o.status in ["en_pause", "resiliee"]:
+        # Determine if blocked: status has absolute priority, then manual override
+        norm_status = normalize_status(o.status)
+        if norm_status in ["en_pause", "resiliee", "expiree"]:
             blocked = True
+        elif o.is_blocked is True:
+            blocked = True
+        elif o.is_blocked is False:
+            blocked = False
+        else: # o.is_blocked is None
+            blocked = is_past
+            
         orders_blocked_status[str(o.id)] = blocked
         
     # Now simulate the allocation
     success = True
+    unallocated_booking_ids = []
     for item in items_to_allocate:
         allocated = False
         item_date = item["date"]
@@ -451,12 +474,20 @@ async def compute_fifo_balances(
             effective_end = compute_effective_end_date(o.end_date, grace_days, grace_mode)
             
             # Check if order is valid at the item's date
-            if o.is_blocked is True:
-                is_valid = False
+            is_blocked = orders_blocked_status[o_id]
+            norm_status = normalize_status(o.status)
+            if is_blocked:
+                # Only Pause and Resign statuses allow past bookings to consume credits.
+                # Expired or manually blocked orders remain strictly blocked for all bookings.
+                if norm_status in ["en_pause", "resiliee"] and item_date < today:
+                    is_valid = (o.start_date <= item_date)
+                else:
+                    is_valid = False
             elif o.is_blocked is False:
-                is_valid = (o.start_date <= item_date)
-            else: # is_blocked is None
                 is_valid = (o.start_date <= item_date) and (o.is_validity_unlimited or not effective_end or item_date <= effective_end)
+            else: # o.is_blocked is None
+                is_valid = (o.start_date <= item_date) and (o.is_validity_unlimited or not effective_end or item_date <= effective_end)
+
                 
             # Check if order's activity restrictions allow this item's activity
             if is_valid:
@@ -504,6 +535,8 @@ async def compute_fifo_balances(
                             
         if item_credits > 0 and not allocated:
             success = False
+            if item.get("id") and item["id"] != "new_booking":
+                unallocated_booking_ids.append(item["id"])
             
     # Compute balances for each order & balances by activity
     orders_balances = {}
@@ -562,6 +595,8 @@ async def compute_fifo_balances(
             
             frozen_by_activity[label] += Decimal(froz_bal)
             
+    if return_unfunded_ids:
+        return orders_balances, global_balance, success, balances_by_activity, global_frozen, frozen_by_activity, unallocated_booking_ids
     return orders_balances, global_balance, success, balances_by_activity, global_frozen, frozen_by_activity
 
 
@@ -569,10 +604,68 @@ async def sync_user_credit_balance(db: AsyncSession, user_id, tenant_id):
     """
     Recalculates the user's credit balance using compute_fifo_balances
     and updates/creates their CreditAccount record.
+    Also automatically cancels future bookings that are no longer funded by any active order.
     """
-    # Recalculate FIFO balances
-    _, global_balance, _, _, _, _ = await compute_fifo_balances(db, user_id, tenant_id)
+    # 1. Recalculate FIFO balances and get unallocated booking IDs (only future ones)
+    res = await compute_fifo_balances(db, user_id, tenant_id, return_unfunded_ids=True)
+    orders_balances, global_balance, success, balances_by_activity, global_frozen, frozen_by_activity, unallocated_ids = res
     
+    # 2. Cancel any unfunded bookings that are in the future
+    if unallocated_ids:
+        from app.models.models import Booking, Session, BookingStatus
+        from sqlalchemy.orm import joinedload
+        
+        # Load these specific bookings
+        b_res = await db.execute(
+            select(Booking)
+            .options(joinedload(Booking.session))
+            .where(
+                and_(
+                    Booking.id.in_(unallocated_ids),
+                    Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.PENDING])
+                )
+            )
+        )
+        unfunded_bookings = b_res.scalars().all()
+        
+        now = datetime.utcnow()
+        for b in unfunded_bookings:
+            if b.session and b.session.start_time >= now:
+                was_confirmed = b.status == BookingStatus.CONFIRMED
+                was_pending = b.status == BookingStatus.PENDING
+                
+                b.status = BookingStatus.CANCELLED
+                b.cancelled_at = now
+                b.cancellation_type = "system"
+                
+                if was_confirmed:
+                    b.session.current_participants = max(0, b.session.current_participants - 1)
+                elif was_pending:
+                    b.session.waitlist_count = max(0, b.session.waitlist_count - 1)
+                    
+                # Promote the next pending booking on the waitlist
+                if was_confirmed:
+                    next_res = await db.execute(
+                        select(Booking)
+                        .where(
+                            and_(
+                                Booking.tenant_id == tenant_id,
+                                Booking.session_id == b.session_id,
+                                Booking.status == BookingStatus.PENDING
+                            )
+                        )
+                        .order_by(Booking.created_at.asc())
+                        .limit(1)
+                    )
+                    next_b = next_res.scalar_one_or_none()
+                    if next_b:
+                        next_b.status = BookingStatus.CONFIRMED
+                        b.session.current_participants += 1
+                        b.session.waitlist_count = max(0, b.session.waitlist_count - 1)
+        
+        # Recalculate global balance now that unfunded bookings are cancelled
+        _, global_balance, _, _, _, _ = await compute_fifo_balances(db, user_id, tenant_id)
+        
     # Fetch or create CreditAccount
     result = await db.execute(
         select(CreditAccount).where(

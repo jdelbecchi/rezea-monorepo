@@ -55,12 +55,13 @@ def generate_installments(order: Order, tenant_id) -> List[Installment]:
     """Génère les échéances pour une commande échelonnée.
     
     - 1ère échéance : à la date de début de la commande (paiement immédiat requis)
-    - Échéances suivantes : le 8 de chaque mois suivant
+    - Échéances suivantes : à la date anniversaire en fonction de la période
     """
     installments = []
     
     price = order.price_recurring_cents
     count = order.recurring_count
+    period_str = order.period or "/mois"
 
     if not price:
         return installments
@@ -73,13 +74,22 @@ def generate_installments(order: Order, tenant_id) -> List[Installment]:
             # 1ère échéance : date de début de la commande
             due_date = order.start_date
         else:
-            # Échéances suivantes : le 8 du mois suivant (i mois après le début)
-            due_date = order.start_date + relativedelta(months=i)
-            due_date = due_date.replace(day=8)
+            # Échéances suivantes : calculées en fonction de la période
+            if period_str == "/semaine":
+                due_date = order.start_date + relativedelta(weeks=i)
+            elif period_str == "/bimestre":
+                due_date = order.start_date + relativedelta(months=i*2)
+            elif period_str == "/trimestre":
+                due_date = order.start_date + relativedelta(months=i*3)
+            elif period_str == "/an":
+                due_date = order.start_date + relativedelta(years=i)
+            else: # default to /mois
+                due_date = order.start_date + relativedelta(months=i)
 
         installments.append(Installment(
             tenant_id=tenant_id,
             order_id=order.id,
+            sequence_number=i + 1,
             due_date=due_date,
             amount_cents=price,
             is_paid=False,
@@ -89,8 +99,23 @@ def generate_installments(order: Order, tenant_id) -> List[Installment]:
     return installments
 
 
-async def _record_finance_income(db: AsyncSession, tenant_id: str, amount_cents: int, description: str, order_id: Optional[str] = None):
+async def _record_finance_income(
+    db: AsyncSession, 
+    tenant_id: str, 
+    amount_cents: int, 
+    description: str, 
+    order_id: Optional[str] = None,
+    installment_id: Optional[str] = None
+):
     """Enregistre une recette dans la trésorerie"""
+    if order_id and isinstance(order_id, str):
+        from uuid import UUID
+        order_id = UUID(order_id)
+        
+    if installment_id and isinstance(installment_id, str):
+        from uuid import UUID
+        installment_id = UUID(installment_id)
+        
     cat_query = select(FinanceCategory).where(
         FinanceCategory.tenant_id == tenant_id,
         FinanceCategory.name == "Ventes Offres"
@@ -123,6 +148,7 @@ async def _record_finance_income(db: AsyncSession, tenant_id: str, amount_cents:
         amount_cents=amount_cents,
         description=full_description,
         order_id=order_id,
+        installment_id=installment_id,
         is_reconciled=True
     )
     db.add(tx)
@@ -466,12 +492,12 @@ async def delete_order(
     for inst in inst_result.scalars().all():
         await db.delete(inst)
 
-    # Supprimer les transactions financières liées (auto-générées)
+    # Dissocier les transactions financières liées pour ne pas effacer la trace comptable
     tx_result = await db.execute(
         select(FinanceTransaction).where(FinanceTransaction.order_id == order_id, FinanceTransaction.tenant_id == tenant_id)
     )
     for tx in tx_result.scalars().all():
-        await db.delete(tx)
+        tx.order_id = None
 
     await db.flush()
     user_id = order.user_id
@@ -575,7 +601,8 @@ async def resolve_installment(
     await _record_finance_income(
         db, tenant_id, inst.amount_cents, 
         f"Échéance Commande #{str(order_id)[:8]} (Régularisation)", 
-        order_id=order_id
+        order_id=order_id,
+        installment_id=installment_id
     )
     
     await db.flush()
@@ -629,6 +656,14 @@ async def pay_installment(
     inst.is_error = False
     inst.resolved_at = datetime.utcnow()
     
+    # Enregistrer la recette en trésorerie
+    await _record_finance_income(
+        db, tenant_id, inst.amount_cents, 
+        f"Échéance Commande #{str(order_id)[:8]} (Saisie manuelle)", 
+        order_id=order_id,
+        installment_id=installment_id
+    )
+    
     await db.flush()
     
     # Vérifier s'il reste des erreurs sur cette commande
@@ -680,6 +715,22 @@ async def reset_installment(
     inst.resolved_at = None
     inst.marked_error_at = None
     
+    # Supprimer la transaction financière associée si elle existe
+    from app.models.models import FinanceTransaction
+    from uuid import UUID
+    
+    inst_uuid = UUID(installment_id) if isinstance(installment_id, str) else installment_id
+    
+    tx_result = await db.execute(
+        select(FinanceTransaction).where(
+            FinanceTransaction.installment_id == inst_uuid,
+            FinanceTransaction.tenant_id == tenant_id
+        )
+    )
+    tx = tx_result.scalar_one_or_none()
+    if tx:
+        await db.delete(tx)
+        
     await db.flush()
     
     # Vérifier s'il reste des erreurs sur cette commande pour mettre à jour le statut global

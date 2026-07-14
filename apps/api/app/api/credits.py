@@ -12,6 +12,21 @@ from app.schemas.schemas import (
     CreditPurchaseRequest,
     CreditPurchaseResponse
 )
+import datetime
+from pydantic import BaseModel
+from typing import Optional
+
+class LimitBalanceResponse(BaseModel):
+    limit_amount: float
+    limit_period: str
+    period_start: datetime.date
+    period_end: datetime.date
+    base_limit: float
+    credits_used: float
+    balance: float
+    is_current_period: bool
+    is_future_period: bool
+    allowed_activities: list[str] = []
 
 router = APIRouter()
 
@@ -50,6 +65,43 @@ async def get_credit_account(
     account.frozen_by_activity = frozen_by_activity
     
     return account
+
+
+@router.get("/limit-balance", response_model=Optional[LimitBalanceResponse])
+async def get_limit_balance(
+    request: Request,
+    target_date: datetime.date,
+    db: AsyncSession = Depends(get_db)
+):
+    """Calcule le solde limité pour une date donnée"""
+    tenant_id = request.state.tenant_id
+    user_id = request.state.user_id
+    
+    # Trouver la commande active
+    from app.models.models import Order
+    result = await db.execute(
+        select(Order).where(
+            and_(
+                Order.tenant_id == tenant_id,
+                Order.user_id == user_id,
+                Order.status == "active"
+            )
+        )
+    )
+    orders = result.scalars().all()
+    
+    # Chercher la première commande qui possède une limite
+    order_with_limit = None
+    for o in orders:
+        if o.limit_amount is not None or o.offer_snap_limit_amount is not None:
+            order_with_limit = o
+            break
+
+    if not order_with_limit:
+        return None
+        
+    from app.services.period_utils import compute_limit_balance_for_date
+    return await compute_limit_balance_for_date(db, order_with_limit, target_date)
 
 
 @router.get("/transactions", response_model=List[CreditTransactionResponse])

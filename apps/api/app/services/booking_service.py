@@ -204,17 +204,17 @@ class BookingService:
                         Booking.tenant_id == tenant_id,
                         Booking.user_id == user_id,
                         Booking.session_id == session_id,
-                        Booking.status.in_([BookingStatus.PENDING, BookingStatus.CONFIRMED])
                     )
                 )
             )
             existing_booking = result.scalar_one_or_none()
             
             if existing_booking:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="Vous avez déjà une réservation pour cette séance"
-                )
+                if existing_booking.status in [BookingStatus.PENDING, BookingStatus.CONFIRMED]:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="Vous avez déjà une réservation pour cette séance"
+                    )
 
             tenant_res = await db.execute(select(Tenant.registration_limit_mins).where(Tenant.id == tenant_id))
             reg_limit_mins = tenant_res.scalar() or 0
@@ -255,17 +255,28 @@ class BookingService:
                 db, tenant_id, user_id, session.credits_required, global_balance
             )
             
-            booking = Booking(
-                tenant_id=tenant_id,
-                user_id=user_id,
-                session_id=session_id,
-                status=booking_status,
-                credits_used=session.credits_required,
-                transaction_id=transaction_id,
-                notes=notes
-            )
-            
-            db.add(booking)
+            if existing_booking:
+                booking = existing_booking
+                booking.status = booking_status
+                booking.credits_used = session.credits_required
+                booking.transaction_id = transaction_id
+                booking.notes = notes
+                booking.created_at = datetime.utcnow()
+                booking.cancelled_at = None
+                booking.cancellation_type = None
+                booking.created_by_admin = False
+            else:
+                booking = Booking(
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    session_id=session_id,
+                    status=booking_status,
+                    credits_used=session.credits_required,
+                    transaction_id=transaction_id,
+                    notes=notes,
+                    created_by_admin=False
+                )
+                db.add(booking)
             
             if booking_status == BookingStatus.CONFIRMED:
                 session.current_participants += 1

@@ -5,7 +5,7 @@ import { Providers } from "./providers";
 
 const livvic = Livvic({ 
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "900"],
+  weight: ["300", "400", "500", "600", "700", "900"],
   display: 'fallback',
   variable: '--font-livvic',
 });

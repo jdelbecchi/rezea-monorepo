@@ -234,11 +234,15 @@ async def delete_session(
             detail="Séance non trouvée"
         )
     
-    # Empêcher la suppression des séances passées
-    if session.start_time < datetime.utcnow():
+    # Empêcher la suppression des séances passées sauf si elles n'ont pas d'inscriptions actives
+    has_active_bookings = any(
+        booking.status not in [BookingStatus.CANCELLED, BookingStatus.SESSION_CANCELLED]
+        for booking in session.bookings
+    )
+    if session.start_time < datetime.utcnow() and has_active_bookings:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Impossible de supprimer une séance dont la date est passée"
+            detail="Impossible de supprimer une séance passée contenant des inscriptions"
         )
     
     # Soft delete

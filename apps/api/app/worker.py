@@ -1,5 +1,5 @@
 import asyncio
-from arq import Worker
+from arq import Worker, cron
 from arq.connections import RedisSettings
 import structlog
 from urllib.parse import urlparse
@@ -11,6 +11,7 @@ logger = structlog.get_logger()
 
 # Import the background tasks
 from app.services.email_service import EmailService
+from app.services.rollover import process_period_rollovers
 
 async def startup(ctx):
     logger.info("Worker started")
@@ -43,6 +44,11 @@ class WorkerSettings:
         EmailService.send_bulk_event_cancellation_task,
         EmailService.send_bulk_event_modification_task,
         EmailService.send_event_promotion_task,
+    ]
+    
+    cron_jobs = [
+        # Exécuter tous les jours à 01h00 du matin
+        cron(process_period_rollovers, hour=1, minute=0)
     ]
     
     redis_settings = parse_redis_url(settings.REDIS_URL)

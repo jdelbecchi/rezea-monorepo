@@ -2017,7 +2017,7 @@ export default function AdminSettingsPage() {
 
                                                                 {/* Text Overlay Content */}
                                                                 {(formData.header_title || formData.header_subtitle) && (
-                                                                    <div className={`absolute inset-0 p-4 flex flex-col ${alignY} ${alignX}`}>
+                                                                    <div className={`absolute inset-0 p-2 md:p-3 flex flex-col ${alignY} ${alignX}`}>
                                                                         {formData.header_text_bg === "pill_dark" || formData.header_text_bg === "pill_light" ? (
                                                                             <div className={`${
                                                                                 formData.header_text_bg === "pill_dark"

@@ -430,7 +430,7 @@ export default function AdminBookingsPage() {
                                             <td className="px-4 py-2.5 whitespace-nowrap">
                                                 <div className="flex items-center gap-2">
                                                     <Link 
-                                                        href={`/${params.slug}/admin/users?search=${encodeURIComponent(booking.user_name)}`} 
+                                                        href={`/admin/users?search=${encodeURIComponent(booking.user_name)}`} 
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="text-sm font-medium text-slate-900 hover:text-blue-600 hover:underline transition-colors"
@@ -587,6 +587,12 @@ export default function AdminBookingsPage() {
                                         <span className="text-xs text-slate-500 font-medium font-livvic">à {editBooking.session_time}</span>
                                     </div>
                                 </div>
+                                {editBooking.session_activity_type && (
+                                    <div className="flex justify-between items-center group">
+                                        <span className="text-sm font-medium text-slate-500 font-livvic">Type d'activité</span>
+                                        <span className="text-sm font-semibold text-slate-900 font-livvic">{editBooking.session_activity_type}</span>
+                                    </div>
+                                )}
                             </div>
 
                             <form onSubmit={handleUpdate} id="editBookingForm" className="space-y-4">

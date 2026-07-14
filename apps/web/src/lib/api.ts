@@ -498,6 +498,7 @@ export interface AdminBookingItem {
   session_time: string;
   session_title: string;
   session_location: string;
+  session_activity_type?: string | null;
   user_name: string;
   user_phone: string | null;
   instagram_handle: string | null;
@@ -725,6 +726,11 @@ export const api = {
   // Credits
   getCreditAccount: async (): Promise<CreditAccount> => {
     const response = await apiClient.get('/api/credits/account');
+    return response.data;
+  },
+
+  getLimitBalance: async (targetDate: string): Promise<any> => {
+    const response = await apiClient.get(`/api/credits/limit-balance?target_date=${targetDate}`);
     return response.data;
   },
 

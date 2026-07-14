@@ -141,7 +141,7 @@ export default function AdminEventRegistrationsPage() {
         } catch (err: any) {
             console.error(err);
             if (err.response?.status === 401) {
-                router.push(`/${params.slug}`);
+                router.push("/login");
             }
         } finally {
             setLoading(false);
@@ -706,7 +706,7 @@ export default function AdminEventRegistrationsPage() {
                                             <td className="px-3 py-2.5 whitespace-nowrap text-sm font-livvic">
                                                 <div className="flex items-center gap-2">
                                                     <Link 
-                                                        href={`/${params.slug}/admin/users?search=${encodeURIComponent(reg.user_name)}`} 
+                                                        href={`/admin/users?search=${encodeURIComponent(reg.user_name)}`} 
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="font-medium text-slate-900 hover:text-blue-600 hover:underline transition-colors"

@@ -8,7 +8,7 @@ export default function AdminSessionsRedirect() {
     const params = useParams();
 
     useEffect(() => {
-        router.replace(`/${params.slug}/admin/planning/sessions`);
+        router.replace("/admin/planning/sessions");
     }, [router]);
 
     return (

@@ -46,6 +46,14 @@ const SEGMENT_COLORS: Record<string, string> = {
     archive: "bg-gray-200 text-gray-700 border-gray-300",
 };
 
+// Helper to format credits, removing trailing .00 if integer
+const formatCredit = (val: number | string | undefined | null) => {
+    if (val === undefined || val === null) return "0";
+    const num = Number(val);
+    if (isNaN(num)) return String(val);
+    return num % 1 === 0 ? num.toFixed(0) : num.toFixed(2);
+};
+
 function AdminUsersPageContent() {
     const router = useRouter();
     const params = useParams();
@@ -947,7 +955,7 @@ function AdminUsersPageContent() {
                                                                         en_pause: "En pause",
                                                                         resiliee: "Résiliée",
                                                                     };
-                                                                    const isBlocked = order.is_blocked === true || (order.is_blocked === null && order.status === "expiree");
+                                                                    const isBlocked = order.is_blocked === true || (order.is_blocked === null && ["expiree", "en_pause", "resiliee"].includes(order.status));
 
                                                                     return (
                                                                         <tr key={order.id} className="hover:bg-slate-50 transition-colors">
@@ -975,7 +983,7 @@ function AdminUsersPageContent() {
                                                                                 ) : order.is_unlimited ? (
                                                                                     <span className="text-emerald-600">Illimité</span>
                                                                                 ) : (
-                                                                                    <span>{order.balance ?? 0}/{order.credits_total ?? 0}</span>
+                                                                                    <span>{formatCredit(order.balance)}/{formatCredit(order.credits_total)}</span>
                                                                                 )}
                                                                             </td>
                                                                         </tr>

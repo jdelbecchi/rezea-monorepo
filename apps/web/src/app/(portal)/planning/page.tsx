@@ -58,6 +58,8 @@ export default function PlanningPage() {
   const [bookingToCancel, setBookingToCancel] = useState<{ id: string; title: string } | null>(null);
   const [locationFilter, setLocationFilter] = useState("all");
   const [isLocationMenuOpen, setIsLocationMenuOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"ALL" | "LIMIT">("ALL");
+  const [limitBalance, setLimitBalance] = useState<any | null>(null);
 
   useEffect(() => {
     const initData = async () => {
@@ -67,13 +69,14 @@ export default function PlanningPage() {
         const start = format(selectedDate, "yyyy-MM-dd") + "T00:00:00";
         const end = format(selectedDate, "yyyy-MM-dd") + "T23:59:59";
 
-        const [userData, creditData, tenantData, bookingsData, sessionsData, upcomingEventsData] = await Promise.all([
+        const [userData, creditData, tenantData, bookingsData, sessionsData, upcomingEventsData, limitBalanceData] = await Promise.all([
           api.getCurrentUser(),
           api.getCreditAccount().catch(() => null),
           api.getTenantSettings(),
           api.getMyBookings(),
           api.getSessions({ start_date: start, end_date: end }),
-          api.getUpcomingEvents()
+          api.getUpcomingEvents(),
+          api.getLimitBalance(format(selectedDate, "yyyy-MM-dd")).catch(() => null)
         ]);
 
         setUser(userData);
@@ -82,6 +85,7 @@ export default function PlanningPage() {
         setMyBookings(bookingsData);
         setSessions(sessionsData);
         setAllUpcomingEvents(upcomingEventsData);
+        setLimitBalance(limitBalanceData);
         
         const dayEvents = upcomingEventsData.filter(e => isSameDay(parseISO(e.event_date), selectedDate));
         setEvents(dayEvents);
@@ -100,16 +104,18 @@ export default function PlanningPage() {
         const start = format(selectedDate, "yyyy-MM-dd") + "T00:00:00";
         const end = format(selectedDate, "yyyy-MM-dd") + "T23:59:59";
 
-        const [sessionsData, upcomingEventsData, bookingsData, creditsData] = await Promise.all([
+        const [sessionsData, upcomingEventsData, bookingsData, creditsData, limitBalanceData] = await Promise.all([
             api.getSessions({ start_date: start, end_date: end }),
             api.getUpcomingEvents(),
             api.getMyBookings(),
-            api.getCreditAccount().catch(() => null)
+            api.getCreditAccount().catch(() => null),
+            api.getLimitBalance(format(selectedDate, "yyyy-MM-dd")).catch(() => null)
         ]);
         setSessions(sessionsData);
         setAllUpcomingEvents(upcomingEventsData);
         setMyBookings(bookingsData);
         setCredits(creditsData);
+        setLimitBalance(limitBalanceData);
         const dayEvents = upcomingEventsData.filter(e => isSameDay(parseISO(e.event_date), selectedDate));
         setEvents(dayEvents);
     } catch (err) {
@@ -127,6 +133,9 @@ export default function PlanningPage() {
         
         const sessionsData = await api.getSessions({ start_date: start, end_date: end });
         setSessions(sessionsData);
+        
+        const limitBalanceData = await api.getLimitBalance(format(selectedDate, "yyyy-MM-dd")).catch(() => null);
+        setLimitBalance(limitBalanceData);
         
         const dayEvents = allUpcomingEvents.filter(e => isSameDay(parseISO(e.event_date), selectedDate));
         setEvents(dayEvents);
@@ -367,9 +376,11 @@ export default function PlanningPage() {
               </div>
 
               <div className="hidden md:flex flex-col gap-2 p-6 bg-slate-50 rounded-3xl border border-slate-100 relative overflow-hidden group shadow-sm transition-all hover:shadow-md !mt-10">
-                  <span className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider leading-none mb-1 flex items-center gap-1.5">
-                    Mes crédits <DiamondToken className="w-4 h-4" />
-                  </span>
+                  <div className="flex items-center justify-end mb-1">
+                    <span className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider leading-none flex items-center gap-1.5">
+                      Mes crédits <DiamondToken className="w-4 h-4" />
+                    </span>
+                  </div>
                   
                   {credits && (() => {
                       const sortedActs = Object.entries(credits.balances_by_activity || {})
@@ -391,15 +402,38 @@ export default function PlanningPage() {
                           <div className="flex flex-col gap-1.5 mt-1">
                               {sortedActs.map(([activity, bal]) => {
                                   const actFrozen = credits.frozen_by_activity?.[activity] || 0;
+                                  
+                                  const isLimitedActivity = limitBalance && (
+                                      (limitBalance.allowed_activities?.length === 0 && activity === "Toutes activités") ||
+                                      (limitBalance.allowed_activities?.includes(activity))
+                                  );
+
                                   return (
-                                      <div key={activity} className="flex items-center gap-2 text-xs text-slate-700 bg-white shadow-sm border border-slate-200/80 px-3 py-1.5 rounded-xl">
-                                          <DiamondToken className="w-3.5 h-3.5 text-slate-400" />
-                                          <span className="font-semibold text-slate-900">{bal === null ? "Illimité" : formatCredits(Number(bal))}</span>
-                                          <span className="text-slate-600 text-xs truncate max-w-[150px] capitalize">{activity}</span>
-                                          {Number(actFrozen) > 0 && (
-                                              <span className="text-[10px] text-slate-400 font-normal flex items-center gap-0.5" title={`${formatCredits(Number(actFrozen))} crédit(s) en liste d'attente`}>
-                                                  (<span className="opacity-40">⏳</span>{formatCredits(Number(actFrozen))})
+                                      <div key={activity} className="flex flex-col gap-1 text-xs text-slate-700 bg-white shadow-sm border border-slate-200/80 px-3 py-2 rounded-xl">
+                                          <div className="flex items-center gap-2">
+                                              <DiamondToken className="w-3.5 h-3.5 text-slate-400" />
+                                              <span className="font-semibold text-slate-900">
+                                                  {isLimitedActivity ? formatCredits(limitBalance.balance) : (bal === null ? "Illimité" : formatCredits(Number(bal)))}
                                               </span>
+                                              <span className="text-slate-600 text-xs truncate max-w-[150px] capitalize">{activity}</span>
+                                              {Number(actFrozen) > 0 && !isLimitedActivity && (
+                                                  <span className="text-[10px] text-slate-400 font-normal flex items-center gap-0.5 ml-auto" title={`${formatCredits(Number(actFrozen))} crédit(s) en liste d'attente`}>
+                                                      (<span className="opacity-40">⏳</span>{formatCredits(Number(actFrozen))})
+                                                  </span>
+                                              )}
+                                          </div>
+                                          {isLimitedActivity && (
+                                              <div className="flex items-center justify-between text-[10px] text-slate-500 mt-0.5 pl-5">
+                                                  <span className="flex items-center gap-1">
+                                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-3.5 h-3.5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                          <path d="M4 19a8 8 0 0 1 16 0" />
+                                                          <path d="m12 19-4.5-6.5" />
+                                                          <circle cx="12" cy="19" r="1.5" fill="currentColor" />
+                                                      </svg>
+                                                      {formatCredits(limitBalance.base_limit)}{limitBalance.limit_period}
+                                                  </span>
+                                                  <span>Total: {bal === null ? 'Illimité' : formatCredits(Number(bal))}</span>
+                                              </div>
                                           )}
                                       </div>
                                   );
@@ -428,15 +462,32 @@ export default function PlanningPage() {
                         <div className="flex flex-wrap justify-end gap-1.5 py-1">
                             {sortedActs.map(([activity, bal]) => {
                                 const actFrozen = credits.frozen_by_activity?.[activity] || 0;
+                                const isLimitedActivity = limitBalance && (
+                                    (limitBalance.allowed_activities?.length === 0 && activity === "Toutes activités") ||
+                                    (limitBalance.allowed_activities?.includes(activity))
+                                );
+
                                 return (
-                                    <div key={activity} className="flex items-center gap-1 text-[10px] text-slate-700 bg-slate-50 border border-slate-200/80 px-2 py-0.5 rounded-lg">
-                                        <DiamondToken className="w-2.5 h-2.5 text-slate-400" />
-                                        <span className="font-semibold text-slate-900">{bal === null ? "Illimité" : formatCredits(Number(bal))}</span>
-                                        <span className="text-slate-600 text-[10px] truncate max-w-[100px] capitalize">{activity}</span>
-                                        {Number(actFrozen) > 0 && (
-                                            <span className="text-[9px] text-slate-400 font-normal flex items-center gap-0.5" title={`${formatCredits(Number(actFrozen))} crédit(s) en liste d'attente`}>
-                                                (<span className="opacity-40">⏳</span>{formatCredits(Number(actFrozen))})
+                                    <div key={activity} className="flex flex-col items-end gap-0.5 text-[10px] text-slate-700 bg-slate-50 border border-slate-200/80 px-2 py-1 rounded-lg">
+                                        <div className="flex items-center gap-1">
+                                            <DiamondToken className="w-2.5 h-2.5 text-slate-400" />
+                                            <span className="font-semibold text-slate-900">
+                                                {isLimitedActivity ? formatCredits(limitBalance.balance) : (bal === null ? "Illimité" : formatCredits(Number(bal)))}
                                             </span>
+                                            <span className="text-slate-600 text-[10px] truncate max-w-[100px] capitalize">{activity}</span>
+                                        </div>
+                                        {isLimitedActivity && (
+                                            <div className="flex items-center justify-between w-full text-[9px] text-slate-400">
+                                                <span className="flex items-center gap-0.5">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-3 h-3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M4 19a8 8 0 0 1 16 0" />
+                                                        <path d="m12 19-4.5-6.5" />
+                                                        <circle cx="12" cy="19" r="1.5" fill="currentColor" />
+                                                    </svg>
+                                                    {formatCredits(limitBalance.base_limit)}{limitBalance.limit_period}
+                                                </span>
+                                                <span>Total: {bal === null ? 'Illimité' : formatCredits(Number(bal))}</span>
+                                            </div>
                                         )}
                                     </div>
                                 );

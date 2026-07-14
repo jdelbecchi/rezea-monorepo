@@ -8,7 +8,7 @@ export default function AdminOffersRedirect() {
     const params = useParams();
 
     useEffect(() => {
-        router.replace(`/${params.slug}/admin/shop/offers`);
+        router.replace("/admin/shop/offers");
     }, [router]);
 
     return (

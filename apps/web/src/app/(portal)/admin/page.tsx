@@ -252,17 +252,16 @@ export default function AdminDashboardPage() {
         return true;
     };
 
-    // 2. Global Occupancy Rate (Past sessions)
+    // 2. Global Occupancy Rate (All sessions in selected period)
     const occupancyStats = useMemo(() => {
-        const now = new Date();
-        const pastSessions = currentSessions.filter(s => new Date(s.start_time) < now);
-        
         let totalCapacity = 0;
         let totalBookings = 0;
         
-        pastSessions.forEach(s => {
-            totalCapacity += s.max_participants || 0;
-            totalBookings += s.current_participants || 0;
+        currentSessions.forEach(s => {
+            if (s.is_active !== false) {
+                totalCapacity += s.max_participants || 0;
+                totalBookings += s.current_participants || 0;
+            }
         });
         
         const rate = totalCapacity > 0 ? Math.round((totalBookings / totalCapacity) * 100) : 0;
@@ -271,7 +270,7 @@ export default function AdminDashboardPage() {
             rate,
             totalBookings,
             totalCapacity,
-            count: pastSessions.length
+            count: currentSessions.filter(s => s.is_active !== false).length
         };
     }, [currentSessions]);
 
@@ -947,7 +946,7 @@ export default function AdminDashboardPage() {
                             {/* Taux d'occupation */}
                             <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
                                 <div className="space-y-2">
-                                    <p className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Taux d&apos;occupation</p>
+                                    <p className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Taux d&apos;occupation prévu</p>
                                     <p className="text-3xl font-bold text-slate-900">{occupancyStats.rate}%</p>
                                     <p className="text-[10px] text-slate-500 font-medium lowercase">
                                         {occupancyStats.totalBookings} réservations / {occupancyStats.totalCapacity} places

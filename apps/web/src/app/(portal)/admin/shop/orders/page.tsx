@@ -141,6 +141,9 @@ export default function AdminShopOrdersPage() {
         period: "",
         credits_total: "",
         is_unlimited: false,
+        limit_amount: "",
+        limit_period: "mois",
+        limit_rollover: false,
         status: "",
         payment_status: "",
         comment: "",
@@ -229,7 +232,7 @@ export default function AdminShopOrdersPage() {
         } catch (err: any) {
             console.error(err);
             if (err.response?.status === 401) {
-                router.push(`/${params.slug}`);
+                router.push("/login");
             }
         } finally {
             setLoading(false);
@@ -289,15 +292,18 @@ export default function AdminShopOrdersPage() {
             price_recurring_cents: order.offer_price_recurring_cents ? (order.offer_price_recurring_cents / 100).toString() : (order.price_cents / 100).toString(),
             recurring_count: order.offer_recurring_count?.toString() || "1",
             period: order.offer_period || "/mois",
-            credits_total: order.credits_total?.toString() || "",
+            credits_total: order.credits_total ? Number(order.credits_total).toString() : "",
             is_unlimited: order.is_unlimited,
+            limit_amount: order.limit_amount ? order.limit_amount.toString() : "",
+            limit_period: order.limit_period || "mois",
+            limit_rollover: order.limit_rollover || false,
             status: order.status,
             payment_status: order.payment_status,
             comment: order.comment || "",
             user_note: order.user_note || "",
             offer_snap_code: order.offer_snap_code || order.offer_code || "",
             offer_snap_name: order.offer_snap_name || order.offer_name || "",
-            is_blocked: order.is_blocked === true || (order.is_blocked === null && order.status === "expiree"),
+            is_blocked: order.is_blocked === true || (order.is_blocked === null && ["expiree", "en_pause", "resiliee"].includes(order.status)),
             allowed_activities: order.allowed_activities || []
         });
         const isStd = ["active", "termine", "expiree", "en_pause", "resiliee", "", null, undefined].includes(order.status);
@@ -342,6 +348,9 @@ export default function AdminShopOrdersPage() {
                 period: !isLumpSum ? editForm.period : null,
                 credits_total: editForm.is_unlimited ? null : (parseFloat(editForm.credits_total) || 0),
                 is_unlimited: editForm.is_unlimited,
+                limit_amount: editForm.limit_amount ? parseFloat(editForm.limit_amount) : null,
+                limit_period: editForm.limit_amount ? editForm.limit_period : null,
+                limit_rollover: editForm.limit_amount ? editForm.limit_rollover : false,
                 status: editForm.status,
                 payment_status: editForm.payment_status,
                 comment: editForm.comment,
@@ -907,7 +916,7 @@ export default function AdminShopOrdersPage() {
                                                 <td className="px-3 py-2.5 whitespace-nowrap text-sm">
                                                     <div className="flex items-center gap-1">
                                                         <Link 
-                                                            href={`/${params.slug}/admin/users?search=${encodeURIComponent(order.user_email || order.user_name)}`} 
+                                                            href={`/admin/users?search=${encodeURIComponent(order.user_email || order.user_name)}`} 
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             className="font-medium text-slate-900 hover:text-blue-600 hover:underline transition-colors"
@@ -958,7 +967,14 @@ export default function AdminShopOrdersPage() {
                                                     {formatPrice(order)}
                                                 </td>
                                                 <td className="px-3 py-2.5 whitespace-nowrap text-sm text-slate-700 hidden xl:table-cell text-center">
-                                                    {order.is_unlimited ? "∞" : formatCredits(order.credits_total)}
+                                                    <div className="flex flex-col items-center justify-center">
+                                                        <span className="leading-none">{order.is_unlimited ? "∞" : formatCredits(order.credits_total)}</span>
+                                                        {order.limit_amount && (
+                                                            <div className="text-[10px] text-slate-400 font-medium leading-tight">
+                                                                {formatCredits(order.limit_amount)} {order.limit_period}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className="px-3 py-2.5 whitespace-nowrap hidden sm:table-cell text-center">
                                                     {order.is_unlimited ? (
@@ -967,19 +983,21 @@ export default function AdminShopOrdersPage() {
                                                             {order.user_is_suspended && <span title="Crédits suspendus">🚫</span>}
                                                         </div>
                                                     ) : (
-                                                        <div className={`flex items-center justify-center gap-1 text-sm ${order.user_is_suspended ? "text-red-600 font-semibold" :
-                                                                (order.balance ?? 0) <= 0 ? "text-red-600" :
-                                                                    (order.balance ?? 0) <= 2 ? "text-orange-600" :
-                                                                        "text-slate-700"
-                                                            }`}>
-                                                            <span>
-                                                                {showPercentage && order.credits_total && Number(order.credits_total) > 0 
-                                                                    ? `${Math.round(((Number(order.credits_total) - Number(order.balance || 0)) / Number(order.credits_total)) * 100)} %` 
-                                                                    : formatCredits(order.balance)
-                                                                }
-                                                            </span>
-                                                            {order.is_blocked && <span title="Crédits bloqués" className="ml-0.5">🔒</span>}
-                                                            {order.user_is_suspended && <span title="Crédits suspendus">🚫</span>}
+                                                        <div className="flex flex-col items-center justify-center gap-0.5">
+                                                            <div className={`flex items-center justify-center gap-1 text-sm ${order.user_is_suspended ? "text-red-600 font-semibold" :
+                                                                    (order.balance ?? 0) <= 0 ? "text-red-600" :
+                                                                        (order.balance ?? 0) <= 2 ? "text-orange-600" :
+                                                                            "text-slate-700 font-medium"
+                                                                }`}>
+                                                                <span>
+                                                                    {showPercentage && order.credits_total && Number(order.credits_total) > 0 
+                                                                        ? `${Math.round(((Number(order.credits_total) - Number(order.balance || 0)) / Number(order.credits_total)) * 100)} %` 
+                                                                        : formatCredits(order.balance)
+                                                                    }
+                                                                </span>
+                                                                {order.is_blocked && <span title="Crédits bloqués" className="ml-0.5">🔒</span>}
+                                                                {order.user_is_suspended && <span title="Crédits suspendus">🚫</span>}
+                                                            </div>
                                                         </div>
                                                     )}
                                                 </td>
@@ -1195,19 +1213,23 @@ export default function AdminShopOrdersPage() {
                                             <select
                                                 value={showCustomStatus ? "_custom" : (editForm.status || "active")}
                                                 onChange={(e) => {
-                                                    if (e.target.value === "_custom") {
+                                                    const val = e.target.value;
+                                                    if (val === "_custom") {
                                                         setShowCustomStatus(true);
                                                         setEditForm({ ...editForm, status: "" });
                                                     } else {
                                                         setShowCustomStatus(false);
-                                                        setEditForm({ ...editForm, status: e.target.value });
+                                                        const shouldBlock = ["en_pause", "resiliee", "expiree"].includes(val);
+                                                        setEditForm({ 
+                                                            ...editForm, 
+                                                            status: val,
+                                                            is_blocked: shouldBlock ? true : (val === "active" ? false : editForm.is_blocked)
+                                                        });
                                                     }
                                                 }}
                                                 className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all ${(showErrors && !editForm.status) ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}
                                             >
                                                 <option value="active">Active</option>
-                                                <option value="termine">Terminée</option>
-                                                <option value="expiree">Expirée</option>
                                                 <option value="en_pause">En pause</option>
                                                 <option value="resiliee">Résiliée</option>
                                                 {dynamicStatuses.filter(s => !["active", "termine", "expiree", "en_pause", "resiliee", "Terminé", "terminé", "Résiliée", "Résilié"].includes(s)).map(s => (
@@ -1343,13 +1365,40 @@ export default function AdminShopOrdersPage() {
                                             </label>
                                         </div>
                                         <div className="pt-6 pl-4 flex items-center">
-                                            <label className="flex items-center gap-2 cursor-pointer group">
-                                                <input type="checkbox" checked={editForm.is_blocked}
-                                                    onChange={(e) => setEditForm({ ...editForm, is_blocked: e.target.checked })}
-                                                    className="w-5 h-5 text-red-600 border-gray-300 rounded-lg focus:ring-red-500" />
-                                                <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">Bloquer le solde de crédits</span>
-                                            </label>
+                                            {(() => {
+                                                const isStatusBlocking = ["en_pause", "resiliee", "expiree"].includes(editForm.status);
+                                                return (
+                                                    <label className={`flex items-center gap-2 group ${isStatusBlocking ? "cursor-not-allowed" : "cursor-pointer"}`}>
+                                                        <input type="checkbox" checked={editForm.is_blocked}
+                                                            disabled={isStatusBlocking}
+                                                            onChange={(e) => setEditForm({ ...editForm, is_blocked: e.target.checked })}
+                                                            className="w-5 h-5 text-red-600 border-gray-300 rounded-lg focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed" />
+                                                        <span className={`text-sm font-medium transition-colors ${isStatusBlocking ? "text-slate-400 cursor-not-allowed" : "text-slate-700 group-hover:text-slate-900"}`}>
+                                                            Bloquer le solde de crédits {isStatusBlocking && "(lié au statut)"}
+                                                        </span>
+                                                    </label>
+                                                );
+                                            })()}
                                         </div>
+                                    </div>
+                                    <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-3">
+                                        <h5 className="text-sm font-medium text-slate-700">Plafond périodique (Optionnel)</h5>
+                                        <p className="text-xs text-slate-500">Remplace la règle de l'offre pour cette commande spécifique.</p>
+                                        <div className="flex gap-2">
+                                            <input type="number" placeholder="Limite" value={editForm.limit_amount} onChange={e => setEditForm({...editForm, limit_amount: e.target.value})} className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white" />
+                                            <span className="text-sm text-slate-500 self-center">par</span>
+                                            <select value={editForm.limit_period} onChange={e => setEditForm({...editForm, limit_period: e.target.value})} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white">
+                                                <option value="/semaine">Semaine</option>
+                                                <option value="/mois">Mois</option>
+                                                <option value="/bimestre">Bimestre</option>
+                                                <option value="/trimestre">Trimestre</option>
+                                                <option value="/an">An</option>
+                                            </select>
+                                        </div>
+                                        <label className="flex items-start gap-2 cursor-pointer mt-2">
+                                            <input type="checkbox" checked={editForm.limit_rollover} onChange={e => setEditForm({...editForm, limit_rollover: e.target.checked})} className="w-4 h-4 mt-0.5 text-purple-600 rounded border-gray-300 focus:ring-purple-500" />
+                                            <span className="text-xs text-slate-600 leading-tight">Reporter le solde non consommé à la période suivante</span>
+                                        </label>
                                     </div>
                                 </div>
 

@@ -379,7 +379,7 @@ export default function GestionInscriptionsPage() {
     };
 
     const handleContactEmail = (participantIds: string[]) => {
-        router.push(`/${params.slug}/admin/emails?recipientIds=${participantIds.join(',')}`);
+        router.push(`/admin/emails?recipientIds=${participantIds.join(',')}`);
     };
 
     const handleMarkAbsent = async (participant: any, type: 'session' | 'event') => {

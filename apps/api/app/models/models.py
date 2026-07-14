@@ -442,6 +442,11 @@ class Offer(Base):
     classes_included = Column(Numeric(10, 2), nullable=True)  # Nombre de crédits (null si illimité)
     is_unlimited = Column(Boolean, default=False)  # Crédits illimités
     
+    # Plafonds périodiques (pour les abonnements reconductibles)
+    limit_amount = Column(Numeric(10, 2), nullable=True)  # Nombre de crédits par période
+    limit_period = Column(String(50), nullable=True)  # Période (ex: 'week', 'month', 'quarter', 'year')
+    limit_rollover = Column(Boolean, default=False)  # Report des crédits non consommés
+    
     # Validité (l'un des deux doit être renseigné)
     validity_days = Column(Integer)  # Durée de validité
     validity_unit = Column(String(20), default="days")  # 'days' ou 'months'
@@ -703,6 +708,14 @@ class Order(Base):
     # Blocage manuel du solde de crédits (True=bloqué, False=débloqué, None=default)
     is_blocked = Column(Boolean, default=None, nullable=True)
 
+    # Surcharge des limites de l'offre
+    limit_amount = Column(Numeric(10, 2), nullable=True)
+    limit_period = Column(String(50), nullable=True)
+    limit_rollover = Column(Boolean, default=False, nullable=True)
+    
+    # Cumul des reports passés (mis à jour par le CRON)
+    accumulated_rollover = Column(Numeric(10, 2), default=0, server_default="0", nullable=False)
+
     # Snapshot des infos de l'offre au moment de l'achat (Contractuel)
     offer_snap_name = Column(String(100))
     offer_snap_code = Column(String(50))
@@ -711,6 +724,9 @@ class Order(Base):
     offer_snap_validity_unit = Column(String(20))
     offer_snap_is_validity_unlimited = Column(Boolean, default=False)
     offer_snap_allowed_activities = Column(JSON, default=list)
+    offer_snap_limit_amount = Column(Numeric(10, 2), nullable=True)
+    offer_snap_limit_period = Column(String(50), nullable=True)
+    offer_snap_limit_rollover = Column(Boolean, default=False)
     
     
     # Facturation
@@ -744,6 +760,7 @@ class Installment(Base):
     order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id", ondelete="CASCADE"), nullable=False)
 
     # Échéance
+    sequence_number = Column(Integer, nullable=True)  # Numéro de l'échéance (ex: 1, 2, 3...)
     due_date = Column(Date, nullable=False)  # Date d'anniversaire (le 8 du mois)
     amount_cents = Column(Integer, nullable=False)  # Montant de l'échéance
 
@@ -849,7 +866,6 @@ class FinanceTransaction(Base):
     __table_args__ = (
         Index("idx_fin_trans_tenant_date", "tenant_id", "date"),
         Index("idx_fin_trans_type", "tenant_id", "type"),
-        UniqueConstraint("order_id", name="uq_finance_transactions_order_id"),
         UniqueConstraint("registration_id", name="uq_finance_transactions_registration_id"),
         UniqueConstraint("installment_id", name="uq_finance_transactions_installment_id"),
     )

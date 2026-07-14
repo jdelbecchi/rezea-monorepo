@@ -530,7 +530,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
 
                         {/* Text Overlay Content */}
                         {(tenantSettings?.header_title || tenantSettings?.header_subtitle) && (
-                            <div className={`absolute inset-0 p-6 flex flex-col ${alignY} ${alignX}`}>
+                            <div className={`absolute inset-0 p-3 md:p-5 flex flex-col ${alignY} ${alignX}`}>
                                 {tenantSettings?.header_text_bg === "pill_dark" || tenantSettings?.header_text_bg === "pill_light" ? (
                                     <div className={`${
                                         tenantSettings.header_text_bg === "pill_dark"
@@ -567,7 +567,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                                             </h2>
                                         )}
                                         {tenantSettings.header_subtitle && (
-                                            <p className={`text-xs md:text-sm font-medium opacity-90 ${
+                                            <p className={`text-xs md:text-sm font-light opacity-90 ${
                                                 animation === "fade" ? "anim-fade" : animation === "flash" ? "anim-flash" : animation === "scale" ? "anim-scale" : ""
                                             }`}>
                                                 {tenantSettings.header_subtitle}
@@ -589,9 +589,9 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
 
             {/* Vignettes Carousel (conditional) */}
             {showVignettes && tenantSettings?.vignettes && tenantSettings.vignettes.length > 0 && (
-                <div className="px-5 mt-4 mb-2 shrink-0">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-3 tracking-tight">{tenantSettings.vignettes_title || "À la une"}</h3>
-                    <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-3 -mx-5 px-5">
+                <div className="px-5 mt-6 mb-2 shrink-0">
+                    <h3 className="text-sm font-medium text-slate-800 mb-3 text-center">{tenantSettings.vignettes_title || "À la une"}</h3>
+                    <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-3 -mx-5 px-5 scroll-px-5">
                         {tenantSettings.vignettes.map((vig: Vignette) => {
                             const CardContent = (
                                 <div className="relative w-full h-full">
@@ -604,7 +604,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                                     {vig.title && (
                                         <div className="absolute bottom-3 left-3 right-3 text-white">
-                                            <p className="text-xs font-bold leading-tight tracking-tight">{vig.title}</p>
+                                            <p className="text-xs font-medium leading-tight tracking-tight">{vig.title}</p>
                                         </div>
                                     )}
                                 </div>
