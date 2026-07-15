@@ -13,11 +13,13 @@ from app.main import app
 from app.db.session import Base, get_db
 from app.core.config import settings
 
+from sqlalchemy import NullPool
+
 # Override the engine with the test database URL
 test_engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
-    poolclass=None,
+    poolclass=NullPool,
 )
 
 TestSessionLocal = async_sessionmaker(

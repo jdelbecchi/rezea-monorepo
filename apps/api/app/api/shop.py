@@ -103,6 +103,7 @@ async def shop_checkout(
         is_validity_unlimited=offer.is_validity_unlimited,
         credits_total=offer.classes_included,
         is_unlimited=offer.is_unlimited,
+        activity_credits=offer.activity_credits,
         price_cents=price_cents,
         price_recurring_cents=offer.price_recurring_cents,
         recurring_count=offer.recurring_count,
@@ -118,7 +119,8 @@ async def shop_checkout(
         offer_snap_validity_days=offer.validity_days,
         offer_snap_validity_unit=offer.validity_unit,
         offer_snap_is_validity_unlimited=offer.is_validity_unlimited,
-        offer_snap_allowed_activities=offer.allowed_activities
+        offer_snap_allowed_activities=offer.allowed_activities,
+        offer_snap_activity_credits=offer.activity_credits
     )
     
     db.add(order)

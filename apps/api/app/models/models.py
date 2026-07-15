@@ -457,7 +457,8 @@ class Offer(Base):
     # Options
     is_unique = Column(Boolean, default=False)  # Offre unique (une seule commande par utilisateur)
     allowed_activities = Column(JSON, default=list) # Activités autorisées pour cette offre
-    
+    activity_credits = Column(JSON, nullable=True) # Crédits par type d'activité (packs)
+
     
     # Configuration
     is_active = Column(Boolean, default=True)
@@ -681,6 +682,7 @@ class Order(Base):
     # Crédits (copiés de l'offre à la création)
     credits_total = Column(Numeric(10, 2))  # null si illimité
     is_unlimited = Column(Boolean, default=False)
+    activity_credits = Column(JSON, nullable=True) # Crédits par type d'activité (packs)
 
     # Tarif (copié de l'offre ou personnalisé)
     price_cents = Column(Integer, nullable=False)
@@ -726,6 +728,7 @@ class Order(Base):
     offer_snap_validity_unit = Column(String(20))
     offer_snap_is_validity_unlimited = Column(Boolean, default=False)
     offer_snap_allowed_activities = Column(JSON, default=list)
+    offer_snap_activity_credits = Column(JSON, nullable=True) # Crédits par type d'activité (packs)
     offer_snap_limit_amount = Column(Numeric(10, 2), nullable=True)
     offer_snap_limit_period = Column(String(50), nullable=True)
     offer_snap_limit_rollover = Column(Boolean, default=False)

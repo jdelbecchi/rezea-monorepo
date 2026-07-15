@@ -449,6 +449,8 @@ async def compute_fifo_balances(
     # order_allocations maps str(order.id) -> credits_allocated
     order_allocations = {str(o.id): Decimal(0) for o in orders}
     order_frozen_allocations = {str(o.id): Decimal(0) for o in orders}
+    order_activity_allocations = {str(o.id): {} for o in orders}
+    order_activity_frozen_allocations = {str(o.id): {} for o in orders}
     
     # Determine which orders are blocked *today*
     today = date.today()
@@ -517,11 +519,45 @@ async def compute_fifo_balances(
                 
             # If valid, do we have enough remaining credits?
             if is_valid:
+                # Get activity_credits if any
+                act_credits = None
+                if hasattr(o, 'offer_snap_activity_credits') and isinstance(o.offer_snap_activity_credits, dict) and o.offer_snap_activity_credits is not None:
+                    act_credits = o.offer_snap_activity_credits
+                elif hasattr(o, 'activity_credits') and isinstance(o.activity_credits, dict) and o.activity_credits is not None:
+                    act_credits = o.activity_credits
+                elif o.offer and getattr(o.offer, 'activity_credits', None) is not None and isinstance(o.offer.activity_credits, dict):
+                    act_credits = o.offer.activity_credits
+                
                 # Unlimited credits orders have infinite capacity
                 if o.is_unlimited:
                     allocated = True
                     item_credits = Decimal(0)
                     break
+                elif act_credits:
+                    # It's a pack! Match activity type
+                    item_act = item.get("activity_type")
+                    matched_key = None
+                    if item_act:
+                        item_act_clean = item_act.strip().lower()
+                        for k in act_credits.keys():
+                            if k.strip().lower() == item_act_clean:
+                                matched_key = k
+                                break
+                    if matched_key:
+                        credits_init = Decimal(act_credits[matched_key])
+                        credits_used = order_activity_allocations[o_id].get(matched_key, Decimal(0))
+                        if credits_used < credits_init:
+                            available = credits_init - credits_used
+                            alloc_amount = min(item_credits, available)
+                            order_activity_allocations[o_id][matched_key] = credits_used + alloc_amount
+                            order_allocations[o_id] += alloc_amount
+                            if item.get("is_pending"):
+                                order_activity_frozen_allocations[o_id][matched_key] = order_activity_frozen_allocations[o_id].get(matched_key, Decimal(0)) + alloc_amount
+                                order_frozen_allocations[o_id] += alloc_amount
+                            item_credits -= alloc_amount
+                            if item_credits <= 0:
+                                allocated = True
+                                break
                 else:
                     credits_init = Decimal(o.credits_total or 0)
                     credits_used = order_allocations[o_id]
@@ -574,35 +610,62 @@ async def compute_fifo_balances(
             global_balance += bal
             global_frozen += froz_bal
             
+        # Get activity_credits if any
+        act_credits = None
+        if hasattr(o, 'offer_snap_activity_credits') and isinstance(o.offer_snap_activity_credits, dict) and o.offer_snap_activity_credits is not None:
+            act_credits = o.offer_snap_activity_credits
+        elif hasattr(o, 'activity_credits') and isinstance(o.activity_credits, dict) and o.activity_credits is not None:
+            act_credits = o.activity_credits
+        elif o.offer and getattr(o.offer, 'activity_credits', None) is not None and isinstance(o.offer.activity_credits, dict):
+            act_credits = o.offer.activity_credits
+
         orders_balances[o_id] = {
             "credits_total": o.credits_total,
             "credits_used": credits_used,
             "balance": bal,
             "frozen": froz_bal,
-            "is_blocked": is_blocked
+            "is_blocked": is_blocked,
+            "activity_credits": act_credits,
+            "activity_allocations": {k: float(v) for k, v in order_activity_allocations[o_id].items()} if act_credits else None
         }
         
         # Compute balances by activity
         if not is_blocked:
-            allowed_acts = []
-            if hasattr(o, 'offer_snap_allowed_activities') and isinstance(o.offer_snap_allowed_activities, list) and o.offer_snap_allowed_activities is not None:
-                allowed_acts = o.offer_snap_allowed_activities
-            elif o.offer and isinstance(o.offer.allowed_activities, list):
-                allowed_acts = o.offer.allowed_activities
-            
-            label = ", ".join(allowed_acts) if allowed_acts else "Toutes activités"
-            if label not in balances_by_activity:
-                balances_by_activity[label] = None if o.is_unlimited else Decimal(0)
-            if label not in frozen_by_activity:
-                frozen_by_activity[label] = Decimal(0)
-            
-            if balances_by_activity[label] is not None:
-                if o.is_unlimited:
-                    balances_by_activity[label] = None
-                else:
-                    balances_by_activity[label] += Decimal(bal)
-            
-            frozen_by_activity[label] += Decimal(froz_bal)
+            if act_credits:
+                # Pack: compute and distribute remaining balances for each activity in the pack
+                for act, total_val in act_credits.items():
+                    act_init = Decimal(total_val)
+                    act_used = order_activity_allocations[o_id].get(act, Decimal(0))
+                    act_bal = max(Decimal(0), act_init - act_used)
+                    act_frozen = order_activity_frozen_allocations[o_id].get(act, Decimal(0))
+                    
+                    if act not in balances_by_activity:
+                        balances_by_activity[act] = Decimal(0)
+                    if act not in frozen_by_activity:
+                        frozen_by_activity[act] = Decimal(0)
+                        
+                    balances_by_activity[act] += act_bal
+                    frozen_by_activity[act] += act_frozen
+            else:
+                allowed_acts = []
+                if hasattr(o, 'offer_snap_allowed_activities') and isinstance(o.offer_snap_allowed_activities, list) and o.offer_snap_allowed_activities is not None:
+                    allowed_acts = o.offer_snap_allowed_activities
+                elif o.offer and isinstance(o.offer.allowed_activities, list):
+                    allowed_acts = o.offer.allowed_activities
+                
+                label = ", ".join(allowed_acts) if allowed_acts else "Toutes activités"
+                if label not in balances_by_activity:
+                    balances_by_activity[label] = None if o.is_unlimited else Decimal(0)
+                if label not in frozen_by_activity:
+                    frozen_by_activity[label] = Decimal(0)
+                
+                if balances_by_activity[label] is not None:
+                    if o.is_unlimited:
+                        balances_by_activity[label] = None
+                    else:
+                        balances_by_activity[label] += Decimal(bal)
+                
+                frozen_by_activity[label] += Decimal(froz_bal)
             
     if return_unfunded_ids:
         return orders_balances, global_balance, success, balances_by_activity, global_frozen, frozen_by_activity, unallocated_booking_ids

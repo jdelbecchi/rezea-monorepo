@@ -971,12 +971,22 @@ export default function AdminShopOrdersPage() {
                                                 <td className="px-3 py-2.5 whitespace-nowrap text-slate-700 hidden sm:table-cell text-left">
                                                     {formatPrice(order)}
                                                 </td>
-                                                <td className="px-3 py-2.5 whitespace-nowrap text-sm text-slate-700 hidden xl:table-cell text-center">
+                                                                                <td className="px-3 py-2.5 whitespace-nowrap text-sm text-slate-700 hidden xl:table-cell text-center">
                                                     <div className="flex flex-col items-center justify-center">
                                                         <span className="leading-none">{order.is_unlimited ? "∞" : formatCredits(order.credits_total)}</span>
                                                         {order.limit_amount && (
                                                             <div className="text-[10px] text-slate-400 font-medium leading-tight">
                                                                 {formatCredits(order.limit_amount)} {order.limit_period}
+                                                            </div>
+                                                        )}
+                                                        {order.activity_credits && Object.keys(order.activity_credits).length > 0 && (
+                                                            <div className="flex flex-col text-[10px] text-slate-400 mt-1 w-full text-left gap-0.5 border-t border-slate-100 pt-1 leading-normal min-w-[90px]">
+                                                                {Object.entries(order.activity_credits).map(([act, val]) => (
+                                                                    <div key={act} className="flex justify-between gap-1.5">
+                                                                        <span className="capitalize font-medium text-slate-500">{act} :</span>
+                                                                        <span className="font-semibold text-slate-600">{Number(val)}</span>
+                                                                    </div>
+                                                                ))}
                                                             </div>
                                                         )}
                                                     </div>
@@ -1003,6 +1013,23 @@ export default function AdminShopOrdersPage() {
                                                                 {order.is_blocked && <span title="Crédits bloqués" className="ml-0.5">🔒</span>}
                                                                 {order.user_is_suspended && <span title="Crédits suspendus">🚫</span>}
                                                             </div>
+                                                            {order.activity_credits && Object.keys(order.activity_credits).length > 0 && (
+                                                                <div className="flex flex-col text-[10px] text-slate-400 mt-1 w-full text-left gap-0.5 border-t border-slate-100 pt-1 leading-normal min-w-[90px]">
+                                                                    {Object.entries(order.activity_credits).map(([act, val]) => {
+                                                                        const used = order.activity_allocations?.[act] || 0;
+                                                                        const init = Number(val) || 0;
+                                                                        const rem = Math.max(0, init - used);
+                                                                        return (
+                                                                            <div key={act} className="flex justify-between gap-1.5">
+                                                                                <span className="capitalize font-medium text-slate-500">{act} :</span>
+                                                                                <span className={`font-semibold ${rem <= 0 ? "text-red-500" : rem <= 2 ? "text-orange-500" : "text-slate-600"}`}>
+                                                                                    {rem}
+                                                                                </span>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </td>

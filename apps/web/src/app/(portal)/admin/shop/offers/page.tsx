@@ -36,6 +36,7 @@ interface OfferForm {
     allowed_activities: string[];
     is_recurring_unlimited: boolean;
     trigger_consumption_percent: string;
+    activity_credits: Record<string, string>;
 }
 
 const emptyForm: OfferForm = {
@@ -65,6 +66,7 @@ const emptyForm: OfferForm = {
     allowed_activities: [],
     is_recurring_unlimited: false,
     trigger_consumption_percent: "",
+    activity_credits: {},
 };
 
 const formatPrice = (cents: number | null | undefined) => {
@@ -169,18 +171,34 @@ function AdminOffersContent() {
 
         setSaving(true);
         try {
+            const has_activity_credits = formData.allowed_activities?.length > 1 && Object.keys(formData.activity_credits || {}).some(k => formData.activity_credits[k]?.trim() !== '');
+            const activity_credits_payload = has_activity_credits
+                ? Object.fromEntries(
+                    Object.entries(formData.activity_credits || {})
+                        .filter(([act, val]) => formData.allowed_activities.includes(act) && val && val.trim() !== '')
+                        .map(([act, val]) => [act, parseFloat(val.toString().replace(',', '.'))])
+                  )
+                : null;
+
+            const computed_classes_included = (formData.is_unlimited)
+                ? null
+                : (activity_credits_payload
+                    ? Object.values(activity_credits_payload).reduce((a, b) => a + b, 0)
+                    : (parseFloat(formData.classes_included) || null));
+
             const payload: any = {
                 offer_code: formData.offer_code,
                 name: formData.name,
                 description: formData.description || null,
-                price_lump_sum_cents: formData.featured_pricing === 'lump_sum' ? Math.round(parseFloat(formData.price_lump_sum.replace(',', '.')) * 100) : null,
-                price_recurring_cents: formData.featured_pricing === 'recurring' ? Math.round(parseFloat(formData.price_recurring.replace(',', '.')) * 100) : null,
-                recurring_count: formData.featured_pricing === 'recurring' ? (formData.period === 'seuil' ? (formData.trigger_consumption_percent.split(',').filter(x => x.trim()).length + 1) : (formData.is_recurring_unlimited ? null : (parseInt(formData.recurring_count) || null))) : null,
-                trigger_consumption_percent: (formData.featured_pricing === 'recurring' && formData.period === 'seuil') ? formData.trigger_consumption_percent : null,
+                price_lump_sum_cents: formData.price_lump_sum ? Math.round(parseFloat(formData.price_lump_sum.replace(',', '.')) * 100) : null,
+                price_recurring_cents: formData.price_recurring ? Math.round(parseFloat(formData.price_recurring.replace(',', '.')) * 100) : null,
+                recurring_count: formData.price_recurring ? (formData.period === 'seuil' ? (formData.trigger_consumption_percent.split(',').filter(x => x.trim()).length + 1) : (formData.is_recurring_unlimited ? null : (parseInt(formData.recurring_count) || null))) : null,
+                trigger_consumption_percent: (formData.price_recurring && formData.period === 'seuil') ? formData.trigger_consumption_percent : null,
                 featured_pricing: formData.featured_pricing,
-                period: formData.period || null,
+                period: formData.price_recurring ? (formData.period || null) : null,
                 is_unlimited: formData.is_unlimited,
-                classes_included: formData.is_unlimited ? null : (parseFloat(formData.classes_included) || null),
+                classes_included: computed_classes_included,
+                activity_credits: activity_credits_payload,
                 limit_amount: formData.limit_amount ? parseFloat(formData.limit_amount) : null,
                 limit_period: formData.limit_amount ? formData.limit_period : null,
                 limit_rollover: formData.limit_amount ? formData.limit_rollover : false,
@@ -252,6 +270,9 @@ function AdminOffersContent() {
             allowed_activities: o.allowed_activities || [],
             is_recurring_unlimited: o.featured_pricing === 'recurring' && o.recurring_count === null,
             trigger_consumption_percent: o.trigger_consumption_percent?.toString() || "",
+            activity_credits: Object.fromEntries(
+                Object.entries((o as any).activity_credits || {}).map(([act, val]) => [act, val?.toString() || ""])
+            ),
         });
         setShowForm(true);
         setModalError(null);
@@ -278,7 +299,11 @@ function AdminOffersContent() {
 
     const filteredOffers = offers.filter(o => {
         const q = searchTerm.toLowerCase();
-        const matchesSearch = o.name.toLowerCase().includes(q) || (o.offer_code || "").toLowerCase().includes(q) || (o.category || "").toLowerCase().includes(q);
+        const matchesActivities = o.allowed_activities?.some(act => act.toLowerCase().includes(q));
+        const matchesSearch = o.name.toLowerCase().includes(q) || 
+                              (o.offer_code || "").toLowerCase().includes(q) || 
+                              (o.category || "").toLowerCase().includes(q) ||
+                              !!matchesActivities;
         const matchesStatus = statusFilter === "all" || (statusFilter === "active" && o.is_active) || (statusFilter === "inactive" && !o.is_active);
         return matchesSearch && matchesStatus;
     }).sort((a,b) => (a.category_display_order || 0) - (b.category_display_order || 0) || (a.display_order || 0) - (b.display_order || 0));
@@ -372,10 +397,10 @@ function AdminOffersContent() {
                             <table className="w-full">
                                 <thead className="bg-slate-100 border-b border-slate-200">
                                     <tr>
-                                        <th className="px-1 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap w-10">N° Rub</th>
-                                        <th className="px-1 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap w-16">Rubrique</th>
-                                        <th className="px-1 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap w-10">N° Offre</th>
-                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Intitulé</th>
+                                        <th className="px-1 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap w-12">N°</th>
+                                        <th className="px-1 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap w-20">Rubrique</th>
+                                        <th className="px-1.5 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Intitulé</th>
+                                        <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Activités</th>
                                         <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Tarif</th>
                                         <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Crédits</th>
                                         <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">Validité</th>
@@ -392,25 +417,17 @@ function AdminOffersContent() {
                                     ) : (
                                         filteredOffers.map((o) => (
                                             <tr key={o.id} className={`hover:bg-slate-50 transition-colors group ${!o.is_active ? 'opacity-50 select-none' : ''}`}>
-                                                <td className="px-1 py-2.5 whitespace-nowrap text-[10px] font-normal text-slate-400 text-center w-10">{o.category_display_order || "-"}</td>
-                                                <td className="px-1 py-2.5 whitespace-nowrap w-16">
+                                                <td className="px-1 py-2.5 whitespace-nowrap text-[11px] font-normal text-slate-400 text-center w-12">
+                                                    {o.category_display_order || 0}.{o.display_order || 0}
+                                                </td>
+                                                <td className="px-1 py-2.5 whitespace-nowrap w-20">
                                                     <span className="px-2 py-0.5 bg-slate-50 text-slate-500 rounded-lg text-xs font-normal border border-slate-100 uppercase tracking-tight">{o.category || "Général"}</span>
                                                 </td>
-                                                <td className="px-1 py-2.5 whitespace-nowrap text-[10px] font-normal text-slate-400 text-center w-10">{o.display_order || "-"}</td>
-                                                <td className="px-3 py-2.5 whitespace-nowrap">
+                                                <td className="px-1.5 py-2.5 whitespace-nowrap">
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-sm font-medium text-slate-900">{o.name}</span>
                                                         {o.is_unique && (
                                                             <span className="w-4 h-4 flex items-center justify-center bg-amber-50 border border-amber-200/60 text-amber-600 rounded-full text-[9px] font-medium" title="Achat unique (1x par utilisateur)">1</span>
-                                                        )}
-                                                        {o.allowed_activities && o.allowed_activities.length > 0 && (
-                                                            <div className="flex flex-wrap gap-1">
-                                                                {o.allowed_activities.map((act) => (
-                                                                    <span key={act} className="px-1.5 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 rounded text-[10px] font-medium uppercase tracking-tight">
-                                                                        {act}
-                                                                    </span>
-                                                                ))}
-                                                            </div>
                                                         )}
                                                         {o.description && (
                                                             <div title={o.description} className="text-slate-400 hover:text-slate-600 transition-colors cursor-help">
@@ -418,6 +435,31 @@ function AdminOffersContent() {
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                                                                 </svg>
                                                             </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-3 py-2.5 whitespace-nowrap">
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {!o.allowed_activities || o.allowed_activities.length === 0 ? (
+                                                            <span className="px-2 py-0.5 bg-slate-50 text-slate-400 border border-slate-100 rounded text-[10px] font-medium uppercase tracking-tight">
+                                                                toutes activités
+                                                            </span>
+                                                        ) : (
+                                                            o.allowed_activities.map((act) => {
+                                                                const packCredits = (o as any).activity_credits?.[act];
+                                                                if (packCredits !== undefined && packCredits !== null) {
+                                                                    return (
+                                                                        <span key={act} className="px-2 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded text-[10px] font-semibold uppercase tracking-tight whitespace-nowrap">
+                                                                            {act} ({packCredits})
+                                                                        </span>
+                                                                    );
+                                                                }
+                                                                return (
+                                                                    <span key={act} className="px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-100 rounded text-[10px] font-medium uppercase tracking-tight whitespace-nowrap">
+                                                                        {act}
+                                                                    </span>
+                                                                );
+                                                            })
                                                         )}
                                                     </div>
                                                 </td>
@@ -450,8 +492,8 @@ function AdminOffersContent() {
                                                     {o.is_unlimited ? (
                                                         <span className="text-purple-600 font-normal text-lg leading-none">∞</span>
                                                     ) : (
-                                                        <span className="text-sm font-normal text-slate-700">
-                                                            {formatCredits(o.classes_included)} <span className="text-[11px] text-slate-400 font-normal">crédits</span>
+                                                        <span className="text-sm font-medium text-slate-600">
+                                                            {formatCredits(o.classes_included)}
                                                         </span>
                                                     )}
                                                 </td>
@@ -550,7 +592,13 @@ function AdminOffersContent() {
                                                 <MultiSelect
                                                     options={tenant.activity_types.map(act => ({ id: act, label: act }))}
                                                     selected={formData.allowed_activities || []}
-                                                    onChange={(acts) => setFormData({ ...formData, allowed_activities: acts })}
+                                                    onChange={(acts) => {
+                                                        const nextCredits = { ...formData.activity_credits };
+                                                        Object.keys(nextCredits).forEach(k => {
+                                                            if (!acts.includes(k)) delete nextCredits[k];
+                                                        });
+                                                        setFormData({ ...formData, allowed_activities: acts, activity_credits: nextCredits });
+                                                    }}
                                                     placeholder="Toutes les activités"
                                                 />
                                             </div>
@@ -639,6 +687,45 @@ function AdminOffersContent() {
                                             </div>
                                         </div>
                                     </div>
+                                    
+                                    {/* Pack multi-activités : configuration des crédits par activité */}
+                                    {formData.allowed_activities && formData.allowed_activities.length > 1 && !formData.is_unlimited && (
+                                        <div className="mt-4 p-4 bg-slate-50/50 border border-slate-100 rounded-2xl space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                                            <div className="flex flex-col">
+                                                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                                    Crédits par type d'activité (Packs)
+                                                </label>
+                                                <span className="text-[10px] text-slate-400 font-normal">
+                                                    Saisissez le nombre de crédits pour chaque activité. Le total global des crédits sera calculé automatiquement.
+                                                </span>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                {formData.allowed_activities.map(act => (
+                                                    <div key={act} className="flex items-center justify-between gap-3 bg-white p-2 border border-slate-200/80 rounded-xl shadow-sm">
+                                                        <span className="text-xs font-semibold text-slate-600 truncate max-w-[120px]">{act}</span>
+                                                        <input
+                                                            type="number"
+                                                            placeholder="0"
+                                                            value={formData.activity_credits[act] || ""}
+                                                            onChange={e => {
+                                                                const newCredits = { ...formData.activity_credits, [act]: e.target.value };
+                                                                // Calculate sum
+                                                                const sum = Object.values(newCredits)
+                                                                    .map(val => parseFloat(val) || 0)
+                                                                    .reduce((a, b) => a + b, 0);
+                                                                setFormData({
+                                                                    ...formData,
+                                                                    activity_credits: newCredits,
+                                                                    classes_included: sum > 0 ? sum.toString() : formData.classes_included
+                                                                });
+                                                            }}
+                                                            className="w-16 px-2 py-1 text-center border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Ligne 2: Validité */}
                                     <div>
@@ -688,7 +775,7 @@ function AdminOffersContent() {
                                                     </div>
                                                     <div>
                                                         <label className="block text-xs text-slate-500 mb-1">Prix TTC (€)</label>
-                                                        <input type="number" step="0.01" value={formData.price_lump_sum} onChange={e => setFormData({...formData, price_lump_sum: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none disabled:bg-gray-100 bg-white ${(showErrors && formData.featured_pricing === 'lump_sum' && !formData.price_lump_sum) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="0.00" disabled={formData.featured_pricing !== 'lump_sum'} />
+                                                        <input type="number" step="0.01" value={formData.price_lump_sum} onChange={e => setFormData({...formData, price_lump_sum: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white ${(showErrors && formData.featured_pricing === 'lump_sum' && !formData.price_lump_sum) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="0.00" />
                                                     </div>
                                                 </div>
 
@@ -705,11 +792,11 @@ function AdminOffersContent() {
                                                         <div className="flex gap-2">
                                                             <div className="flex-1">
                                                                 <label className="block text-xs text-slate-500 mb-1">Montant de l'échéance (€)</label>
-                                                                <input type="number" step="0.01" value={formData.price_recurring} onChange={e => setFormData({...formData, price_recurring: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 outline-none disabled:bg-gray-100 bg-white text-sm ${(showErrors && formData.featured_pricing === 'recurring' && !formData.price_recurring) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="0.00" disabled={formData.featured_pricing !== 'recurring'} />
+                                                                <input type="number" step="0.01" value={formData.price_recurring} onChange={e => setFormData({...formData, price_recurring: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white text-sm ${(showErrors && formData.featured_pricing === 'recurring' && !formData.price_recurring) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="0.00" />
                                                             </div>
                                                             <div className="w-32">
                                                                 <label className="block text-xs text-slate-500 mb-1">Période</label>
-                                                                <select value={formData.period} onChange={e => setFormData({...formData, period: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none disabled:bg-gray-100 bg-white text-sm" disabled={formData.featured_pricing !== 'recurring'}>
+                                                                <select value={formData.period} onChange={e => setFormData({...formData, period: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white text-sm">
                                                                     <option value="mois">mois</option>
                                                                     <option value="semaine">semaine</option>
                                                                     <option value="jour">jour</option>
@@ -726,9 +813,9 @@ function AdminOffersContent() {
                                                             <div>
                                                                 <label className="block text-xs text-slate-500 mb-1">Nombre d'échéances</label>
                                                                 <div className="flex items-center gap-4 w-full">
-                                                                    <input type="number" min="1" disabled={formData.featured_pricing !== 'recurring' || formData.is_recurring_unlimited} value={formData.recurring_count} onChange={e => setFormData({...formData, recurring_count: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 outline-none disabled:bg-gray-100 bg-white ${(showErrors && formData.featured_pricing === 'recurring' && !formData.is_recurring_unlimited && !formData.recurring_count) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="ex: 12" />
+                                                                    <input type="number" min="1" disabled={formData.is_recurring_unlimited} value={formData.recurring_count} onChange={e => setFormData({...formData, recurring_count: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 outline-none disabled:bg-gray-100 bg-white ${(showErrors && formData.featured_pricing === 'recurring' && !formData.is_recurring_unlimited && !formData.recurring_count) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="ex: 12" />
                                                                     <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap">
-                                                                        <input type="checkbox" checked={formData.is_recurring_unlimited} onChange={e => setFormData({...formData, is_recurring_unlimited: e.target.checked})} className="w-4 h-4 text-amber-500 rounded border-gray-300 focus:ring-amber-500" disabled={formData.featured_pricing !== 'recurring'} />
+                                                                        <input type="checkbox" checked={formData.is_recurring_unlimited} onChange={e => setFormData({...formData, is_recurring_unlimited: e.target.checked})} className="w-4 h-4 text-amber-500 rounded border-gray-300 focus:ring-amber-500" />
                                                                         <span className="text-xs font-medium text-slate-700">Illimité</span>
                                                                     </label>
                                                                 </div>

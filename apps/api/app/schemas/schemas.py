@@ -517,7 +517,8 @@ class OfferBase(BaseModel):
     engagement_type: str = "ponctuel"
     allowed_activities: Optional[List[str]] = Field(default_factory=list)
     trigger_consumption_percent: Optional[str] = None
-    
+    activity_credits: Optional[Dict[str, float]] = None
+
 
 
 class OfferCreate(OfferBase):
@@ -552,7 +553,8 @@ class OfferUpdate(BaseModel):
     engagement_type: Optional[str] = None
     allowed_activities: Optional[List[str]] = None
     trigger_consumption_percent: Optional[str] = None
-    
+    activity_credits: Optional[Dict[str, float]] = None
+
 
 
 class OfferResponse(OfferBase):
@@ -746,6 +748,8 @@ class OrderUpdate(BaseModel):
     offer_snap_limit_period: Optional[str] = None
     offer_snap_limit_rollover: Optional[bool] = None
     offer_snap_allowed_activities: Optional[List[str]] = None
+    activity_credits: Optional[Dict[str, float]] = None
+    offer_snap_activity_credits: Optional[Dict[str, float]] = None
 
 
 class InstallmentResponse(BaseModel):
@@ -777,6 +781,8 @@ class OrderResponse(BaseModel):
     is_validity_unlimited: bool = False
     credits_total: Optional[Decimal] = None
     is_unlimited: bool = False
+    activity_credits: Optional[Dict[str, float]] = None
+    offer_snap_activity_credits: Optional[Dict[str, float]] = None
     limit_amount: Optional[Decimal] = None
     limit_period: Optional[str] = None
     limit_rollover: Optional[bool] = False

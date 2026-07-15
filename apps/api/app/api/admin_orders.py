@@ -303,6 +303,7 @@ async def create_order(
         is_validity_unlimited=offer.is_validity_unlimited,
         credits_total=offer.classes_included,
         is_unlimited=offer.is_unlimited,
+        activity_credits=offer.activity_credits,
         price_cents=price,
         price_recurring_cents=offer.price_recurring_cents,
         recurring_count=offer.recurring_count,
@@ -320,7 +321,8 @@ async def create_order(
         offer_snap_validity_days=offer.validity_days,
         offer_snap_validity_unit=offer.validity_unit,
         offer_snap_is_validity_unlimited=offer.is_validity_unlimited,
-        offer_snap_allowed_activities=offer.allowed_activities
+        offer_snap_allowed_activities=offer.allowed_activities,
+        offer_snap_activity_credits=offer.activity_credits
     )
     db.add(order)
     await db.flush()  # Get order.id before generating installments
