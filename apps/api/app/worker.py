@@ -44,6 +44,7 @@ class WorkerSettings:
         EmailService.send_bulk_event_cancellation_task,
         EmailService.send_bulk_event_modification_task,
         EmailService.send_event_promotion_task,
+        EmailService.send_bulk_session_modification_task,
     ]
     
     cron_jobs = [

@@ -506,7 +506,7 @@ function AdminEmailsContent() {
             // 1. Authentification & rôle
             const userData = await api.getCurrentUser();
             if (userData.role !== "owner" && userData.role !== "manager") {
-                router.push(`/${params.slug}/home`);
+                router.push(`/home`);
                 return;
             }
             setUser(userData);
@@ -546,7 +546,7 @@ function AdminEmailsContent() {
         } catch (err: any) {
             console.error(err);
             if (err.response?.status === 401) {
-                router.push(`/${params.slug}`);
+                router.push(`/`);
             }
         }
     }, [searchParams, router, params.slug]);
@@ -3332,3 +3332,4 @@ export default function AdminEmailsPage() {
         </Suspense>
     );
 }
+

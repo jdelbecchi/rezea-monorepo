@@ -115,7 +115,7 @@ function AdminSessionsContent() {
                 }
             } catch (err: any) {
                 if (err.response?.status === 401) {
-                    router.push(`/${params.slug}`);
+                    router.push(`/`);
                 }
             } finally {
                 setLoading(false);
@@ -127,6 +127,8 @@ function AdminSessionsContent() {
     const resetForm = () => {
         setFormData({ ...emptyForm });
         setEditingSession(null);
+        setIsBulkEdit(false);
+        setSelectedSessionIds(new Set());
         setShowForm(false);
         setShowErrors(false);
         setModalError(null);
@@ -191,8 +193,48 @@ function AdminSessionsContent() {
         }
     };
 
+    const [selectedSessionIds, setSelectedSessionIds] = useState<Set<string>>(new Set());
+    const [isBulkEdit, setIsBulkEdit] = useState(false);
+
     const handleEditSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        if (isBulkEdit) {
+            // Dans le cas de l'édition par lot, tous les champs sont optionnels
+            // et nous n'écrirons que ceux qui ont été modifiés/remplis.
+            setSaving(true);
+            try {
+                const patchData: any = {};
+                if (formData.title) patchData.title = formData.title;
+                if (formData.description) patchData.description = formData.description;
+                if (formData.instructor_name) patchData.instructor_name = formData.instructor_name;
+                if (formData.time) patchData.time = formData.time;
+                if (formData.duration_minutes !== "" && formData.duration_minutes !== undefined && formData.duration_minutes !== null) {
+                    patchData.duration_minutes = formData.duration_minutes;
+                }
+                if (formData.max_participants !== "" && formData.max_participants !== undefined && formData.max_participants !== null) {
+                    patchData.max_participants = formData.max_participants;
+                }
+                if (formData.credits_required !== "" && formData.credits_required !== undefined && formData.credits_required !== null) {
+                    patchData.credits_required = formData.credits_required;
+                }
+                if (formData.location !== undefined) patchData.location = formData.location;
+                if (formData.activity_type !== undefined) patchData.activity_type = formData.activity_type;
+                if (formData.allow_waitlist !== undefined) patchData.allow_waitlist = formData.allow_waitlist;
+
+                await api.bulkUpdateSessions(Array.from(selectedSessionIds), patchData);
+                resetForm();
+                await fetchSessions();
+                setMessage({ type: 'success', text: "Séances mises à jour avec succès !" });
+            } catch (err: any) {
+                const apiError = err.response?.data?.detail || err.message || "Une erreur est survenue lors de la modification.";
+                setModalError(typeof apiError === "string" ? apiError : JSON.stringify(apiError));
+            } finally {
+                setSaving(false);
+            }
+            return;
+        }
+
         if (!editingSession) return;
 
         if (!formData.title || !formData.date || !formData.time) {
@@ -231,6 +273,27 @@ function AdminSessionsContent() {
         } finally {
             setSaving(false);
         }
+    };
+
+    const openBulkEdit = () => {
+        setIsBulkEdit(true);
+        setFormData({
+            title: "",
+            description: "",
+            instructor_name: "",
+            date: "",
+            time: "",
+            duration_minutes: "" as any,
+            max_participants: "" as any,
+            credits_required: "" as any,
+            location: "",
+            activity_type: "",
+            allow_waitlist: true,
+            recurrence: "none",
+            recurrence_count: 4,
+        });
+        setEditingSession(null);
+        setShowForm(true);
     };
 
     const openEdit = (s: Session) => {
@@ -407,6 +470,10 @@ function AdminSessionsContent() {
 
     if (loading) return <div className="p-8 text-center text-slate-500 font-medium">Chargement...</div>;
 
+    const hasBookings = isBulkEdit 
+        ? Array.from(selectedSessionIds).some(id => (sessions.find(s => s.id === id)?.current_participants ?? 0) > 0)
+        : (editingSession?.current_participants ?? 0) > 0;
+
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
             <Sidebar user={user} />
@@ -432,6 +499,14 @@ function AdminSessionsContent() {
                                 </svg>
                                 Dupliquer
                             </button>
+                            {selectedSessionIds.size > 0 && (
+                                <button 
+                                    onClick={openBulkEdit}
+                                    className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-medium shadow-sm text-sm active:scale-95 tracking-tight animate-in zoom-in-95 duration-200"
+                                >
+                                    ✏️ Modifier la sélection ({selectedSessionIds.size})
+                                </button>
+                            )}
                             <button 
                                 onClick={() => { setShowForm(true); setEditingSession(null); setFormData({ ...emptyForm }); }}
                                 className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-medium shadow-sm text-sm active:scale-95 tracking-tight"
@@ -534,6 +609,20 @@ function AdminSessionsContent() {
                         <table className="w-full text-left border-collapse">
                                     <thead>
                                         <tr className="bg-slate-100 border-b border-slate-200">
+                                            <th className="px-3 py-3 text-left w-10">
+                                                <input 
+                                                    type="checkbox"
+                                                    className="w-4 h-4 rounded border-gray-300 text-slate-900 focus:ring-slate-500 cursor-pointer"
+                                                    checked={filteredSessions.length > 0 && filteredSessions.every(s => selectedSessionIds.has(s.id))}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setSelectedSessionIds(new Set(filteredSessions.map(s => s.id)));
+                                                        } else {
+                                                            setSelectedSessionIds(new Set());
+                                                        }
+                                                    }}
+                                                />
+                                            </th>
                                             <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest">date</th>
                                             <th className="px-3 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-widest">heure</th>
                                             <th className="px-3 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-widest w-[200px]">intitulé</th>
@@ -553,6 +642,22 @@ function AdminSessionsContent() {
                                             
                                             return (
                                                 <tr key={s.id} className="hover:bg-slate-50 transition-colors group">
+                                                    <td className="px-3 py-2.5 whitespace-nowrap text-sm text-slate-700">
+                                                        <input 
+                                                            type="checkbox"
+                                                            className="w-4 h-4 rounded border-gray-300 text-slate-900 focus:ring-slate-500 cursor-pointer"
+                                                            checked={selectedSessionIds.has(s.id)}
+                                                            onChange={(e) => {
+                                                                const next = new Set(selectedSessionIds);
+                                                                if (e.target.checked) {
+                                                                    next.add(s.id);
+                                                                } else {
+                                                                    next.delete(s.id);
+                                                                }
+                                                                setSelectedSessionIds(next);
+                                                            }}
+                                                        />
+                                                    </td>
                                                     <td className="px-3 py-2.5 whitespace-nowrap text-sm text-slate-700">{format(date, "dd/MM/yyyy")}</td>
                                                     <td className="px-3 py-2.5 whitespace-nowrap text-sm font-medium text-slate-900 text-center">{format(date, "HH:mm")}</td>
                                                     <td className="px-3 py-2.5 whitespace-nowrap max-w-[200px] truncate">
@@ -667,7 +772,11 @@ function AdminSessionsContent() {
                         {/* Header */}
                         <div className="p-10 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
                             <div className="flex items-center gap-3">
-                                {editingSession ? (
+                                {isBulkEdit ? (
+                                    <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                ) : editingSession ? (
                                     <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                     </svg>
@@ -677,7 +786,7 @@ function AdminSessionsContent() {
                                     </svg>
                                 )}
                                 <h3 className="text-[17px] font-semibold text-slate-900 tracking-tight">
-                                    {editingSession ? "Modifier la séance" : "Nouvelle séance"}
+                                    {isBulkEdit ? `Modifier les ${selectedSessionIds.size} séances sélectionnées` : editingSession ? "Modifier la séance" : "Nouvelle séance"}
                                 </h3>
                             </div>
                             <button onClick={resetForm} className="text-gray-400 hover:text-gray-600 transition-colors">
@@ -689,7 +798,17 @@ function AdminSessionsContent() {
 
                         {/* Body */}
                         <div className="flex-1 overflow-y-auto p-10">
-                            <form id="sessionForm" onSubmit={editingSession ? handleEditSubmit : handleSubmit} className="space-y-10">
+                            {isBulkEdit && (
+                                <div className="mb-6 p-4 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl text-xs font-normal flex items-start gap-2.5 animate-in slide-in-from-top-2 duration-300">
+                                    <span className="flex-shrink-0 text-sm">⚠️</span>
+                                    <div className="text-left space-y-1">
+                                        <p className="font-semibold text-amber-950">Avertissement : Modification en lot</p>
+                                        <p>Seuls les champs remplis ci-dessous écraseront les anciennes données des séances sélectionnées. Les champs laissés vides conserveront leurs valeurs initiales.</p>
+                                        <p className="font-semibold text-amber-950">Les participants inscrits à ces séances recevront un e-mail pour les informer de ces changements.</p>
+                                    </div>
+                                </div>
+                            )}
+                            <form id="sessionForm" onSubmit={isBulkEdit || editingSession ? handleEditSubmit : handleSubmit} className="space-y-10">
                                 {modalError && (
                                     <div className="p-4 bg-rose-50 border border-rose-100 text-rose-700 rounded-2xl text-sm font-normal flex items-start gap-2.5 animate-in slide-in-from-top-2 duration-300">
                                         <span className="flex-shrink-0 text-base">⚠️</span>
@@ -700,14 +819,14 @@ function AdminSessionsContent() {
                                 {/* Section: Détails */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-1.5">
-                                        <label className={`text-sm font-medium ${(showErrors && !formData.title) ? 'text-red-500' : 'text-slate-700'}`}>Intitulé *</label>
+                                        <label className={`text-sm font-medium ${(showErrors && !formData.title && !isBulkEdit) ? 'text-red-500' : 'text-slate-700'}`}>Intitulé {!isBulkEdit && "*"}</label>
                                         <input 
                                             type="text" 
-                                            required 
+                                            required={!isBulkEdit} 
                                             value={formData.title} 
                                             onChange={e => setFormData({...formData, title: e.target.value})} 
                                             placeholder="Ex: Yoga Vinyasa, Cross-Training..."
-                                            className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all ${!formData.title && showErrors ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`} 
+                                            className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 bg-white text-sm outline-none transition-all ${!formData.title && showErrors && !isBulkEdit ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`} 
                                         />
                                     </div>
                                     <div className="space-y-1.5">
@@ -727,8 +846,10 @@ function AdminSessionsContent() {
                                         <label className="text-sm font-medium text-slate-700">Type d'activité</label>
                                         <select 
                                             value={formData.activity_type} 
+                                            disabled={hasBookings}
+                                            title={hasBookings ? "Impossible de modifier le type d'activité car il y a des inscrits" : undefined}
                                             onChange={e => setFormData({...formData, activity_type: e.target.value})} 
-                                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300 appearance-none cursor-pointer"
+                                            className={`w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all appearance-none ${hasBookings ? 'bg-gray-100 cursor-not-allowed opacity-75' : 'hover:border-gray-300 cursor-pointer'}`}
                                         >
                                             <option value="">Aucun type d'activité</option>
                                             {(tenant?.activity_types || []).map((act: string) => (
@@ -750,31 +871,33 @@ function AdminSessionsContent() {
 
                                 {/* Section: Planification */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    {!isBulkEdit && (
+                                        <div className="space-y-1.5">
+                                            <label className={`text-sm font-medium ${(showErrors && !formData.date) ? 'text-red-500' : 'text-slate-700'}`}>Date *</label>
+                                            <input 
+                                                type="date" 
+                                                required 
+                                                value={formData.date} 
+                                                onChange={e => setFormData({...formData, date: e.target.value})} 
+                                                className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all ${!formData.date && showErrors ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`} 
+                                            />
+                                        </div>
+                                    )}
                                     <div className="space-y-1.5">
-                                        <label className={`text-sm font-medium ${(showErrors && !formData.date) ? 'text-red-500' : 'text-slate-700'}`}>Date *</label>
-                                        <input 
-                                            type="date" 
-                                            required 
-                                            value={formData.date} 
-                                            onChange={e => setFormData({...formData, date: e.target.value})} 
-                                            className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all ${!formData.date && showErrors ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`} 
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className={`text-sm font-medium ${(showErrors && !formData.time) ? 'text-red-500' : 'text-slate-700'}`}>Heure *</label>
+                                        <label className={`text-sm font-medium ${(showErrors && !formData.time && !isBulkEdit) ? 'text-red-500' : 'text-slate-700'}`}>Heure {!isBulkEdit && "*"}</label>
                                         <input 
                                             type="time" 
-                                            required 
+                                            required={!isBulkEdit} 
                                             value={formData.time} 
                                             onChange={e => setFormData({...formData, time: e.target.value})} 
-                                            className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all ${!formData.time && showErrors ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`} 
+                                            className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all ${!formData.time && showErrors && !isBulkEdit ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`} 
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-sm font-medium text-slate-700">Durée *</label>
+                                        <label className="text-sm font-medium text-slate-700">Durée {!isBulkEdit && "*"}</label>
                                         <input 
                                             type="time" 
-                                            required 
+                                            required={!isBulkEdit} 
                                             value={formData.duration_minutes ? `${Math.floor(formData.duration_minutes / 60).toString().padStart(2, '0')}:${(formData.duration_minutes % 60).toString().padStart(2, '0')}` : ""}
                                             onChange={e => {
                                                 const val = e.target.value;
@@ -805,11 +928,11 @@ function AdminSessionsContent() {
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-1.5">
-                                                <label className="text-sm font-medium text-slate-700">Capacité *</label>
+                                                <label className="text-sm font-medium text-slate-700">Capacité {!isBulkEdit && "*"}</label>
                                                 <input 
                                                     type="number" 
                                                     min="1" 
-                                                    required 
+                                                    required={!isBulkEdit} 
                                                     value={formData.max_participants} 
                                                     onChange={e => setFormData({...formData, max_participants: e.target.value === "" ? "" : parseInt(e.target.value)})} 
                                                     className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" 
@@ -817,15 +940,17 @@ function AdminSessionsContent() {
                                                 />
                                             </div>
                                             <div className="space-y-1.5">
-                                                <label className="text-sm font-medium text-slate-700">Crédits *</label>
+                                                <label className="text-sm font-medium text-slate-700">Crédits {!isBulkEdit && "*"}</label>
                                                 <input 
                                                     type="number" 
                                                     min="0" 
                                                     step="any" 
-                                                    required 
+                                                    required={!isBulkEdit} 
+                                                    disabled={hasBookings}
+                                                    title={hasBookings ? "Impossible de modifier les crédits car il y a des inscrits" : undefined}
                                                     value={formData.credits_required} 
                                                     onChange={e => setFormData({...formData, credits_required: e.target.value === "" ? "" : parseFloat(e.target.value)})} 
-                                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300" 
+                                                    className={`w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all ${hasBookings ? 'bg-gray-100 cursor-not-allowed opacity-75' : 'hover:border-gray-300'}`} 
                                                     placeholder="1"
                                                 />
                                             </div>
@@ -931,7 +1056,7 @@ function AdminSessionsContent() {
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>
                                 )}
-                                {saving ? "Enregistrement..." : editingSession ? "Enregistrer les modifications" : "Créer la séance"}
+                                {saving ? "Enregistrement..." : isBulkEdit ? `Enregistrer les modifications (${selectedSessionIds.size} séances)` : editingSession ? "Enregistrer les modifications" : "Créer la séance"}
                             </button>
                         </div>
                     </div>
@@ -1026,3 +1151,4 @@ export default function AdminSessionsPage() {
         </Suspense>
     );
 }
+

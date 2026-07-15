@@ -16,12 +16,12 @@ export default function ContactsPage() {
             try {
                 const userData = await api.getCurrentUser();
                 if (userData.role === "user") {
-                    router.push(`/${params.slug}/home`);
+                    router.push(`/home`);
                     return;
                 }
                 setUser(userData);
             } catch {
-                router.push(`/${params.slug}`);
+                router.push(`/`);
             } finally {
                 setLoading(false);
             }
@@ -58,3 +58,4 @@ export default function ContactsPage() {
         </div>
     );
 }
+

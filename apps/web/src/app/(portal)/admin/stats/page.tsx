@@ -33,7 +33,7 @@ export default function AdminStatsPage() {
                 setUser(userData);
             } catch (err: any) {
                 if (err.response?.status === 401) {
-                    router.push(`/${params.slug}`);
+                    router.push(`/`);
                 }
             } finally {
                 setLoading(false);
@@ -176,3 +176,4 @@ export default function AdminStatsPage() {
         </div>
     );
 }
+

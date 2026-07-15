@@ -407,6 +407,9 @@ export interface Offer {
   period: string | null;
   classes_included: number | null;
   is_unlimited: boolean;
+  limit_amount?: number;
+  limit_period?: string;
+  limit_rollover?: boolean;
   validity_days: number | null;
   validity_unit: 'days' | 'weeks' | 'months';
   deadline_date: string | null;
@@ -417,6 +420,7 @@ export interface Offer {
   category_display_order?: number;
   engagement_type?: 'essai' | 'regulier' | 'ponctuel';
   allowed_activities?: string[];
+  trigger_consumption_percent?: string;
   created_at: string;
   updated_at: string;
 }
@@ -431,6 +435,9 @@ export interface OrderItem {
   is_validity_unlimited: boolean;
   credits_total: number | null;
   is_unlimited: boolean;
+  limit_amount?: number;
+  limit_period?: string;
+  limit_rollover?: boolean;
   price_cents: number;
   payment_status: PaymentStatus;
   comment: string | null;
@@ -468,6 +475,7 @@ export interface OrderItem {
   allowed_activities?: string[];
   invoice_number?: string | null;
   is_blocked?: boolean | null;
+  trigger_consumption_percent?: number | null;
 }
 
 export interface InstallmentItem {
@@ -479,7 +487,9 @@ export interface InstallmentItem {
   is_error: boolean;
   marked_error_at: string | null;
   resolved_at: string | null;
+  sequence_number?: number | null;
   created_at: string;
+  trigger_consumption_percent?: number | null;
 }
 
 export interface AdminBookingItem {
@@ -846,6 +856,14 @@ export const api = {
 
   updateSession: async (sessionId: string, sessionData: Partial<Session>) => {
     const response = await apiClient.patch(`/api/planning/${sessionId}`, sessionData);
+    return response.data;
+  },
+
+  bulkUpdateSessions: async (sessionIds: string[], sessionData: Partial<Session> & { time?: string; duration_minutes?: number }) => {
+    const response = await apiClient.patch('/api/planning/bulk-update', {
+      session_ids: sessionIds,
+      ...sessionData
+    });
     return response.data;
   },
 

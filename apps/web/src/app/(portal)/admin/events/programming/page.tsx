@@ -132,7 +132,7 @@ export default function AdminEventsProgrammingPage() {
         } catch (err: any) {
             console.error(err);
             if (err.response?.status === 401) {
-                router.push(`/${params.slug}`);
+                router.push(`/`);
             }
         } finally {
             setLoading(false);
@@ -928,3 +928,4 @@ export default function AdminEventsProgrammingPage() {
         </div>
     );
 }
+

@@ -58,7 +58,7 @@ class EmailService:
                 from_name=tenant.name
             )
         except Exception as e:
-            logger.error("❌ Erreur lors de la génération/envoi de l'email", error=str(e), template=template_name)
+            logger.error("Erreur lors de la generation/envoi de l'email", error=str(e), template=template_name)
             return False
 
     @classmethod
@@ -279,7 +279,74 @@ class EmailService:
             context=context
         )
 
+    @classmethod
+    async def send_installment_reminder(cls, user: User, tenant: Tenant, order: Order, installment: any):
+        """
+        Envoie un e-mail à l'utilisateur pour l'informer que son seuil de consommation va être atteint
+        et qu'il doit régler la prochaine échéance.
+        """
+        formatted_amount = f"{(installment.amount_cents / 100):.2f}€"
+        due_date_str = installment.due_date.strftime("%d/%m/%Y") if installment.due_date else "Non définie"
+        trigger_date_str = installment.due_date.strftime("%d/%m/%Y") if installment.due_date else "Non définie"
+
+        context = {
+            "first_name": user.first_name,
+            "offer_name": order.offer_snap_name or "Formule",
+            "threshold": installment.trigger_consumption_percent,
+            "sequence_number": installment.sequence_number,
+            "amount": formatted_amount,
+            "due_date": due_date_str,
+            "trigger_course_date": trigger_date_str,
+            "payment_link": f"{settings.FRONTEND_URL}/{tenant.slug}/profile"
+        }
+
+        return await cls._render_and_send(
+            to_email=user.email,
+            to_name=f"{user.first_name} {user.last_name}",
+            subject=f"Prochaine échéance de paiement - Seuil {installment.trigger_consumption_percent}%",
+            template_name="installment_reminder.html",
+            tenant=tenant,
+            context=context
+        )
+
+    @classmethod
+    async def send_bulk_session_modification(cls, users: list[User], tenant: Tenant, session: any):
+        """
+        Envoie un email de modification à une liste d'utilisateurs pour une séance.
+        """
+        for user in users:
+            context = {
+                "first_name": user.first_name,
+                "session_title": session.title,
+                "session_date": session.start_time.strftime("%d/%m/%Y") if hasattr(session.start_time, "strftime") else "",
+                "session_time": session.start_time.strftime("%H:%M") if hasattr(session.start_time, "strftime") else "",
+                "location": session.location
+            }
+            await cls._render_and_send(
+                to_email=user.email,
+                to_name=f"{user.first_name} {user.last_name}",
+                subject=f"Modification : {session.title}",
+                template_name="session_modification.html",
+                tenant=tenant,
+                context=context
+            )
+
     # --- ARQ Tasks Wrappers ---
+
+    @classmethod
+    async def send_bulk_session_modification_task(cls, ctx, user_ids: list[str], tenant_id: str, session_id: str):
+        db_factory = ctx['db_factory']
+        from sqlalchemy import select
+        from app.models.models import Session
+        async with db_factory() as db:
+            users_res = await db.execute(select(User).where(User.id.in_(user_ids)))
+            users = list(users_res.scalars().all())
+            tenant = (await db.execute(select(Tenant).where(Tenant.id == tenant_id))).scalar_one_or_none()
+            session = (await db.execute(select(Session).where(Session.id == session_id))).scalar_one_or_none()
+            if users and tenant and session:
+                success = await cls.send_bulk_session_modification(users, tenant, session)
+                if not success:
+                    raise RuntimeError("Failed to send bulk session modification email")
 
     @classmethod
     async def send_order_receipt_task(cls, ctx, user_id: str, tenant_id: str, order_id: str, offer_name: str):

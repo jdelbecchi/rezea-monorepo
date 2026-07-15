@@ -1,0 +1,31 @@
+{% extends "base_email.html" %}
+
+{% block content %}
+<h2 style="font-weight: 600; margin-top: 0; font-size: 20px; color: #0f172a; margin-bottom: 10px;">Modification de votre séance</h2>
+<div style="width: 60px; border-top: 1px solid #e2e8f0; height: 0; line-height: 0; font-size: 0; margin: 12px 0 20px 0;"></div>
+<p>Bonjour {{ first_name }},</p>
+<p>Nous vous informons que les détails de la séance suivante chez <strong>{{ tenant_name }}</strong> ont été modifiés :</p>
+
+<div style="background-color: #f8fafc; border-radius: 12px; padding: 25px; margin: 20px 0; border-left: 4px solid {{ primary_color or '#0f172a' }};">
+    <h3 style="font-weight: 600; margin: 0 0 10px 0; font-size: 18px; color: #0f172a;">{{ session_title }}</h3>
+    <p style="margin: 5px 0; font-size: 14px; color: #475569;">
+        Nouveau créneau :<br>
+        📅 <strong>{{ session_date }}</strong> à <strong>{{ session_time }}</strong>
+    </p>
+    {% if location %}
+    <p style="margin: 5px 0; font-size: 14px; color: #475569;">
+        📍 Lieu : <strong>{{ location }}</strong>
+    </p>
+    {% endif %}
+</div>
+
+<p>Si ce changement ne vous convient plus, vous pouvez gérer votre inscription depuis votre espace.</p>
+
+<div style="border-top: 1px solid #f1f5f9; height: 0; line-height: 0; font-size: 0; margin: 25px 0;"></div>
+
+<p style="text-align: center; margin-top: 25px; margin-bottom: 25px;">
+    <a href="{{ dashboard_url }}" style="display: inline-block; background-color: #0f172a; color: #ffffff !important; font-family: 'Livvic', sans-serif; font-size: 14px; font-weight: 500; text-decoration: none; padding: 10px 22px; border-radius: 6px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); text-align: center;">Gérer mon inscription</a>
+</p>
+
+<p style="margin-top: 40px;">Merci de votre compréhension,<br>L'équipe {{ tenant_name }}</p>
+{% endblock %}

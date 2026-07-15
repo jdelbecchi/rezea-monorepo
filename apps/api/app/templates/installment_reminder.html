@@ -1,0 +1,25 @@
+{% extends "base_email.html" %}
+
+{% block content %}
+<h2 style="font-weight: 600; margin-top: 0; font-size: 20px; color: #0f172a; margin-bottom: 10px;">Prochaine échéance de paiement à venir</h2>
+<div style="width: 60px; border-top: 1px solid #e2e8f0; height: 0; line-height: 0; font-size: 0; margin: 12px 0 20px 0;"></div>
+<p>Bonjour {{ first_name }},</p>
+<p>Nous vous informons qu'avec vos réservations actuelles, vous allez atteindre le seuil de consommation de <strong>{{ threshold }}%</strong> de votre formule <strong>{{ offer_name }}</strong>.</p>
+
+<div style="background-color: #f8fafc; border-radius: 12px; padding: 20px; margin: 20px 0;">
+    <p style="margin: 0; font-size: 14px; color: #64748b;">Détails de l'échéance :</p>
+    <p style="margin: 5px 0; font-size: 16px; font-weight: 600;">{{ offer_name }} (Échéance {{ sequence_number }})</p>
+    <p style="margin: 5px 0; font-size: 14px; font-weight: 500; color: #475569;">
+        🏷️ Montant : <strong>{{ amount }}</strong>
+    </p>
+    <p style="margin: 5px 0; font-size: 14px; font-weight: 500; color: #475569;">
+        📅 Merci de régler avant le : <strong>{{ trigger_course_date }}</strong> (date de votre séance)
+    </p>
+</div>
+
+<p>Pour payer votre échéance, vous pouvez utiliser le lien ci-dessous :</p>
+<p style="text-align: center; margin-top: 25px; margin-bottom: 25px;">
+    <a href="{{ payment_link }}" style="display: inline-block; background-color: {{ primary_color or '#0f172a' }}; color: #ffffff !important; font-family: 'Livvic', sans-serif; font-size: 14px; font-weight: 500; text-decoration: none; padding: 10px 22px; border-radius: 6px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); text-align: center;">Régler mon échéance</a>
+</p>
+<p style="margin-top: 40px;">À très vite,<br>L'équipe {{ tenant_name }}</p>
+{% endblock %}

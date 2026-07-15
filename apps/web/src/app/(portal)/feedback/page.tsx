@@ -116,7 +116,7 @@ function PublicFeedbackContent() {
                     <h2 className="text-lg font-bold text-slate-800">Oups ! Une erreur est survenue</h2>
                     <p className="text-slate-500 text-sm leading-relaxed">{error}</p>
                     <button
-                        onClick={() => router.push(`/${params.slug}`)}
+                        onClick={() => router.push(`/`)}
                         className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all"
                     >
                         Retourner à l&apos;accueil
@@ -139,7 +139,7 @@ function PublicFeedbackContent() {
                     </div>
                     <div className="pt-2">
                         <button
-                            onClick={() => router.push(`/${params.slug}`)}
+                            onClick={() => router.push(`/`)}
                             className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm transition-all shadow-md shadow-indigo-100"
                         >
                             Accéder à mon espace membre
@@ -235,3 +235,4 @@ export default function PublicFeedbackPage() {
         </Suspense>
     );
 }
+

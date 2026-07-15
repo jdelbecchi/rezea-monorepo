@@ -211,7 +211,7 @@ export default function AdminDashboardPage() {
             } catch (err: any) {
                 console.error("Critical error in dashboard fetch:", err);
                 if (err.response?.status === 401) {
-                    router.push(`/${params.slug}`);
+                    router.push(`/`);
                 }
             } finally {
                 setLoading(false);
@@ -1879,3 +1879,4 @@ export default function AdminDashboardPage() {
         </div>
     );
 }
+

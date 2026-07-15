@@ -191,7 +191,7 @@ function AdminUsersPageContent() {
             // 1. Get user and check permissions BEFORE other data
             const userData = await api.getCurrentUser();
             if (userData.role !== "owner" && userData.role !== "manager") {
-                router.push(`/${params.slug}/home`);
+                router.push(`/home`);
                 return;
             }
             setCurrentUser(userData);
@@ -201,7 +201,7 @@ function AdminUsersPageContent() {
         } catch (err: any) {
             console.error(err);
             if (err.response?.status === 401) {
-                router.push(`/${params.slug}`);
+                router.push(`/`);
             }
         } finally {
             setLoading(false);
@@ -1365,3 +1365,4 @@ export default function AdminUsersPage() {
         </Suspense>
     );
 }
+

@@ -7,8 +7,9 @@ from sqlalchemy import select, and_
 
 from sqlalchemy.orm import selectinload, joinedload
 from app.db.session import get_db
-from app.models.models import Session, Booking, BookingStatus, CreditAccount, CreditTransaction, CreditTransactionType
-from app.schemas.schemas import SessionResponse, SessionCreate, SessionUpdate, SessionDuplicateRequest
+from app.models.models import Session, CreditAccount, CreditTransaction, Tenant, User, Booking, BookingStatus, CreditTransactionType
+from app.schemas.schemas import SessionResponse, SessionCreate, SessionUpdate, SessionDuplicateRequest, SessionBulkUpdate
+from app.services.email_service import EmailService
 from uuid import UUID
 
 router = APIRouter()
@@ -141,6 +142,7 @@ async def create_session(
     return SessionResponse.model_validate(new_session)
 
 
+
 @router.patch("/{session_id}", response_model=SessionResponse)
 async def update_session(
     session_id: UUID,
@@ -156,12 +158,14 @@ async def update_session(
     tenant_id = request.state.tenant_id
     
     result = await db.execute(
-        select(Session).where(
+        select(Session)
+        .where(
             and_(
                 Session.id == session_id,
                 Session.tenant_id == tenant_id
             )
         )
+        .options(selectinload(Session.bookings).joinedload(Booking.user))
     )
     session = result.scalar_one_or_none()
     
@@ -174,16 +178,22 @@ async def update_session(
     # Mise à jour des champs
     update_dict = update_data.model_dump(exclude_unset=True)
     
-    # Sécurité : Bloquer la modification du type d'activité s'il y a déjà des inscriptions
-    if "activity_type" in update_dict and update_dict["activity_type"] != session.activity_type:
-        from app.models.models import Booking
+    # Sécurité : Bloquer la modification du type d'activité ou des crédits s'il y a déjà des inscriptions
+    if ("activity_type" in update_dict and update_dict["activity_type"] != session.activity_type) or \
+       ("credits_required" in update_dict and update_dict["credits_required"] != session.credits_required):
+        from app.models.models import Booking as ModelBooking
         from sqlalchemy import func
         bookings_count_res = await db.execute(
-            select(func.count(Booking.id)).where(
-                Booking.session_id == session.id
+            select(func.count(ModelBooking.id)).where(
+                ModelBooking.session_id == session.id
             )
         )
         if bookings_count_res.scalar() > 0:
+            if "credits_required" in update_dict and update_dict["credits_required"] != session.credits_required:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Impossible de modifier les crédits de cette séance car elle comporte déjà des inscriptions."
+                )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Impossible de modifier le type d'activité de cette séance car elle comporte déjà des inscriptions. Veuillez d'abord gérer ces inscriptions."
@@ -194,13 +204,198 @@ async def update_session(
     if update_dict.get('end_time') and update_dict['end_time'].tzinfo:
         update_dict['end_time'] = update_dict['end_time'].replace(tzinfo=None)
         
+    # Vérifier s'il y a des changements critiques qui nécessitent d'envoyer un email
+    critical_fields = ["start_time", "end_time", "location", "title"]
+    has_critical_changes = False
+    
     for field, value in update_dict.items():
+        if field in critical_fields:
+            current_val = getattr(session, field)
+            if current_val != value:
+                has_critical_changes = True
         setattr(session, field, value)
     
     await db.commit()
     await db.refresh(session)
+
+    # Si la séance a des inscriptions actives et qu'il y a eu des modifications critiques, notifier par email
+    if has_critical_changes:
+        active_bookings = [
+            b for b in session.bookings
+            if b.status in [BookingStatus.CONFIRMED, BookingStatus.PENDING] and b.user
+        ]
+        if active_bookings:
+            tenant_res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+            tenant = tenant_res.scalar_one_or_none()
+            if tenant:
+                # Utiliser arq ou envoyer directement (ici l'envoi en tâche de fond est préférable)
+                from app.core.redis import get_redis
+                try:
+                    redis = await get_redis()
+                    user_ids = [str(b.user_id) for b in active_bookings]
+                    await redis.enqueue_job(
+                        "send_bulk_session_modification_task",
+                        user_ids,
+                        str(tenant_id),
+                        str(session.id)
+                    )
+                except Exception:
+                    # Fallback direct si redis n'est pas dispo
+                    users = [b.user for b in active_bookings]
+                    await EmailService.send_bulk_session_modification(users, tenant, session)
     
     return SessionResponse.model_validate(session)
+
+
+@router.patch("/bulk-update", response_model=List[SessionResponse])
+async def bulk_update_sessions(
+    update_data: SessionBulkUpdate,
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Met à jour plusieurs séances à la fois
+    """
+    tenant_id = request.state.tenant_id
+    
+    # 1. Charger les séances
+    result = await db.execute(
+        select(Session)
+        .where(
+            and_(
+                Session.id.in_(update_data.session_ids),
+                Session.tenant_id == tenant_id
+            )
+        )
+        .options(selectinload(Session.bookings).joinedload(Booking.user))
+    )
+    sessions = list(result.scalars().all())
+    
+    if len(sessions) != len(update_data.session_ids):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Certaines séances n'ont pas été trouvées ou ne vous appartiennent pas"
+        )
+    
+    # 2. Vérifier la modification d'activité ou de crédits si des réservations existent
+    if update_data.activity_type is not None or update_data.credits_required is not None:
+        for session in sessions:
+            if (update_data.activity_type is not None and update_data.activity_type != session.activity_type) or \
+               (update_data.credits_required is not None and update_data.credits_required != session.credits_required):
+                from app.models.models import Booking as ModelBooking
+                from sqlalchemy import func
+                bookings_res = await db.execute(
+                    select(func.count(ModelBooking.id)).where(
+                        ModelBooking.session_id == session.id
+                    )
+                )
+                if bookings_res.scalar() > 0:
+                    if update_data.credits_required is not None and update_data.credits_required != session.credits_required:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"Impossible de modifier les crédits car la séance '{session.title}' a déjà des inscriptions."
+                        )
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Impossible de modifier le type d'activité car la séance '{session.title}' a déjà des inscriptions."
+                    )
+                    
+    # 3. Préparer les modifications
+    update_dict = update_data.model_dump(exclude_unset=True)
+    update_dict.pop("session_ids", None)
+    
+    # Enregistrer les séances modifiées et les utilisateurs à notifier
+    modified_sessions = []
+    
+    for session in sessions:
+        has_critical_changes = False
+        
+        # Gestion des horaires (heure et durée)
+        if "time" in update_dict or "duration_minutes" in update_dict:
+            # Récupérer l'heure de début actuelle
+            current_start = session.start_time
+            current_end = session.end_time
+            
+            # Recalculer l'heure de début
+            if "time" in update_dict and update_dict["time"]:
+                try:
+                    h, m = map(int, update_dict["time"].split(":"))
+                    new_start = current_start.replace(hour=h, minute=m, second=0, microsecond=0)
+                    if new_start != current_start:
+                        session.start_time = new_start
+                        has_critical_changes = True
+                except ValueError:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Format d'heure invalide (doit être HH:MM)"
+                    )
+            
+            # Recalculer l'heure de fin à partir de la durée
+            duration = update_dict.get("duration_minutes")
+            if duration is not None:
+                new_end = session.start_time + timedelta(minutes=duration)
+                if new_end != current_end:
+                    session.end_time = new_end
+                    has_critical_changes = True
+            else:
+                # Si pas de nouvelle durée mais changement d'heure, conserver la durée initiale
+                old_duration_ms = current_end - current_start
+                session.end_time = session.start_time + old_duration_ms
+
+        # Appliquer les autres champs
+        for field, value in update_dict.items():
+            if field in ["time", "duration_minutes"]:
+                continue
+            
+            if field in ["title", "description", "instructor_name", "max_participants", "credits_required", "location", "allow_waitlist", "activity_type"]:
+                current_val = getattr(session, field)
+                if current_val != value:
+                    if field in ["title", "location"]:
+                        has_critical_changes = True
+                    setattr(session, field, value)
+        
+        modified_sessions.append((session, has_critical_changes))
+        
+    await db.commit()
+    
+    # 4. Envoyer les notifications
+    tenant_res = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = tenant_res.scalar_one_or_none()
+    
+    if tenant:
+        from app.core.redis import get_redis
+        redis = None
+        try:
+            redis = await get_redis()
+        except Exception:
+            pass
+            
+        for session, has_critical_changes in modified_sessions:
+            await db.refresh(session)
+            if has_critical_changes:
+                active_bookings = [
+                    b for b in session.bookings
+                    if b.status in [BookingStatus.CONFIRMED, BookingStatus.PENDING] and b.user
+                ]
+                if active_bookings:
+                    user_ids = [str(b.user_id) for b in active_bookings]
+                    if redis:
+                        try:
+                            await redis.enqueue_job(
+                                "send_bulk_session_modification_task",
+                                user_ids,
+                                str(tenant_id),
+                                str(session.id)
+                            )
+                            continue
+                        except Exception:
+                            pass
+                    
+                    # Fallback direct
+                    users = [b.user for b in active_bookings]
+                    await EmailService.send_bulk_session_modification(users, tenant, session)
+                    
+    return [SessionResponse.model_validate(s) for s, _ in modified_sessions]
 
 
 @router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)

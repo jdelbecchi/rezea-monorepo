@@ -138,20 +138,22 @@ export default function AdminShopOrdersPage() {
         featured_pricing: "lump_sum" as "lump_sum" | "recurring",
         price_recurring_cents: "",
         recurring_count: "",
+        is_recurring_unlimited: false,
         period: "",
         credits_total: "",
         is_unlimited: false,
         limit_amount: "",
         limit_period: "mois",
         limit_rollover: false,
-        status: "",
-        payment_status: "",
         comment: "",
         user_note: "",
         offer_snap_code: "",
         offer_snap_name: "",
         is_blocked: false,
-        allowed_activities: [] as string[]
+        allowed_activities: [] as string[],
+        trigger_consumption_percent: "",
+        status: "",
+        payment_status: "",
     });
 
     const [modalError, setModalError] = useState<string | null>(null);
@@ -290,7 +292,8 @@ export default function AdminShopOrdersPage() {
             price_cents: (order.price_cents / 100).toString(),
             featured_pricing: order.offer_featured_pricing || "lump_sum",
             price_recurring_cents: order.offer_price_recurring_cents ? (order.offer_price_recurring_cents / 100).toString() : (order.price_cents / 100).toString(),
-            recurring_count: order.offer_recurring_count?.toString() || "1",
+            recurring_count: order.offer_recurring_count !== null && order.offer_recurring_count !== undefined ? order.offer_recurring_count.toString() : "",
+            is_recurring_unlimited: order.offer_featured_pricing === "recurring" && (order.offer_recurring_count === null || order.offer_recurring_count === undefined),
             period: order.offer_period || "/mois",
             credits_total: order.credits_total ? Number(order.credits_total).toString() : "",
             is_unlimited: order.is_unlimited,
@@ -304,7 +307,8 @@ export default function AdminShopOrdersPage() {
             offer_snap_code: order.offer_snap_code || order.offer_code || "",
             offer_snap_name: order.offer_snap_name || order.offer_name || "",
             is_blocked: order.is_blocked === true || (order.is_blocked === null && ["expiree", "en_pause", "resiliee"].includes(order.status)),
-            allowed_activities: order.allowed_activities || []
+            allowed_activities: order.allowed_activities || [],
+            trigger_consumption_percent: (order as any).trigger_consumption_percent?.toString() || ""
         });
         const isStd = ["active", "termine", "expiree", "en_pause", "resiliee", "", null, undefined].includes(order.status);
         setShowCustomStatus(!isStd);
@@ -317,7 +321,7 @@ export default function AdminShopOrdersPage() {
 
         // Validation
         const isLumpSum = editForm.featured_pricing === "lump_sum";
-        const hasPrice = isLumpSum ? !!editForm.price_cents : (!!editForm.price_recurring_cents && !!editForm.recurring_count && !!editForm.period);
+        const hasPrice = isLumpSum ? !!editForm.price_cents : (!!editForm.price_recurring_cents && (editForm.is_recurring_unlimited || !!editForm.recurring_count) && !!editForm.period);
         const hasEndDate = editOrder.is_validity_unlimited || !!editForm.end_date;
         const hasCredits = editForm.is_unlimited || !!editForm.credits_total;
 
@@ -344,7 +348,8 @@ export default function AdminShopOrdersPage() {
                 price_recurring_cents: !isLumpSum 
                     ? (isNaN(parsedPriceRecurringCents) ? 0 : Math.round(parsedPriceRecurringCents * 100)) 
                     : null,
-                recurring_count: !isLumpSum ? (parseInt(editForm.recurring_count) || 0) : null,
+                recurring_count: !isLumpSum ? (editForm.period === '/seuil' || editForm.period === 'seuil' ? (editForm.trigger_consumption_percent.split(',').filter(x => x.trim()).length + 1) : (editForm.is_recurring_unlimited ? null : (parseInt(editForm.recurring_count) || 0))) : null,
+                trigger_consumption_percent: (!isLumpSum && (editForm.period === '/seuil' || editForm.period === 'seuil')) ? editForm.trigger_consumption_percent : null,
                 period: !isLumpSum ? editForm.period : null,
                 credits_total: editForm.is_unlimited ? null : (parseFloat(editForm.credits_total) || 0),
                 is_unlimited: editForm.is_unlimited,
@@ -1307,7 +1312,7 @@ export default function AdminShopOrdersPage() {
                                     ) : (
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
                                             <div className="space-y-1.5">
-                                                <label className="block text-xs font-medium text-slate-500 ml-1">Prix / échéance (€)</label>
+                                                <label className="block text-xs font-medium text-slate-500 ml-1">Montant de l'échéance (€)</label>
                                                 <div className="relative">
                                                     <input
                                                         type="number"
@@ -1327,22 +1332,49 @@ export default function AdminShopOrdersPage() {
                                                     onChange={(e) => setEditForm({ ...editForm, period: e.target.value })}
                                                     className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all ${showErrors && !editForm.period ? "border-red-300 ring-2 ring-red-50" : "border-gray-200 hover:border-gray-300"}`}
                                                 >
-                                                    <option value="/mois">/ mois</option>
-                                                    <option value="/trimestre">/ trimestre</option>
-                                                    <option value="/an">/ an</option>
-                                                    <option value="/séance">/ séance</option>
+                                                    <option value="/semaine">semaine</option>
+                                                    <option value="/mois">mois</option>
+                                                    <option value="/bimestre">bimestre</option>
+                                                    <option value="/trimestre">trimestre</option>
+                                                    <option value="/an">an</option>
+                                                    <option value="/seuil">seuil de consommation</option>
                                                 </select>
                                             </div>
-                                            <div className="space-y-1.5">
-                                                <label className="block text-xs font-medium text-slate-500 ml-1">Nb échéances</label>
-                                                <input
-                                                    type="number"
-                                                    value={editForm.recurring_count}
-                                                    onChange={(e) => setEditForm({ ...editForm, recurring_count: e.target.value })}
-                                                    className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all ${showErrors && !editForm.recurring_count ? "border-red-300 ring-2 ring-red-50" : "border-gray-200 hover:border-gray-300"}`}
-                                                    placeholder="12"
-                                                />
-                                            </div>
+                                            {editForm.period === '/seuil' || editForm.period === 'seuil' ? (
+                                                <div className="space-y-1.5">
+                                                    <label className="block text-xs font-medium text-slate-500">Seuils de déclenchement (séparés par des virgules, ex: 20, 40, 60)</label>
+                                                    <input
+                                                        type="text"
+                                                        value={editForm.trigger_consumption_percent}
+                                                        onChange={(e) => setEditForm({ ...editForm, trigger_consumption_percent: e.target.value })}
+                                                        className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all ${showErrors && !editForm.trigger_consumption_percent ? "border-red-300 ring-2 ring-red-50" : "border-gray-200 hover:border-gray-300"}`}
+                                                        placeholder="ex: 20, 40, 60"
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-1.5">
+                                                    <div className="flex justify-between items-center ml-1">
+                                                        <label className="block text-xs font-medium text-slate-500">Nombre d'échéances</label>
+                                                        <label className="flex items-center gap-1 cursor-pointer select-none">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={editForm.is_recurring_unlimited}
+                                                                onChange={(e) => setEditForm({ ...editForm, is_recurring_unlimited: e.target.checked, recurring_count: e.target.checked ? "" : editForm.recurring_count })}
+                                                                className="w-3.5 h-3.5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                                            />
+                                                            <span className="text-[11px] font-medium text-slate-500">Illimité</span>
+                                                        </label>
+                                                    </div>
+                                                    <input
+                                                        type="number"
+                                                        disabled={editForm.is_recurring_unlimited}
+                                                        value={editForm.is_recurring_unlimited ? "" : editForm.recurring_count}
+                                                        onChange={(e) => setEditForm({ ...editForm, recurring_count: e.target.value })}
+                                                        className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all disabled:bg-gray-50 disabled:text-slate-400 ${showErrors && !editForm.is_recurring_unlimited && !editForm.recurring_count ? "border-red-300 ring-2 ring-red-50" : "border-gray-200 hover:border-gray-300"}`}
+                                                        placeholder={editForm.is_recurring_unlimited ? "∞" : "12"}
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -1368,15 +1400,22 @@ export default function AdminShopOrdersPage() {
                                             {(() => {
                                                 const isStatusBlocking = ["en_pause", "resiliee", "expiree"].includes(editForm.status);
                                                 return (
-                                                    <label className={`flex items-center gap-2 group ${isStatusBlocking ? "cursor-not-allowed" : "cursor-pointer"}`}>
-                                                        <input type="checkbox" checked={editForm.is_blocked}
-                                                            disabled={isStatusBlocking}
-                                                            onChange={(e) => setEditForm({ ...editForm, is_blocked: e.target.checked })}
-                                                            className="w-5 h-5 text-red-600 border-gray-300 rounded-lg focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed" />
-                                                        <span className={`text-sm font-medium transition-colors ${isStatusBlocking ? "text-slate-400 cursor-not-allowed" : "text-slate-700 group-hover:text-slate-900"}`}>
-                                                            Bloquer le solde de crédits {isStatusBlocking && "(lié au statut)"}
-                                                        </span>
-                                                    </label>
+                                                    <div className="space-y-1">
+                                                        <label className={`flex items-center gap-2 group ${isStatusBlocking ? "cursor-not-allowed" : "cursor-pointer"}`}>
+                                                            <input type="checkbox" checked={editForm.is_blocked}
+                                                                disabled={isStatusBlocking}
+                                                                onChange={(e) => setEditForm({ ...editForm, is_blocked: e.target.checked })}
+                                                                className="w-5 h-5 text-red-600 border-gray-300 rounded-lg focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed" />
+                                                            <span className={`text-sm font-medium transition-colors ${isStatusBlocking ? "text-slate-400 cursor-not-allowed" : "text-slate-700 group-hover:text-slate-900"}`}>
+                                                                Bloquer le solde de crédits {isStatusBlocking && "(lié au statut)"}
+                                                            </span>
+                                                        </label>
+                                                        {!isStatusBlocking && editForm.is_blocked && (
+                                                            <p className="text-xs text-amber-600 mt-1 max-w-xs font-light">
+                                                                ⚠️ Si vous bloquez les crédits manuellement, pensez à vérifier si l'utilisateur possède des réservations à venir.
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                 );
                                             })()}
                                         </div>
@@ -1388,11 +1427,11 @@ export default function AdminShopOrdersPage() {
                                             <input type="number" placeholder="Limite" value={editForm.limit_amount} onChange={e => setEditForm({...editForm, limit_amount: e.target.value})} className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white" />
                                             <span className="text-sm text-slate-500 self-center">par</span>
                                             <select value={editForm.limit_period} onChange={e => setEditForm({...editForm, limit_period: e.target.value})} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white">
-                                                <option value="/semaine">Semaine</option>
-                                                <option value="/mois">Mois</option>
-                                                <option value="/bimestre">Bimestre</option>
-                                                <option value="/trimestre">Trimestre</option>
-                                                <option value="/an">An</option>
+                                                <option value="/semaine">semaine</option>
+                                                <option value="/mois">mois</option>
+                                                <option value="/bimestre">bimestre</option>
+                                                <option value="/trimestre">trimestre</option>
+                                                <option value="/an">an</option>
                                             </select>
                                         </div>
                                         <label className="flex items-start gap-2 cursor-pointer mt-2">
@@ -1542,6 +1581,7 @@ export default function AdminShopOrdersPage() {
                                     <table className="w-full">
                                         <thead className="bg-gray-50">
                                             <tr>
+                                                <th className="px-6 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest w-24">Échéance</th>
                                                 <th className="px-6 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Date prévue</th>
                                                 <th className="px-6 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Montant</th>
                                                 <th className="px-6 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Statut</th>
@@ -1550,15 +1590,23 @@ export default function AdminShopOrdersPage() {
                                         </thead>
                                         <tbody className="divide-y divide-gray-100">
                                             {installments.map((inst) => {
-                                                const dueDate = new Date(inst.due_date);
-                                                const graceDate = new Date(dueDate);
-                                                graceDate.setDate(dueDate.getDate() + 7);
-                                                const isPastGrace = graceDate <= new Date();
+                                                const hasDueDate = !!inst.due_date;
+                                                const dueDate = hasDueDate ? new Date(inst.due_date) : null;
+                                                const graceDate = dueDate ? new Date(dueDate) : null;
+                                                if (graceDate) graceDate.setDate(graceDate.getDate() + 7);
+                                                const isPastGrace = graceDate ? graceDate <= new Date() : false;
 
                                                 return (
                                                     <tr key={inst.id} className={`group transition-colors ${inst.is_error ? "bg-rose-50/30" : "hover:bg-gray-50"}`}>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-xs font-light text-slate-500">
+                                                            {inst.sequence_number !== undefined && inst.sequence_number !== null ? (
+                                                                `${inst.sequence_number} / ${installmentsOrder?.offer_recurring_count || '∞'}`
+                                                            ) : (
+                                                                '-'
+                                                            )}
+                                                        </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-600">
-                                                            {dueDate.toLocaleDateString("fr-FR")}
+                                                            {dueDate ? dueDate.toLocaleDateString("fr-FR") : `Au seuil (${inst.trigger_consumption_percent || installmentsOrder?.trigger_consumption_percent || 40}%)`}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
                                                             {(inst.amount_cents / 100).toFixed(2)}€

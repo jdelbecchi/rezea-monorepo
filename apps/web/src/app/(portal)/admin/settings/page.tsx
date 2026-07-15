@@ -134,7 +134,7 @@ export default function AdminSettingsPage() {
             } catch (err: any) {
                 console.error(err);
                 if (err.response?.status === 401) {
-                    router.push(`/${params.slug}`);
+                    router.push(`/`);
                 }
             } finally {
                 setLoading(false);
@@ -2442,4 +2442,5 @@ function VignettesEditor({ vignettes, onChange, isEnabled, onToggle, title, onTi
         </div>
     );
 }
+
 

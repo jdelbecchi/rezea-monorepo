@@ -452,6 +452,7 @@ class Offer(Base):
     validity_unit = Column(String(20), default="days")  # 'days' ou 'months'
     deadline_date = Column(Date)  # Date d'échéance (date limite de commande)
     is_validity_unlimited = Column(Boolean, default=False)  # Durée illimitée
+    trigger_consumption_percent = Column(String(255), nullable=True)  # Seuils de déclenchement d'échéances séparés par des virgules (ex: "20,40,60")
     
     # Options
     is_unique = Column(Boolean, default=False)  # Offre unique (une seule commande par utilisateur)
@@ -687,7 +688,8 @@ class Order(Base):
     recurring_count = Column(Integer)
     featured_pricing = Column(String(20), default="lump_sum")
     period = Column(String(50))
-
+    trigger_consumption_percent = Column(String(255), nullable=True)  # Seuils de déclenchement d'échéances séparés par des virgules (ex: "20,40,60")
+    
     # Paiement
     payment_status = Column(
         SQLEnum(OrderPaymentStatus, values_callable=lambda e: [x.value for x in e]),
@@ -761,8 +763,9 @@ class Installment(Base):
 
     # Échéance
     sequence_number = Column(Integer, nullable=True)  # Numéro de l'échéance (ex: 1, 2, 3...)
-    due_date = Column(Date, nullable=False)  # Date d'anniversaire (le 8 du mois)
+    due_date = Column(Date, nullable=True)  # Date d'anniversaire (le 8 du mois), nullable pour déclenchement au seuil
     amount_cents = Column(Integer, nullable=False)  # Montant de l'échéance
+    trigger_consumption_percent = Column(Integer, nullable=True)  # Seuil de déclenchement spécifique à cette échéance (%)
 
     # Gestion par défaut : À venir, sauf si marqué en erreur
     is_error = Column(Boolean, default=False)

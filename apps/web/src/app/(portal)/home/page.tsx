@@ -589,9 +589,9 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
 
             {/* Vignettes Carousel (conditional) */}
             {showVignettes && tenantSettings?.vignettes && tenantSettings.vignettes.length > 0 && (
-                <div className="px-5 mt-6 mb-2 shrink-0">
+                <div className="px-5 lg:px-0 mt-6 mb-2 shrink-0">
                     <h3 className="text-sm font-medium text-slate-800 mb-3 text-center">{tenantSettings.vignettes_title || "À la une"}</h3>
-                    <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-3 -mx-5 px-5 scroll-px-5">
+                    <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-3 -mx-5 px-5 scroll-px-5 lg:mx-0 lg:px-0 lg:scroll-px-0">
                         {tenantSettings.vignettes.map((vig: Vignette) => {
                             const CardContent = (
                                 <div className="relative w-full h-full">

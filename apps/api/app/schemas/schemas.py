@@ -381,6 +381,21 @@ class SessionUpdate(BaseModel):
     activity_type: Optional[str] = None
 
 
+class SessionBulkUpdate(BaseModel):
+    """Mise à jour de séances en lot"""
+    session_ids: list[UUID]
+    title: Optional[str] = None
+    description: Optional[str] = None
+    instructor_name: Optional[str] = None
+    time: Optional[str] = None  # Ex: "18:30"
+    duration_minutes: Optional[int] = None
+    max_participants: Optional[int] = None
+    credits_required: Optional[Decimal] = None
+    location: Optional[str] = None
+    allow_waitlist: Optional[bool] = None
+    activity_type: Optional[str] = None
+
+
 class SessionResponse(SessionBase):
     """Réponse séance"""
     model_config = ConfigDict(from_attributes=True)
@@ -501,6 +516,7 @@ class OfferBase(BaseModel):
     category_display_order: Optional[int] = 0
     engagement_type: str = "ponctuel"
     allowed_activities: Optional[List[str]] = Field(default_factory=list)
+    trigger_consumption_percent: Optional[str] = None
     
 
 
@@ -535,6 +551,7 @@ class OfferUpdate(BaseModel):
     category_display_order: Optional[int] = None
     engagement_type: Optional[str] = None
     allowed_activities: Optional[List[str]] = None
+    trigger_consumption_percent: Optional[str] = None
     
 
 
@@ -722,6 +739,7 @@ class OrderUpdate(BaseModel):
     limit_amount: Optional[Decimal] = None
     limit_period: Optional[str] = None
     limit_rollover: Optional[bool] = None
+    trigger_consumption_percent: Optional[str] = None
     offer_snap_name: Optional[str] = None
     offer_snap_code: Optional[str] = None
     offer_snap_limit_amount: Optional[Decimal] = None
@@ -735,12 +753,13 @@ class InstallmentResponse(BaseModel):
     id: UUID
     order_id: UUID
     sequence_number: Optional[int] = None
-    due_date: py_date
+    due_date: Optional[py_date] = None
     amount_cents: int
     is_paid: bool = False
     is_error: bool = False
     marked_error_at: Optional[datetime] = None
     resolved_at: Optional[datetime] = None
+    trigger_consumption_percent: Optional[int] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -769,6 +788,7 @@ class OrderResponse(BaseModel):
     recurring_count: Optional[int] = None
     featured_pricing: Optional[str] = None
     period: Optional[str] = None
+    trigger_consumption_percent: Optional[str] = None
     payment_status: OrderPaymentStatus
     comment: Optional[str] = None
     user_note: Optional[str] = None

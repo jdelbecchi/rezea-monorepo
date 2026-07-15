@@ -17,11 +17,19 @@ def compute_end_date(offer: Offer, start_date: date) -> Optional[date]:
     if offer.is_validity_unlimited:
         return None
     if offer.validity_days:
+        unit = getattr(offer, "validity_unit", None)
+        if unit == "months":
+            # Convert 30-day multiplication back to calendar months
+            months = max(1, offer.validity_days // 30)
+            return start_date + relativedelta(months=months)
+        elif unit == "weeks":
+            weeks = max(1, offer.validity_days // 7)
+            return start_date + relativedelta(weeks=weeks)
         return start_date + timedelta(days=offer.validity_days)
     if offer.deadline_date:
         return offer.deadline_date
     # Fallback: 1 year
-    return start_date + timedelta(days=365)
+    return start_date + relativedelta(years=1)
 
 def compute_effective_end_date(end_date: Optional[date], grace_period_days: int = 0, grace_period_mode: str = "days") -> Optional[date]:
     """Calculates the end date after applying the tenant's grace period/tolerance configuration."""
@@ -144,7 +152,7 @@ def build_order_response(
         amount = int(inst.amount_cents)
         if hasattr(inst, 'is_error') and inst.is_error and not (hasattr(inst, 'resolved_at') and inst.resolved_at):
             error_cents += amount
-        elif (hasattr(inst, 'is_paid') and inst.is_paid) or (hasattr(inst, 'resolved_at') and inst.resolved_at) or (inst.due_date + timedelta(days=7) <= today):
+        elif (hasattr(inst, 'is_paid') and inst.is_paid) or (hasattr(inst, 'resolved_at') and inst.resolved_at) or (inst.due_date is not None and inst.due_date + timedelta(days=7) <= today):
             received_cents += amount
         else:
             pending_cents += amount
@@ -174,6 +182,7 @@ def build_order_response(
         created_by_admin=order.created_by_admin,
         created_at=order.created_at,
         updated_at=order.updated_at,
+        trigger_consumption_percent=order.trigger_consumption_percent,
         invoice_number=order.invoice_number or f"REC-{str(order.id)[-6:].upper()}",
         invoice_url=order.invoice_url,
         is_blocked=effective_blocked,
@@ -336,7 +345,8 @@ async def compute_fifo_balances(
     tenant_id, 
     bookings_to_add: list = [],
     exclude_booking_id = None,
-    return_unfunded_ids: bool = False
+    return_unfunded_ids: bool = False,
+    ignore_manual_blocks: bool = False
 ):
     """
     Calculates remaining credits for each order of the user using FIFO.
@@ -452,7 +462,7 @@ async def compute_fifo_balances(
         if norm_status in ["en_pause", "resiliee", "expiree"]:
             blocked = True
         elif o.is_blocked is True:
-            blocked = True
+            blocked = False if ignore_manual_blocks else True
         elif o.is_blocked is False:
             blocked = False
         else: # o.is_blocked is None
@@ -475,18 +485,17 @@ async def compute_fifo_balances(
             
             # Check if order is valid at the item's date
             is_blocked = orders_blocked_status[o_id]
-            norm_status = normalize_status(o.status)
-            if is_blocked:
-                # Only Pause and Resign statuses allow past bookings to consume credits.
-                # Expired or manually blocked orders remain strictly blocked for all bookings.
-                if norm_status in ["en_pause", "resiliee"] and item_date < today:
-                    is_valid = (o.start_date <= item_date)
-                else:
-                    is_valid = False
-            elif o.is_blocked is False:
-                is_valid = (o.start_date <= item_date) and (o.is_validity_unlimited or not effective_end or item_date <= effective_end)
-            else: # o.is_blocked is None
-                is_valid = (o.start_date <= item_date) and (o.is_validity_unlimited or not effective_end or item_date <= effective_end)
+            
+            # Base validity: booking must be after start_date, and before effective_end (if set)
+            in_validity_window = (o.start_date <= item_date) and (o.is_validity_unlimited or not effective_end or item_date <= effective_end)
+            
+            if item_date < today:
+                # For past bookings, the order is valid if the booking fell within its validity window.
+                # The current block/expiration status of the order today does NOT prevent past bookings from consuming its credits.
+                is_valid = in_validity_window
+            else:
+                # For future/today's bookings, the order must be within its validity window AND not blocked.
+                is_valid = in_validity_window and not is_blocked
 
                 
             # Check if order's activity restrictions allow this item's activity
@@ -610,8 +619,17 @@ async def sync_user_credit_balance(db: AsyncSession, user_id, tenant_id):
     res = await compute_fifo_balances(db, user_id, tenant_id, return_unfunded_ids=True)
     orders_balances, global_balance, success, balances_by_activity, global_frozen, frozen_by_activity, unallocated_ids = res
     
+    # 1b. Recalculate FIFO balances ignoring manual blocks to determine which bookings to actually cancel.
+    # We only cancel bookings that are unallocated in BOTH runs.
+    # If a booking is unallocated in the actual run but would be allocated in the no_manual run,
+    # it means it is unallocated ONLY due to a manual block. We must NOT cancel it.
+    res_no_manual = await compute_fifo_balances(db, user_id, tenant_id, return_unfunded_ids=True, ignore_manual_blocks=True)
+    _, _, _, _, _, _, unallocated_ids_no_manual = res_no_manual
+    
+    actual_unallocated_ids = [bid for bid in unallocated_ids if bid in unallocated_ids_no_manual]
+    
     # 2. Cancel any unfunded bookings that are in the future
-    if unallocated_ids:
+    if actual_unallocated_ids:
         from app.models.models import Booking, Session, BookingStatus
         from sqlalchemy.orm import joinedload
         
@@ -621,7 +639,7 @@ async def sync_user_credit_balance(db: AsyncSession, user_id, tenant_id):
             .options(joinedload(Booking.session))
             .where(
                 and_(
-                    Booking.id.in_(unallocated_ids),
+                    Booking.id.in_(actual_unallocated_ids),
                     Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.PENDING])
                 )
             )

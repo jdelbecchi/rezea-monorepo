@@ -35,6 +35,7 @@ interface OfferForm {
     engagement_type: string;
     allowed_activities: string[];
     is_recurring_unlimited: boolean;
+    trigger_consumption_percent: string;
 }
 
 const emptyForm: OfferForm = {
@@ -63,6 +64,7 @@ const emptyForm: OfferForm = {
     engagement_type: "ponctuel",
     allowed_activities: [],
     is_recurring_unlimited: false,
+    trigger_consumption_percent: "",
 };
 
 const formatPrice = (cents: number | null | undefined) => {
@@ -140,7 +142,7 @@ function AdminOffersContent() {
                 setTenant(tenantData);
             } catch (err: any) {
                 if (err.response?.status === 401) {
-                    router.push(`/${params.slug}`);
+                    router.push(`/`);
                 }
             } finally {
                 setLoading(false);
@@ -173,7 +175,8 @@ function AdminOffersContent() {
                 description: formData.description || null,
                 price_lump_sum_cents: formData.featured_pricing === 'lump_sum' ? Math.round(parseFloat(formData.price_lump_sum.replace(',', '.')) * 100) : null,
                 price_recurring_cents: formData.featured_pricing === 'recurring' ? Math.round(parseFloat(formData.price_recurring.replace(',', '.')) * 100) : null,
-                recurring_count: formData.featured_pricing === 'recurring' ? (formData.is_recurring_unlimited ? null : (parseInt(formData.recurring_count) || null)) : null,
+                recurring_count: formData.featured_pricing === 'recurring' ? (formData.period === 'seuil' ? (formData.trigger_consumption_percent.split(',').filter(x => x.trim()).length + 1) : (formData.is_recurring_unlimited ? null : (parseInt(formData.recurring_count) || null))) : null,
+                trigger_consumption_percent: (formData.featured_pricing === 'recurring' && formData.period === 'seuil') ? formData.trigger_consumption_percent : null,
                 featured_pricing: formData.featured_pricing,
                 period: formData.period || null,
                 is_unlimited: formData.is_unlimited,
@@ -248,6 +251,7 @@ function AdminOffersContent() {
             engagement_type: o.engagement_type || "ponctuel",
             allowed_activities: o.allowed_activities || [],
             is_recurring_unlimited: o.featured_pricing === 'recurring' && o.recurring_count === null,
+            trigger_consumption_percent: o.trigger_consumption_percent?.toString() || "",
         });
         setShowForm(true);
         setModalError(null);
@@ -709,19 +713,27 @@ function AdminOffersContent() {
                                                                     <option value="mois">mois</option>
                                                                     <option value="semaine">semaine</option>
                                                                     <option value="jour">jour</option>
+                                                                    <option value="seuil">seuil de consommation</option>
                                                                 </select>
                                                             </div>
                                                         </div>
-                                                        <div>
-                                                            <label className="block text-xs text-slate-500 mb-1">Nombre d'échéances</label>
-                                                            <div className="flex items-center gap-4 w-full">
-                                                                <input type="number" min="1" disabled={formData.featured_pricing !== 'recurring' || formData.is_recurring_unlimited} value={formData.recurring_count} onChange={e => setFormData({...formData, recurring_count: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 outline-none disabled:bg-gray-100 bg-white ${(showErrors && formData.featured_pricing === 'recurring' && !formData.is_recurring_unlimited && !formData.recurring_count) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="ex: 12" />
-                                                                <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap">
-                                                                    <input type="checkbox" checked={formData.is_recurring_unlimited} onChange={e => setFormData({...formData, is_recurring_unlimited: e.target.checked})} className="w-4 h-4 text-amber-500 rounded border-gray-300 focus:ring-amber-500" disabled={formData.featured_pricing !== 'recurring'} />
-                                                                    <span className="text-xs font-medium text-slate-700">Illimité</span>
-                                                                </label>
+                                                        {formData.period === 'seuil' ? (
+                                                            <div>
+                                                                <label className="block text-xs text-slate-500 mb-1">Seuils de déclenchement (séparés par des virgules, ex: 20, 40, 60)</label>
+                                                                <input type="text" value={formData.trigger_consumption_percent} onChange={e => setFormData({...formData, trigger_consumption_percent: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white text-sm ${(showErrors && formData.featured_pricing === 'recurring' && !formData.trigger_consumption_percent) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="ex: 20, 40, 60" />
                                                             </div>
-                                                        </div>
+                                                        ) : (
+                                                            <div>
+                                                                <label className="block text-xs text-slate-500 mb-1">Nombre d'échéances</label>
+                                                                <div className="flex items-center gap-4 w-full">
+                                                                    <input type="number" min="1" disabled={formData.featured_pricing !== 'recurring' || formData.is_recurring_unlimited} value={formData.recurring_count} onChange={e => setFormData({...formData, recurring_count: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 outline-none disabled:bg-gray-100 bg-white ${(showErrors && formData.featured_pricing === 'recurring' && !formData.is_recurring_unlimited && !formData.recurring_count) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="ex: 12" />
+                                                                    <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap">
+                                                                        <input type="checkbox" checked={formData.is_recurring_unlimited} onChange={e => setFormData({...formData, is_recurring_unlimited: e.target.checked})} className="w-4 h-4 text-amber-500 rounded border-gray-300 focus:ring-amber-500" disabled={formData.featured_pricing !== 'recurring'} />
+                                                                        <span className="text-xs font-medium text-slate-700">Illimité</span>
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -789,3 +801,4 @@ export default function AdminOffersPage() {
         </Suspense>
     );
 }
+

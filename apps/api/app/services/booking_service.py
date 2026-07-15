@@ -292,6 +292,10 @@ class BookingService:
                 user_id=str(user_id),
                 session_id=str(session_id)
             )
+
+            # Synchro des échéances de seuil
+            from app.services.installment_trigger import sync_threshold_installments
+            await sync_threshold_installments(db, str(user_id), str(tenant_id))
             
             return booking
             
@@ -448,6 +452,9 @@ class BookingService:
         
         try:
             await db.commit()
+            # Synchro des échéances de seuil
+            from app.services.installment_trigger import sync_threshold_installments
+            await sync_threshold_installments(db, str(user_id), str(tenant_id))
         except Exception:
             await db.rollback()
             raise

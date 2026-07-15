@@ -66,16 +66,29 @@ def generate_installments(order: Order, tenant_id) -> List[Installment]:
     if not price:
         return installments
 
-    if count is None:
+    thresholds = []
+    if period_str in ["/seuil", "seuil"] and order.trigger_consumption_percent:
+        try:
+            thresholds = [int(x.strip()) for x in order.trigger_consumption_percent.split(",") if x.strip()]
+        except Exception:
+            thresholds = []
+
+    if period_str in ["/seuil", "seuil"]:
+        count = len(thresholds) + 1
+    elif count is None:
         count = 12
 
     for i in range(count):
+        trigger_percent = None
         if i == 0:
             # 1ère échéance : date de début de la commande
             due_date = order.start_date
         else:
             # Échéances suivantes : calculées en fonction de la période
-            if period_str == "/semaine":
+            if period_str == "/seuil" or period_str == "seuil":
+                due_date = None
+                trigger_percent = thresholds[i - 1] if i - 1 < len(thresholds) else None
+            elif period_str == "/semaine":
                 due_date = order.start_date + relativedelta(weeks=i)
             elif period_str == "/bimestre":
                 due_date = order.start_date + relativedelta(months=i*2)
@@ -94,6 +107,7 @@ def generate_installments(order: Order, tenant_id) -> List[Installment]:
             amount_cents=price,
             is_paid=False,
             is_error=False,
+            trigger_consumption_percent=trigger_percent,
         ))
 
     return installments
@@ -294,6 +308,7 @@ async def create_order(
         recurring_count=offer.recurring_count,
         featured_pricing=offer.featured_pricing,
         period=offer.period,
+        trigger_consumption_percent=offer.trigger_consumption_percent,
         payment_status=payment_status,
         comment=data.comment,
         user_note=data.user_note,
@@ -522,15 +537,86 @@ async def list_installments(
     order_result = await db.execute(
         select(Order).where(Order.id == order_id, Order.tenant_id == tenant_id)
     )
-    if not order_result.scalar_one_or_none():
+    order = order_result.scalar_one_or_none()
+    if not order:
         raise HTTPException(status_code=404, detail="Commande non trouvée")
     
+    # Récupérer les échéances existantes
     result = await db.execute(
         select(Installment)
         .where(Installment.order_id == order_id, Installment.tenant_id == tenant_id)
         .order_by(Installment.due_date)
     )
-    return result.scalars().all()
+    existing_installments = list(result.scalars().all())
+    
+    # Si paiement échelonné et pas d'échéances générées du tout
+    if order.payment_status == OrderPaymentStatus.INSTALLMENT and not existing_installments:
+        new_insts = generate_installments(order, tenant_id)
+        for inst in new_insts:
+            db.add(inst)
+        await db.commit()
+        
+        # Re-fetch
+        result = await db.execute(
+            select(Installment)
+            .where(Installment.order_id == order_id, Installment.tenant_id == tenant_id)
+            .order_by(Installment.due_date)
+        )
+        existing_installments = list(result.scalars().all())
+
+    # Pour les abonnements illimités (recurring_count is None)
+    # on s'assure qu'il reste toujours au moins 6 échéances dans le futur
+    if order.payment_status == OrderPaymentStatus.INSTALLMENT and order.recurring_count is None and existing_installments:
+        today_val = date.today()
+        future_insts = [inst for inst in existing_installments if inst.due_date is not None and inst.due_date >= today_val]
+        
+        if len(future_insts) < 6:
+            # Générer de nouvelles échéances
+            last_inst = existing_installments[-1]
+            last_date = last_inst.due_date
+            last_seq = last_inst.sequence_number or len(existing_installments)
+            
+            period_str = order.period or "/mois"
+            price = order.price_recurring_cents or 0
+            
+            # En générer suffisamment pour en avoir au moins 12 futures au total
+            needed = 12 - len(future_insts)
+            new_insts = []
+            for i in range(1, needed + 1):
+                if period_str == "/semaine":
+                    due_date = last_date + relativedelta(weeks=i)
+                elif period_str == "/bimestre":
+                    due_date = last_date + relativedelta(months=i*2)
+                elif period_str == "/trimestre":
+                    due_date = last_date + relativedelta(months=i*3)
+                elif period_str == "/an":
+                    due_date = last_date + relativedelta(years=i)
+                else: # /mois
+                    due_date = last_date + relativedelta(months=i)
+                
+                new_insts.append(Installment(
+                    tenant_id=tenant_id,
+                    order_id=order.id,
+                    sequence_number=last_seq + i,
+                    due_date=due_date,
+                    amount_cents=price,
+                    is_paid=False,
+                    is_error=False,
+                ))
+            
+            for inst in new_insts:
+                db.add(inst)
+            await db.commit()
+            
+            # Re-fetch complet
+            result = await db.execute(
+                select(Installment)
+                .where(Installment.order_id == order_id, Installment.tenant_id == tenant_id)
+                .order_by(Installment.due_date)
+            )
+            existing_installments = list(result.scalars().all())
+            
+    return existing_installments
 
 
 @router.patch("/{order_id}/installments/{installment_id}/error")
