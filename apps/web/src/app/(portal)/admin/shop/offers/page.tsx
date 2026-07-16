@@ -289,6 +289,43 @@ function AdminOffersContent() {
         }
     };
 
+    const handleActivityCheckboxChange = (act: string, checked: boolean) => {
+        let nextActs = [...(formData.allowed_activities || [])];
+        if (checked) {
+            if (!nextActs.includes(act)) nextActs.push(act);
+        } else {
+            nextActs = nextActs.filter(a => a !== act);
+        }
+        
+        const nextCredits = { ...formData.activity_credits };
+        if (!checked) {
+            delete nextCredits[act];
+        }
+        
+        const sum = Object.values(nextCredits)
+            .map(val => parseFloat(val) || 0)
+            .reduce((a, b) => a + b, 0);
+            
+        setFormData({
+            ...formData,
+            allowed_activities: nextActs,
+            activity_credits: nextCredits,
+            classes_included: sum > 0 ? sum.toString() : formData.classes_included
+        });
+    };
+
+    const handleActivityCreditChange = (act: string, value: string) => {
+        const nextCredits = { ...formData.activity_credits, [act]: value };
+        const sum = Object.values(nextCredits)
+            .map(val => parseFloat(val) || 0)
+            .reduce((a, b) => a + b, 0);
+        setFormData({
+            ...formData,
+            activity_credits: nextCredits,
+            classes_included: sum > 0 ? sum.toString() : formData.classes_included
+        });
+    };
+
     const resetForm = () => {
         setFormData({ ...emptyForm });
         setEditingId(null);
@@ -581,41 +618,21 @@ function AdminOffersContent() {
                                         <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" rows={2} placeholder="Détails de l'offre..." />
                                     </div>
 
-                                    {/* Activité, Engagement et Achat unique */}
-                                    <div className="flex flex-col md:flex-row md:items-end gap-6">
-                                        {tenant?.activity_types && tenant.activity_types.length > 0 && (
-                                            <div className="flex-1 min-w-[200px] animate-in fade-in duration-200">
-                                                <div className="flex flex-col mb-1">
-                                                    <label className="block text-sm font-medium text-slate-700">Types d'activités autorisés</label>
-                                                    <span className="text-[10px] text-slate-400 font-normal">Vide = accès à toutes les séances</span>
-                                                </div>
-                                                <MultiSelect
-                                                    options={tenant.activity_types.map(act => ({ id: act, label: act }))}
-                                                    selected={formData.allowed_activities || []}
-                                                    onChange={(acts) => {
-                                                        const nextCredits = { ...formData.activity_credits };
-                                                        Object.keys(nextCredits).forEach(k => {
-                                                            if (!acts.includes(k)) delete nextCredits[k];
-                                                        });
-                                                        setFormData({ ...formData, allowed_activities: acts, activity_credits: nextCredits });
-                                                    }}
-                                                    placeholder="Toutes les activités"
-                                                />
-                                            </div>
-                                        )}
-                                        <div className="w-full md:w-48">
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Type d'engagement</label>
-                                            <select value={formData.engagement_type} onChange={e => setFormData({...formData, engagement_type: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white">
+                                    {/* Options complémentaires */}
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+                                        <div className="flex items-center">
+                                            <label className="flex items-center gap-2 cursor-pointer select-none">
+                                                <input type="checkbox" checked={formData.is_unique} onChange={e => setFormData({...formData, is_unique: e.target.checked})} className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
+                                                <span className="text-sm font-medium text-slate-700 whitespace-nowrap">Achat unique (1x par utilisateur)</span>
+                                            </label>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <label className="text-sm font-medium text-slate-700 whitespace-nowrap">Type d'engagement :</label>
+                                            <select value={formData.engagement_type} onChange={e => setFormData({...formData, engagement_type: e.target.value})} className="px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white min-w-[140px]">
                                                 <option value="essai">Essai</option>
                                                 <option value="regulier">Régulier (Actif)</option>
                                                 <option value="ponctuel">Ponctuel (Occasionnel)</option>
                                             </select>
-                                        </div>
-                                        <div className="pb-2.5">
-                                            <label className="flex items-center gap-2 cursor-pointer">
-                                                <input type="checkbox" checked={formData.is_unique} onChange={e => setFormData({...formData, is_unique: e.target.checked})} className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
-                                                <span className="text-sm font-medium text-slate-700 whitespace-nowrap">Achat unique (1x par user)</span>
-                                            </label>
                                         </div>
                                     </div>
 
@@ -623,16 +640,21 @@ function AdminOffersContent() {
                                     <div className="space-y-4 pt-2">
                                         <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">ORGANISATION DE LA BOUTIQUE</h4>
                                         <div className="flex flex-col md:flex-row gap-4">
-                                            <div className="w-full md:w-32">
-                                                <label className="block text-sm font-medium text-slate-700 mb-1">N° Rubrique</label>
-                                                <input type="number" value={formData.category_display_order} onChange={e => setFormData({...formData, category_display_order: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" />
-                                            </div>
                                             <div className="flex-1">
                                                 <label className="block text-sm font-medium text-slate-700 mb-1">Rubrique</label>
                                                 <input 
                                                     type="text" 
                                                     value={formData.category} 
-                                                    onChange={e => setFormData({...formData, category: e.target.value})} 
+                                                    onChange={e => {
+                                                        const val = e.target.value;
+                                                        const existingOffer = offers.find(o => o.category?.toLowerCase() === val.toLowerCase());
+                                                        const displayOrder = existingOffer?.category_display_order ? existingOffer.category_display_order.toString() : formData.category_display_order;
+                                                        setFormData({
+                                                            ...formData, 
+                                                            category: val,
+                                                            category_display_order: displayOrder
+                                                        });
+                                                    }} 
                                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" 
                                                     list="categories-list"
                                                     placeholder="ex: Abonnement, Formation..."
@@ -643,191 +665,348 @@ function AdminOffersContent() {
                                                     ))}
                                                 </datalist>
                                             </div>
-                                            <div className="w-full md:w-32">
-                                                <label className="block text-sm font-medium text-slate-700 mb-1">N° Offre</label>
+                                            
+                                            <div className="w-full md:w-36">
+                                                <label className="block text-sm font-medium text-slate-700 mb-1">N° de rubrique</label>
+                                                <input type="number" value={formData.category_display_order} onChange={e => setFormData({...formData, category_display_order: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" />
+                                            </div>
+                                            <div className="w-full md:w-36">
+                                                <label className="block text-sm font-medium text-slate-700 mb-1">N° d'offre</label>
                                                 <input type="number" value={formData.offer_display_order} onChange={e => setFormData({...formData, offer_display_order: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" />
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Contenu & Validité */}
-                                <div className="space-y-4">
-                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Contenu & Validité</h4>
-                                    <div className="flex flex-col xl:flex-row gap-6">
-                                        {/* Crédits inclus */}
-                                        <div className="flex-1">
-                                            <label className={`block text-sm font-medium mb-1 ${(showErrors && !formData.is_unlimited && !formData.classes_included) ? 'text-red-500' : 'text-slate-700'}`}>Nombre de crédits inclus *</label>
-                                            <div className="flex items-center gap-4">
-                                                <input type="number" step="any" placeholder="Nombre" disabled={formData.is_unlimited} value={formData.classes_included} onChange={e => setFormData({...formData, classes_included: e.target.value})} className={`w-24 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:bg-gray-100 ${(showErrors && !formData.is_unlimited && !formData.classes_included) ? 'border-red-300 bg-red-50' : 'border-gray-300'} [&::-webkit-inner-spin-button]:appearance-none [appearance:textfield]`} />
-                                                <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap">
-                                                    <input type="checkbox" checked={formData.is_unlimited} onChange={e => setFormData({...formData, is_unlimited: e.target.checked, ...(e.target.checked ? {classes_included: ''} : {})})} className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500" />
-                                                    <span className="text-sm font-medium text-slate-700">Illimité</span>
-                                                </label>
-                                            </div>
+                                {/* Contenu & crédits */}
+                                <div className="space-y-4 pt-4">
+                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Contenu & crédits</h4>
+                                    
+                                    {/* Nombre de crédits inclus */}
+                                    <div className="space-y-2">
+                                        <div className="flex flex-wrap items-center gap-3">
+                                            <span className={`text-sm font-medium ${(showErrors && !formData.is_unlimited && !formData.classes_included) ? 'text-red-500' : 'text-slate-700'}`}>
+                                                Nombre de crédits inclus dans l'offre
+                                            </span>
+                                            <input 
+                                                type="number" 
+                                                step="any" 
+                                                placeholder="Nombre" 
+                                                disabled={formData.is_unlimited} 
+                                                value={formData.classes_included} 
+                                                onChange={e => setFormData({...formData, classes_included: e.target.value})} 
+                                                className={`w-28 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:bg-slate-50 bg-white ${(showErrors && !formData.is_unlimited && !formData.classes_included) ? 'border-red-300 bg-red-50' : 'border-gray-300'} [&::-webkit-inner-spin-button]:appearance-none [appearance:textfield]`} 
+                                            />
+                                            <span className="text-xs text-slate-400 italic">
+                                                (saisie manuelle ou somme des crédits de chaque type d'activités)
+                                            </span>
                                         </div>
-
-                                        {/* Plafond périodique */}
-                                        <div className="flex-1">
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Plafond périodique (Optionnel)</label>
-                                            <div className="flex items-center gap-3">
-                                                <input type="number" placeholder="Nombre" value={formData.limit_amount} onChange={e => setFormData({...formData, limit_amount: e.target.value})} className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm [&::-webkit-inner-spin-button]:appearance-none [appearance:textfield]" />
-                                                <span className="text-sm text-slate-500">par</span>
-                                                <select value={formData.limit_period} onChange={e => setFormData({...formData, limit_period: e.target.value})} className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
-                                                    <option value="/semaine">semaine</option>
-                                                    <option value="/mois">mois</option>
-                                                    <option value="/bimestre">bimestre</option>
-                                                    <option value="/trimestre">trimestre</option>
-                                                    <option value="/an">an</option>
-                                                </select>
-                                                <label className="flex items-center gap-2 cursor-pointer ml-2">
-                                                    <input type="checkbox" checked={formData.limit_rollover} onChange={e => setFormData({...formData, limit_rollover: e.target.checked})} className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500" />
-                                                    <span className="text-xs text-slate-600 whitespace-nowrap">Autoriser le report</span>
-                                                </label>
-                                            </div>
+                                        <div className="pt-0.5">
+                                            <label className="flex items-center gap-2 cursor-pointer select-none">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={formData.is_unlimited} 
+                                                    onChange={e => setFormData({...formData, is_unlimited: e.target.checked, ...(e.target.checked ? {classes_included: ''} : {})})} 
+                                                    className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500" 
+                                                />
+                                                <span className="text-sm font-medium text-slate-700">Crédits illimités</span>
+                                            </label>
                                         </div>
                                     </div>
-                                    
-                                    {/* Pack multi-activités : configuration des crédits par activité */}
-                                    {formData.allowed_activities && formData.allowed_activities.length > 1 && !formData.is_unlimited && (
-                                        <div className="mt-4 p-4 bg-slate-50/50 border border-slate-100 rounded-2xl space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
-                                            <div className="flex flex-col">
-                                                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                                    Crédits par type d'activité (Packs)
-                                                </label>
-                                                <span className="text-[10px] text-slate-400 font-normal">
-                                                    Saisissez le nombre de crédits pour chaque activité. Le total global des crédits sera calculé automatiquement.
-                                                </span>
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                                {formData.allowed_activities.map(act => (
-                                                    <div key={act} className="flex items-center justify-between gap-3 bg-white p-2 border border-slate-200/80 rounded-xl shadow-sm">
-                                                        <span className="text-xs font-semibold text-slate-600 truncate max-w-[120px]">{act}</span>
-                                                        <input
-                                                            type="number"
-                                                            placeholder="0"
-                                                            value={formData.activity_credits[act] || ""}
-                                                            onChange={e => {
-                                                                const newCredits = { ...formData.activity_credits, [act]: e.target.value };
-                                                                // Calculate sum
-                                                                const sum = Object.values(newCredits)
-                                                                    .map(val => parseFloat(val) || 0)
-                                                                    .reduce((a, b) => a + b, 0);
-                                                                setFormData({
-                                                                    ...formData,
-                                                                    activity_credits: newCredits,
-                                                                    classes_included: sum > 0 ? sum.toString() : formData.classes_included
-                                                                });
-                                                            }}
-                                                            className="w-16 px-2 py-1 text-center border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500"
-                                                        />
+
+                                    {/* Grille d'activités et encart explicatif */}
+                                    {tenant?.activity_types && tenant.activity_types.length > 0 && (
+                                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
+                                            {/* Colonnes d'activités */}
+                                            <div className="lg:col-span-7 grid grid-cols-2 gap-4 items-start">
+                                                {/* Colonne 1: Types d'activités autorisés */}
+                                                <div>
+                                                    <div className="text-sm font-medium text-slate-700 mb-3">
+                                                        Type d'activités autorisés <span className="font-normal text-slate-500">(<u>optionnel</u>)</span>
                                                     </div>
-                                                ))}
+                                                    <div className="space-y-3">
+                                                        {tenant.activity_types.map(act => {
+                                                            const isChecked = formData.allowed_activities?.includes(act);
+                                                            return (
+                                                                <div key={`chk-${act}`} className="h-9 flex items-center">
+                                                                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                                                                        <input 
+                                                                            type="checkbox" 
+                                                                            checked={isChecked} 
+                                                                            onChange={e => handleActivityCheckboxChange(act, e.target.checked)} 
+                                                                            className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" 
+                                                                        />
+                                                                        <span className="text-sm text-slate-700 font-medium">{act}</span>
+                                                                    </label>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+
+                                                {/* Colonne 2: Nombre de crédits par type d'activité */}
+                                                <div>
+                                                    <div className="text-sm font-medium text-slate-700 mb-3">
+                                                        Nombre de crédits par type d'activité <span className="font-normal text-slate-500">(<u>optionnel</u>)</span>
+                                                    </div>
+                                                    <div className="space-y-3">
+                                                        {tenant.activity_types.map(act => {
+                                                            const isChecked = formData.allowed_activities?.includes(act);
+                                                            return (
+                                                                <div key={`val-${act}`} className="h-9 flex items-center">
+                                                                    <input 
+                                                                        type="number"
+                                                                        disabled={!isChecked || formData.is_unlimited}
+                                                                        value={formData.activity_credits[act] || ""}
+                                                                        onChange={e => handleActivityCreditChange(act, e.target.value)}
+                                                                        className="w-24 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none text-center bg-white disabled:bg-slate-50 disabled:text-slate-400"
+                                                                    />
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Encart explicatif à droite */}
+                                            <div className="lg:col-span-5 bg-[#f8fafc] border border-[#e2e8f0] rounded-2xl p-5 self-stretch flex items-center">
+                                                <p className="text-xs text-slate-600 leading-relaxed font-normal italic">
+                                                    Vous pouvez créer des offres par activité ou des offres multi-pack avec un nombre de crédit dédié à chaque activité sélectionnée.<br /><br />
+                                                    Si aucune activité n'est renseignée, alors l'offre donne accès à toutes les séances programmées.<br /><br />
+                                                    Si des activités sont sélectionnées mais aucun crédit associé, l'offre donne accès uniquement aux activités renseignées dans la limite du crédit global de l'offre.
+                                                </p>
                                             </div>
                                         </div>
                                     )}
 
-                                    {/* Ligne 2: Validité */}
-                                    <div>
-                                        <label className={`block text-sm font-medium mb-1 ${(showErrors && !formData.is_validity_unlimited && !formData.deadline_date && !formData.validity_duration) ? 'text-red-500' : 'text-slate-700'}`}>
-                                            Durée de validité *
+                                    {/* Plafond de crédit périodique */}
+                                    <div className="pt-4 border-t border-slate-100">
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                                            Plafond de crédit périodique <span className="font-normal text-slate-500">(<u>optionnel</u>)</span>
                                         </label>
-                                        <div className="flex flex-wrap items-center gap-4">
-                                            <div className="flex items-center gap-2">
-                                                <input type="number" placeholder="Nombre" disabled={formData.is_validity_unlimited} value={formData.validity_duration} onChange={e => setFormData({...formData, validity_duration: e.target.value})} className={`w-24 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:bg-gray-100 ${(showErrors && !formData.is_validity_unlimited && !formData.deadline_date && !formData.validity_duration) ? 'border-red-300 bg-red-50' : 'border-gray-300'} [&::-webkit-inner-spin-button]:appearance-none [appearance:textfield]`} />
-                                                <select disabled={formData.is_validity_unlimited} value={formData.validity_unit} onChange={e => setFormData({...formData, validity_unit: e.target.value as any})} className="w-28 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:bg-gray-100 bg-white">
-                                                    <option value="months">mois</option>
-                                                    <option value="weeks">semaine</option>
-                                                    <option value="days">jour</option>
-                                                </select>
-                                            </div>
-                                            <span className="text-sm text-slate-400 font-normal"><u>ou</u> échéance au</span>
-                                            <input type="date" disabled={formData.is_validity_unlimited} value={formData.deadline_date} onChange={e => setFormData({...formData, deadline_date: e.target.value})} className="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:bg-gray-100" />
-                                            <span className="text-sm text-slate-400 font-normal"><u>ou</u></span>
-                                            <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap">
-                                                <input type="checkbox" checked={formData.is_validity_unlimited} onChange={e => setFormData({...formData, is_validity_unlimited: e.target.checked, ...(e.target.checked ? {validity_duration: '', deadline_date: ''} : {})})} className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500" />
-                                                <span className="text-sm font-medium text-slate-700">Illimitée</span>
+                                        <div className="flex flex-wrap items-center gap-3">
+                                            <input type="number" placeholder="Nombre" value={formData.limit_amount} onChange={e => setFormData({...formData, limit_amount: e.target.value})} className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm [&::-webkit-inner-spin-button]:appearance-none [appearance:textfield] bg-white" />
+                                            <span className="text-sm text-slate-500">par</span>
+                                            <select value={formData.limit_period} onChange={e => setFormData({...formData, limit_period: e.target.value})} className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white">
+                                                <option value="/semaine">semaine</option>
+                                                <option value="/mois">mois</option>
+                                                <option value="/bimestre">bimestre</option>
+                                                <option value="/trimestre">trimestre</option>
+                                                <option value="/an">an</option>
+                                            </select>
+                                            <label className="flex items-center gap-2 cursor-pointer ml-2 select-none">
+                                                <input type="checkbox" checked={formData.limit_rollover} onChange={e => setFormData({...formData, limit_rollover: e.target.checked})} className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500" />
+                                                <span className="text-xs text-slate-600">Autoriser le report des crédits non consommés sur la période suivante</span>
                                             </label>
                                         </div>
                                     </div>
                                 </div>
 
-                                {(() => {
-                                    const isPricingValid = formData.featured_pricing === 'lump_sum' 
-                                        ? !!formData.price_lump_sum 
-                                        : (!!formData.price_recurring && (formData.is_recurring_unlimited || !!formData.recurring_count));
+                                {/* Durée de validité */}
+                                 <div className="space-y-4 pt-4">
+                                     <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Durée de validité</h4>
+                                     <div>
+                                         <label className={`block text-sm font-medium mb-1.5 ${(showErrors && !formData.is_validity_unlimited && !formData.deadline_date && !formData.validity_duration) ? 'text-red-500' : 'text-slate-700'}`}>
+                                             Durée de validité *
+                                         </label>
+                                         <div className="flex flex-wrap items-center gap-3">
+                                             <div className="flex items-center gap-2">
+                                                 <input type="number" placeholder="Nombre" disabled={formData.is_validity_unlimited} value={formData.validity_duration} onChange={e => setFormData({...formData, validity_duration: e.target.value})} className={`w-20 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:bg-gray-100 ${(showErrors && !formData.is_validity_unlimited && !formData.deadline_date && !formData.validity_duration) ? 'border-red-300 bg-red-50' : 'border-gray-300'} [&::-webkit-inner-spin-button]:appearance-none [appearance:textfield]`} />
+                                                 <select disabled={formData.is_validity_unlimited} value={formData.validity_unit} onChange={e => setFormData({...formData, validity_unit: e.target.value as any})} className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:bg-gray-100 bg-white">
+                                                     <option value="months">mois</option>
+                                                     <option value="weeks">semaine</option>
+                                                     <option value="days">jour</option>
+                                                 </select>
+                                             </div>
+                                             <span className="text-xs text-slate-400 font-normal"><u>ou</u> échéance au</span>
+                                             <input type="date" disabled={formData.is_validity_unlimited} value={formData.deadline_date} onChange={e => setFormData({...formData, deadline_date: e.target.value})} className="w-36 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:bg-gray-100" />
+                                             <span className="text-xs text-slate-400 font-normal"><u>ou</u></span>
+                                             <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap">
+                                                 <input type="checkbox" checked={formData.is_validity_unlimited} onChange={e => setFormData({...formData, is_validity_unlimited: e.target.checked, ...(e.target.checked ? {validity_duration: '', deadline_date: ''} : {})})} className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500" />
+                                                 <span className="text-sm font-medium text-slate-700">Durée illimitée</span>
+                                             </label>
+                                         </div>
+                                     </div>
+                                 </div>
+                                 {/* Tarification */}
+                                 {(() => {
+                                     const isPricingValid = formData.featured_pricing === 'lump_sum' 
+                                         ? !!formData.price_lump_sum 
+                                         : (!!formData.price_recurring && (formData.is_recurring_unlimited || !!formData.recurring_count));
 
-                                    return (
-                                        <div className="space-y-4">
-                                            <h4 className={`text-xs font-semibold uppercase tracking-wider border-b pb-1 flex items-baseline gap-2 ${(showErrors && !isPricingValid) ? 'text-red-500 border-red-200' : 'text-slate-400'}`}>
-                                                Tarification *
-                                                <span className="normal-case italic font-normal text-[10px] tracking-normal text-slate-400">(Choisissez le tarif que vous souhaitez mettre en avant)</span>
-                                            </h4>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                {/* Paiement Unique */}
-                                                <div 
-                                                    className={`p-4 rounded-xl border-2 cursor-pointer transition-colors ${formData.featured_pricing === 'lump_sum' ? (showErrors && !formData.price_lump_sum ? 'border-red-300 bg-red-50' : 'border-blue-600 bg-blue-50') : 'border-gray-200 bg-white hover:border-gray-300'}`}
-                                                    onClick={() => setFormData({...formData, featured_pricing: 'lump_sum'})}
-                                                >
-                                                    <div className="flex items-center gap-2 mb-3">
-                                                        <input type="radio" checked={formData.featured_pricing === 'lump_sum'} readOnly className="w-4 h-4 text-blue-600" />
-                                                        <span className="font-semibold text-slate-900">Paiement unique</span>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs text-slate-500 mb-1">Prix TTC (€)</label>
-                                                        <input type="number" step="0.01" value={formData.price_lump_sum} onChange={e => setFormData({...formData, price_lump_sum: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white ${(showErrors && formData.featured_pricing === 'lump_sum' && !formData.price_lump_sum) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="0.00" />
-                                                    </div>
-                                                </div>
+                                     return (
+                                         <div className="space-y-4 pt-4">
+                                             <h4 className={`text-xs font-semibold uppercase tracking-wider border-b pb-1 flex items-baseline gap-2 ${(showErrors && !isPricingValid) ? 'text-red-500 border-red-200' : 'text-slate-400'}`}>
+                                                 Tarification *
+                                                 <span className="normal-case italic font-normal text-[10px] tracking-normal text-slate-400">(Vous pouvez renseigner les deux modes de paiement, puis sélectionner le tarif que vous souhaitez mettre en avant dans la boutique)</span>
+                                             </h4>
+                                             <div className="flex flex-col gap-4">
+                                                 {/* Paiement Unique */}
+                                                 <div 
+                                                      className={`p-4 rounded-xl border-2 cursor-pointer transition-colors ${formData.featured_pricing === 'lump_sum' ? (showErrors && !formData.price_lump_sum ? 'border-red-300 bg-red-50' : 'border-blue-600 bg-blue-50') : 'border-gray-200 bg-white hover:border-gray-300'}`}
+                                                      onClick={() => setFormData({...formData, featured_pricing: 'lump_sum'})}
+                                                  >
+                                                      <div className="space-y-3">
+                                                          <div className="flex flex-wrap items-center justify-between gap-4 w-full">
+                                                              <span className="font-semibold text-slate-900">Paiement unique</span>
+                                                              <div className="flex items-center gap-2 flex-1 justify-end min-w-[200px]">
+                                                                  <label className="text-xs text-slate-500 whitespace-nowrap">Montant TTC (€) :</label>
+                                                                  <input type="number" step="0.01" value={formData.price_lump_sum} onChange={e => setFormData({...formData, price_lump_sum: e.target.value})} className={`w-32 px-3 py-2 border rounded-lg focus:border-slate-400 outline-none bg-white ${(showErrors && formData.featured_pricing === 'lump_sum' && !formData.price_lump_sum) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="0.00" />
+                                                              </div>
+                                                          </div>
+                                                          <div className="flex justify-start">
+                                                              <label className="flex items-center gap-1.5 cursor-pointer select-none text-xs text-slate-500 font-normal" onClick={e => e.stopPropagation()}>
+                                                                  <input 
+                                                                      type="checkbox" 
+                                                                      checked={formData.featured_pricing === 'lump_sum'} 
+                                                                      onChange={() => setFormData({...formData, featured_pricing: 'lump_sum'})} 
+                                                                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-0 focus:ring-offset-0" 
+                                                                  />
+                                                                  <span>Tarif à mettre en avant</span>
+                                                              </label>
+                                                          </div>
+                                                      </div>
+                                                  </div>
 
-                                                {/* Abonnement */}
-                                                <div 
-                                                    className={`p-4 rounded-xl border-2 cursor-pointer transition-colors ${formData.featured_pricing === 'recurring' ? (showErrors && (!formData.price_recurring || (!formData.is_recurring_unlimited && !formData.recurring_count)) ? 'border-red-300 bg-red-50' : 'border-amber-500 bg-amber-50') : 'border-gray-200 bg-white hover:border-gray-300'}`}
-                                                    onClick={() => setFormData({...formData, featured_pricing: 'recurring'})}
-                                                >
-                                                    <div className="flex items-center gap-2 mb-3">
-                                                        <input type="radio" checked={formData.featured_pricing === 'recurring'} readOnly className="w-4 h-4 text-amber-500" />
-                                                        <span className="font-semibold text-slate-900">Paiement échelonné / Abonnement</span>
-                                                    </div>
-                                                    <div className="space-y-3">
-                                                        <div className="flex gap-2">
-                                                            <div className="flex-1">
-                                                                <label className="block text-xs text-slate-500 mb-1">Montant de l'échéance (€)</label>
-                                                                <input type="number" step="0.01" value={formData.price_recurring} onChange={e => setFormData({...formData, price_recurring: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white text-sm ${(showErrors && formData.featured_pricing === 'recurring' && !formData.price_recurring) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="0.00" />
-                                                            </div>
-                                                            <div className="w-32">
-                                                                <label className="block text-xs text-slate-500 mb-1">Période</label>
-                                                                <select value={formData.period} onChange={e => setFormData({...formData, period: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white text-sm">
-                                                                    <option value="mois">mois</option>
-                                                                    <option value="semaine">semaine</option>
-                                                                    <option value="jour">jour</option>
-                                                                    <option value="seuil">seuil de consommation</option>
-                                                                </select>
-                                                            </div>
-                                                        </div>
-                                                        {formData.period === 'seuil' ? (
-                                                            <div>
-                                                                <label className="block text-xs text-slate-500 mb-1">Seuils de déclenchement (séparés par des virgules, ex: 20, 40, 60)</label>
-                                                                <input type="text" value={formData.trigger_consumption_percent} onChange={e => setFormData({...formData, trigger_consumption_percent: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white text-sm ${(showErrors && formData.featured_pricing === 'recurring' && !formData.trigger_consumption_percent) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="ex: 20, 40, 60" />
-                                                            </div>
-                                                        ) : (
-                                                            <div>
-                                                                <label className="block text-xs text-slate-500 mb-1">Nombre d'échéances</label>
-                                                                <div className="flex items-center gap-4 w-full">
-                                                                    <input type="number" min="1" disabled={formData.is_recurring_unlimited} value={formData.recurring_count} onChange={e => setFormData({...formData, recurring_count: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 outline-none disabled:bg-gray-100 bg-white ${(showErrors && formData.featured_pricing === 'recurring' && !formData.is_recurring_unlimited && !formData.recurring_count) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="ex: 12" />
-                                                                    <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap">
-                                                                        <input type="checkbox" checked={formData.is_recurring_unlimited} onChange={e => setFormData({...formData, is_recurring_unlimited: e.target.checked})} className="w-4 h-4 text-amber-500 rounded border-gray-300 focus:ring-amber-500" />
-                                                                        <span className="text-xs font-medium text-slate-700">Illimité</span>
-                                                                    </label>
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })()}
+                                                 {/* Abonnement */}
+                                                 <div 
+                                                     className={`p-4 rounded-xl border-2 cursor-pointer transition-colors ${formData.featured_pricing === 'recurring' ? (showErrors && (!formData.price_recurring || (!formData.is_recurring_unlimited && !formData.recurring_count)) ? 'border-red-300 bg-red-50' : 'border-amber-500 bg-amber-50') : 'border-gray-200 bg-white hover:border-gray-300'}`}
+                                                     onClick={() => setFormData({...formData, featured_pricing: 'recurring'})}
+                                                 >
+                                                      <div className="space-y-4">
+                                                          <div className="flex flex-wrap items-center justify-between gap-4 w-full">
+                                                              <span className="font-semibold text-slate-900">Paiement échelonné / Abonnement</span>
+                                                              <div className="flex items-center gap-2 flex-1 justify-end min-w-[200px]">
+                                                                  <label className="text-xs text-slate-500 whitespace-nowrap">Montant de l'échéance (€) :</label>
+                                                                  <input type="number" step="0.01" value={formData.price_recurring} onChange={e => setFormData({...formData, price_recurring: e.target.value})} className={`w-32 px-3 py-2 border rounded-lg focus:border-slate-400 outline-none bg-white text-sm ${(showErrors && formData.featured_pricing === 'recurring' && !formData.price_recurring) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="0.00" />
+                                                              </div>
+                                                          </div>
+                                                          
+                                                          <div className="grid grid-cols-1 md:grid-cols-3 gap-y-6 md:gap-y-0 md:divide-x md:divide-gray-200 pt-4 border-t border-gray-150">
+                                                              {/* Colonne 1: Période */}
+                                                              <div className="md:pr-6 space-y-3">
+                                                                  <label className="flex items-center gap-2 cursor-pointer mb-2 font-semibold text-slate-800">
+                                                                      <input 
+                                                                          type="checkbox" 
+                                                                          checked={formData.period !== 'seuil' && !formData.is_recurring_unlimited} 
+                                                                          onChange={() => setFormData({
+                                                                              ...formData,
+                                                                              period: formData.period === 'seuil' ? 'mois' : formData.period,
+                                                                              is_recurring_unlimited: false
+                                                                          })} 
+                                                                          className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-0 focus:ring-offset-0"
+                                                                      />
+                                                                      <span className="text-xs">Période</span>
+                                                                  </label>
+                                                                  <div className="space-y-3">
+                                                                      <select 
+                                                                          value={formData.period === 'seuil' ? 'mois' : formData.period} 
+                                                                          onChange={e => setFormData({
+                                                                              ...formData, 
+                                                                              period: e.target.value,
+                                                                              is_recurring_unlimited: false
+                                                                          })} 
+                                                                          className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:border-slate-400 outline-none bg-white text-xs"
+                                                                      >
+                                                                          <option value="semaine">semaine</option>
+                                                                          <option value="mois">mois</option>
+                                                                          <option value="bimestre">bimestre</option>
+                                                                          <option value="trimestre">trimestre</option>
+                                                                      </select>
+                                                                      
+                                                                      <div className="flex items-center justify-between gap-2">
+                                                                          <label className="text-[10px] text-slate-500 whitespace-nowrap">Nombre d'échéances :</label>
+                                                                          <input 
+                                                                              type="number" 
+                                                                              min="1" 
+                                                                              value={(formData.is_recurring_unlimited || formData.period === 'seuil') ? "" : formData.recurring_count} 
+                                                                              onChange={e => setFormData({
+                                                                                  ...formData, 
+                                                                                  recurring_count: e.target.value,
+                                                                                  period: formData.period === 'seuil' ? 'mois' : formData.period,
+                                                                                  is_recurring_unlimited: false
+                                                                              })} 
+                                                                              className="w-16 px-2 py-1 border border-gray-300 rounded-lg focus:border-slate-400 outline-none text-xs text-center bg-white" 
+                                                                              placeholder="ex: 12" 
+                                                                          />
+                                                                      </div>
+                                                                  </div>
+                                                              </div>
 
+                                                              {/* Colonne 2: Seuil de consommation */}
+                                                              <div className="md:px-6 space-y-3">
+                                                                  <label className="flex items-center gap-2 cursor-pointer mb-2 font-semibold text-slate-800">
+                                                                      <input 
+                                                                          type="checkbox" 
+                                                                          checked={formData.period === 'seuil'} 
+                                                                          onChange={() => setFormData({
+                                                                              ...formData,
+                                                                              period: 'seuil',
+                                                                              is_recurring_unlimited: false,
+                                                                              trigger_consumption_percent: formData.trigger_consumption_percent || '20, 40, 60'
+                                                                          })} 
+                                                                          className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-0 focus:ring-offset-0"
+                                                                      />
+                                                                      <span className="text-xs">Seuil de consommation</span>
+                                                                  </label>
+                                                                  <div>
+                                                                      <label className="block text-[10px] text-slate-500 mb-1">Paliers de seuils :</label>
+                                                                      <input 
+                                                                          type="text" 
+                                                                          value={formData.trigger_consumption_percent} 
+                                                                          onChange={e => setFormData({
+                                                                              ...formData, 
+                                                                              trigger_consumption_percent: e.target.value,
+                                                                              period: 'seuil',
+                                                                              is_recurring_unlimited: false
+                                                                          })} 
+                                                                          className="w-full px-2 py-1 border border-gray-300 rounded-lg focus:border-slate-400 outline-none bg-white text-xs"
+                                                                          placeholder="ex: 20, 40, 60"
+                                                                      />
+                                                                      <span className="block text-[9px] text-slate-400 mt-1 leading-tight">
+                                                                          (saisir les paliers de seuil séparés par une virgule)
+                                                                      </span>
+                                                                  </div>
+                                                              </div>
+
+                                                              {/* Colonne 3: Période illimitée */}
+                                                              <div className="md:pl-6 space-y-3">
+                                                                  <label className="flex items-center gap-2 cursor-pointer mb-2 font-semibold text-slate-800">
+                                                                      <input 
+                                                                          type="checkbox" 
+                                                                          checked={formData.is_recurring_unlimited} 
+                                                                          onChange={() => setFormData({
+                                                                              ...formData,
+                                                                              period: formData.period === 'seuil' ? 'mois' : formData.period,
+                                                                              is_recurring_unlimited: true
+                                                                          })} 
+                                                                          className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-0 focus:ring-offset-0"
+                                                                      />
+                                                                      <span className="text-xs">Période illimitée</span>
+                                                                  </label>
+                                                                  <div className="text-[10px] text-slate-400 leading-relaxed pt-1">
+                                                                      Les échéances de paiement continuent indéfiniment selon la période sélectionnée.
+                                                                  </div>
+                                                              </div>
+                                                          </div>
+                                                          
+                                                          <div className="flex justify-start pt-3 border-t border-gray-150">
+                                                              <label className="flex items-center gap-1.5 cursor-pointer select-none text-xs text-slate-500 font-normal" onClick={e => e.stopPropagation()}>
+                                                                  <input 
+                                                                      type="checkbox" 
+                                                                      checked={formData.featured_pricing === 'recurring'} 
+                                                                      onChange={() => setFormData({...formData, featured_pricing: 'recurring'})} 
+                                                                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-0 focus:ring-offset-0" 
+                                                                  />
+                                                                  <span>Tarif à mettre en avant</span>
+                                                              </label>
+                                                          </div>
+                                                      </div>
+                                                  </div>
+                                             </div>
+                                         </div>
+                                     );
+                                 })()}
                                 {/* Statut de l'offre */}
                                 <div className="pt-6 border-t border-gray-150">
                                     <div className="w-80">

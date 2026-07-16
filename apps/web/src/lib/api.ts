@@ -476,6 +476,8 @@ export interface OrderItem {
   invoice_number?: string | null;
   is_blocked?: boolean | null;
   trigger_consumption_percent?: number | null;
+  activity_credits?: Record<string, number> | null;
+  activity_allocations?: Record<string, number> | null;
 }
 
 export interface InstallmentItem {
