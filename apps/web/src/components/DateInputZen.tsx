@@ -10,7 +10,9 @@ import {
   addMonths, 
   subMonths,
   startOfToday,
-  parseISO
+  parseISO,
+  isAfter,
+  startOfDay
 } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -18,9 +20,10 @@ interface DateInputZenProps {
   value: string; // Expected "YYYY-MM-DD"
   onChange: (value: string) => void;
   label?: string;
+  maxDate?: Date;
 }
 
-export default function DateInputZen({ value, onChange, label }: DateInputZenProps) {
+export default function DateInputZen({ value, onChange, label, maxDate }: DateInputZenProps) {
   const [isOpen, setIsOpen] = useState(false);
   
   // Parse date safely
@@ -47,6 +50,7 @@ export default function DateInputZen({ value, onChange, label }: DateInputZenPro
   }, [currentMonth]);
 
   const handleSelect = (day: Date) => {
+    if (maxDate && isAfter(startOfDay(day), startOfDay(maxDate))) return;
     onChange(format(day, 'yyyy-MM-dd'));
     setIsOpen(false);
   };
@@ -108,14 +112,16 @@ export default function DateInputZen({ value, onChange, label }: DateInputZenPro
               {daysInMonth.map((day, i) => {
                 const isSelected = isSameDay(day, selectedDate);
                 const isToday = isSameDay(day, startOfToday());
+                const isAfterMax = maxDate ? isAfter(startOfDay(day), startOfDay(maxDate)) : false;
                 return (
                   <button
                     key={i}
                     type="button"
                     onClick={() => handleSelect(day)}
+                    disabled={isAfterMax}
                     className={`
                       relative p-2 rounded-2xl text-xs md:text-sm transition-all flex flex-col items-center justify-center aspect-square
-                      ${isSelected ? 'bg-slate-100 text-slate-900 font-bold' : 'hover:bg-slate-50 text-slate-600 font-medium'}
+                      ${isAfterMax ? 'text-slate-300 opacity-50 cursor-not-allowed' : isSelected ? 'bg-slate-100 text-slate-900 font-bold' : 'hover:bg-slate-50 text-slate-600 font-medium'}
                     `}
                   >
                     {day.getDate()}

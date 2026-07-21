@@ -57,6 +57,39 @@ function formatPrice(order: OrderItem): React.ReactNode {
     return <span className="text-sm font-medium">{formatCents(order.price_cents)}€</span>;
 }
 
+const COLORS_PALETTE = [
+    "bg-sky-100 text-sky-700 border-sky-200/60",
+    "bg-amber-100 text-amber-700 border-amber-200/60",
+    "bg-pink-100 text-pink-700 border-pink-200/60",
+    "bg-teal-100 text-teal-700 border-teal-200/60",
+    "bg-indigo-100 text-indigo-700 border-indigo-200/60",
+    "bg-orange-100 text-orange-700 border-orange-200/60",
+    "bg-violet-100 text-violet-700 border-violet-200/60",
+    "bg-lime-100 text-lime-700 border-lime-200/60",
+    "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200/60",
+];
+
+const hashStringToInt = (str: string): number => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return Math.abs(hash);
+};
+
+const getActivityStyle = (activityName: string) => {
+    const name = activityName.toLowerCase().trim();
+    const firstLetter = activityName.charAt(0).toUpperCase();
+    const paletteIndex = hashStringToInt(name) % COLORS_PALETTE.length;
+    return { bg: COLORS_PALETTE[paletteIndex], letter: firstLetter };
+};
+
+const getOrderActivities = (order: OrderItem): string[] => {
+    const fromCredits = order.activity_credits ? Object.keys(order.activity_credits) : [];
+    if (fromCredits.length > 0) return fromCredits;
+    return order.allowed_activities || [];
+};
+
 export default function AdminShopOrdersPage() {
     const router = useRouter();
     const params = useParams();
@@ -65,6 +98,25 @@ export default function AdminShopOrdersPage() {
     const [orders, setOrders] = useState<OrderItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+    // Custom tooltips state
+    const [activeTooltip, setActiveTooltip] = useState<{
+        text: string;
+        x: number;
+        y: number;
+    } | null>(null);
+
+    const handleShowTooltip = (text: string, e: React.MouseEvent) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        setActiveTooltip({
+            text,
+            x: rect.left + rect.width / 2,
+            y: rect.top - 8
+        });
+    };
+    const handleHideTooltip = () => {
+        setActiveTooltip(null);
+    };
 
     // Bulk selection
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
@@ -151,6 +203,7 @@ export default function AdminShopOrdersPage() {
         offer_snap_name: "",
         is_blocked: false,
         allowed_activities: [] as string[],
+        activity_credits: {} as Record<string, string>,
         trigger_consumption_percent: "",
         status: "",
         payment_status: "",
@@ -291,7 +344,7 @@ export default function AdminShopOrdersPage() {
             end_date: order.end_date || "",
             price_cents: (order.price_cents / 100).toString(),
             featured_pricing: order.offer_featured_pricing || "lump_sum",
-            price_recurring_cents: order.offer_price_recurring_cents ? (order.offer_price_recurring_cents / 100).toString() : (order.price_cents / 100).toString(),
+            price_recurring_cents: order.offer_price_recurring_cents ? (order.offer_price_recurring_cents / 100).toString() : "",
             recurring_count: order.offer_recurring_count !== null && order.offer_recurring_count !== undefined ? order.offer_recurring_count.toString() : "",
             is_recurring_unlimited: order.offer_featured_pricing === "recurring" && (order.offer_recurring_count === null || order.offer_recurring_count === undefined),
             period: order.offer_period || "/mois",
@@ -308,11 +361,63 @@ export default function AdminShopOrdersPage() {
             offer_snap_name: order.offer_snap_name || order.offer_name || "",
             is_blocked: order.is_blocked === true || (order.is_blocked === null && ["expiree", "en_pause", "resiliee"].includes(order.status)),
             allowed_activities: order.allowed_activities || [],
+            activity_credits: Object.fromEntries(
+                Object.entries(order.activity_credits || {}).map(([act, val]) => [act, val?.toString() || ""])
+            ),
             trigger_consumption_percent: (order as any).trigger_consumption_percent?.toString() || ""
         });
         const isStd = ["active", "termine", "expiree", "en_pause", "resiliee", "", null, undefined].includes(order.status);
         setShowCustomStatus(!isStd);
         setShowErrors(false);
+    };
+
+    const handleEditActivityCheckboxChange = (act: string, checked: boolean) => {
+        let nextActs = [...(editForm.allowed_activities || [])];
+        if (checked) {
+            if (!nextActs.includes(act)) nextActs.push(act);
+        } else {
+            nextActs = nextActs.filter(a => a !== act);
+        }
+        
+        const nextCredits = { ...editForm.activity_credits };
+        if (!checked) {
+            delete nextCredits[act];
+        } else if (!nextCredits[act]) {
+            nextCredits[act] = "";
+        }
+
+        let nextCreditsTotal = editForm.credits_total;
+        const activeVals = Object.entries(nextCredits).filter(([a]) => nextActs.includes(a));
+        const hasVals = activeVals.some(([_, v]) => v && v.trim() !== "");
+        if (hasVals) {
+            const sum = activeVals.reduce((acc, [_, v]) => acc + (parseFloat(v.replace(",", ".")) || 0), 0);
+            nextCreditsTotal = sum > 0 ? sum.toString() : editForm.credits_total;
+        }
+
+        setEditForm({
+            ...editForm,
+            allowed_activities: nextActs,
+            activity_credits: nextCredits,
+            credits_total: nextCreditsTotal,
+        });
+    };
+
+    const handleEditActivityCreditChange = (act: string, val: string) => {
+        const nextCredits = { ...editForm.activity_credits, [act]: val };
+        
+        let nextCreditsTotal = editForm.credits_total;
+        const activeVals = Object.entries(nextCredits).filter(([a]) => editForm.allowed_activities.includes(a));
+        const hasVals = activeVals.some(([_, v]) => v && v.trim() !== "");
+        if (hasVals) {
+            const sum = activeVals.reduce((acc, [_, v]) => acc + (parseFloat(v.replace(",", ".")) || 0), 0);
+            nextCreditsTotal = sum.toString();
+        }
+
+        setEditForm({
+            ...editForm,
+            activity_credits: nextCredits,
+            credits_total: nextCreditsTotal,
+        });
     };
 
     const handleEditSubmit = async (e: React.FormEvent) => {
@@ -338,6 +443,21 @@ export default function AdminShopOrdersPage() {
             const parsedPriceCents = parseFloat(priceCentsStr.replace(',', '.'));
             const parsedPriceRecurringCents = parseFloat(priceRecurringCentsStr.replace(',', '.'));
 
+            const has_activity_credits = editForm.allowed_activities?.length > 1 && Object.keys(editForm.activity_credits || {}).some(k => editForm.activity_credits[k]?.trim() !== '');
+            const activity_credits_payload = has_activity_credits
+                ? Object.fromEntries(
+                    Object.entries(editForm.activity_credits || {})
+                        .filter(([act, val]) => editForm.allowed_activities.includes(act) && val && val.trim() !== '')
+                        .map(([act, val]) => [act, parseFloat(val.toString().replace(',', '.'))])
+                  )
+                : null;
+
+            const computed_credits_total = editForm.is_unlimited
+                ? null
+                : (activity_credits_payload
+                    ? Object.values(activity_credits_payload).reduce((a, b) => a + b, 0)
+                    : (parseFloat(editForm.credits_total) || 0));
+
             const payload: any = {
                 start_date: editForm.start_date,
                 end_date: editForm.end_date || null,
@@ -351,7 +471,7 @@ export default function AdminShopOrdersPage() {
                 recurring_count: !isLumpSum ? (editForm.period === '/seuil' || editForm.period === 'seuil' ? (editForm.trigger_consumption_percent.split(',').filter(x => x.trim()).length + 1) : (editForm.is_recurring_unlimited ? null : (parseInt(editForm.recurring_count) || 0))) : null,
                 trigger_consumption_percent: (!isLumpSum && (editForm.period === '/seuil' || editForm.period === 'seuil')) ? editForm.trigger_consumption_percent : null,
                 period: !isLumpSum ? editForm.period : null,
-                credits_total: editForm.is_unlimited ? null : (parseFloat(editForm.credits_total) || 0),
+                credits_total: computed_credits_total,
                 is_unlimited: editForm.is_unlimited,
                 limit_amount: editForm.limit_amount ? parseFloat(editForm.limit_amount) : null,
                 limit_period: editForm.limit_amount ? editForm.limit_period : null,
@@ -361,7 +481,9 @@ export default function AdminShopOrdersPage() {
                 comment: editForm.comment,
                 user_note: editForm.user_note,
                 is_blocked: editForm.is_blocked,
-                offer_snap_allowed_activities: editForm.allowed_activities
+                offer_snap_allowed_activities: editForm.allowed_activities,
+                activity_credits: activity_credits_payload,
+                offer_snap_activity_credits: activity_credits_payload
             };
 
             await api.updateAdminOrder(editOrder.id, payload);
@@ -718,8 +840,8 @@ export default function AdminShopOrdersPage() {
         <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
             <Sidebar user={user} />
 
-            <main className="flex-1 p-8 overflow-auto">
-                <div className="max-w-7xl mx-auto space-y-6">
+            <main className="flex-1 p-8 overflow-auto min-w-0">
+                <div className="max-w-[1600px] mx-auto space-y-6">
                     <div className="flex items-center justify-between">
                         <div>
                             <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 tracking-tight">🛍️ Gestion des commandes</h1>
@@ -862,9 +984,9 @@ export default function AdminShopOrdersPage() {
                                                 </button>
                                             </div>
                                         </th>
-                                        <th className="pl-0 pr-3 py-[10px] text-center text-xs font-medium text-slate-400 uppercase tracking-widest hidden md:table-cell whitespace-nowrap">date</th>
                                         <th className="px-3 py-[10px] text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">nom</th>
                                         <th className="px-3 py-[10px] text-left text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">offre</th>
+                                        <th className="px-3 py-[10px] text-center text-xs font-medium text-slate-400 uppercase tracking-widest whitespace-nowrap">activités</th>
                                         <th className="px-3 py-[10px] text-center text-xs font-medium text-slate-400 uppercase tracking-widest hidden lg:table-cell whitespace-nowrap">début</th>
                                         <th className="px-3 py-[10px] text-center text-xs font-medium text-slate-400 uppercase tracking-widest hidden lg:table-cell whitespace-nowrap">fin</th>
                                         <th className="px-3 py-[10px] text-center text-xs font-medium text-slate-400 uppercase tracking-widest hidden sm:table-cell whitespace-nowrap">tarif</th>
@@ -915,9 +1037,6 @@ export default function AdminShopOrdersPage() {
                                                         onChange={() => toggleSelection(order.id)}
                                                     />
                                                 </td>
-                                                <td className="pl-0 pr-3 py-2.5 whitespace-nowrap text-sm text-slate-700 hidden md:table-cell text-center">
-                                                    {order.created_at ? new Date(order.created_at).toLocaleDateString("fr-FR") : "—"}
-                                                </td>
                                                 <td className="px-3 py-2.5 whitespace-nowrap text-sm">
                                                     <div className="flex items-center gap-1">
                                                         <Link 
@@ -934,104 +1053,136 @@ export default function AdminShopOrdersPage() {
                                                     </div>
                                                 </td>
                                                 <td className="px-3 py-2.5 whitespace-nowrap">
-                                                     <div className="flex flex-col gap-1 justify-center">
-                                                         <div className="flex items-center gap-1">
-                                                             <span className="text-sm font-medium text-slate-900">{order.offer_code}</span>
-                                                             {order.comment && order.comment.trim().length > 0 && (
-                                                                 <span title={`Commentaire interne : ${order.comment}`} className="cursor-help text-sm">
-                                                                     📝
-                                                                 </span>
-                                                             )}
-                                                             {order.user_note && order.user_note.trim().length > 0 && (
-                                                                 <div title={`Note à l'utilisateur : ${order.user_note}`} className="text-slate-400 hover:text-slate-600 transition-colors cursor-help">
-                                                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                                                                     </svg>
-                                                                 </div>
-                                                             )}
-                                                         </div>
+                                                     <div className="flex flex-col gap-0.5 justify-center">
+                                                          <div className="flex items-center gap-1">
+                                                              <span className="text-sm font-medium text-slate-900">{order.offer_code}</span>
+                                                              {order.comment && order.comment.trim().length > 0 && (
+                                                                  <span 
+                                                                      onMouseEnter={(e) => handleShowTooltip(`Commentaire interne : ${order.comment}`, e)}
+                                                                      onMouseLeave={handleHideTooltip}
+                                                                      className="cursor-help text-sm"
+                                                                  >
+                                                                      📝
+                                                                  </span>
+                                                              )}
+                                                              {order.user_note && order.user_note.trim().length > 0 && (
+                                                                  <div 
+                                                                      onMouseEnter={(e) => handleShowTooltip(`Note à l'utilisateur : ${order.user_note}`, e)}
+                                                                      onMouseLeave={handleHideTooltip}
+                                                                      className="text-slate-400 hover:text-slate-600 transition-colors cursor-help"
+                                                                  >
+                                                                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                                                      </svg>
+                                                                  </div>
+                                                              )}
+                                                          </div>
+                                                          {order.created_at && (
+                                                              <span className="text-[10px] text-slate-400">
+                                                                  Créé le {new Date(order.created_at).toLocaleDateString("fr-FR")}
+                                                              </span>
+                                                          )}
                                                      </div>
                                                  </td>
-                                                <td className="px-3 py-2.5 whitespace-nowrap text-sm text-slate-700 hidden lg:table-cell text-center">
-                                                    {new Date(order.start_date).toLocaleDateString("fr-FR")}
-                                                </td>
-                                                <td className="px-3 py-2.5 whitespace-nowrap text-sm hidden lg:table-cell text-center">
-                                                    {order.is_validity_unlimited ? (
-                                                        <span className="font-semibold text-purple-600">♾️ Illimité</span>
-                                                    ) : order.end_date ? (
-                                                        <div className="flex items-center gap-1">
-                                                            <span className={expiryCritical ? "text-red-600 font-bold" : expiryWarning ? "text-orange-600 font-medium" : "text-slate-700"}>
-                                                                {new Date(order.end_date).toLocaleDateString("fr-FR")}
-                                                            </span>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-slate-400">—</span>
-                                                    )}
-                                                </td>
-                                                <td className="px-3 py-2.5 whitespace-nowrap text-slate-700 hidden sm:table-cell text-left">
-                                                    {formatPrice(order)}
-                                                </td>
-                                                                                <td className="px-3 py-2.5 whitespace-nowrap text-sm text-slate-700 hidden xl:table-cell text-center">
-                                                    <div className="flex flex-col items-center justify-center">
-                                                        <span className="leading-none">{order.is_unlimited ? "∞" : formatCredits(order.credits_total)}</span>
-                                                        {order.limit_amount && (
-                                                            <div className="text-[10px] text-slate-400 font-medium leading-tight">
-                                                                {formatCredits(order.limit_amount)} {order.limit_period}
-                                                            </div>
-                                                        )}
-                                                        {order.activity_credits && Object.keys(order.activity_credits).length > 0 && (
-                                                            <div className="flex flex-col text-[10px] text-slate-400 mt-1 w-full text-left gap-0.5 border-t border-slate-100 pt-1 leading-normal min-w-[90px]">
-                                                                {Object.entries(order.activity_credits).map(([act, val]) => (
-                                                                    <div key={act} className="flex justify-between gap-1.5">
-                                                                        <span className="capitalize font-medium text-slate-500">{act} :</span>
-                                                                        <span className="font-semibold text-slate-600">{Number(val)}</span>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="px-3 py-2.5 whitespace-nowrap hidden sm:table-cell text-center">
-                                                    {order.is_unlimited ? (
-                                                        <div className={`flex items-center justify-center gap-1 text-sm ${order.user_is_suspended ? "text-red-600 font-semibold" : "text-slate-700 font-medium"}`}>
-                                                            <span>∞</span>
-                                                            {order.user_is_suspended && <span title="Crédits suspendus">🚫</span>}
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex flex-col items-center justify-center gap-0.5">
-                                                            <div className={`flex items-center justify-center gap-1 text-sm ${order.user_is_suspended ? "text-red-600 font-semibold" :
-                                                                    (order.balance ?? 0) <= 0 ? "text-red-600" :
-                                                                        (order.balance ?? 0) <= 2 ? "text-orange-600" :
-                                                                            "text-slate-700 font-medium"
-                                                                }`}>
-                                                                <span>
-                                                                    {showPercentage && order.credits_total && Number(order.credits_total) > 0 
-                                                                        ? `${Math.round(((Number(order.credits_total) - Number(order.balance || 0)) / Number(order.credits_total)) * 100)} %` 
-                                                                        : formatCredits(order.balance)
-                                                                    }
-                                                                </span>
-                                                                {order.is_blocked && <span title="Crédits bloqués" className="ml-0.5">🔒</span>}
-                                                                {order.user_is_suspended && <span title="Crédits suspendus">🚫</span>}
-                                                            </div>
-                                                            {order.activity_credits && Object.keys(order.activity_credits).length > 0 && (
-                                                                <div className="flex flex-col text-[10px] text-slate-400 mt-1 w-full text-left gap-0.5 border-t border-slate-100 pt-1 leading-normal min-w-[90px]">
-                                                                    {Object.entries(order.activity_credits).map(([act, val]) => {
-                                                                        const used = order.activity_allocations?.[act] || 0;
-                                                                        const init = Number(val) || 0;
-                                                                        const rem = Math.max(0, init - used);
-                                                                        return (
-                                                                            <div key={act} className="flex justify-between gap-1.5">
-                                                                                <span className="capitalize font-medium text-slate-500">{act} :</span>
-                                                                                <span className={`font-semibold ${rem <= 0 ? "text-red-500" : rem <= 2 ? "text-orange-500" : "text-slate-600"}`}>
-                                                                                    {rem}
-                                                                                </span>
-                                                                            </div>
-                                                                        );
-                                                                    })}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    )}
+                                                 <td className="px-3 py-2.5 whitespace-nowrap">
+                                                     <div className="flex items-center justify-center gap-1">
+                                                         {(() => {
+                                                             const acts = getOrderActivities(order);
+                                                             return acts.length > 0 ? (
+                                                                 acts.map((act) => {
+                                                                     const style = getActivityStyle(act);
+                                                                     return (
+                                                                         <span 
+                                                                             key={act}
+                                                                             onMouseEnter={(e) => handleShowTooltip(act.charAt(0).toUpperCase() + act.slice(1), e)}
+                                                                             onMouseLeave={handleHideTooltip}
+                                                                             className={`w-5 h-5 rounded-full border text-[10px] font-bold flex items-center justify-center cursor-help transition-transform hover:scale-110 shadow-sm ${style.bg}`}
+                                                                         >
+                                                                             {style.letter}
+                                                                         </span>
+                                                                     );
+                                                                 })
+                                                             ) : (
+                                                                 <span className="text-slate-400 text-xs">—</span>
+                                                             );
+                                                         })()}
+                                                     </div>
+                                                 </td>
+                                                 <td className="px-3 py-2.5 whitespace-nowrap text-sm text-slate-700 hidden lg:table-cell text-center">
+                                                     {new Date(order.start_date).toLocaleDateString("fr-FR")}
+                                                 </td>
+                                                 <td className="px-3 py-2.5 whitespace-nowrap text-sm hidden lg:table-cell text-center">
+                                                     {order.is_validity_unlimited ? (
+                                                         <span className="text-base select-none">♾️</span>
+                                                     ) : order.end_date ? (
+                                                         <div className="flex items-center gap-1 justify-center">
+                                                             <span className={expiryCritical ? "text-red-600 font-bold" : expiryWarning ? "text-orange-600 font-medium" : "text-slate-700"}>
+                                                                 {new Date(order.end_date).toLocaleDateString("fr-FR")}
+                                                             </span>
+                                                         </div>
+                                                     ) : (
+                                                         <span className="text-slate-400">—</span>
+                                                     )}
+                                                 </td>
+                                                 <td className="px-3 py-2.5 whitespace-nowrap text-slate-700 hidden sm:table-cell text-left">
+                                                     {formatPrice(order)}
+                                                 </td>
+                                                 <td className="px-3 py-2.5 whitespace-nowrap text-sm text-slate-700 hidden xl:table-cell text-center">
+                                                     <div className="flex flex-col items-center justify-center gap-0.5">
+                                                         <span className="leading-none">{order.is_unlimited ? <span className="text-base select-none">♾️</span> : formatCredits(order.credits_total)}</span>
+                                                         {order.limit_amount && (
+                                                             <div className="text-[10px] text-slate-400 font-normal leading-tight">
+                                                                 Plafond {formatCredits(order.limit_amount)}/{(order.limit_period || "mois").replace(/^\//, "")}
+                                                             </div>
+                                                         )}
+                                                     </div>
+                                                 </td>
+                                                 <td className="px-3 py-2.5 whitespace-nowrap text-center hidden sm:table-cell">
+                                                     {order.is_unlimited ? (
+                                                         <div className={`flex items-center justify-center gap-1 text-sm ${order.user_is_suspended ? "text-red-600 font-semibold" : "text-slate-700 font-medium"}`}>
+                                                             <span className="text-base select-none">♾️</span>
+                                                             {order.is_blocked && <span title="Crédits bloqués" className="ml-0.5">🔒</span>}
+                                                             {order.user_is_suspended && <span title="Crédits suspendus" className="ml-0.5">🚫</span>}
+                                                         </div>
+                                                     ) : (
+                                                         <div 
+                                                             className="flex flex-col items-center justify-center gap-0.5 cursor-pointer"
+                                                             onMouseEnter={(e) => {
+                                                                 if (order.activity_credits && Object.keys(order.activity_credits).length > 0) {
+                                                                     const text = `Soldes restants :\n` + Object.entries(order.activity_credits)
+                                                                         .map(([act, val]) => {
+                                                                             const used = order.activity_allocations?.[act] || 0;
+                                                                             const init = Number(val) || 0;
+                                                                             const rem = Math.max(0, init - used);
+                                                                             return `• ${act.charAt(0).toUpperCase() + act.slice(1)} : ${rem}/${init}`;
+                                                                         })
+                                                                         .join("\n");
+                                                                     handleShowTooltip(text, e);
+                                                                 }
+                                                             }}
+                                                             onMouseLeave={handleHideTooltip}
+                                                         >
+                                                             <div className={`flex items-center justify-center gap-1 text-sm ${order.user_is_suspended ? "text-red-600 font-semibold" :
+                                                                     (order.balance ?? 0) <= 0 ? "text-red-600" :
+                                                                         (order.balance ?? 0) <= 2 ? "text-orange-600" :
+                                                                             "text-slate-700 font-medium"
+                                                                 }`}>
+                                                                 <span>
+                                                                     {showPercentage && order.credits_total && Number(order.credits_total) > 0 
+                                                                         ? `${Math.round(((Number(order.credits_total) - Number(order.balance || 0)) / Number(order.credits_total)) * 100)} %` 
+                                                                         : formatCredits(order.balance)
+                                                                     }
+                                                                 </span>
+                                                                 {order.activity_credits && Object.keys(order.activity_credits).length > 0 && (
+                                                                     <svg className="w-3.5 h-3.5 text-blue-500 hover:text-blue-700 transition-colors select-none shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16M4 18h10" />
+                                                                     </svg>
+                                                                 )}
+                                                                 {order.is_blocked && <span title="Crédits bloqués" className="ml-0.5">🔒</span>}
+                                                                 {order.user_is_suspended && <span title="Crédits suspendus" className="ml-0.5">🚫</span>}
+                                                             </div>
+                                                         </div>
+                                                     )}
                                                 </td>
                                                 <td className="px-3 py-2.5 whitespace-nowrap text-center">
                                                     <span className={`px-2 py-1 text-xs font-normal rounded-full border whitespace-nowrap ${paymentColors[order.payment_status] || "bg-gray-100 text-gray-600 border-gray-200"}`}>
@@ -1048,19 +1199,21 @@ export default function AdminShopOrdersPage() {
                                                         {STATUS_LABELS[order.status] || (order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : order.status)}
                                                     </span>
                                                 </td>
-                                                <td className="px-1 py-2.5 whitespace-nowrap flex items-center justify-end gap-0.5">
-                                                    <button onClick={() => openEdit(order)} className="p-1 hover:bg-blue-50 text-blue-500 rounded-lg transition-all hover:scale-110" title="Modifier">✏️</button>
-                                                    <div className="relative">
-                                                        <button onClick={() => openReceipt(order)} className="p-1 hover:bg-slate-100 text-slate-500 rounded-lg transition-all hover:scale-110" title="Justificatif">🧾</button>
+                                                <td className="px-3 py-2.5 whitespace-nowrap text-right">
+                                                    <div className="flex items-center justify-end gap-0">
+                                                        <button onClick={() => openEdit(order)} className="p-0.5 hover:bg-blue-50 text-blue-500 rounded-lg transition-all hover:scale-110" title="Modifier">✏️</button>
+                                                        <div className="relative">
+                                                            <button onClick={() => openReceipt(order)} className="p-0.5 hover:bg-slate-100 text-slate-500 rounded-lg transition-all hover:scale-110" title="Justificatif">🧾</button>
+                                                        </div>
+                                                        <button onClick={() => setDeleteConfirmId(order.id)} className="p-0.5 hover:bg-rose-50 text-rose-500 rounded-lg transition-all hover:scale-110" title="Supprimer">🗑️</button>
                                                     </div>
-                                                    <button onClick={() => setDeleteConfirmId(order.id)} className="p-1 hover:bg-rose-50 text-rose-500 rounded-lg transition-all hover:scale-110" title="Supprimer">🗑️</button>
                                                 </td>
                                             </tr>
                                         );
                                     })}
                                     {filteredOrders.length === 0 && (
                                         <tr>
-                                            <td colSpan={12} className="px-6 py-8 text-center text-slate-500 text-sm">
+                                            <td colSpan={13} className="px-6 py-8 text-center text-slate-500 text-sm">
                                                 {searchTerm || filterStatuses.length > 0 || filterPayments.length > 0 || filterExpiry ? "Aucune commande ne correspond aux filtres" : "Aucune commande pour le moment"}
                                             </td>
                                         </tr>
@@ -1177,7 +1330,7 @@ export default function AdminShopOrdersPage() {
             {/* Edit Modal */}
             {editOrder && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-10 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
                             <div className="flex items-center gap-3">
                                 <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1205,38 +1358,6 @@ export default function AdminShopOrdersPage() {
                                 </div>
                             )}
                             <form id="editOrderForm" onSubmit={handleEditSubmit} className="space-y-8">
-                                {/* Période */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <label className={`block text-sm font-medium mb-1 ${(showErrors && !editForm.start_date) ? 'text-red-500' : 'text-slate-700'}`}>Date de début *</label>
-                                        <input type="date" value={editForm.start_date}
-                                            onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
-                                            className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all ${(showErrors && !editForm.start_date) ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`} />
-                                    </div>
-                                    <div>
-                                        <label className={`block text-sm font-medium mb-1 ${(showErrors && !editForm.end_date && !editOrder.is_validity_unlimited) ? 'text-red-500' : 'text-slate-700'}`}>Date de fin {editOrder.is_validity_unlimited ? '' : '*'}</label>
-                                        <input type="date" value={editForm.end_date}
-                                            onChange={(e) => setEditForm({ ...editForm, end_date: e.target.value })}
-                                            className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all enabled:hover:border-gray-300 disabled:bg-gray-50 disabled:text-slate-400 ${(showErrors && !editForm.end_date && !editOrder.is_validity_unlimited) ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
-                                            disabled={editOrder.is_validity_unlimited} />
-                                    </div>
-                                </div>
-
-                                 {/* Type d'activité (Snapshot) */}
-                                 {tenant?.activity_types && tenant.activity_types.length > 0 && (
-                                     <div className="space-y-2 animate-in fade-in duration-200">
-                                         <label className="block text-sm font-medium text-slate-700">Activités autorisées par la commande</label>
-                                         <p className="text-xs text-slate-400 font-normal mb-1">Si aucun type d&apos;activité n&apos;est sélectionné, la commande donne accès à toutes les séances de l&apos;établissement.</p>
-                                         <MultiSelect
-                                             options={tenant.activity_types.map(act => ({ id: act, label: act }))}
-                                             selected={editForm.allowed_activities || []}
-                                             onChange={(acts) => setEditForm({ ...editForm, allowed_activities: acts })}
-                                             placeholder="Toutes les activités"
-                                             joinWithSemicolon={true}
-                                         />
-                                     </div>
-                                 )}
-
                                 {/* Statuts & Paiement */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
@@ -1297,133 +1418,87 @@ export default function AdminShopOrdersPage() {
                                     </div>
                                 </div>
 
-                                {/* Tarification */}
-                                <div className="space-y-6 bg-slate-50/50 p-6 rounded-2xl border border-slate-100">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <label className={`text-[11px] font-semibold uppercase tracking-wider ${(showErrors && !((editForm.featured_pricing === 'lump_sum' && editForm.price_cents) || (editForm.featured_pricing === 'recurring' && editForm.price_recurring_cents && editForm.recurring_count && editForm.period))) ? 'text-red-500' : 'text-slate-400'}`}>
-                                            Tarification *
-                                        </label>
-                                        <div className="flex bg-white p-1 rounded-xl border border-gray-200 shadow-sm">
-                                            <button
-                                                type="button"
-                                                onClick={() => setEditForm({ ...editForm, featured_pricing: "lump_sum" })}
-                                                className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${editForm.featured_pricing === "lump_sum" ? "bg-slate-900 text-white shadow-md" : "text-slate-500 hover:text-slate-700"}`}
-                                            >
-                                                Unique
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setEditForm({ ...editForm, featured_pricing: "recurring" })}
-                                                className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${editForm.featured_pricing === "recurring" ? "bg-slate-900 text-white shadow-md" : "text-slate-500 hover:text-slate-700"}`}
-                                            >
-                                                Échelonné
-                                            </button>
-                                        </div>
+                                {/* Période (Dates) */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className={`block text-sm font-medium mb-1 ${(showErrors && !editForm.start_date) ? 'text-red-500' : 'text-slate-700'}`}>Date de début *</label>
+                                        <input type="date" value={editForm.start_date}
+                                            onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
+                                            className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all ${(showErrors && !editForm.start_date) ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`} />
                                     </div>
-
-                                    {editForm.featured_pricing === "lump_sum" ? (
-                                        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                                            <label className="block text-xs font-medium text-slate-500 mb-1.5 ml-1">Prix unique (€)</label>
-                                            <div className="relative">
-                                                <input
-                                                    type="number"
-                                                    step="0.01"
-                                                    value={editForm.price_cents}
-                                                    onChange={(e) => setEditForm({ ...editForm, price_cents: e.target.value })}
-                                                    className={`w-full pl-4 pr-12 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all ${showErrors && !editForm.price_cents ? "border-red-300 ring-2 ring-red-50" : "border-gray-200 hover:border-gray-300"}`}
-                                                    placeholder="0.00"
-                                                />
-                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">€</div>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                            <div className="space-y-1.5">
-                                                <label className="block text-xs font-medium text-slate-500 ml-1">Montant de l'échéance (€)</label>
-                                                <div className="relative">
-                                                    <input
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={editForm.price_recurring_cents}
-                                                        onChange={(e) => setEditForm({ ...editForm, price_recurring_cents: e.target.value })}
-                                                        className={`w-full pl-4 pr-10 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all ${showErrors && !editForm.price_recurring_cents ? "border-red-300 ring-2 ring-red-50" : "border-gray-200 hover:border-gray-300"}`}
-                                                        placeholder="0.00"
-                                                    />
-                                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">€</div>
-                                                </div>
-                                            </div>
-                                            <div className="space-y-1.5">
-                                                <label className="block text-xs font-medium text-slate-500 ml-1">Période</label>
-                                                <select
-                                                    value={editForm.period}
-                                                    onChange={(e) => setEditForm({ ...editForm, period: e.target.value })}
-                                                    className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all ${showErrors && !editForm.period ? "border-red-300 ring-2 ring-red-50" : "border-gray-200 hover:border-gray-300"}`}
-                                                >
-                                                    <option value="/semaine">semaine</option>
-                                                    <option value="/mois">mois</option>
-                                                    <option value="/bimestre">bimestre</option>
-                                                    <option value="/trimestre">trimestre</option>
-                                                    <option value="/an">an</option>
-                                                    <option value="/seuil">seuil de consommation</option>
-                                                </select>
-                                            </div>
-                                            {editForm.period === '/seuil' || editForm.period === 'seuil' ? (
-                                                <div className="space-y-1.5">
-                                                    <label className="block text-xs font-medium text-slate-500">Seuils de déclenchement (séparés par des virgules, ex: 20, 40, 60)</label>
-                                                    <input
-                                                        type="text"
-                                                        value={editForm.trigger_consumption_percent}
-                                                        onChange={(e) => setEditForm({ ...editForm, trigger_consumption_percent: e.target.value })}
-                                                        className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all ${showErrors && !editForm.trigger_consumption_percent ? "border-red-300 ring-2 ring-red-50" : "border-gray-200 hover:border-gray-300"}`}
-                                                        placeholder="ex: 20, 40, 60"
-                                                    />
-                                                </div>
-                                            ) : (
-                                                <div className="space-y-1.5">
-                                                    <div className="flex justify-between items-center ml-1">
-                                                        <label className="block text-xs font-medium text-slate-500">Nombre d'échéances</label>
-                                                        <label className="flex items-center gap-1 cursor-pointer select-none">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={editForm.is_recurring_unlimited}
-                                                                onChange={(e) => setEditForm({ ...editForm, is_recurring_unlimited: e.target.checked, recurring_count: e.target.checked ? "" : editForm.recurring_count })}
-                                                                className="w-3.5 h-3.5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                                                            />
-                                                            <span className="text-[11px] font-medium text-slate-500">Illimité</span>
-                                                        </label>
-                                                    </div>
-                                                    <input
-                                                        type="number"
-                                                        disabled={editForm.is_recurring_unlimited}
-                                                        value={editForm.is_recurring_unlimited ? "" : editForm.recurring_count}
-                                                        onChange={(e) => setEditForm({ ...editForm, recurring_count: e.target.value })}
-                                                        className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all disabled:bg-gray-50 disabled:text-slate-400 ${showErrors && !editForm.is_recurring_unlimited && !editForm.recurring_count ? "border-red-300 ring-2 ring-red-50" : "border-gray-200 hover:border-gray-300"}`}
-                                                        placeholder={editForm.is_recurring_unlimited ? "∞" : "12"}
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
+                                    <div>
+                                        <label className={`block text-sm font-medium mb-1 ${(showErrors && !editForm.end_date && !editOrder.is_validity_unlimited) ? 'text-red-500' : 'text-slate-700'}`}>Date de fin {editOrder.is_validity_unlimited ? '' : '*'}</label>
+                                        <input type="date" value={editForm.end_date}
+                                            onChange={(e) => setEditForm({ ...editForm, end_date: e.target.value })}
+                                            className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all enabled:hover:border-gray-300 disabled:bg-gray-50 disabled:text-slate-400 ${(showErrors && !editForm.end_date && !editOrder.is_validity_unlimited) ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
+                                            disabled={editOrder.is_validity_unlimited} />
+                                    </div>
                                 </div>
 
-                                {/* Crédits */}
-                                <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                                    <div className="flex items-center gap-4 flex-wrap">
-                                        <div className="w-32">
-                                            <label className={`block text-sm font-medium mb-1 ${(showErrors && !editForm.is_unlimited && !editForm.credits_total) ? 'text-red-500' : 'text-slate-700'}`}>Crédits *</label>
-                                            <input type="number" step="any" disabled={editForm.is_unlimited} value={editForm.credits_total}
-                                                onChange={(e) => setEditForm({ ...editForm, credits_total: e.target.value })}
-                                                className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all enabled:hover:border-gray-300 disabled:bg-gray-50 disabled:text-slate-400 ${(showErrors && !editForm.is_unlimited && !editForm.credits_total) ? 'border-red-300 bg-red-50' : 'border-gray-200'}`} />
+                                {/* Notes et Suivi */}
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Commentaire interne</label>
+                                        <textarea value={editForm.comment}
+                                            onChange={(e) => setEditForm({ ...editForm, comment: e.target.value })}
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                            rows={2}
+                                            placeholder="Notes visibles uniquement par l'administration..." />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <label className="block text-sm font-medium text-slate-700">Note à l'utilisateur</label>
+                                            <div className="flex items-center gap-1.5 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100">
+                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                </svg>
+                                                <span className="text-[10px] font-semibold uppercase tracking-wider">Commentaire visible dans les commandes de l'utilisateur</span>
+                                            </div>
                                         </div>
-                                        <div className="pt-6">
-                                            <label className="flex items-center gap-2 cursor-pointer group">
-                                                <input type="checkbox" checked={editForm.is_unlimited}
-                                                    onChange={(e) => setEditForm({ ...editForm, is_unlimited: e.target.checked, credits_total: e.target.checked ? "" : editForm.credits_total })}
-                                                    className="w-5 h-5 text-slate-900 border-gray-300 rounded-lg focus:ring-slate-500" />
-                                                <span className="text-lg font-medium text-slate-700 group-hover:text-slate-900 transition-colors">∞</span>
-                                            </label>
+                                        <textarea value={editForm.user_note}
+                                            onChange={(e) => setEditForm({ ...editForm, user_note: e.target.value })}
+                                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
+                                            rows={2}
+                                            placeholder="Informations utiles à l'utilisateur (remise, prolongation, etc.)..." />
+                                    </div>
+                                </div>
+
+                                {/* Contenu & Crédits */}
+                                <div className="space-y-4 pt-4 border-t border-slate-100">
+                                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider border-b pb-1">Contenu & crédits</h4>
+                                    
+                                    {/* Nombre de crédits inclus et bloquer le solde */}
+                                    <div className="flex flex-wrap items-center justify-between gap-4">
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-3">
+                                                <span className={`text-sm font-medium ${(showErrors && !editForm.is_unlimited && !editForm.credits_total) ? 'text-red-500' : 'text-slate-700'}`}>
+                                                    Nombre de crédits inclus dans la commande
+                                                </span>
+                                                <input 
+                                                    type="number" 
+                                                    step="any" 
+                                                    placeholder="Nombre" 
+                                                    disabled={editForm.is_unlimited} 
+                                                    value={editForm.credits_total} 
+                                                    onChange={e => setEditForm({...editForm, credits_total: e.target.value})} 
+                                                    className={`w-28 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:bg-slate-50 bg-white ${(showErrors && !editForm.is_unlimited && !editForm.credits_total) ? 'border-red-300 bg-red-50' : 'border-gray-300'} [&::-webkit-inner-spin-button]:appearance-none [appearance:textfield]`} 
+                                                />
+                                            </div>
+                                            <div className="pt-0.5">
+                                                <label className="flex items-center gap-2 cursor-pointer select-none">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={editForm.is_unlimited} 
+                                                        onChange={e => setEditForm({...editForm, is_unlimited: e.target.checked, ...(e.target.checked ? {credits_total: ''} : {})})} 
+                                                        className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500" 
+                                                    />
+                                                    <span className="text-sm font-medium text-slate-700">Crédits illimités (♾️)</span>
+                                                </label>
+                                            </div>
                                         </div>
-                                        <div className="pt-6 pl-4 flex items-center">
+
+                                        {/* Bloquer le solde switch */}
+                                        <div className="flex items-center">
                                             {(() => {
                                                 const isStatusBlocking = ["en_pause", "resiliee", "expiree"].includes(editForm.status);
                                                 return (
@@ -1432,9 +1507,9 @@ export default function AdminShopOrdersPage() {
                                                             <input type="checkbox" checked={editForm.is_blocked}
                                                                 disabled={isStatusBlocking}
                                                                 onChange={(e) => setEditForm({ ...editForm, is_blocked: e.target.checked })}
-                                                                className="w-5 h-5 text-red-600 border-gray-300 rounded-lg focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed" />
-                                                            <span className={`text-sm font-medium transition-colors ${isStatusBlocking ? "text-slate-400 cursor-not-allowed" : "text-slate-700 group-hover:text-slate-900"}`}>
-                                                                Bloquer le solde de crédits {isStatusBlocking && "(lié au statut)"}
+                                                                className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed" />
+                                                            <span className={`text-sm font-medium flex items-center gap-1.5 transition-colors ${isStatusBlocking ? "text-slate-400 cursor-not-allowed" : "text-slate-700 group-hover:text-slate-900"}`}>
+                                                                🔒 Bloquer le solde de crédits {isStatusBlocking && "(lié au statut)"}
                                                             </span>
                                                         </label>
                                                         {!isStatusBlocking && editForm.is_blocked && (
@@ -1447,52 +1522,223 @@ export default function AdminShopOrdersPage() {
                                             })()}
                                         </div>
                                     </div>
-                                    <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-3">
-                                        <h5 className="text-sm font-medium text-slate-700">Plafond périodique (Optionnel)</h5>
-                                        <p className="text-xs text-slate-500">Remplace la règle de l'offre pour cette commande spécifique.</p>
-                                        <div className="flex gap-2">
-                                            <input type="number" placeholder="Limite" value={editForm.limit_amount} onChange={e => setEditForm({...editForm, limit_amount: e.target.value})} className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white" />
-                                            <span className="text-sm text-slate-500 self-center">par</span>
-                                            <select value={editForm.limit_period} onChange={e => setEditForm({...editForm, limit_period: e.target.value})} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white">
+
+                                    {/* Grille d'activités */}
+                                    {tenant?.activity_types && tenant.activity_types.length > 0 && (
+                                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
+                                            {/* Colonnes d'activités */}
+                                            <div className="lg:col-span-12 grid grid-cols-2 gap-4 items-start">
+                                                {/* Colonne 1: Types d'activités autorisés */}
+                                                <div>
+                                                    <div className="text-sm font-medium text-slate-700 mb-3">
+                                                        Type d'activités autorisés <span className="font-normal text-slate-500">(<u>optionnel</u>)</span>
+                                                    </div>
+                                                    <div className="space-y-3">
+                                                        {tenant.activity_types.map(act => {
+                                                            const isChecked = editForm.allowed_activities?.includes(act);
+                                                            return (
+                                                                <div key={`edit-chk-${act}`} className="h-9 flex items-center">
+                                                                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                                                                        <input 
+                                                                            type="checkbox" 
+                                                                            checked={isChecked} 
+                                                                            onChange={e => handleEditActivityCheckboxChange(act, e.target.checked)} 
+                                                                            className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" 
+                                                                        />
+                                                                        <span className="text-sm text-slate-700 font-medium">{act}</span>
+                                                                    </label>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+
+                                                {/* Colonne 2: Nombre de crédits par type d'activité */}
+                                                <div>
+                                                    <div className="text-sm font-medium text-slate-700 mb-3">
+                                                        Nombre de crédits par type d'activité <span className="font-normal text-slate-500">(<u>optionnel</u>)</span>
+                                                    </div>
+                                                    <div className="space-y-3">
+                                                        {tenant.activity_types.map(act => {
+                                                            const isChecked = editForm.allowed_activities?.includes(act);
+                                                            return (
+                                                                <div key={`edit-val-${act}`} className="h-9 flex items-center">
+                                                                    <input 
+                                                                        type="number"
+                                                                        disabled={!isChecked || editForm.is_unlimited}
+                                                                        value={editForm.activity_credits[act] || ""}
+                                                                        onChange={e => handleEditActivityCreditChange(act, e.target.value)}
+                                                                        className="w-24 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none text-center bg-white disabled:bg-slate-50 disabled:text-slate-400"
+                                                                    />
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Plafond de crédit périodique */}
+                                    <div className="pt-4 border-t border-slate-100">
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                                            Plafond de crédit périodique <span className="font-normal text-slate-500">(<u>optionnel</u>)</span>
+                                        </label>
+                                        <div className="flex flex-wrap items-center gap-3">
+                                            <input type="number" placeholder="Nombre" value={editForm.limit_amount} onChange={e => setEditForm({...editForm, limit_amount: e.target.value})} className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm [&::-webkit-inner-spin-button]:appearance-none [appearance:textfield] bg-white" />
+                                            <span className="text-sm text-slate-500">par</span>
+                                            <select value={editForm.limit_period} onChange={e => setEditForm({...editForm, limit_period: e.target.value})} className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white">
                                                 <option value="/semaine">semaine</option>
                                                 <option value="/mois">mois</option>
                                                 <option value="/bimestre">bimestre</option>
                                                 <option value="/trimestre">trimestre</option>
                                                 <option value="/an">an</option>
                                             </select>
+                                            <label className="flex items-center gap-2 cursor-pointer ml-2 select-none">
+                                                <input type="checkbox" checked={editForm.limit_rollover} onChange={e => setEditForm({...editForm, limit_rollover: e.target.checked})} className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500" />
+                                                <span className="text-xs text-slate-600 font-light">Autoriser le report des crédits non consommés sur la période suivante</span>
+                                            </label>
                                         </div>
-                                        <label className="flex items-start gap-2 cursor-pointer mt-2">
-                                            <input type="checkbox" checked={editForm.limit_rollover} onChange={e => setEditForm({...editForm, limit_rollover: e.target.checked})} className="w-4 h-4 mt-0.5 text-purple-600 rounded border-gray-300 focus:ring-purple-500" />
-                                            <span className="text-xs text-slate-600 leading-tight">Reporter le solde non consommé à la période suivante</span>
-                                        </label>
                                     </div>
                                 </div>
 
-                                {/* Notes */}
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Commentaire interne</label>
-                                    <textarea value={editForm.comment}
-                                        onChange={(e) => setEditForm({ ...editForm, comment: e.target.value })}
-                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
-                                        rows={2}
-                                        placeholder="Notes visibles uniquement par l'administration..." />
-                                </div>
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-2">
-                                        <label className="block text-sm font-medium text-slate-700">Note à l'utilisateur</label>
-                                        <div className="flex items-center gap-1.5 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100">
-                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                            </svg>
-                                            <span className="text-[10px] font-semibold uppercase tracking-wider">Commentaire visible dans les commandes de l'utilisateur</span>
-                                        </div>
-                                    </div>
-                                    <textarea value={editForm.user_note}
-                                        onChange={(e) => setEditForm({ ...editForm, user_note: e.target.value })}
-                                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-sm outline-none transition-all hover:border-gray-300"
-                                        rows={2}
-                                        placeholder="Informations utiles à l'utilisateur (remise, prolongation, etc.)..." />
-                                </div>
+                                {/* Tarification */}
+                                 {(() => {
+                                     const isPricingValid = editForm.featured_pricing === 'lump_sum' 
+                                         ? !!editForm.price_cents 
+                                         : (!!editForm.price_recurring_cents && (editForm.is_recurring_unlimited || !!editForm.recurring_count));
+
+                                     return (
+                                         <div className="space-y-4 pt-4 border-t border-slate-100">
+                                             <div className="flex items-center justify-between mb-2">
+                                                 <h4 className={`text-xs font-semibold uppercase tracking-wider flex items-baseline gap-2 ${(showErrors && !isPricingValid) ? 'text-red-500' : 'text-slate-400'}`}>
+                                                     Tarification *
+                                                 </h4>
+                                                 <div className="flex bg-slate-100 p-1 rounded-xl border border-gray-200 shadow-sm">
+                                                     <button
+                                                         type="button"
+                                                         onClick={() => setEditForm({ ...editForm, featured_pricing: "lump_sum" })}
+                                                         className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${editForm.featured_pricing === "lump_sum" ? "bg-white text-slate-900 shadow-sm font-semibold" : "text-slate-500 hover:text-slate-700"}`}
+                                                     >
+                                                         Paiement unique
+                                                     </button>
+                                                     <button
+                                                         type="button"
+                                                         onClick={() => setEditForm({ ...editForm, featured_pricing: "recurring" })}
+                                                         className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${editForm.featured_pricing === "recurring" ? "bg-white text-slate-900 shadow-sm font-semibold" : "text-slate-500 hover:text-slate-700"}`}
+                                                     >
+                                                         Paiement échelonné
+                                                     </button>
+                                                 </div>
+                                             </div>
+                                             
+                                             <div className="flex flex-col gap-4 animate-in fade-in duration-200">
+                                                 {editForm.featured_pricing === 'lump_sum' ? (
+                                                     /* Paiement Unique */
+                                                     <div className="p-4 rounded-xl border-2 border-blue-600 bg-blue-50">
+                                                         <div className="space-y-3">
+                                                             <div className="flex flex-wrap items-center justify-between gap-4 w-full">
+                                                                 <span className="font-semibold text-slate-900">Paiement unique</span>
+                                                                 <div className="flex items-center gap-2 flex-1 justify-end min-w-[200px]">
+                                                                     <label className="text-xs text-slate-500 whitespace-nowrap">Montant TTC (€) :</label>
+                                                                     <input type="number" step="0.01" value={editForm.price_cents} onChange={e => setEditForm({...editForm, price_cents: e.target.value})} className={`w-32 px-3 py-2 border rounded-lg focus:border-slate-400 outline-none bg-white ${(showErrors && editForm.featured_pricing === 'lump_sum' && !editForm.price_cents) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="0.00" />
+                                                                 </div>
+                                                             </div>
+                                                         </div>
+                                                     </div>
+                                                 ) : (
+                                                     /* Abonnement */
+                                                     <div className="p-4 rounded-xl border-2 border-amber-500 bg-amber-50">
+                                                          <div className="space-y-4">
+                                                              <div className="flex flex-wrap items-center justify-between gap-4 w-full">
+                                                                  <span className="font-semibold text-slate-900">Paiement échelonné / Abonnement</span>
+                                                                  <div className="flex items-center gap-2 flex-1 justify-end min-w-[200px]">
+                                                                      <label className="text-xs text-slate-500 whitespace-nowrap">Montant de l'échéance (€) :</label>
+                                                                      <input type="number" step="0.01" value={editForm.price_recurring_cents} onChange={e => setEditForm({...editForm, price_recurring_cents: e.target.value})} className={`w-32 px-3 py-2 border rounded-lg focus:border-slate-400 outline-none bg-white text-sm ${(showErrors && editForm.featured_pricing === 'recurring' && !editForm.price_recurring_cents) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="0.00" />
+                                                                  </div>
+                                                              </div>
+                                                              
+                                                              <div className="grid grid-cols-1 md:grid-cols-3 gap-y-6 md:gap-y-0 md:divide-x md:divide-gray-200 pt-4 border-t border-gray-150">
+                                                                  {/* Colonne 1: Période */}
+                                                                  <div className="md:pr-6 space-y-3">
+                                                                      <label className="flex items-center gap-2 cursor-pointer mb-2 font-semibold text-slate-800" onClick={e => e.stopPropagation()}>
+                                                                          <input 
+                                                                              type="checkbox" 
+                                                                              checked={editForm.period !== 'seuil' && !editForm.is_recurring_unlimited} 
+                                                                              onChange={() => setEditForm({
+                                                                                  ...editForm,
+                                                                                  period: editForm.period === 'seuil' ? 'mois' : editForm.period,
+                                                                                  is_recurring_unlimited: false
+                                                                              })} 
+                                                                              className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-0 focus:ring-offset-0"
+                                                                          />
+                                                                          <span className="text-xs">Période</span>
+                                                                      </label>
+                                                                      <select value={editForm.period} onChange={e => setEditForm({...editForm, period: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white" disabled={editForm.period === 'seuil' || editForm.is_recurring_unlimited}>
+                                                                          <option value="/semaine">semaine</option>
+                                                                          <option value="/mois">mois</option>
+                                                                          <option value="/bimestre">bimestre</option>
+                                                                          <option value="/trimestre">trimestre</option>
+                                                                          <option value="/an">an</option>
+                                                                      </select>
+                                                                  </div>
+
+                                                                  {/* Colonne 2: Échéances */}
+                                                                  <div className="md:px-6 space-y-3">
+                                                                      <label className="flex items-center gap-2 cursor-pointer mb-2 font-semibold text-slate-800" onClick={e => e.stopPropagation()}>
+                                                                          <input 
+                                                                              type="checkbox" 
+                                                                              checked={!editForm.is_recurring_unlimited && editForm.period !== 'seuil'} 
+                                                                              onChange={() => setEditForm({
+                                                                                  ...editForm,
+                                                                                  is_recurring_unlimited: false,
+                                                                                  period: editForm.period === 'seuil' ? 'mois' : editForm.period
+                                                                              })} 
+                                                                              className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-0 focus:ring-offset-0"
+                                                                          />
+                                                                          <span className="text-xs">Nombre d'échéance défini</span>
+                                                                      </label>
+                                                                      <div className="flex items-center gap-4 w-full">
+                                                                          <input type="number" min="1" disabled={editForm.is_recurring_unlimited} value={editForm.is_recurring_unlimited ? "" : editForm.recurring_count} onChange={e => setEditForm({...editForm, recurring_count: e.target.value})} className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 outline-none disabled:bg-gray-100 bg-white ${(showErrors && editForm.featured_pricing === 'recurring' && !editForm.is_recurring_unlimited && !editForm.recurring_count) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} placeholder="ex: 12" />
+                                                                          <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                                                                              <input type="checkbox" checked={editForm.is_recurring_unlimited} onChange={e => setEditForm({...editForm, is_recurring_unlimited: e.target.checked, recurring_count: e.target.checked ? "" : editForm.recurring_count})} className="w-4 h-4 text-amber-500 rounded border-gray-300 focus:ring-amber-500" />
+                                                                              <span className="text-xs font-medium text-slate-700">Illimité</span>
+                                                                          </label>
+                                                                      </div>
+                                                                  </div>
+
+                                                                  {/* Colonne 3: Seuil */}
+                                                                  <div className="md:pl-6 space-y-3">
+                                                                      <label className="flex items-center gap-2 cursor-pointer mb-2 font-semibold text-slate-800" onClick={e => e.stopPropagation()}>
+                                                                          <input 
+                                                                              type="checkbox" 
+                                                                              checked={editForm.period === 'seuil' || editForm.period === '/seuil'} 
+                                                                              onChange={() => setEditForm({
+                                                                                  ...editForm,
+                                                                                  period: 'seuil',
+                                                                                  is_recurring_unlimited: false
+                                                                              })} 
+                                                                              className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-0 focus:ring-offset-0"
+                                                                          />
+                                                                          <span className="text-xs">Seuil de consommation</span>
+                                                                      </label>
+                                                                      <input 
+                                                                          type="text" 
+                                                                          placeholder="ex: 20, 40, 60" 
+                                                                          disabled={editForm.period !== 'seuil' && editForm.period !== '/seuil'} 
+                                                                          value={editForm.trigger_consumption_percent} 
+                                                                          onChange={e => setEditForm({...editForm, trigger_consumption_percent: e.target.value})} 
+                                                                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:bg-gray-100 bg-white ${(showErrors && editForm.featured_pricing === 'recurring' && (editForm.period === 'seuil' || editForm.period === '/seuil') && !editForm.trigger_consumption_percent) ? 'border-red-300 bg-red-50' : 'border-gray-300'}`} 
+                                                                      />
+                                                                  </div>
+                                                              </div>
+                                                          </div>
+                                                      </div>
+                                                 )}
+                                             </div>
+                                         </div>
+                                     );
+                                 })()}
                             </form>
                         </div>
 

@@ -379,19 +379,64 @@ export default function MemberOrdersPage() {
                                                 <div className="flex flex-col min-w-0 flex-1 w-full sm:w-auto">
                                                     <div className="flex items-center gap-3 mb-2 w-full min-w-0">
                                                         <h3 className="text-lg md:text-xl font-semibold text-slate-900 capitalize tracking-tight truncate">{order.offer_name}</h3>
-                                                        <div 
-                                                            className="flex-shrink-0 inline-block text-[10px] md:text-[11px] font-semibold px-2.5 py-0.5 rounded-full border transition-colors capitalize whitespace-nowrap"
-                                                            style={{
-                                                                backgroundColor: `${tenant?.primary_color || '#2563eb'}10`,
-                                                                borderColor: `${tenant?.primary_color || '#2563eb'}30`,
-                                                                color: tenant?.primary_color || '#2563eb'
-                                                            }}
-                                                        >
-                                                            {order.allowed_activities && order.allowed_activities.length > 0 
-                                                                ? order.allowed_activities.join(", ") 
-                                                                : "Toutes activités"
-                                                            }
-                                                        </div>
+                                                        {(() => {
+                                                             const hasActivityCredits = order.allowed_activities && order.allowed_activities.length > 0 &&
+                                                                 (order.offer_snap_activity_credits || order.activity_credits) &&
+                                                                 Object.keys(order.offer_snap_activity_credits || order.activity_credits || {}).some(k => 
+                                                                     order.allowed_activities.includes(k) && 
+                                                                     ((order.offer_snap_activity_credits?.[k] !== undefined && order.offer_snap_activity_credits?.[k] !== null && order.offer_snap_activity_credits?.[k].toString().trim() !== "") || 
+                                                                      (order.activity_credits?.[k] !== undefined && order.activity_credits?.[k] !== null && order.activity_credits?.[k].toString().trim() !== ""))
+                                                                 );
+                                                             return (!order.allowed_activities || order.allowed_activities.length === 0) ? (
+                                                                 <div className="w-full mt-1.5 flex flex-col items-center">
+                                                                     <div className="flex items-center justify-center gap-1.5 text-[11px] font-semibold text-center w-full">
+                                                                         <span className="capitalize flex items-center gap-1.5 truncate">
+                                                                             <span 
+                                                                                 className="text-[9px] font-bold" 
+                                                                                 style={{ color: tenant?.primary_color || '#2563eb' }}
+                                                                             >
+                                                                                 ✓
+                                                                             </span>
+                                                                             <span className="text-slate-800 truncate">Toutes activités</span>
+                                                                         </span>
+                                                                     </div>
+                                                                 </div>
+                                                             ) : (
+                                                                 <div className="w-full space-y-1.5 mt-1.5 flex flex-col">
+                                                                     {order.allowed_activities.map((act: string) => {
+                                                                         const packCredits = order.offer_snap_activity_credits?.[act] ?? order.activity_credits?.[act];
+                                                                         return (
+                                                                             <div 
+                                                                                 key={act} 
+                                                                                 className={`flex ${hasActivityCredits ? 'justify-between text-left' : 'justify-center text-center'} items-center gap-2 text-[11px] font-semibold w-full`}
+                                                                             >
+                                                                                 <span className="capitalize flex items-center gap-1.5 truncate">
+                                                                                     <span 
+                                                                                         className="text-[9px] font-bold" 
+                                                                                         style={{ color: tenant?.primary_color || '#2563eb' }}
+                                                                                     >
+                                                                                         ✓
+                                                                                     </span>
+                                                                                     <span className="text-slate-800 truncate">{act}</span>
+                                                                                 </span>
+                                                                                 {packCredits !== undefined && packCredits !== null && packCredits.toString().trim() !== "" && (
+                                                                                     <span 
+                                                                                         className="px-1.5 py-0.5 border font-bold rounded-full text-[9px] whitespace-nowrap"
+                                                                                         style={{
+                                                                                             backgroundColor: `${tenant?.primary_color || '#2563eb'}15`,
+                                                                                             borderColor: `${tenant?.primary_color || '#2563eb'}25`,
+                                                                                             color: tenant?.primary_color || '#2563eb'
+                                                                                         }}
+                                                                                     >
+                                                                                         {packCredits} cr.
+                                                                                     </span>
+                                                                                 )}
+                                                                             </div>
+                                                                         );
+                                                                     })}
+                                                                 </div>
+                                                             );
+                                                         })()}
                                                     </div>
                                                     <div className="flex flex-col items-start gap-2">
                                                         <p className="text-slate-600 text-xs font-medium tracking-tight whitespace-nowrap">
@@ -652,16 +697,57 @@ export default function MemberOrdersPage() {
                                  </div>
 
                                  {selectedOrder.allowed_activities && selectedOrder.allowed_activities.length > 0 && (
-                                      <div className="flex items-center gap-3">
-                                          <span className="text-lg w-6 text-center">🎯</span>
-                                          <div className="flex flex-col">
-                                              <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium leading-none mb-1">Activités concernées</span>
-                                              <p className="text-sm font-medium text-slate-900 leading-none capitalize">
-                                                  {selectedOrder.allowed_activities.join(", ")}
-                                              </p>
-                                          </div>
-                                      </div>
-                                  )}
+                                     <div className="flex items-start gap-3">
+                                         <span className="text-lg w-6 text-center mt-0.5">🎯</span>
+                                         <div className="flex flex-col gap-1.5 w-full">
+                                             <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium leading-none mb-1">Activités concernées</span>
+                                             {(() => {
+                                                 const hasActivityCredits = selectedOrder.allowed_activities && selectedOrder.allowed_activities.length > 0 &&
+                                                     (selectedOrder.offer_snap_activity_credits || selectedOrder.activity_credits) &&
+                                                     Object.keys(selectedOrder.offer_snap_activity_credits || selectedOrder.activity_credits || {}).some(k => 
+                                                         selectedOrder.allowed_activities.includes(k) && 
+                                                         ((selectedOrder.offer_snap_activity_credits?.[k] !== undefined && selectedOrder.offer_snap_activity_credits?.[k] !== null && selectedOrder.offer_snap_activity_credits?.[k].toString().trim() !== "") || 
+                                                          (selectedOrder.activity_credits?.[k] !== undefined && selectedOrder.activity_credits?.[k] !== null && selectedOrder.activity_credits?.[k].toString().trim() !== ""))
+                                                     );
+                                                 return (
+                                                     <div className="w-full space-y-1.5 mt-1 flex flex-col">
+                                                         {selectedOrder.allowed_activities.map((act: string) => {
+                                                             const packCredits = selectedOrder.offer_snap_activity_credits?.[act] ?? selectedOrder.activity_credits?.[act];
+                                                             return (
+                                                                 <div 
+                                                                     key={act} 
+                                                                     className={`flex ${hasActivityCredits ? 'justify-between text-left' : 'justify-center text-center'} items-center gap-2 text-[11px] font-semibold w-full`}
+                                                                 >
+                                                                     <span className="capitalize flex items-center gap-1.5 truncate">
+                                                                         <span 
+                                                                             className="text-[9px] font-bold" 
+                                                                             style={{ color: tenant?.primary_color || '#2563eb' }}
+                                                                         >
+                                                                             ✓
+                                                                         </span>
+                                                                         <span className="text-slate-800 truncate">{act}</span>
+                                                                     </span>
+                                                                     {packCredits !== undefined && packCredits !== null && packCredits.toString().trim() !== "" && (
+                                                                         <span 
+                                                                             className="px-1.5 py-0.5 border font-bold rounded-full text-[9px] whitespace-nowrap"
+                                                                             style={{
+                                                                                 backgroundColor: `${tenant?.primary_color || '#2563eb'}15`,
+                                                                                 borderColor: `${tenant?.primary_color || '#2563eb'}25`,
+                                                                                 color: tenant?.primary_color || '#2563eb'
+                                                                             }}
+                                                                         >
+                                                                             {packCredits} cr.
+                                                                         </span>
+                                                                     )}
+                                                                 </div>
+                                                             );
+                                                         })}
+                                                     </div>
+                                                 );
+                                             })()}
+                                         </div>
+                                     </div>
+                                 )}
 
                                  {(selectedOrder.offer_snap_description || selectedOrder.offer_description) && (
                                      <div className="pt-2 border-t border-slate-100 flex items-start gap-3">

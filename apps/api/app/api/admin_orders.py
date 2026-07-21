@@ -201,6 +201,8 @@ async def list_orders(
         order_balance = order_fifo.get("balance")
         order_used = order_fifo.get("credits_used", 0)
         is_blocked = order_fifo.get("is_blocked", False)
+        act_credits = order_fifo.get("activity_credits")
+        act_allocs = order_fifo.get("activity_allocations")
         
         responses.append(order_service.build_order_response(
             order, 
@@ -209,7 +211,9 @@ async def list_orders(
             global_credits_used=order_used,
             grace_period_days=grace_days,
             grace_period_mode=grace_mode,
-            is_blocked_val=is_blocked
+            is_blocked_val=is_blocked,
+            activity_credits=act_credits,
+            activity_allocations=act_allocs
         ))
 
     return responses
@@ -356,7 +360,9 @@ async def create_order(
         global_credits_used=order_used,
         grace_period_days=grace_days,
         grace_period_mode=grace_mode,
-        is_blocked_val=is_blocked
+        is_blocked_val=is_blocked,
+        activity_credits=order_fifo.get("activity_credits"),
+        activity_allocations=order_fifo.get("activity_allocations")
     )
 
 
@@ -471,7 +477,9 @@ async def update_order(
         global_credits_used=order_used,
         grace_period_days=grace_days,
         grace_period_mode=grace_mode,
-        is_blocked_val=is_blocked
+        is_blocked_val=is_blocked,
+        activity_credits=order_fifo.get("activity_credits"),
+        activity_allocations=order_fifo.get("activity_allocations")
     )
 
 

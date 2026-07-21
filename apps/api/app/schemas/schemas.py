@@ -831,6 +831,7 @@ class OrderResponse(BaseModel):
     offer_snap_validity_unit: Optional[str] = None
     offer_snap_is_validity_unlimited: Optional[bool] = False
     allowed_activities: Optional[List[str]] = Field(default_factory=list)
+    activity_allocations: Optional[Dict[str, float]] = None
     
     # Financial summary for installments
     received_cents: int = 0

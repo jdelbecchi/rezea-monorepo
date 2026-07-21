@@ -86,7 +86,7 @@ export default function CreditsPage() {
 
             {/* Main Content */}
             <main className={`flex-1 px-5 pb-5 md:p-12 pt-4 md:pt-12`}>
-                <div className="max-w-5xl mx-auto">
+                <div className="max-w-6xl mx-auto">
                     <header className="mb-6">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-200 gap-4">
                             <h1 className="text-lg md:text-xl font-medium text-slate-900 tracking-tight flex items-center gap-2">
@@ -116,22 +116,22 @@ export default function CreditsPage() {
                                     if (activities.length > 1) {
                                         return (
                                             <div className="flex flex-col items-center gap-1.5 max-w-md w-full">
-                                                <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">Mes soldes de crédits</span>
+                                                <span className="text-[10px] md:text-xs font-medium text-slate-500 uppercase tracking-wider">Mes soldes de crédits</span>
                                                 <div className="flex flex-wrap justify-center gap-2">
                                                     {activities.map(([activity, bal]) => {
                                                         return (
                                                             <div 
                                                                 key={activity} 
-                                                                className="px-3.5 py-1.5 rounded-2xl border flex items-center justify-center gap-2 shadow-sm bg-white"
+                                                                className="px-3.5 py-1.5 md:px-4 md:py-2 rounded-2xl border flex items-center justify-center gap-2 md:gap-3 shadow-sm bg-white"
                                                                 style={{ 
                                                                     borderColor: `${(tenantSettings?.primary_color || '#2563eb')}25`
                                                                 }}
                                                             >
-                                                                <span>💎</span>
+                                                                <span className="text-sm md:text-base">💎</span>
                                                                 <span className="text-xs md:text-sm font-medium text-slate-900 leading-none">
                                                                     {bal === null ? "Illimité" : formatCredits(Number(bal))}
                                                                 </span>
-                                                                <span className="text-slate-500 text-[10px] capitalize font-medium">
+                                                                <span className="text-slate-500 text-[11px] md:text-xs capitalize font-medium">
                                                                     {activity}
                                                                 </span>
                                                             </div>
@@ -175,7 +175,7 @@ export default function CreditsPage() {
                                 <section key={category} className="space-y-6">
                                     <div className="flex items-center gap-4">
                                         <h2 
-                                            className="text-xs font-bold uppercase tracking-wider"
+                                            className="text-sm font-bold uppercase tracking-normal"
                                             style={{ color: tenantSettings?.primary_color || '#2563eb' }}
                                         >
                                             {category}
@@ -189,6 +189,15 @@ export default function CreditsPage() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                                         {categoryOffers.map((offer) => {
                                             const hasAlreadyPurchased = offer.is_unique && myOrders.some(order => order.offer_id === offer.id && order.status !== 'resiliee');
+                                            const allowedActs = offer.allowed_activities || [];
+                                            const hasActivityCredits = allowedActs.length > 0 &&
+                                                (offer as any).activity_credits && 
+                                                Object.keys((offer as any).activity_credits).some(k => 
+                                                    allowedActs.includes(k) && 
+                                                    (offer as any).activity_credits[k] !== undefined && 
+                                                    (offer as any).activity_credits[k] !== null && 
+                                                    (offer as any).activity_credits[k].toString().trim() !== ""
+                                                );
                                             return (
                                                 <div
                                                     key={offer.id}
@@ -196,117 +205,186 @@ export default function CreditsPage() {
                                                     onMouseLeave={() => setHoveredCardId(null)}
                                                     className="group relative bg-white rounded-2xl p-4 md:p-5 border transition-all duration-300 flex flex-col items-center justify-between overflow-hidden text-center"
                                                     style={{ 
-                                                        boxShadow: `3px 4px 14px -2px ${(tenantSettings?.primary_color || '#2563eb')}40`,
+                                                        boxShadow: `3px 4px 14px -2px ${(tenantSettings?.primary_color || '#2563eb')}25`,
                                                         borderColor: hoveredCardId === offer.id 
                                                             ? tenantSettings?.primary_color || '#2563eb' 
-                                                            : `${(tenantSettings?.primary_color || '#2563eb')}20`,
-                                                        backgroundColor: hoveredCardId === offer.id 
-                                                            ? `${(tenantSettings?.primary_color || '#2563eb')}0d` 
-                                                            : 'white'
+                                                            : `${(tenantSettings?.primary_color || '#2563eb')}25`,
+                                                        backgroundImage: hoveredCardId === offer.id
+                                                            ? `linear-gradient(to top left, ${(tenantSettings?.primary_color || '#2563eb')}40 0%, white 60%)`
+                                                            : `linear-gradient(to top left, ${(tenantSettings?.primary_color || '#2563eb')}25 0%, white 70%)`,
+                                                        backgroundColor: 'white'
                                                     }}
                                                 >
-                                                    <div className="relative z-10 space-y-3 w-full flex flex-col items-center">
-                                                        <div className="space-y-1.5 w-full flex flex-col items-center">
-                                                            <h3 className="text-[15px] md:text-base font-semibold text-slate-800 group-hover:text-slate-900 transition-colors capitalize tracking-tight">{offer.name}</h3>
-                                                            <div 
-                                                                className="inline-block text-[13px] md:text-sm font-semibold px-4 py-1 rounded-full mt-1 border transition-colors capitalize"
-                                                                style={{
-                                                                    backgroundColor: `${tenantSettings?.primary_color || '#2563eb'}10`,
-                                                                    borderColor: `${tenantSettings?.primary_color || '#2563eb'}30`,
-                                                                    color: tenantSettings?.primary_color || '#2563eb'
-                                                                }}
-                                                            >
-                                                                {offer.allowed_activities && offer.allowed_activities.length > 0 
-                                                                    ? offer.allowed_activities.join(", ") 
-                                                                    : "Toutes activités"
-                                                                }
-                                                            </div>
-                                                        </div>
-     
-                                                        <div className="flex flex-col items-center gap-0.5">
-                                                            <div className="flex items-baseline justify-center flex-wrap">
-                                                                <span className="text-lg font-semibold text-slate-900">
-                                                                    {offer.featured_pricing === "recurring" && offer.price_recurring_cents 
-                                                                        ? `${formatPrice(offer.price_recurring_cents)}`
-                                                                        : `${formatPrice(offer.price_lump_sum_cents)}`
-                                                                    }
-                                                                </span>
-                                                                {offer.featured_pricing === "recurring" && (
-                                                                    <span className="text-slate-900 text-xs font-medium">
-                                                                        /{(offer.period && offer.period !== 'null') ? offer.period : 'mois'}
-                                                                        {offer.recurring_count && ` pendant ${offer.recurring_count} ${offer.period || 'mois'}`}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            {/* Secondary line: Alternative pricing */}
-                                                            <p className="text-[10px] md:text-xs font-medium text-slate-500 leading-tight">
-                                                                {offer.featured_pricing === "recurring" ? (
-                                                                    offer.price_lump_sum_cents ? `ou ${formatPrice(offer.price_lump_sum_cents)} en une fois` : ""
-                                                                ) : (
-                                                                    offer.price_recurring_cents ? (
-                                                                        `ou ${formatPrice(offer.price_recurring_cents)}/${(offer.period && offer.period !== 'null') ? offer.period : 'mois'} pendant ${offer.recurring_count} mois`
-                                                                    ) : ""
-                                                                )}
-                                                            </p>
-                                                        </div>
-     
-                                                        <div className="space-y-0.5 w-full flex flex-col items-center">
-                                                            <div className="flex items-center gap-1.5 text-slate-500 justify-center">
-                                                                <span className="text-xs">💎</span>
-                                                                <span className="text-xs font-medium">
-                                                                    {offer.is_unlimited ? "Crédits illimités" : `${formatCredits(offer.classes_included)} crédit${Number(offer.classes_included || 0) > 1 ? 's' : ''}`}
-                                                                </span>
-                                                            </div>
-                                                            
-                                                            {offer.is_validity_unlimited ? (
-                                                                <div className="flex items-center gap-1.5 text-emerald-600/70 justify-center">
-                                                                    <span className="text-xs">♾️</span>
-                                                                    <span className="text-xs font-medium">Validité illimitée</span>
-                                                                </div>
-                                                            ) : (offer.validity_days || offer.deadline_date) && (
-                                                                <div className="flex items-center gap-1.5 text-slate-500 justify-center">
-                                                                    <span className="text-[11px]">🕒</span>
-                                                                    <span className="text-xs font-medium">
-                                                                        {offer.deadline_date 
-                                                                            ? `jusqu'au ${new Date(offer.deadline_date).toLocaleDateString()}`
-                                                                            : `Validité : ${offer.validity_unit === 'months' ? Math.round((offer.validity_days || 0) / 30) : offer.validity_days} ${offer.validity_unit === 'months' ? 'mois' : 'jours'}`
-                                                                        }
-                                                                    </span>
-                                                                </div>
-                                                            )}
-     
-                                                            {offer.is_unique && (
-                                                                <div className="flex items-center gap-1.5 text-amber-600/70 justify-center">
-                                                                    <span className="text-xs">🔒</span>
-                                                                    <span className="text-xs font-medium">Valable 1 fois / personne</span>
-                                                                </div>
-                                                            )}
-                                                        </div>
-     
-                                                        {offer.description && (
-                                                            <div className="pt-2 border-t border-slate-50 w-full">
-                                                                <p className="text-slate-500 text-[10px] md:text-[11px] leading-relaxed italic">{offer.description}</p>
-                                                            </div>
-                                                        )}
-                                                    </div>
-     
-                                                    <div className="mt-4 relative z-10 w-full">
-                                                        {hasAlreadyPurchased ? (
-                                                            <button
-                                                                disabled
-                                                                className="block w-fit mx-auto px-10 py-2 rounded-xl font-medium text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed text-xs"
-                                                            >
-                                                                Déjà commandée
-                                                            </button>
-                                                        ) : (
-                                                            <Link
-                                                                href={`/credits/checkout?id=${offer.id}`}
-                                                                className="block w-fit mx-auto px-10 py-2 rounded-xl font-medium text-white bg-slate-900 hover:bg-slate-800 transition-all duration-300 text-xs shadow-lg shadow-slate-100"
-                                                            >
-                                                                Choisir cette offre
-                                                            </Link>
-                                                        )}
-                                                    </div>
+                                                    <div className="relative z-10 space-y-6 w-full flex flex-col items-center flex-1">
+                                                         <div className="space-y-3 w-full flex flex-col items-center">
+                                                             <div className="w-full flex flex-col items-center gap-1.5">
+                                                                 <h3 className="text-lg font-semibold text-slate-800 group-hover:text-slate-900 transition-colors capitalize tracking-tight">{offer.name}</h3>
+                                                                 {(!offer.allowed_activities || offer.allowed_activities.length === 0) ? (
+                                                                      <div className="w-full mx-auto flex flex-wrap justify-center gap-2 px-4">
+                                                                          <span 
+                                                                              className="px-3 py-1.5 border font-medium rounded-lg text-[13px] text-center capitalize shadow-sm transition-colors"
+                                                                              style={{
+                                                                                  backgroundColor: `${tenantSettings?.primary_color || '#2563eb'}10`,
+                                                                                  borderColor: `${tenantSettings?.primary_color || '#2563eb'}25`,
+                                                                                  color: tenantSettings?.primary_color || '#2563eb'
+                                                                              }}
+                                                                          >
+                                                                              Toutes activités
+                                                                          </span>
+                                                                      </div>
+                                                                 ) : hasActivityCredits ? (
+                                                                      <div className="w-[90%] mx-auto space-y-2 mt-1 flex flex-col">
+                                                                          {offer.allowed_activities.map((act) => {
+                                                                              const packCredits = (offer as any).activity_credits?.[act];
+                                                                              return (
+                                                                                  <div 
+                                                                                      key={act} 
+                                                                                      className="flex justify-between text-left items-center gap-2 text-sm font-medium text-slate-800 w-full"
+                                                                                  >
+                                                                                      <span className="capitalize flex items-center gap-1.5 truncate">
+                                                                                          <span 
+                                                                                              className="text-xs font-bold" 
+                                                                                              style={{ color: tenantSettings?.primary_color || '#2563eb' }}
+                                                                                          >
+                                                                                              ✓
+                                                                                          </span>
+                                                                                          <span className="text-slate-800 truncate">{act}</span>
+                                                                                      </span>
+                                                                                      {packCredits !== undefined && packCredits !== null && packCredits.toString().trim() !== "" && (
+                                                                                          <span 
+                                                                                              className="px-2 py-0.5 border font-medium rounded-full text-xs whitespace-nowrap flex items-center gap-0.5"
+                                                                                              style={{
+                                                                                                  backgroundColor: `${tenantSettings?.primary_color || '#2563eb'}15`,
+                                                                                                  borderColor: `${tenantSettings?.primary_color || '#2563eb'}25`,
+                                                                                                  color: tenantSettings?.primary_color || '#2563eb'
+                                                                                              }}
+                                                                                          >
+                                                                                              {packCredits} cr.
+                                                                                          </span>
+                                                                                      )}
+                                                                                  </div>
+                                                                              );
+                                                                          })}
+                                                                      </div>
+                                                                  ) : (
+                                                                      <div className="w-full mx-auto flex flex-wrap justify-center gap-2 px-4">
+                                                                          {offer.allowed_activities.map((act) => (
+                                                                              <span 
+                                                                                  key={act}
+                                                                                  className="px-3 py-1.5 border font-medium rounded-lg text-[13px] text-center capitalize shadow-sm transition-colors"
+                                                                                  style={{
+                                                                                      backgroundColor: `${tenantSettings?.primary_color || '#2563eb'}10`,
+                                                                                      borderColor: `${tenantSettings?.primary_color || '#2563eb'}25`,
+                                                                                      color: tenantSettings?.primary_color || '#2563eb'
+                                                                                  }}
+                                                                              >
+                                                                                  {act}
+                                                                              </span>
+                                                                          ))}
+                                                                      </div>
+                                                                  )}
+                                                             </div>
+                                                             {offer.description && (
+                                                                 <div className="pt-2 border-t border-slate-50 w-full">
+                                                                     <p className="text-slate-500 text-sm leading-relaxed italic">{offer.description}</p>
+                                                                 </div>
+                                                             )}
+                                                             <div className="w-full flex items-center justify-center gap-4 mt-12 pt-2">
+                                                              {/* Left Column: Credits and Validity */}
+                                                              <div className="flex flex-col items-center gap-2 flex-1">
+                                                                  <div className="flex items-center gap-1.5 text-slate-700">
+                                                                      <div className="flex items-center justify-center text-lg">💎</div>
+                                                                      {offer.is_unlimited ? (
+                                                                          <span className="text-[15px] font-semibold text-slate-900 leading-none mt-0.5">Illimités</span>
+                                                                      ) : (
+                                                                          <div className="flex items-baseline gap-1 tracking-tight">
+                                                                              <span className="text-3xl font-normal text-slate-900 tracking-tight leading-none">{Math.round(Number(offer.classes_included || 0))}</span>
+                                                                              <span className="text-sm font-medium text-slate-700 leading-none">
+                                                                                  crédit{Math.round(Number(offer.classes_included || 0)) > 1 ? 's' : ''}
+                                                                              </span>
+                                                                          </div>
+                                                                      )}
+                                                                  </div>
+
+                                                                  <div className="flex items-center text-slate-500">
+                                                                      <span className="text-xs font-medium leading-none">
+                                                                          {offer.is_validity_unlimited 
+                                                                              ? "Validité illimitée" 
+                                                                              : (offer.validity_days || offer.deadline_date) 
+                                                                                  ? (offer.deadline_date ? `Valable jusqu'au ${new Date(offer.deadline_date).toLocaleDateString()}` : `Valable ${offer.validity_unit === 'months' ? Math.round((offer.validity_days || 0) / 30) : offer.validity_days} ${offer.validity_unit === 'months' ? 'mois' : 'jours'}`)
+                                                                                  : ""}
+                                                                      </span>
+                                                                  </div>
+                                                              </div>
+
+                                                              {/* Vertical Divider */}
+                                                              <div className="w-px h-16 bg-slate-200"></div>
+
+                                                              {/* Right Column: Pricing */}
+                                                              <div className="flex flex-col items-center gap-1 flex-1">
+                                                                  <div className="flex flex-col items-center justify-center">
+                                                                      <div className="flex items-baseline justify-center gap-1 text-black">
+                                                                          <span className="text-3xl font-normal tracking-tight leading-none">
+                                                                              {offer.featured_pricing === "recurring" && offer.price_recurring_cents 
+                                                                                  ? `${formatPrice(offer.price_recurring_cents)}`
+                                                                                  : `${formatPrice(offer.price_lump_sum_cents)}`
+                                                                              }
+                                                                          </span>
+                                                                          {offer.featured_pricing === "recurring" && offer.period !== 'seuil' && offer.period !== 'seuils' && (
+                                                                              <span className="text-sm font-medium whitespace-nowrap">
+                                                                                  /{offer.period && offer.period !== 'null' ? offer.period : 'mois'}
+                                                                                  {offer.recurring_count ? (
+                                                                                      <span className="tracking-tighter ml-1">x{offer.recurring_count}</span>
+                                                                                  ) : null}
+                                                                              </span>
+                                                                          )}
+                                                                      </div>
+                                                                      {offer.featured_pricing === "recurring" && offer.recurring_count && (offer.period === 'seuil' || offer.period === 'seuils') && (
+                                                                          <span className="text-[11px] font-medium tracking-tight text-slate-600 mt-1.5 text-center leading-tight -mx-1.5">
+                                                                              à la commande, {offer.trigger_consumption_percent 
+                                                                                  ? `puis à ${offer.trigger_consumption_percent.split(',').map((s: string) => s.trim()).reduce((acc: string, curr: string, i: number, arr: string[]) => acc + (i === 0 ? curr + '%' : i === arr.length - 1 ? ' et ' + curr + '%' : ', ' + curr + '%'), '')} de votre conso.`
+                                                                                  : `puis selon votre conso.`}
+                                                                          </span>
+                                                                      )}
+                                                                  </div>
+                                                                  {/* Secondary line: Alternative pricing */}
+                                                                  {(offer.featured_pricing === "recurring" ? offer.price_lump_sum_cents : offer.price_recurring_cents) ? (
+                                                                      <p className="text-xs font-medium text-slate-500 leading-tight mt-1">
+                                                                          {offer.featured_pricing === "recurring" ? (
+                                                                              offer.price_lump_sum_cents ? `ou ${formatPrice(offer.price_lump_sum_cents)} en une fois` : ""
+                                                                          ) : (
+                                                                              offer.price_recurring_cents ? (
+                                                                                  `ou ${formatPrice(offer.price_recurring_cents)}/${(offer.period && offer.period !== 'null') ? offer.period : 'mois'}${offer.recurring_count ? ` x ${offer.recurring_count}` : ''}`
+                                                                              ) : ""
+                                                                          )}
+                                                                      </p>
+                                                                  ) : null}
+                                                              </div>
+                                                          </div>
+                                                          </div>
+                                                      </div>
+                                                     <div className="mt-8 relative z-10 w-full flex flex-col items-center shrink-0 gap-3">
+                                                          {offer.is_unique && (
+                                                              <div className="flex items-center gap-1.5 text-amber-600/70 justify-center w-full">
+                                                                  <span className="text-sm">🔒</span>
+                                                                  <span className="text-xs font-medium">Limité à 1 fois / personne</span>
+                                                              </div>
+                                                          )}
+                                                          <div>
+                                                          {hasAlreadyPurchased ? (
+                                                              <span className="bg-slate-100 text-slate-500 font-medium text-[13px] px-4 py-1.5 rounded-sm">
+                                                                  Déjà commandée
+                                                              </span>
+                                                          ) : (
+                                                              <Link
+                                                                  href={`/credits/checkout?id=${offer.id}`}
+                                                                  className="bg-black text-white font-medium hover:bg-slate-800 transition-colors text-[13px] px-4 py-1.5 rounded-sm flex items-center gap-1.5 shadow-sm"
+                                                              >
+                                                                  Je choisis cette offre <span className="text-[10px] leading-none mt-px">→</span>
+                                                              </Link>
+                                                          )}
+                                                          </div>
+                                                      </div>
                                                 </div>
                                             );
                                         })}

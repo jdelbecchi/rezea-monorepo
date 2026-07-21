@@ -125,47 +125,109 @@ function CheckoutPageContent() {
                             <div className="flex flex-col items-center gap-4 pb-8 border-b border-slate-200">
                                 <div className="space-y-4 text-center">
                                     <h2 className="text-lg md:text-xl font-semibold text-slate-900 capitalize tracking-tight">{offer.name}</h2>
-                                    <div className="pt-1">
-                                        <div 
-                                            className="inline-block text-[13px] md:text-sm font-semibold px-4 py-1 rounded-full border transition-colors capitalize"
-                                            style={{
-                                                backgroundColor: `${tenant?.primary_color || '#2563eb'}10`,
-                                                borderColor: `${tenant?.primary_color || '#2563eb'}30`,
-                                                color: tenant?.primary_color || '#2563eb'
-                                            }}
-                                        >
-                                            {offer.allowed_activities && offer.allowed_activities.length > 0 
-                                                ? offer.allowed_activities.join(", ") 
-                                                : "Toutes activités"
-                                            }
-                                        </div>
+                                    <div className="w-full max-w-sm mx-auto space-y-4 pt-2">
+                                        {(!offer.allowed_activities || offer.allowed_activities.length === 0) ? (
+                                            <div className="w-[90%] mx-auto space-y-2 flex flex-col items-center">
+                                                <div className="flex items-center justify-center gap-1.5 text-sm font-medium text-slate-800 text-center w-full">
+                                                    <span className="capitalize flex items-center gap-1.5 truncate">
+                                                        <span 
+                                                            className="text-xs font-bold" 
+                                                            style={{ color: tenant?.primary_color || '#2563eb' }}
+                                                        >
+                                                            ✓
+                                                        </span>
+                                                        <span className="text-slate-800 truncate">Toutes activités</span>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="w-[90%] mx-auto space-y-2 flex flex-col">
+                                                {offer.allowed_activities.map((act) => {
+                                                    const allowedActs = offer.allowed_activities || [];
+                                                    const hasActivityCredits = allowedActs.length > 0 &&
+                                                        (offer as any).activity_credits && 
+                                                        Object.keys((offer as any).activity_credits).some(k => 
+                                                            allowedActs.includes(k) && 
+                                                            (offer as any).activity_credits[k] !== undefined && 
+                                                            (offer as any).activity_credits[k] !== null && 
+                                                            (offer as any).activity_credits[k].toString().trim() !== ""
+                                                        );
+                                                    const packCredits = (offer as any).activity_credits?.[act];
+                                                    
+                                                    return (
+                                                        <div 
+                                                            key={act} 
+                                                            className={`flex ${hasActivityCredits ? 'justify-between text-left' : 'justify-center text-center'} items-center gap-2 text-sm font-medium text-slate-800 w-full`}
+                                                        >
+                                                            <span className="capitalize flex items-center gap-1.5 truncate">
+                                                                <span 
+                                                                    className="text-xs font-bold" 
+                                                                    style={{ color: tenant?.primary_color || '#2563eb' }}
+                                                                >
+                                                                    ✓
+                                                                </span>
+                                                                <span className="text-slate-800 truncate">{act}</span>
+                                                            </span>
+                                                            {packCredits !== undefined && packCredits !== null && packCredits.toString().trim() !== "" && (
+                                                                <span 
+                                                                    className="px-2 py-0.5 border font-medium rounded-full text-xs whitespace-nowrap flex items-center gap-0.5"
+                                                                    style={{
+                                                                        backgroundColor: `${tenant?.primary_color || '#2563eb'}15`,
+                                                                        borderColor: `${tenant?.primary_color || '#2563eb'}25`,
+                                                                        color: tenant?.primary_color || '#2563eb'
+                                                                    }}
+                                                                >
+                                                                    {packCredits} cr.
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                        
+                                        {offer.description && (
+                                            <div className="pt-2 w-[90%] mx-auto">
+                                                <p className="text-slate-500 text-sm leading-relaxed italic text-center">{offer.description}</p>
+                                            </div>
+                                        )}
                                     </div>
                                     
-                                    <div className="flex flex-col items-center gap-1">
-                                        <div className="flex items-center gap-2 text-slate-500">
-                                            <div className="w-5 h-5 flex items-center justify-center text-xs">💎</div>
-                                            <span className="text-xs font-medium">{offer.is_unlimited ? "Crédits illimités" : `${offer.classes_included || 0} crédit${(offer.classes_included || 0) > 1 ? 's' : ''}`}</span>
+
+
+                                    <div className="flex flex-row items-center justify-center flex-wrap gap-3 pt-2">
+                                        <div className="flex items-center gap-2 text-slate-700">
+                                            <div className="flex items-center justify-center text-lg">
+                                                💎
+                                            </div>
+                                            {offer.is_unlimited ? (
+                                                <span className="text-lg font-medium tracking-tight">Crédits illimités</span>
+                                            ) : (
+                                                <div className="flex items-baseline gap-1 font-medium tracking-tight">
+                                                    <span className="text-xl font-semibold">{Math.round(Number(offer.classes_included || 0))}</span>
+                                                    <span className="text-[15px]">crédit{Math.round(Number(offer.classes_included || 0)) > 1 ? 's' : ''}</span>
+                                                </div>
+                                            )}
                                         </div>
                                         {offer.is_validity_unlimited ? (
-                                            <div className="flex items-center gap-2 text-emerald-600">
-                                                <div className="w-5 h-5 flex items-center justify-center text-xs">♾️</div>
-                                                <span className="text-xs font-semibold">Validité illimitée</span>
-                                            </div>
+                                            <>
+                                                <div className="w-px h-6 bg-slate-200"></div>
+                                                <div className="flex items-center text-slate-800 pt-2">
+                                                    <span className="text-xs font-medium">Validité illimitée</span>
+                                                </div>
+                                            </>
                                         ) : (offer.validity_days || offer.deadline_date) && (
-                                            <div className="flex items-center gap-2 text-slate-500">
-                                                <div className="w-5 h-5 flex items-center justify-center text-sm">🕒</div>
-                                                <span className="text-xs font-medium">Validité : {offer.deadline_date ? `jusqu'au ${new Date(offer.deadline_date).toLocaleDateString()}` : `${offer.validity_unit === 'months' ? Math.round((offer.validity_days || 0) / 30) : offer.validity_days} ${offer.validity_unit === 'months' ? 'mois' : 'jours'}`}</span>
-                                            </div>
+                                            <>
+                                                <div className="w-px h-6 bg-slate-200"></div>
+                                                <div className="flex items-center text-slate-800 pt-2">
+                                                    <span className="text-xs font-medium">Valable {offer.deadline_date ? `jusqu'au ${new Date(offer.deadline_date).toLocaleDateString()}` : `${offer.validity_unit === 'months' ? Math.round((offer.validity_days || 0) / 30) : offer.validity_days} ${offer.validity_unit === 'months' ? 'mois' : 'jours'}`}</span>
+                                                </div>
+                                            </>
                                         )}
                                     </div>
                                 </div>
 
                                 <div className="w-full text-center space-y-4 mt-1">
-                                    {offer.description && (
-                                        <div className="pt-0">
-                                            <p className="text-slate-600 font-medium leading-relaxed text-xs md:text-sm max-w-xl mx-auto text-center">{offer.description}</p>
-                                        </div>
-                                    )}
 
                                     {/* Pricing Selection if multiple */}
                                     {hasMultiplePrices ? (
@@ -174,42 +236,56 @@ function CheckoutPageContent() {
                                                 onClick={() => setSelectedPricingType('lump_sum')}
                                                 style={{ 
                                                     borderColor: selectedPricingType === 'lump_sum' ? `${tenant?.primary_color}cc` : `${tenant?.primary_color}1a`,
-                                                    background: selectedPricingType === 'lump_sum' ? `linear-gradient(135deg, ${tenant?.primary_color}0D 0%, ${tenant?.primary_color}1A 100%)` : 'white',
+                                                    backgroundColor: selectedPricingType === 'lump_sum' ? `${tenant?.primary_color}10` : 'white',
                                                     boxShadow: selectedPricingType === 'lump_sum' 
                                                         ? `3px 4px 14px -2px ${tenant?.primary_color}35` 
                                                         : `3px 4px 10px -2px #0000000a`
                                                 }}
                                                 className={`p-4 md:p-6 rounded-2xl border transition-all flex flex-col items-center gap-1.5 active:scale-95 ${selectedPricingType === 'lump_sum' ? '' : 'opacity-60 hover:opacity-100'}`}
                                             >
-                                                <span className={`text-lg md:text-xl font-semibold leading-none ${selectedPricingType === 'lump_sum' ? 'text-black' : 'text-slate-800'}`}>{formatPrice(offer.price_lump_sum_cents)}</span>
+                                                <span className={`text-xl md:text-2xl font-semibold leading-none flex items-baseline gap-0.5 ${selectedPricingType === 'lump_sum' ? 'text-black' : 'text-slate-800'}`}>{formatPrice(offer.price_lump_sum_cents)}</span>
                                                 <span className={`text-[11px] font-medium lowercase tracking-normal ${selectedPricingType === 'lump_sum' ? 'text-black' : 'text-slate-500'}`}>en une fois</span>
                                             </button>
                                             <button 
                                                 onClick={() => setSelectedPricingType('recurring')}
                                                 style={{ 
                                                     borderColor: selectedPricingType === 'recurring' ? `${tenant?.primary_color}cc` : `${tenant?.primary_color}1a`,
-                                                    background: selectedPricingType === 'recurring' ? `linear-gradient(135deg, ${tenant?.primary_color}0D 0%, ${tenant?.primary_color}1A 100%)` : 'white',
+                                                    backgroundColor: selectedPricingType === 'recurring' ? `${tenant?.primary_color}10` : 'white',
                                                     boxShadow: selectedPricingType === 'recurring' 
                                                         ? `3px 4px 14px -2px ${tenant?.primary_color}35` 
                                                         : `3px 4px 10px -2px #0000000a`
                                                 }}
                                                 className={`p-4 md:p-6 rounded-2xl border transition-all flex flex-col items-center gap-1.5 active:scale-95 ${selectedPricingType === 'recurring' ? '' : 'opacity-60 hover:opacity-100'}`}
                                             >
-                                                <span className={`text-lg md:text-xl font-semibold leading-none ${selectedPricingType === 'recurring' ? 'text-black' : 'text-slate-800'}`}>{formatPrice(offer.price_recurring_cents)}</span>
-                                                <span className={`text-[11px] font-medium lowercase tracking-normal ${selectedPricingType === 'recurring' ? 'text-black' : 'text-slate-500'}`}>x {offer.recurring_count} échéances</span>
+                                                <span className={`text-xl md:text-2xl font-semibold leading-none flex items-baseline gap-0.5 ${selectedPricingType === 'recurring' ? 'text-black' : 'text-slate-800'}`}>
+                                                    {formatPrice(offer.price_recurring_cents)}
+                                                    <span className="text-[13px] md:text-sm font-medium">/mois</span>
+                                                </span>
+                                                <span className={`text-[11px] font-medium lowercase tracking-normal ${selectedPricingType === 'recurring' ? 'text-black' : 'text-slate-500'}`}>pendant {offer.recurring_count} mois</span>
                                             </button>
                                         </div>
                                     ) : (
-                                        <div className="space-y-1 pt-2">
-                                            <p className="text-2xl md:text-3xl font-semibold text-slate-900 leading-none">
-                                                {selectedPricingType === "recurring" && offer.price_recurring_cents 
-                                                    ? formatPrice(offer.price_recurring_cents)
-                                                    : formatPrice(offer.price_lump_sum_cents || offer.price_recurring_cents)
-                                                }
-                                            </p>
-                                            {selectedPricingType === "recurring" && offer.recurring_count && (
-                                                <p className="text-slate-500 text-[11px] font-semibold">{offer.recurring_count} échéances</p>
-                                            )}
+                                        <div className="max-w-[160px] mx-auto pt-2">
+                                            <div 
+                                                style={{ 
+                                                    borderColor: `${tenant?.primary_color}cc`,
+                                                    backgroundColor: `${tenant?.primary_color}10`,
+                                                    boxShadow: `3px 4px 14px -2px ${tenant?.primary_color}35` 
+                                                }}
+                                                className="p-3 md:p-4 rounded-2xl border flex flex-col items-center gap-1.5"
+                                            >
+                                                <span className="text-xl md:text-2xl font-semibold leading-none flex items-baseline gap-1 text-black">
+                                                    {selectedPricingType === "recurring" && offer.price_recurring_cents 
+                                                        ? <>{formatPrice(offer.price_recurring_cents)}<span className="text-[13px] md:text-sm font-medium">/mois</span></>
+                                                        : formatPrice(offer.price_lump_sum_cents || offer.price_recurring_cents)
+                                                    }
+                                                </span>
+                                                {selectedPricingType === "recurring" && offer.recurring_count ? (
+                                                    <span className="text-[11px] font-medium lowercase tracking-normal text-black">pendant {offer.recurring_count} mois</span>
+                                                ) : (
+                                                    <span className="text-[11px] font-medium lowercase tracking-normal text-black">en une fois</span>
+                                                )}
+                                            </div>
                                         </div>
                                     )}
                                 </div>
@@ -220,14 +296,15 @@ function CheckoutPageContent() {
                                 {/* Start Date Selection */}
                                 <div className="space-y-3">
                                     <div className="flex items-center justify-center gap-2 text-slate-700">
-                                        <span className="text-[11px] md:text-[13px] font-medium leading-tight text-center">A quelle date souhaitez-vous débuter votre offre ?</span>
+                                        <span className="text-xs md:text-sm font-medium leading-tight text-center">A quelle date souhaitez-vous débuter votre offre ?</span>
                                     </div>
                                     <div className="max-w-md mx-auto">
                                         <DateInputZen 
                                             value={startDate}
                                             onChange={setStartDate}
+                                            maxDate={new Date(Date.now() + 45 * 24 * 60 * 60 * 1000)}
                                         />
-                                        <p className="text-[10px] text-slate-400 italic mt-1.5 text-center">Par défaut, l&apos;offre débute aujourd&apos;hui.</p>
+                                        <p className="text-xs text-slate-400 italic mt-1.5 text-center">Par défaut, l&apos;offre débute aujourd&apos;hui.</p>
                                     </div>
                                 </div>
 
@@ -249,7 +326,7 @@ function CheckoutPageContent() {
                                                             </svg>
                                                         </span>
                                                     </div>
-                                                    <span className="text-xs font-medium text-slate-700">Option &quot;Payer plus tard&quot;</span>
+                                                    <span className="text-sm font-medium text-slate-700">Option &quot;Payer plus tard&quot;</span>
                                                 </label>
 
                                                 {payLater && (

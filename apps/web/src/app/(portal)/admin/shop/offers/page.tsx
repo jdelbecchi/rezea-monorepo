@@ -252,7 +252,7 @@ function AdminOffersContent() {
             recurring_count: o.recurring_count?.toString() || "1",
             featured_pricing: o.featured_pricing || "lump_sum",
             period: o.period || "mois",
-            classes_included: o.classes_included?.toString() || "1",
+            classes_included: o.classes_included ? parseFloat(o.classes_included.toString()).toString() : "1",
             is_unlimited: o.is_unlimited,
             limit_amount: o.limit_amount?.toString() || "",
             limit_period: o.limit_period || "mois",
@@ -271,7 +271,7 @@ function AdminOffersContent() {
             is_recurring_unlimited: o.featured_pricing === 'recurring' && o.recurring_count === null,
             trigger_consumption_percent: o.trigger_consumption_percent?.toString() || "",
             activity_credits: Object.fromEntries(
-                Object.entries((o as any).activity_credits || {}).map(([act, val]) => [act, val?.toString() || ""])
+                Object.entries((o as any).activity_credits || {}).map(([act, val]) => [act, val ? parseFloat(val.toString()).toString() : ""])
             ),
         });
         setShowForm(true);

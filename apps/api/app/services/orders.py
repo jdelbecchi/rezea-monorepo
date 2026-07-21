@@ -87,12 +87,27 @@ def build_order_response(
     global_credits_used: Optional[int] = None,
     grace_period_days: int = 0,
     grace_period_mode: str = "days",
-    is_blocked_val: Optional[bool] = None
+    is_blocked_val: Optional[bool] = None,
+    activity_credits: Optional[dict] = None,
+    offer_snap_activity_credits: Optional[dict] = None,
+    activity_allocations: Optional[dict] = None
 ) -> OrderResponse:
     """
     Builds the OrderResponse with calculated balance and dynamic status.
     This logic MUST be shared between Admin and User Shop APIs.
     """
+    resolved_act_credits = activity_credits
+    if resolved_act_credits is None:
+        if hasattr(order, 'activity_credits') and isinstance(order.activity_credits, dict) and order.activity_credits:
+            resolved_act_credits = order.activity_credits
+        elif order.offer and getattr(order.offer, 'activity_credits', None) is not None and isinstance(order.offer.activity_credits, dict):
+            resolved_act_credits = order.offer.activity_credits
+
+    resolved_snap_credits = offer_snap_activity_credits
+    if resolved_snap_credits is None:
+        if hasattr(order, 'offer_snap_activity_credits') and isinstance(order.offer_snap_activity_credits, dict) and order.offer_snap_activity_credits:
+            resolved_snap_credits = order.offer_snap_activity_credits
+
     balance = global_balance
     if balance is None and not order.is_unlimited and order.credits_total is not None:
         balance = order.credits_total - credits_used
@@ -224,6 +239,9 @@ def build_order_response(
         offer_snap_limit_amount=order.offer_snap_limit_amount,
         offer_snap_limit_period=order.offer_snap_limit_period,
         offer_snap_limit_rollover=order.offer_snap_limit_rollover,
+        activity_credits=resolved_act_credits,
+        offer_snap_activity_credits=resolved_snap_credits,
+        activity_allocations=activity_allocations,
         installments=order.installments
     )
 

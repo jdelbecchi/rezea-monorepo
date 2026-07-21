@@ -250,7 +250,9 @@ async def shop_checkout(
         global_credits_used=order_used,
         grace_period_days=grace_days,
         grace_period_mode=grace_mode,
-        is_blocked_val=is_blocked
+        is_blocked_val=is_blocked,
+        activity_credits=order_fifo.get("activity_credits"),
+        activity_allocations=order_fifo.get("activity_allocations")
     )
 
     return ShopCheckoutResponse(
@@ -308,7 +310,9 @@ async def list_my_orders(
                 global_credits_used=order_used,
                 grace_period_days=grace_days,
                 grace_period_mode=grace_mode,
-                is_blocked_val=is_blocked
+                is_blocked_val=is_blocked,
+                activity_credits=order_fifo.get("activity_credits"),
+                activity_allocations=order_fifo.get("activity_allocations")
             )
         )
     
