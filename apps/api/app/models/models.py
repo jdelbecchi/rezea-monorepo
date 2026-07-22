@@ -100,6 +100,7 @@ class Tenant(Base):
     banner_url = Column(String(500), nullable=True)
     slogan = Column(String(500), nullable=True)
     primary_color = Column(String(7), default="#7c3aed")
+    background_color = Column(String(7), nullable=True)
     login_primary_color = Column(String(7), nullable=True)
     login_background_url = Column(String(500), nullable=True)
     login_description = Column(Text, nullable=True)

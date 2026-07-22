@@ -335,6 +335,7 @@ export interface Tenant {
   banner_url?: string;
   slogan?: string;
   primary_color: string;
+  background_color?: string;
   login_primary_color?: string;
   login_background_url?: string;
   login_description?: string;

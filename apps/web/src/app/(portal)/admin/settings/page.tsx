@@ -1561,9 +1561,9 @@ export default function AdminSettingsPage() {
                                     </div>
 
                                     {/* Configuration de base de l'interface */}
-                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                                    <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
                                         {/* 1. Affichage de l'en-tête de l'écran d'accueil */}
-                                        <div className="pb-6 border-b md:border-b-0 md:border-r border-slate-100 pr-0 md:pr-8">
+                                        <div className="pb-6 border-b xl:border-b-0 xl:border-r border-slate-100 pr-0 xl:pr-8 xl:col-span-5">
                                             <label className="block text-sm font-semibold text-slate-900 mb-2">
                                                 Affichage de l&apos;en-tête de l&apos;écran d&apos;accueil *
                                             </label>
@@ -1602,27 +1602,53 @@ export default function AdminSettingsPage() {
                                             </div>
                                         </div>
 
-                                        {/* 2. Personnalisation de la couleur */}
-                                        <div className="pl-0 md:pl-8">
-                                            <label className="block text-sm font-semibold text-slate-900 mb-1">
-                                                Personnalisation de la couleur
-                                            </label>
-                                            <span className="block text-slate-400 text-[10px] font-normal mb-3">
-                                                Choisissez une couleur foncée à médium pour la visibilité de l&apos;interface utilisateur
-                                            </span>
-                                            <div className="flex items-center gap-3 p-2.5 bg-white rounded-2xl border border-slate-200 shadow-sm max-w-[200px]">
-                                                <input
-                                                    type="color"
-                                                    value={formData.primary_color || "#7c3aed"}
-                                                    onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
-                                                    className="w-9 h-9 rounded-xl border-2 border-white shadow-sm cursor-pointer"
-                                                />
-                                                <input
-                                                    type="text"
-                                                    value={formData.primary_color || "#7c3aed"}
-                                                    onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
-                                                    className="bg-transparent border-none p-0 font-mono font-bold text-xs outline-none w-20 text-slate-600"
-                                                />
+                                        {/* 2. Personnalisation des couleurs */}
+                                        <div className="pl-0 xl:pl-0 xl:col-span-7 flex flex-col md:flex-row gap-6">
+                                            <div className="flex-1">
+                                                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                                                    Couleur d'accentuation
+                                                </label>
+                                                <div className="flex items-center gap-3 p-2.5 bg-white rounded-2xl border border-slate-200 shadow-sm max-w-[200px] mb-2">
+                                                    <input
+                                                        type="color"
+                                                        value={formData.primary_color || "#7c3aed"}
+                                                        onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
+                                                        className="w-9 h-9 rounded-xl border-2 border-white shadow-sm cursor-pointer"
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        value={formData.primary_color || "#7c3aed"}
+                                                        onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
+                                                        className="bg-transparent border-none p-0 font-mono font-bold text-xs outline-none w-20 text-slate-600"
+                                                    />
+                                                </div>
+                                                <span className="block text-slate-400 text-[10px] font-normal">
+                                                    Choisissez une couleur foncée à médium pour la visibilité de l&apos;interface utilisateur
+                                                </span>
+                                            </div>
+
+                                            <div className="flex-1">
+                                                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                                                    Couleur du fond d'écran (optionnel)
+                                                </label>
+                                                <div className="flex items-center gap-3 p-2.5 bg-white rounded-2xl border border-slate-200 shadow-sm max-w-[200px] mb-2">
+                                                    <input
+                                                        type="color"
+                                                        value={formData.background_color || "#ffffff"}
+                                                        onChange={e => setFormData({ ...formData, background_color: e.target.value })}
+                                                        className="w-9 h-9 rounded-xl border-2 border-white shadow-sm cursor-pointer"
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        value={formData.background_color || ""}
+                                                        onChange={e => setFormData({ ...formData, background_color: e.target.value })}
+                                                        placeholder="#ffffff"
+                                                        className="bg-transparent border-none p-0 font-mono font-bold text-xs outline-none w-20 text-slate-600"
+                                                    />
+                                                </div>
+                                                <span className="block text-slate-400 text-[10px] font-normal">
+                                                    Laisser vide pour un fond blanc, ou définir une couleur claire (opacité 6%)
+                                                </span>
                                             </div>
                                         </div>
                                     </div>

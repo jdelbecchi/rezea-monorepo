@@ -37,6 +37,8 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
     const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
     const [localTenant, setLocalTenant] = useState<any>(null);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isHovered, setIsHovered] = useState(false);
 
     useEffect(() => {
         if (!tenant) {
@@ -112,32 +114,44 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
         { path: homePath, label: "Basculer sur la vue utilisateur", icon: "📱" },
     ];
 
-    const SidebarContent = () => (
+    const SidebarContent = ({ expanded = true }: { expanded?: boolean }) => (
         <>
             {/* En-tête dans un cadre blanc encadré */}
-            <div className="px-4 pt-4 pb-2">
-                <div className="bg-white rounded-2xl border border-slate-200 px-4 h-20 flex items-center justify-between shadow-sm">
-                    <div className="flex items-center gap-3 h-full">
-                        {activeTenant?.logo_url ? (
-                            <img src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${activeTenant.logo_url}`} className="h-16 w-auto object-contain" alt="Logo" />
-                        ) : (
-                            <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center text-lg font-bold text-white shrink-0">RZ</div>
-                        )}
-                        <div className="flex flex-col min-w-0 gap-0">
-                            <div className="text-lg font-semibold tracking-tight leading-tight text-slate-900 truncate max-w-[150px]">
-                                {activeTenant?.name || (slug === 'rezea' ? "rezea" : "chargement...")}
-                            </div>
-                            <div className="text-[10px] text-slate-500 font-medium tracking-wide -mt-0.5">
-                                Propulsé par Rezea
+            <div className={`pt-4 pb-2 transition-all duration-300 ${expanded ? "px-4" : "px-2"}`}>
+                <div className={`bg-white rounded-2xl border border-slate-200 flex items-center shadow-sm overflow-hidden transition-all duration-300 ${expanded ? "px-4 h-20 justify-between" : "px-0 h-14 justify-center"}`}>
+                    {expanded ? (
+                        <div className="flex items-center gap-3 h-full">
+                            {activeTenant?.logo_url ? (
+                                <img src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${activeTenant.logo_url}`} className="h-16 w-auto object-contain" alt="Logo" />
+                            ) : (
+                                <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center text-lg font-bold text-white shrink-0">RZ</div>
+                            )}
+                            <div className="flex flex-col min-w-0 gap-0">
+                                <div className="text-lg font-semibold tracking-tight leading-tight text-slate-900 truncate max-w-[150px]">
+                                    {activeTenant?.name || (slug === 'rezea' ? "rezea" : "chargement...")}
+                                </div>
+                                <div className="text-[10px] text-slate-500 font-medium tracking-wide -mt-0.5">
+                                    Propulsé par Rezea
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <button 
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="md:hidden ml-3 text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                        ✕
-                    </button>
+                    ) : (
+                        <div className="flex items-center justify-center w-full h-full">
+                            {activeTenant?.logo_url ? (
+                                <img src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${activeTenant.logo_url}`} className="h-10 w-10 object-contain" alt="Logo" />
+                            ) : (
+                                <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-sm font-bold text-white">RZ</div>
+                            )}
+                        </div>
+                    )}
+                    {expanded && (
+                        <button 
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="md:hidden ml-3 text-slate-400 hover:text-slate-600 transition-colors shrink-0"
+                        >
+                            ✕
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -150,21 +164,24 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
                             return (
                                 <div key={item.label} className="space-y-1">
                                     <button
-                                        onClick={() => toggleMenu(item.label)}
-                                        className={`w-full flex items-center justify-between py-2.5 px-4 rounded-xl transition-all text-left group ${parentActive
+                                        onClick={() => expanded && toggleMenu(item.label)}
+                                        className={`w-full flex items-center py-2.5 rounded-xl transition-all group ${expanded ? "justify-between px-4 text-left" : "justify-center px-0"} ${parentActive
                                             ? "bg-amber-600/10 text-amber-400 font-semibold border border-amber-500/20 shadow-sm shadow-amber-500/5"
                                             : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
                                             }`}
+                                        title={!expanded ? item.label : undefined}
                                     >
-                                        <span className="flex items-center whitespace-nowrap overflow-hidden text-ellipsis mr-2">
-                                            <span className="mr-3 text-lg opacity-80">{item.icon}</span>
-                                            {item.label}
-                                        </span>
-                                        <span className={`text-[10px] transition-transform flex-shrink-0 ${open ? "rotate-180" : ""}`}>
-                                            ▼
-                                        </span>
+                                        <div className={`flex items-center whitespace-nowrap overflow-hidden text-ellipsis ${expanded ? "mr-2" : ""}`}>
+                                            <span className={`text-lg opacity-80 ${expanded ? "mr-3" : ""}`}>{item.icon}</span>
+                                            {expanded && <span>{item.label}</span>}
+                                        </div>
+                                        {expanded && (
+                                            <span className={`text-[10px] transition-transform flex-shrink-0 ${open ? "rotate-180" : ""}`}>
+                                                ▼
+                                            </span>
+                                        )}
                                     </button>
-                                    {open && (
+                                    {expanded && open && (
                                         <div className="ml-7 mt-1 space-y-1 border-l-2 border-slate-800 pl-4 py-1 animate-in fade-in slide-in-from-top-2 duration-200">
                                             {item.children.map((child) => (
                                                 <Link
@@ -190,25 +207,36 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
                                 key={item.path}
                                 href={item.path!}
                                 onClick={() => setIsMobileMenuOpen(false)}
-                                className={`flex items-center py-2.5 px-4 rounded-xl transition-all whitespace-nowrap overflow-hidden text-ellipsis ${isActive(item.path!)
+                                className={`flex items-center py-2.5 rounded-xl transition-all whitespace-nowrap overflow-hidden text-ellipsis ${expanded ? "px-4" : "justify-center px-0"} ${isActive(item.path!)
                                     ? "bg-amber-600/10 text-amber-400 font-semibold shadow-sm shadow-amber-500/5 border border-amber-500/20"
                                     : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
                                     }`}
+                                title={!expanded ? item.label : undefined}
                             >
-                                <span className="mr-3 text-lg opacity-80">{item.icon}</span>
-                                {item.label}
+                                <span className={`text-lg opacity-80 ${expanded ? "mr-3" : ""}`}>{item.icon}</span>
+                                {expanded && <span>{item.label}</span>}
                             </Link>
                         );
                     })}
                 </nav>
                 <div className="border-t border-slate-800 my-3"></div>
 
-                <button
-                    onClick={handleLogout}
-                    className="w-full py-2.5 px-4 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 hover:text-rose-300 rounded-2xl font-medium text-sm transition-all border border-rose-600/20 shadow-lg shadow-rose-900/10 active:scale-[0.98]"
-                >
-                    Déconnexion
-                </button>
+                {expanded ? (
+                    <button
+                        onClick={handleLogout}
+                        className="w-full py-2.5 px-4 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 hover:text-rose-300 rounded-2xl font-medium text-sm transition-all border border-rose-600/20 shadow-lg shadow-rose-900/10 active:scale-[0.98]"
+                    >
+                        Déconnexion
+                    </button>
+                ) : (
+                    <button
+                        onClick={handleLogout}
+                        className="w-full py-2.5 flex justify-center bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 hover:text-rose-300 rounded-xl transition-all border border-rose-600/20 shadow-lg shadow-rose-900/10 active:scale-[0.98]"
+                        title="Déconnexion"
+                    >
+                        🚪
+                    </button>
+                )}
             </div>
         </>
     );
@@ -249,8 +277,23 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
             )}
 
             {/* Sidebar Desktop */}
-            <aside className="hidden md:flex w-80 bg-slate-900 text-white flex-col min-h-screen sticky top-0 border-r border-slate-800/50">
-                <SidebarContent />
+            <aside 
+                className={`hidden md:flex bg-slate-900 text-white flex-col min-h-screen sticky top-0 border-r border-slate-800/50 transition-all duration-300 ease-in-out z-40 ${isCollapsed && !isHovered ? "w-20" : "w-80"}`}
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
+            >
+                <SidebarContent expanded={!isCollapsed || isHovered} />
+                
+                {/* Collapse Toggle Button */}
+                <div className="border-t border-slate-800 p-2 flex justify-end">
+                    <button 
+                        onClick={() => setIsCollapsed(!isCollapsed)}
+                        className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+                        title={isCollapsed ? "Agrandir" : "Réduire"}
+                    >
+                        {isCollapsed ? "▶" : "◀"}
+                    </button>
+                </div>
             </aside>
 
             {/* Sidebar Mobile (Drawer) */}

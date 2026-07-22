@@ -60,6 +60,7 @@ export default function PlanningPage() {
   const [isLocationMenuOpen, setIsLocationMenuOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"ALL" | "LIMIT">("ALL");
   const [limitBalance, setLimitBalance] = useState<any | null>(null);
+  const [showCreditDetails, setShowCreditDetails] = useState(false);
 
   useEffect(() => {
     const initData = async () => {
@@ -289,7 +290,7 @@ export default function PlanningPage() {
   }
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-white overflow-x-hidden pb-20 md:pb-0">
+    <div className="flex flex-col md:flex-row min-h-screen bg-white overflow-x-hidden pb-20 md:pb-0" style={{ backgroundColor: tenant?.background_color ? `${tenant.background_color}10` : undefined }}>
       {isAdminMode && <Sidebar user={user} tenant={tenant} />}
       
       <main className={`flex-1 px-5 pb-5 md:p-12 pt-4 md:pt-12`}>
@@ -375,10 +376,11 @@ export default function PlanningPage() {
                 </div>
               </div>
 
-              <div className="hidden md:flex flex-col gap-2 p-6 bg-slate-50 rounded-3xl border border-slate-100 relative overflow-hidden group shadow-sm transition-all hover:shadow-md !mt-10">
-                  <div className="flex items-center justify-end mb-1">
+              <div className="hidden md:flex flex-col gap-2 p-6 bg-white rounded-3xl border border-slate-100 relative overflow-hidden group shadow-sm transition-all hover:shadow-md !mt-10">
+                  <div className="flex items-center justify-between w-full pb-2 mb-2 border-b border-slate-100 group">
                     <span className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider leading-none flex items-center gap-1.5">
                       Mes crédits <DiamondToken className="w-4 h-4" />
+                      {credits && <span className="text-sm font-bold text-slate-900 ml-1 normal-case">{formatCredits(credits.balance)}</span>}
                     </span>
                   </div>
                   
@@ -399,7 +401,7 @@ export default function PlanningPage() {
                           );
                       }
                       return (
-                          <div className="flex flex-col gap-1.5 mt-1">
+                          <div className="flex flex-col gap-1.5 mt-1 animate-in fade-in slide-in-from-top-1 duration-200">
                               {sortedActs.map(([activity, bal]) => {
                                   const actFrozen = credits.frozen_by_activity?.[activity] || 0;
                                   
@@ -443,11 +445,18 @@ export default function PlanningPage() {
                   })()}
               </div>
               
-              <div className="md:hidden sticky top-14 z-30 -mx-5 px-5 py-2 bg-white/95 backdrop-blur-md flex flex-col gap-1 mt-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] items-end">
-                <div className="flex items-center justify-end w-full">
+              <div className="md:hidden sticky top-14 z-30 -mx-5 px-5 py-4 bg-gradient-to-b from-transparent via-white/90 to-transparent backdrop-blur-[2px] flex flex-col gap-1 mt-4 items-end">
+                <button onClick={() => setShowCreditDetails(!showCreditDetails)} className="flex items-center justify-end w-full gap-2">
                   <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Mes crédits</span>
-                </div>
-                {credits && (() => {
+                  <div className="flex items-center gap-1">
+                    <DiamondToken className="w-3.5 h-3.5" />
+                    {credits && <span className="text-sm font-bold text-slate-900">{formatCredits(credits.balance)}</span>}
+                    <svg className={`w-4 h-4 text-slate-400 transition-transform ml-0.5 ${showCreditDetails ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </button>
+                {showCreditDetails && credits && (() => {
                     const sortedActs = Object.entries(credits.balances_by_activity || {})
                         .filter(([_, bal]) => bal === null || Number(bal) > 0)
                         .sort(([a], [b]) => {
@@ -459,7 +468,7 @@ export default function PlanningPage() {
                         return <span className="text-xs font-medium text-slate-500 py-1">0 crédit</span>;
                     }
                     return (
-                        <div className="flex flex-wrap justify-end gap-1.5 py-1">
+                        <div className="grid grid-cols-2 gap-1.5 w-full py-1 animate-in fade-in slide-in-from-top-1 duration-200">
                             {sortedActs.map(([activity, bal]) => {
                                 const actFrozen = credits.frozen_by_activity?.[activity] || 0;
                                 const isLimitedActivity = limitBalance && (
@@ -468,16 +477,16 @@ export default function PlanningPage() {
                                 );
 
                                 return (
-                                    <div key={activity} className="flex flex-col items-end gap-0.5 text-[10px] text-slate-700 bg-slate-50 border border-slate-200/80 px-2 py-1 rounded-lg">
-                                        <div className="flex items-center gap-1">
-                                            <DiamondToken className="w-2.5 h-2.5 text-slate-400" />
-                                            <span className="font-semibold text-slate-900">
+                                    <div key={activity} className={`flex items-center justify-between gap-1 text-xs text-slate-700 bg-slate-50 border border-slate-200/80 px-2 py-1.5 rounded-lg ${isLimitedActivity ? 'col-span-2' : 'col-span-1'}`}>
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                            <DiamondToken className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                                            <span className="font-semibold text-slate-900 shrink-0">
                                                 {isLimitedActivity ? formatCredits(limitBalance.balance) : (bal === null ? "Illimité" : formatCredits(Number(bal)))}
                                             </span>
-                                            <span className="text-slate-600 text-[10px] truncate max-w-[100px] capitalize">{activity}</span>
+                                            <span className="text-slate-600 text-[11px] truncate capitalize">{activity}</span>
                                         </div>
                                         {isLimitedActivity && (
-                                            <div className="flex items-center justify-between w-full text-[9px] text-slate-400">
+                                            <div className="flex items-center gap-2 text-[10px] text-slate-400 shrink-0 ml-1">
                                                 <span className="flex items-center gap-0.5">
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-3 h-3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                         <path d="M4 19a8 8 0 0 1 16 0" />
@@ -486,7 +495,7 @@ export default function PlanningPage() {
                                                     </svg>
                                                     {formatCredits(limitBalance.base_limit)}{limitBalance.limit_period}
                                                 </span>
-                                                <span>Total: {bal === null ? 'Illimité' : formatCredits(Number(bal))}</span>
+                                                <span className="hidden min-[380px]:inline">Total: {bal === null ? 'Illimité' : formatCredits(Number(bal))}</span>
                                             </div>
                                         )}
                                     </div>
@@ -653,15 +662,16 @@ export default function PlanningPage() {
                       return (
                         <div 
                           key={item.id} 
-                          className={`group ${isEvent ? 'bg-gradient-to-b from-amber-50/80 via-amber-50/40 to-white border-amber-200/50' : 'bg-white border-slate-200/60'} rounded-2xl border transition-all duration-500 hover:shadow-xl flex flex-col overflow-hidden`}
+                          className={`group ${isEvent ? 'bg-gradient-to-b from-amber-50/80 via-amber-50/40 to-white' : 'bg-white'} rounded-2xl border transition-all duration-500 hover:shadow-xl flex flex-col overflow-hidden`}
                           style={{ 
                             boxShadow: isEvent ? `3px 4px 14px -2px #f59e0b30` : `2px 3px 10px -2px ${(tenant?.primary_color || '#2563eb')}25`,
+                            borderColor: isEvent ? '#fcd34d' : `${(tenant?.primary_color || '#2563eb')}40`
                           }}
                         >
                           {/* 1. HEADER : Heure + Titre */}
                           <div className="px-5 pt-3 pb-1">
                             {isEvent && item.event_group?.title && (
-                              <div className="text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-1 flex items-center gap-1">
+                              <div className="text-[11px] md:text-xs font-bold text-amber-600 uppercase tracking-widest mb-1 flex items-center gap-1">
                                 <span>✨</span>
                                 <span>{item.event_group.title}</span>
                               </div>
@@ -676,16 +686,16 @@ export default function PlanningPage() {
                           {/* 2. RÉSUMÉ : Durée, Crédits | Bouton + d'infos */}
                           <div className="px-5 py-1 flex items-center justify-between gap-4">
                             <div className="flex items-center gap-6">
-                              <div className="flex items-center gap-2 text-slate-600 font-medium text-[11px] md:text-xs">
+                              <div className="flex items-center gap-2 text-slate-600 font-medium text-xs">
                                 <span className="text-sm opacity-60">🕒</span>
                                 <span>{formatDuration(durationValue)}</span>
                               </div>
                               {!isEvent && item.credits_required > 0 && (
-                                <div className="flex items-center gap-1.5 text-slate-700 font-bold text-[11px] md:text-xs">
+                                <div className="flex items-center gap-1.5 text-slate-700 font-bold text-xs">
                                   <DiamondToken className="w-5 h-5" />
                                   <span>{formatCredits(item.credits_required)}</span>
                                   {item.activity_type && (
-                                    <span className="text-slate-500 font-normal capitalize ml-0.5">
+                                    <span className="text-slate-500 font-normal ml-0.5 lowercase">
                                       {item.activity_type}
                                     </span>
                                   )}
@@ -693,26 +703,30 @@ export default function PlanningPage() {
                               )}
                             </div>
 
-                             <button 
-                               onClick={handleToggleExpand}
-                               className="px-2.5 py-1.5 rounded-full text-[11px] font-medium transition-all active:scale-95 flex items-center gap-1.5 bg-slate-100 text-slate-500 hover:bg-slate-200/60"
-                             >
-                               <span>{isExpanded ? '-' : '+'} info</span>
-                             </button>
+                             {Boolean(item.instructor_name || item.location || item.description) && (
+                               <button 
+                                 onClick={handleToggleExpand}
+                                 className="px-2.5 py-1.5 rounded-full text-xs font-medium transition-all active:scale-95 flex items-center gap-1.5 bg-slate-100 text-slate-500 hover:bg-slate-200/60"
+                               >
+                                 <span>{isExpanded ? '-' : '+'} info</span>
+                               </button>
+                             )}
                           </div>
 
                           {/* 3. ACCORDÉON (Détails) */}
                           <div className={`px-5 overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[500px] mb-1 opacity-100' : 'max-h-0 opacity-0'}`}>
                             <div className="pt-0.5 space-y-1.5 pb-2">
                               <div className="flex flex-wrap items-center justify-between gap-y-1 gap-x-6 w-full">
-                                <div className="flex items-center gap-2 text-slate-600 text-[11px] md:text-xs font-normal">
-                                  <svg className="w-5 h-5 shrink-0 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                  </svg>
-                                  <span>{item.instructor_name}</span>
-                                </div>
+                                {item.instructor_name && (
+                                  <div className="flex items-center gap-2 text-slate-600 text-xs font-normal">
+                                    <svg className="w-5 h-5 shrink-0 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                    <span>{item.instructor_name}</span>
+                                  </div>
+                                )}
                                 {item.location && (
-                                  <div className="flex items-center gap-2 text-slate-600 text-[11px] md:text-xs font-normal">
+                                  <div className="flex items-center gap-2 text-slate-600 text-xs font-normal">
                                     <span className="text-base opacity-60">📍</span>
                                     <span>{item.location}</span>
                                   </div>
@@ -721,7 +735,7 @@ export default function PlanningPage() {
 
                               {item.description && (
                                 <div className="px-3 py-2 bg-white border-y border-black/10 my-1">
-                                  <p className="text-slate-600 text-[11px] md:text-xs leading-relaxed italic text-center">
+                                  <p className="text-slate-600 text-xs md:text-sm leading-relaxed italic text-center">
                                     {item.description}
                                   </p>
                                 </div>
@@ -741,11 +755,11 @@ export default function PlanningPage() {
 
                             <div className="shrink-0">
                                 {activeStatusLabel ? (
-                                    <div className={`py-2 rounded-xl text-[11px] font-medium flex items-center justify-center border shadow-sm w-[90px] ${getStatusBadgeStyle(activeStatusLabel)}`}>
+                                    <div className={`py-2 rounded-xl text-[11px] md:text-xs font-medium flex items-center justify-center border shadow-sm w-[100px] ${getStatusBadgeStyle(activeStatusLabel)}`}>
                                         {activeStatusLabel}
                                     </div>
                                 ) : isClosed ? (
-                                  <div className="py-2 rounded-xl text-[11px] font-medium flex items-center justify-center bg-slate-100 text-slate-400 border border-slate-200 cursor-default opacity-50 w-[90px]">
+                                  <div className="py-2 rounded-xl text-[11px] md:text-xs font-medium flex items-center justify-center bg-slate-100 text-slate-400 border border-slate-200 cursor-default opacity-50 w-[100px]">
                                     Fermé
                                   </div>
                                 ) : canWaitlist ? (
@@ -753,7 +767,7 @@ export default function PlanningPage() {
                                       <button 
                                           disabled={bookingLoading === item.id}
                                           onClick={() => handleWaitlistEvent(item.id)}
-                                          className="py-2 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 font-normal rounded-xl text-[11px] transition-all active:scale-95 border border-amber-200/80 shadow-sm whitespace-nowrap text-center"
+                                          className="py-2 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 font-normal rounded-xl text-[11px] md:text-xs transition-all active:scale-95 border border-amber-200/80 shadow-sm whitespace-nowrap text-center"
                                       >
                                           {bookingLoading === item.id ? "..." : "S'inscrire sur liste d'attente"}
                                       </button>
@@ -761,18 +775,18 @@ export default function PlanningPage() {
                                      <button 
                                          disabled={bookingLoading === item.id}
                                          onClick={() => handleBooking(item.id)}
-                                         className="py-2 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 font-normal rounded-xl text-[11px] transition-all active:scale-95 border border-amber-200/80 shadow-sm whitespace-nowrap text-center"
+                                         className="py-2 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 font-normal rounded-xl text-[11px] md:text-xs transition-all active:scale-95 border border-amber-200/80 shadow-sm whitespace-nowrap text-center"
                                      >
                                          {bookingLoading === item.id ? "..." : "S'inscrire sur liste d'attente"}
                                      </button>
                                   )
                                 ) : isFull ? (
-                                   <span className="text-[10px] text-slate-300 italic">Complet</span>
+                                   <span className="text-[11px] md:text-xs text-slate-400 italic">Complet</span>
                                 ) : (
                                    isEvent ? (
                                     <Link 
                                         href={`/events/checkout?id=${item.id}`}
-                                        className="block py-2 bg-slate-900 text-white font-medium rounded-xl text-[11px] shadow-md hover:bg-slate-800 transition-all active:scale-95 w-[90px] text-center"
+                                        className="block py-2 bg-slate-900 text-white font-medium rounded-xl text-[11px] md:text-xs shadow-md hover:bg-slate-800 transition-all active:scale-95 w-[100px] text-center"
                                     >
                                         S'inscrire
                                     </Link>
@@ -780,7 +794,7 @@ export default function PlanningPage() {
                                     <button 
                                         disabled={bookingLoading === item.id}
                                         onClick={() => handleBooking(item.id)}
-                                        className="py-2 bg-slate-900 text-white font-medium rounded-xl text-[11px] shadow-md hover:bg-slate-800 transition-all active:scale-95 w-[90px] text-center"
+                                        className="py-2 bg-slate-900 text-white font-medium rounded-xl text-[11px] md:text-xs shadow-md hover:bg-slate-800 transition-all active:scale-95 w-[100px] text-center"
                                     >
                                         {bookingLoading === item.id ? "..." : "Réserver"}
                                     </button>
@@ -809,8 +823,8 @@ export default function PlanningPage() {
                  ) : (
                     <div className="bg-white rounded-2xl border border-slate-100 divide-y divide-slate-50 overflow-hidden shadow-sm">
                       {myRegistrations.map((item: any) => (
-                        <div key={item.id} className="flex items-center justify-between hover:bg-slate-50/50 transition-colors py-2 px-4">
-                          <div className="flex items-center gap-3 min-w-0">
+                        <div key={item.id} className="flex items-center justify-between hover:bg-slate-50/50 transition-colors py-2 pl-2.5 pr-4">
+                          <div className="flex items-center gap-1.5 min-w-0">
                              <div className="flex-shrink-0 flex items-center justify-center w-5">
                                 {item.uType === "event" ? (
                                   <span className="text-sm">✨</span>
@@ -822,13 +836,13 @@ export default function PlanningPage() {
                                   </svg>
                                 )}
                              </div>
-                             <div className="flex items-center gap-2 min-w-0">
-                                <p className="text-[11px] md:text-sm font-medium text-slate-600 whitespace-nowrap">
+                             <div className="flex items-center gap-1.5 min-w-0">
+                                <p className="text-xs md:text-sm font-medium text-slate-600 whitespace-nowrap">
                                    {item.start_time ? format(parseISO(item.start_time), "dd/MM") : (item.event_date ? format(parseISO(item.event_date), "dd/MM") : "")}
-                                   <span className="mx-1 opacity-50">-</span>
+                                   <span className="mx-0.5 opacity-50">-</span>
                                    {item.start_time ? format(parseISO(item.start_time), "HH:mm") : (item.event_time ? item.event_time : "")}
                                 </p>
-                                <span className="mx-1 text-slate-200 opacity-50">-</span>
+                                <span className="mx-0.5 text-slate-200 opacity-50">-</span>
                                 <p className="font-medium text-slate-800 text-sm md:text-base truncate">{item.title}</p>
                               </div>
                            </div>

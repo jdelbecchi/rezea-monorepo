@@ -347,21 +347,21 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                                 </button>
                                 
                                 {showCreditDetails && (
-                                    <div className="absolute top-10 left-1/2 -translate-x-1/2 flex flex-col gap-1.5 w-48 mt-2 animate-in fade-in slide-in-from-top-1 duration-200 z-50">
+                                    <div className="absolute top-10 left-1/2 -translate-x-1/2 flex flex-col gap-1.5 w-52 mt-2 animate-in fade-in slide-in-from-top-1 duration-200 z-50">
                                         {sortedActivities.map(([activity, bal]) => {
                                             const actFrozen = credits.frozen_by_activity?.[activity] || 0;
                                             return (
-                                                <div key={activity} className="flex items-center justify-between text-[11px] text-slate-700 bg-white shadow-sm border border-slate-200/80 px-2.5 py-1 rounded-xl">
-                                                    <div className="flex items-center gap-1 truncate max-w-[130px]">
+                                                <div key={activity} className="flex items-center justify-between gap-1 text-xs text-slate-700 bg-white shadow-sm border border-slate-200/80 px-3 py-1.5 rounded-xl">
+                                                    <div className="flex items-center gap-1.5 truncate max-w-[140px]">
                                                         <span>💎</span>
                                                         <span className="font-bold text-slate-900">{bal === null ? "Illimité" : formatCredits(Number(bal))}</span>
-                                                        <span className="text-slate-500 text-[10px] truncate capitalize">{activity}</span>
-                                                        {Number(actFrozen) > 0 && (
-                                                            <span className="text-[9px] text-slate-400 font-normal flex items-center gap-0.5" title={`${formatCredits(Number(actFrozen))} crédit(s) en liste d'attente`}>
-                                                                (<span className="opacity-40">⏳</span>{formatCredits(Number(actFrozen))})
-                                                            </span>
-                                                        )}
+                                                        <span className="text-slate-500 text-[11px] truncate capitalize">{activity}</span>
                                                     </div>
+                                                    {Number(actFrozen) > 0 && (
+                                                        <span className="text-[10px] text-slate-400 font-normal flex items-center gap-0.5 shrink-0" title={`${formatCredits(Number(actFrozen))} crédit(s) en liste d'attente`}>
+                                                            (<span className="opacity-40">⏳</span>{formatCredits(Number(actFrozen))})
+                                                        </span>
+                                                    )}
                                                 </div>
                                             );
                                         })}
@@ -667,18 +667,19 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                                 </svg>
                             )}
                         </button>
-                        
                         {showCreditDetails && (
-                            <div className="flex flex-wrap justify-end gap-1.5 max-w-xs mt-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                            <div className="grid grid-cols-2 w-full gap-1.5 mt-2 animate-in fade-in slide-in-from-top-1 duration-200">
                                 {sortedActivities.map(([activity, bal]) => {
                                     const actFrozen = credits.frozen_by_activity?.[activity] || 0;
                                     return (
-                                        <div key={activity} className="flex items-center gap-1 text-[11px] text-slate-700 bg-white shadow-sm border border-slate-200/80 px-2.5 py-1 rounded-xl">
-                                            <span>💎</span>
-                                            <span className="font-bold text-slate-900">{bal === null ? "Illimité" : formatCredits(Number(bal))}</span>
-                                            <span className="text-slate-500 text-[10px] truncate max-w-[100px] capitalize">{activity}</span>
+                                        <div key={activity} className="flex items-center justify-between gap-1 text-xs text-slate-700 bg-white shadow-sm border border-slate-200/80 px-2 py-1.5 rounded-xl w-full">
+                                            <div className="flex items-center gap-1 truncate">
+                                                <span>💎</span>
+                                                <span className="font-bold text-slate-900">{bal === null ? "Illimité" : formatCredits(Number(bal))}</span>
+                                                <span className="text-slate-500 text-[11px] truncate capitalize">{activity}</span>
+                                            </div>
                                             {Number(actFrozen) > 0 && (
-                                                <span className="text-[9px] text-slate-400 font-normal flex items-center gap-0.5" title={`${formatCredits(Number(actFrozen))} crédit(s) en liste d'attente`}>
+                                                <span className="text-[10px] text-slate-400 font-normal flex items-center gap-0.5 shrink-0" title={`${formatCredits(Number(actFrozen))} crédit(s) en liste d'attente`}>
                                                     (<span className="opacity-40">⏳</span>{formatCredits(Number(actFrozen))})
                                                 </span>
                                             )}

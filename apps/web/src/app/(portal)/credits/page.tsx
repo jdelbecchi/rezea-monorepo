@@ -81,7 +81,7 @@ export default function CreditsPage() {
     const categoriesList = Array.from(categoriesMap.entries());
 
     return (
-        <div className="min-h-screen bg-white flex flex-col md:flex-row pb-20 md:pb-0 overflow-x-hidden">
+        <div className="min-h-screen bg-white flex flex-col md:flex-row pb-20 md:pb-0 overflow-x-hidden" style={{ backgroundColor: tenantSettings?.background_color ? `${tenantSettings.background_color}10` : undefined }}>
             {isAdminMode && <Sidebar user={user} tenant={tenantSettings} />}
 
             {/* Main Content */}
@@ -208,15 +208,15 @@ export default function CreditsPage() {
                                                         boxShadow: `3px 4px 14px -2px ${(tenantSettings?.primary_color || '#2563eb')}25`,
                                                         borderColor: hoveredCardId === offer.id 
                                                             ? tenantSettings?.primary_color || '#2563eb' 
-                                                            : `${(tenantSettings?.primary_color || '#2563eb')}25`,
+                                                            : `${(tenantSettings?.primary_color || '#2563eb')}40`,
                                                         backgroundImage: hoveredCardId === offer.id
-                                                            ? `linear-gradient(to top left, ${(tenantSettings?.primary_color || '#2563eb')}40 0%, white 60%)`
-                                                            : `linear-gradient(to top left, ${(tenantSettings?.primary_color || '#2563eb')}25 0%, white 70%)`,
+                                                            ? `radial-gradient(circle at 0% 0%, ${(tenantSettings?.primary_color || '#2563eb')}20 0%, transparent 55%), radial-gradient(circle at 100% 100%, ${(tenantSettings?.primary_color || '#2563eb')}15 0%, transparent 55%)`
+                                                            : `radial-gradient(circle at 0% 0%, ${(tenantSettings?.primary_color || '#2563eb')}15 0%, transparent 50%), radial-gradient(circle at 100% 100%, ${(tenantSettings?.primary_color || '#2563eb')}10 0%, transparent 50%)`,
                                                         backgroundColor: 'white'
                                                     }}
                                                 >
-                                                    <div className="relative z-10 space-y-6 w-full flex flex-col items-center flex-1">
-                                                         <div className="space-y-3 w-full flex flex-col items-center">
+                                                    <div className="relative z-10 gap-6 w-full flex flex-col items-center flex-1">
+                                                         <div className="gap-3 w-full flex flex-col items-center">
                                                              <div className="w-full flex flex-col items-center gap-1.5">
                                                                  <h3 className="text-lg font-semibold text-slate-800 group-hover:text-slate-900 transition-colors capitalize tracking-tight">{offer.name}</h3>
                                                                  {(!offer.allowed_activities || offer.allowed_activities.length === 0) ? (
@@ -233,7 +233,7 @@ export default function CreditsPage() {
                                                                           </span>
                                                                       </div>
                                                                  ) : hasActivityCredits ? (
-                                                                      <div className="w-[90%] mx-auto space-y-2 mt-1 flex flex-col">
+                                                                      <div className="w-[90%] mx-auto gap-2 mt-6 flex flex-col">
                                                                           {offer.allowed_activities.map((act) => {
                                                                               const packCredits = (offer as any).activity_credits?.[act];
                                                                               return (
@@ -289,7 +289,7 @@ export default function CreditsPage() {
                                                                      <p className="text-slate-500 text-sm leading-relaxed italic">{offer.description}</p>
                                                                  </div>
                                                              )}
-                                                             <div className="w-full flex items-center justify-center gap-4 mt-12 pt-2">
+                                                             <div className="w-full flex items-center justify-center gap-4 mt-6 pt-2">
                                                               {/* Left Column: Credits and Validity */}
                                                               <div className="flex flex-col items-center gap-2 flex-1">
                                                                   <div className="flex items-center gap-1.5 text-slate-700">

@@ -431,7 +431,7 @@ export default function GestionInscriptionsPage() {
     }
 
     return (
-        <div className="bg-white flex flex-col min-h-screen pb-20 md:pb-0 overflow-x-hidden">
+        <div className="bg-white flex flex-col min-h-screen pb-20 md:pb-0 overflow-x-hidden" style={{ backgroundColor: tenant?.background_color ? `${tenant.background_color}10` : undefined }}>
 
             <main className="flex-1 px-5 pb-5 md:p-12 pt-4 md:pt-12">
                 <div className="max-w-6xl mx-auto">
@@ -588,12 +588,12 @@ export default function GestionInscriptionsPage() {
                                         const loadingParticipants = loadingMap[session.id] || false;
                                         
                                         return (
-                                            <div 
+                                                <div 
                                                 key={session.id} 
                                                 className="bg-white rounded-2xl border transition-all duration-500 hover:shadow-xl overflow-hidden group"
                                                 style={{ 
                                                     boxShadow: `2px 3px 10px -2px ${(tenant?.primary_color || '#2563eb')}25`,
-                                                    borderColor: `${(tenant?.primary_color || '#2563eb')}20`
+                                                    borderColor: `${(tenant?.primary_color || '#2563eb')}40`
                                                 }}
                                             >
                                                 {/* Entête Séance */}
@@ -636,7 +636,7 @@ export default function GestionInscriptionsPage() {
                                                                              className="p-1 hover:bg-slate-50 rounded-lg transition-colors"
                                                                              title={notesMap[session.id] ? 'Voir/modifier la note' : 'Ajouter une note'}
                                                                          >
-                                                                             <span className={`text-sm ${notesMap[session.id] ? 'opacity-100' : 'opacity-25 grayscale'}`}>📝</span>
+                                                                             <span className={`text-sm ${notesMap[session.id] ? 'opacity-100' : 'opacity-50 grayscale'}`}>📝</span>
                                                                          </button>
                                                                      </div>
                                                                  ) : (
@@ -764,7 +764,7 @@ export default function GestionInscriptionsPage() {
                                                                                                         <span className="text-xs">✅</span>
                                                                                                     </button>
  
-                                                                                                    <button type="button" onClick={() => handleViewContact(p)} className="truncate text-xs tracking-tight text-slate-600 font-medium flex items-center gap-1.5 min-w-0 max-w-full hover:text-slate-900 hover:underline transition-colors text-left" title="Voir la fiche participant">
+                                                                                                    <button type="button" onClick={() => handleViewContact(p)} className="truncate text-xs md:text-sm tracking-tight text-slate-600 font-medium flex items-center gap-1.5 min-w-0 max-w-full hover:text-slate-900 hover:underline transition-colors text-left" title="Voir la fiche participant">
                                                                                                         <span className="truncate">{p.user_name}</span>
                                                                                                         {hasWarning && (
                                                                                                             <span title="Commande à régulariser" className="flex-shrink-0 w-4 h-4 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center text-[10px] font-bold border border-amber-200 shadow-sm cursor-help">!</span>
@@ -828,7 +828,7 @@ export default function GestionInscriptionsPage() {
                                                                     className="p-1 hover:bg-amber-50 rounded-lg transition-colors"
                                                                     title={notesMap[event.id] ? 'Voir/modifier la note' : 'Ajouter une note'}
                                                                 >
-                                                                    <span className={`text-sm ${notesMap[event.id] ? 'opacity-100' : 'opacity-25 grayscale'}`}>📝</span>
+                                                                    <span className={`text-sm ${notesMap[event.id] ? 'opacity-100' : 'opacity-50 grayscale'}`}>📝</span>
                                                                 </button>
                                                             </div>
                                                         </div>
@@ -932,7 +932,7 @@ export default function GestionInscriptionsPage() {
                                                                                                     <span className="text-xs">✅</span>
                                                                                                 </button>
  
-                                                                                                <button type="button" onClick={() => handleViewContact(p)} className="truncate text-xs tracking-tight text-slate-600 font-medium flex items-center gap-1.5 min-w-0 max-w-full hover:text-slate-900 hover:underline transition-colors text-left" title="Voir la fiche participant">
+                                                                                                <button type="button" onClick={() => handleViewContact(p)} className="truncate text-xs md:text-sm tracking-tight text-slate-600 font-medium flex items-center gap-1.5 min-w-0 max-w-full hover:text-slate-900 hover:underline transition-colors text-left" title="Voir la fiche participant">
                                                                                                     <span className="truncate">{p.user_name}</span>
                                                                                                     {hasWarning && (
                                                                                                         <span title="Commande à régulariser" className="flex-shrink-0 w-4 h-4 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center text-[10px] font-bold border border-amber-200 shadow-sm cursor-help">!</span>

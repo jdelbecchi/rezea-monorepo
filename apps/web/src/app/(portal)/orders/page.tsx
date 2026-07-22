@@ -282,7 +282,7 @@ export default function MemberOrdersPage() {
     }
 
     return (
-        <div className="flex flex-col md:flex-row min-h-screen bg-white pb-20 md:pb-0 overflow-x-hidden">
+        <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 overflow-x-hidden pb-20 md:pb-0" style={{ backgroundColor: tenant?.background_color ? `${tenant.background_color}10` : undefined }}>
             {isAdminMode && <Sidebar user={user} tenant={tenant} />}
             
             <main className={`flex-1 px-5 pb-5 md:p-12 pt-4 md:pt-12`}>
@@ -365,10 +365,7 @@ export default function MemberOrdersPage() {
                                             boxShadow: `2px 4px 12px -2px ${(tenant?.primary_color || '#2563eb')}25`,
                                             borderColor: hoveredCardId === order.id 
                                                 ? tenant?.primary_color || '#2563eb' 
-                                                : `${(tenant?.primary_color || '#2563eb')}20`,
-                                            backgroundColor: hoveredCardId === order.id 
-                                                ? `${(tenant?.primary_color || '#2563eb')}08` 
-                                                : 'white'
+                                                : `${(tenant?.primary_color || '#2563eb')}40`
                                         }}
                                     >
                                         <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-bl-full -mr-16 -mt-16 opacity-40 pointer-events-none" />
@@ -377,63 +374,35 @@ export default function MemberOrdersPage() {
                                             {/* Top Section: Title & Metadata */}
                                             <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                                                 <div className="flex flex-col min-w-0 flex-1 w-full sm:w-auto">
-                                                    <div className="flex items-center gap-3 mb-2 w-full min-w-0">
-                                                        <h3 className="text-lg md:text-xl font-semibold text-slate-900 capitalize tracking-tight truncate">{order.offer_name}</h3>
+                                                    <div className="flex flex-col items-start gap-1 mb-4 w-full min-w-0">
+                                                        <h3 className="text-lg md:text-xl font-semibold text-slate-900 capitalize tracking-tight truncate w-full">{order.offer_name}</h3>
                                                         {(() => {
-                                                             const hasActivityCredits = order.allowed_activities && order.allowed_activities.length > 0 &&
-                                                                 (order.offer_snap_activity_credits || order.activity_credits) &&
-                                                                 Object.keys(order.offer_snap_activity_credits || order.activity_credits || {}).some(k => 
-                                                                     order.allowed_activities.includes(k) && 
-                                                                     ((order.offer_snap_activity_credits?.[k] !== undefined && order.offer_snap_activity_credits?.[k] !== null && order.offer_snap_activity_credits?.[k].toString().trim() !== "") || 
-                                                                      (order.activity_credits?.[k] !== undefined && order.activity_credits?.[k] !== null && order.activity_credits?.[k].toString().trim() !== ""))
-                                                                 );
                                                              return (!order.allowed_activities || order.allowed_activities.length === 0) ? (
-                                                                 <div className="w-full mt-1.5 flex flex-col items-center">
-                                                                     <div className="flex items-center justify-center gap-1.5 text-[11px] font-semibold text-center w-full">
-                                                                         <span className="capitalize flex items-center gap-1.5 truncate">
-                                                                             <span 
-                                                                                 className="text-[9px] font-bold" 
-                                                                                 style={{ color: tenant?.primary_color || '#2563eb' }}
-                                                                             >
-                                                                                 ✓
-                                                                             </span>
-                                                                             <span className="text-slate-800 truncate">Toutes activités</span>
-                                                                         </span>
-                                                                     </div>
+                                                                 <div className="w-full mt-1.5 flex flex-wrap gap-1.5">
+                                                                     <span 
+                                                                         className="px-2 py-1 border font-medium rounded-lg text-[10px] text-center capitalize shadow-sm transition-colors text-slate-800"
+                                                                         style={{
+                                                                             backgroundColor: `${tenant?.primary_color || '#2563eb'}10`,
+                                                                             borderColor: `${tenant?.primary_color || '#2563eb'}25`
+                                                                         }}
+                                                                     >
+                                                                         Toutes activités
+                                                                     </span>
                                                                  </div>
                                                              ) : (
-                                                                 <div className="w-full space-y-1.5 mt-1.5 flex flex-col">
-                                                                     {order.allowed_activities.map((act: string) => {
-                                                                         const packCredits = order.offer_snap_activity_credits?.[act] ?? order.activity_credits?.[act];
-                                                                         return (
-                                                                             <div 
-                                                                                 key={act} 
-                                                                                 className={`flex ${hasActivityCredits ? 'justify-between text-left' : 'justify-center text-center'} items-center gap-2 text-[11px] font-semibold w-full`}
-                                                                             >
-                                                                                 <span className="capitalize flex items-center gap-1.5 truncate">
-                                                                                     <span 
-                                                                                         className="text-[9px] font-bold" 
-                                                                                         style={{ color: tenant?.primary_color || '#2563eb' }}
-                                                                                     >
-                                                                                         ✓
-                                                                                     </span>
-                                                                                     <span className="text-slate-800 truncate">{act}</span>
-                                                                                 </span>
-                                                                                 {packCredits !== undefined && packCredits !== null && packCredits.toString().trim() !== "" && (
-                                                                                     <span 
-                                                                                         className="px-1.5 py-0.5 border font-bold rounded-full text-[9px] whitespace-nowrap"
-                                                                                         style={{
-                                                                                             backgroundColor: `${tenant?.primary_color || '#2563eb'}15`,
-                                                                                             borderColor: `${tenant?.primary_color || '#2563eb'}25`,
-                                                                                             color: tenant?.primary_color || '#2563eb'
-                                                                                         }}
-                                                                                     >
-                                                                                         {packCredits} cr.
-                                                                                     </span>
-                                                                                 )}
-                                                                             </div>
-                                                                         );
-                                                                     })}
+                                                                 <div className="w-full mt-1.5 flex flex-wrap gap-1.5">
+                                                                     {order.allowed_activities.map((act: string) => (
+                                                                         <span 
+                                                                             key={act}
+                                                                             className="px-2 py-1 border font-medium rounded-lg text-[10px] text-center capitalize shadow-sm transition-colors text-slate-800"
+                                                                             style={{
+                                                                                 backgroundColor: `${tenant?.primary_color || '#2563eb'}10`,
+                                                                                 borderColor: `${tenant?.primary_color || '#2563eb'}25`
+                                                                             }}
+                                                                         >
+                                                                             {act}
+                                                                         </span>
+                                                                     ))}
                                                                  </div>
                                                              );
                                                          })()}
@@ -463,7 +432,9 @@ export default function MemberOrdersPage() {
                                                     </div>
                                                     <div className="flex items-center gap-2 px-1">
                                                         <span className="text-sm">💎</span>
-                                                        <p className="text-xs text-slate-600 font-medium tracking-tight">Solde de crédit :</p>
+                                                        <p className="text-xs text-slate-600 font-medium tracking-tight">
+                                                            {order.allowed_activities && order.allowed_activities.length > 1 ? "Solde total de crédits :" : "Solde de crédit :"}
+                                                        </p>
                                                         <p className="text-sm font-semibold tracking-tight text-slate-900">
                                                             {order.is_unlimited ? 'Illimité' : `${formatCredits(order.balance)}`}
                                                         </p>
@@ -531,10 +502,7 @@ export default function MemberOrdersPage() {
                                             boxShadow: `2px 4px 12px -2px ${(tenant?.primary_color || '#2563eb')}25`,
                                             borderColor: hoveredCardId === reg.id 
                                                 ? tenant?.primary_color || '#2563eb' 
-                                                : `${(tenant?.primary_color || '#2563eb')}20`,
-                                            backgroundColor: hoveredCardId === reg.id 
-                                                ? `${(tenant?.primary_color || '#2563eb')}08` 
-                                                : 'white'
+                                                : `${(tenant?.primary_color || '#2563eb')}40`
                                         }}
                                     >
                                         <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-bl-full -mr-16 -mt-16 opacity-40 pointer-events-none" />

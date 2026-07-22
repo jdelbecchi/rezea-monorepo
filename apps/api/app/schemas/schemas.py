@@ -176,6 +176,7 @@ class TenantSettingsUpdate(BaseModel):
     banner_url: Optional[str] = None
     slogan: Optional[str] = Field(None, max_length=500)
     primary_color: Optional[str] = Field(None, pattern="^#[0-9a-fA-F]{6}$")
+    background_color: Optional[str] = Field(None, pattern="^#[0-9a-fA-F]{6}$")
     login_primary_color: Optional[str] = Field(None, pattern="^#[0-9a-fA-FA-F]{6}$")
     login_background_url: Optional[str] = None
     login_description: Optional[str] = None
@@ -245,6 +246,7 @@ class TenantResponse(TenantBase):
     banner_url: Optional[str] = None
     slogan: Optional[str] = None
     primary_color: Optional[str] = "#7c3aed"
+    background_color: Optional[str] = None
     login_primary_color: Optional[str] = None
     login_background_url: Optional[str] = None
     login_description: Optional[str] = None
