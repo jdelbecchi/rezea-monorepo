@@ -1647,7 +1647,7 @@ export default function AdminSettingsPage() {
                                                     />
                                                 </div>
                                                 <span className="block text-slate-400 text-[10px] font-normal">
-                                                    Laisser vide pour un fond blanc, ou définir une couleur claire (opacité 6%)
+                                                    Un effet de verre fumé (opacité 15%) sera appliqué pour garantir la lisibilité des textes, même avec une couleur foncée. Laissez vide pour un fond blanc.
                                                 </span>
                                             </div>
                                         </div>

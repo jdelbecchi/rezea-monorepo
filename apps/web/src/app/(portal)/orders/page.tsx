@@ -282,7 +282,7 @@ export default function MemberOrdersPage() {
     }
 
     return (
-        <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 overflow-x-hidden pb-20 md:pb-0" style={{ backgroundColor: tenant?.background_color ? `${tenant.background_color}10` : undefined }}>
+        <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 overflow-x-hidden pb-20 md:pb-0" style={{ backgroundColor: tenant?.background_color ? `${tenant.background_color}26` : undefined }}>
             {isAdminMode && <Sidebar user={user} tenant={tenant} />}
             
             <main className={`flex-1 px-5 pb-5 md:p-12 pt-4 md:pt-12`}>

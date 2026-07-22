@@ -221,22 +221,24 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
                 </nav>
                 <div className="border-t border-slate-800 my-3"></div>
 
-                {expanded ? (
+                <div className={`flex ${expanded ? "flex-row items-center gap-2" : "flex-col gap-2"}`}>
                     <button
                         onClick={handleLogout}
-                        className="w-full py-2.5 px-4 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 hover:text-rose-300 rounded-2xl font-medium text-sm transition-all border border-rose-600/20 shadow-lg shadow-rose-900/10 active:scale-[0.98]"
+                        className={`${expanded ? "flex-1 px-4" : "w-full justify-center"} flex py-2.5 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 hover:text-rose-300 rounded-xl transition-all border border-rose-600/20 shadow-sm active:scale-[0.98] font-medium text-sm`}
+                        title={!expanded ? "Déconnexion" : undefined}
                     >
-                        Déconnexion
+                        {expanded ? "Déconnexion" : "🚪"}
                     </button>
-                ) : (
-                    <button
-                        onClick={handleLogout}
-                        className="w-full py-2.5 flex justify-center bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 hover:text-rose-300 rounded-xl transition-all border border-rose-600/20 shadow-lg shadow-rose-900/10 active:scale-[0.98]"
-                        title="Déconnexion"
+
+                    {/* Collapse Toggle Button */}
+                    <button 
+                        onClick={() => setIsCollapsed(!isCollapsed)}
+                        className={`hidden md:flex items-center justify-center shrink-0 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-colors border border-slate-700 shadow-sm ${expanded ? "h-[42px] w-[42px]" : "w-full py-2"}`}
+                        title={isCollapsed ? "Agrandir" : "Réduire"}
                     >
-                        🚪
+                        {isCollapsed ? "▶" : "◀"}
                     </button>
-                )}
+                </div>
             </div>
         </>
     );
@@ -283,17 +285,6 @@ export default function Sidebar({ user, tenant }: SidebarProps) {
                 onMouseLeave={() => setIsHovered(false)}
             >
                 <SidebarContent expanded={!isCollapsed || isHovered} />
-                
-                {/* Collapse Toggle Button */}
-                <div className="border-t border-slate-800 p-2 flex justify-end">
-                    <button 
-                        onClick={() => setIsCollapsed(!isCollapsed)}
-                        className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
-                        title={isCollapsed ? "Agrandir" : "Réduire"}
-                    >
-                        {isCollapsed ? "▶" : "◀"}
-                    </button>
-                </div>
             </aside>
 
             {/* Sidebar Mobile (Drawer) */}
