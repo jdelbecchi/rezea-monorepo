@@ -411,7 +411,14 @@ export default function PlanningPage() {
                                   );
 
                                   return (
-                                      <div key={activity} className="flex flex-col gap-1 text-xs text-slate-700 bg-white shadow-sm border border-slate-200/80 px-3 py-2 rounded-xl">
+                                      <div 
+                                          key={activity} 
+                                          className="flex flex-col gap-1 text-xs text-slate-700 shadow-sm border px-3 py-2 rounded-xl"
+                                          style={{
+                                              background: `linear-gradient(135deg, white, ${(tenant?.primary_color || '#2563eb')}10)`,
+                                              borderColor: `${(tenant?.primary_color || '#2563eb')}25`
+                                          }}
+                                      >
                                           <div className="flex items-center gap-2">
                                               <DiamondToken className="w-3.5 h-3.5 text-slate-400" />
                                               <span className="font-semibold text-slate-900">
@@ -477,7 +484,14 @@ export default function PlanningPage() {
                                 );
 
                                 return (
-                                    <div key={activity} className={`flex items-center justify-between gap-1 text-xs text-slate-700 bg-slate-50 border border-slate-200/80 px-2 py-1.5 rounded-lg ${isLimitedActivity ? 'col-span-2' : 'col-span-1'}`}>
+                                    <div 
+                                        key={activity} 
+                                        className={`flex items-center justify-between gap-1 text-xs text-slate-700 border px-2 py-1.5 rounded-lg shadow-sm ${isLimitedActivity ? 'col-span-2' : 'col-span-1'}`}
+                                        style={{
+                                            background: `linear-gradient(135deg, white, ${(tenant?.primary_color || '#2563eb')}10)`,
+                                            borderColor: `${(tenant?.primary_color || '#2563eb')}25`
+                                        }}
+                                    >
                                         <div className="flex items-center gap-1.5 min-w-0">
                                             <DiamondToken className="w-2.5 h-2.5 text-slate-400 shrink-0" />
                                             <span className="font-semibold text-slate-900 shrink-0">

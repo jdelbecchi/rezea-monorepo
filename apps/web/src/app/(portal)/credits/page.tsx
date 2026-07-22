@@ -213,8 +213,8 @@ export default function CreditsPage() {
                                                             ? tenantSettings?.primary_color || '#2563eb' 
                                                             : `${(tenantSettings?.primary_color || '#2563eb')}40`,
                                                         backgroundImage: hoveredCardId === offer.id
-                                                            ? `radial-gradient(circle at 0% 0%, ${(tenantSettings?.primary_color || '#2563eb')}20 0%, transparent 55%), radial-gradient(circle at 100% 100%, ${(tenantSettings?.primary_color || '#2563eb')}15 0%, transparent 55%)`
-                                                            : `radial-gradient(circle at 0% 0%, ${(tenantSettings?.primary_color || '#2563eb')}15 0%, transparent 50%), radial-gradient(circle at 100% 100%, ${(tenantSettings?.primary_color || '#2563eb')}10 0%, transparent 50%)`,
+                                                            ? `radial-gradient(circle at 0% 0%, ${(tenantSettings?.primary_color || '#2563eb')}25 0%, transparent 60%), radial-gradient(circle at 100% 100%, ${(tenantSettings?.primary_color || '#2563eb')}20 0%, transparent 60%)`
+                                                            : `radial-gradient(circle at 0% 0%, ${(tenantSettings?.primary_color || '#2563eb')}20 0%, transparent 55%), radial-gradient(circle at 100% 100%, ${(tenantSettings?.primary_color || '#2563eb')}15 0%, transparent 55%)`,
                                                         backgroundColor: 'white'
                                                     }}
                                                 >
