@@ -415,8 +415,8 @@ export default function PlanningPage() {
                                           key={activity} 
                                           className="flex flex-col gap-1 text-xs text-slate-700 shadow-sm border px-3 py-2 rounded-xl"
                                           style={{
-                                              background: `linear-gradient(135deg, white, ${(tenant?.primary_color || '#2563eb')}10)`,
-                                              borderColor: `${(tenant?.primary_color || '#2563eb')}25`
+                                              background: `linear-gradient(135deg, white, ${(tenant?.primary_color || '#2563eb')}20)`,
+                                              borderColor: `${(tenant?.primary_color || '#2563eb')}30`
                                           }}
                                       >
                                           <div className="flex items-center gap-2">
@@ -488,8 +488,8 @@ export default function PlanningPage() {
                                         key={activity} 
                                         className={`flex items-center justify-between gap-1 text-xs text-slate-700 border px-2 py-1.5 rounded-lg shadow-sm ${isLimitedActivity ? 'col-span-2' : 'col-span-1'}`}
                                         style={{
-                                            background: `linear-gradient(135deg, white, ${(tenant?.primary_color || '#2563eb')}10)`,
-                                            borderColor: `${(tenant?.primary_color || '#2563eb')}25`
+                                            background: `linear-gradient(135deg, white, ${(tenant?.primary_color || '#2563eb')}20)`,
+                                            borderColor: `${(tenant?.primary_color || '#2563eb')}30`
                                         }}
                                     >
                                         <div className="flex items-center gap-1.5 min-w-0">
