@@ -66,13 +66,34 @@ export default function MemberOrdersPage() {
 
     const getStatusStyle = (status: string) => {
         switch (status) {
-            case 'en_attente': return 'bg-amber-100 text-amber-700 border-amber-200';
-            case 'a_valider': return 'bg-slate-100 text-slate-600 border-slate-200';
-            case 'paye': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-            case 'rembourse': return 'bg-slate-100 text-slate-500 border-slate-200';
-            case 'echelonne': return 'bg-blue-100 text-blue-700 border-blue-200';
-            case 'a_regulariser': return 'bg-rose-100 text-rose-700 border-rose-200';
-            default: return 'bg-slate-100 text-slate-700 border-slate-200';
+            case 'en_attente': return 'bg-amber-50/80 text-amber-800 border-amber-200/60';
+            case 'a_valider': return 'bg-slate-50 text-slate-600 border-slate-200/60';
+            case 'paye': return 'bg-emerald-50/80 text-emerald-800 border-emerald-200/60';
+            case 'rembourse': return 'bg-slate-50 text-slate-500 border-slate-200/60';
+            case 'echelonne': return 'bg-sky-50/80 text-sky-800 border-sky-200/60';
+            case 'a_regulariser': return 'bg-rose-50/80 text-rose-800 border-rose-200/60';
+            default: return 'bg-slate-50 text-slate-700 border-slate-200/60';
+        }
+    };
+
+    const getOrderStatusStyle = (status: string) => {
+        switch (status?.toLowerCase()) {
+            case 'active':
+                return 'bg-emerald-50/80 text-emerald-800 border-emerald-200/60';
+            case 'termine':
+            case 'terminee':
+                return 'bg-slate-100/80 text-slate-600 border-slate-200/60';
+            case 'expiree':
+            case 'expire':
+                return 'bg-slate-100/80 text-slate-500 border-slate-200/60';
+            case 'en_pause':
+                return 'bg-amber-50/70 text-amber-800 border-amber-200/60';
+            case 'resiliee':
+            case 'annule':
+            case 'annulee':
+                return 'bg-slate-100/80 text-slate-500 border-slate-200/60';
+            default:
+                return 'bg-slate-100/80 text-slate-600 border-slate-200/60';
         }
     };
 
@@ -124,13 +145,13 @@ export default function MemberOrdersPage() {
 
     const getEventRegistrationStatusStyle = (status: string) => {
         switch (status) {
-            case 'pending_payment': return 'bg-amber-100 text-amber-700 border-amber-200';
-            case 'confirmed': return 'bg-emerald-50 text-emerald-600 border-emerald-100';
-            case 'cancelled': return 'bg-slate-100 text-slate-500 border-slate-200';
-            case 'event_cancelled': return 'bg-rose-100 text-rose-700 border-rose-200';
-            case 'waiting_list': return 'bg-blue-100 text-blue-700 border-blue-200';
-            case 'absent': return 'bg-rose-100 text-rose-700 border-rose-200';
-            default: return 'bg-slate-100 text-slate-700 border-slate-200';
+            case 'pending_payment': return 'bg-amber-50/80 text-amber-800 border-amber-200/60';
+            case 'confirmed': return 'bg-emerald-50/80 text-emerald-800 border-emerald-200/60';
+            case 'cancelled': return 'bg-slate-50 text-slate-500 border-slate-200/60';
+            case 'event_cancelled': return 'bg-rose-50/80 text-rose-800 border-rose-200/60';
+            case 'waiting_list': return 'bg-sky-50/80 text-sky-800 border-sky-200/60';
+            case 'absent': return 'bg-rose-50/80 text-rose-800 border-rose-200/60';
+            default: return 'bg-slate-50 text-slate-700 border-slate-200/60';
         }
     };
 
@@ -455,14 +476,14 @@ export default function MemberOrdersPage() {
                                                     <div className="flex items-center gap-2 px-1">
                                                         <span className="text-sm">💎</span>
                                                         <p className="text-xs text-slate-600 font-medium tracking-tight">
-                                                            {order.allowed_activities && order.allowed_activities.length > 1 ? "Solde total de crédits :" : "Solde de crédit :"}
+                                                            Solde de crédits :
                                                         </p>
                                                         <p className="text-sm font-semibold tracking-tight text-slate-900">
                                                             {order.is_unlimited ? 'Illimité' : `${formatCredits(order.balance)}`}
                                                         </p>
                                                     </div>
                                                     <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:justify-end">
-                                                        <span className="px-3 py-1.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-lg text-[10px] sm:text-xs font-semibold">
+                                                        <span className={`px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold border ${getOrderStatusStyle(order.status)}`}>
                                                             <span className="opacity-60 mr-1">Statut :</span>
                                                             {getGeneralStatusLabel(order.status)}
                                                         </span>
@@ -620,144 +641,125 @@ export default function MemberOrdersPage() {
 
             {/* Detail Modal */}
             {showInfoModal && selectedOrder && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-300">
-                   <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl border border-white animate-in zoom-in duration-300 p-8 md:p-10 relative">
-                      {/* Decorative elements */}
-                      <div 
-                        className="absolute top-0 right-0 w-32 h-32 opacity-10 rounded-full -mr-16 -mt-16"
-                        style={{ backgroundColor: tenant?.primary_color || '#2563eb' }}
-                      />
-                      
-                      <div className="text-center relative z-10">
-                         <h2 className="text-xl md:text-2xl font-semibold text-slate-900 mb-2 tracking-tight capitalize">
-                             {selectedOrder.offer_snap_name || selectedOrder.offer_name}
-                         </h2>
-                         <p className="text-xs text-slate-600 font-medium leading-relaxed mb-8 max-w-[280px] mx-auto">
-                             Données contractuelles de votre commande à la date de l'achat, avant toute modification ultérieure.
-                         </p>
-                         
-                         <div className="relative mb-10 text-left max-w-[260px] mx-auto">
-                             {/* The "Accolade Rose" (Pink Brace) */}
-                             <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-rose-400 rounded-full opacity-60" />
-                             
-                             <div className="pl-6 space-y-5">
-                                 <div className="flex items-center gap-3">
-                                     <span className="text-lg w-6 text-center">🏷️</span>
-                                     <div className="flex flex-col">
-                                         <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium leading-none mb-1">Tarif d'achat</span>
-                                         <p className="text-sm font-medium text-slate-900 leading-none">
-                                            {formatPrice(selectedOrder)}
-                                            {selectedOrder.payment_status === 'echelonne' && !formatPrice(selectedOrder).includes('x') && selectedOrder.installments?.length > 0 && ` (x${selectedOrder.installments.length})`}
-                                         </p>
-                                     </div>
-                                 </div>
-                                 
-                                 <div className="flex items-center gap-3">
-                                     <span className="text-lg w-6 text-center">💎</span>
-                                     <div className="flex flex-col">
-                                         <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium leading-none mb-1">Crédits inclus</span>
-                                         <p className="text-sm font-medium text-slate-900 leading-none">
-                                            {selectedOrder.is_unlimited ? 'Illimité' : `${formatCredits(selectedOrder.credits_total)} crédits`}
-                                         </p>
-                                     </div>
-                                 </div>
-                                 
-                                 <div className="flex items-center gap-3">
-                                     <span className="text-lg w-6 text-center">📅</span>
-                                     <div className="flex flex-col">
-                                         <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium leading-none mb-1">Date de début</span>
-                                         <p className="text-sm font-medium text-slate-900 leading-none">
-                                             {selectedOrder.start_date ? new Date(selectedOrder.start_date).toLocaleDateString("fr-FR") : "N/A"}
-                                         </p>
-                                     </div>
-                                 </div>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                        
+                        {/* Header */}
+                        <div className="px-6 pt-6 pb-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <div>
+                                <h3 className="text-lg font-semibold text-slate-900 tracking-tight capitalize">
+                                    {selectedOrder.offer_snap_name || selectedOrder.offer_name}
+                                </h3>
+                                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                                    Récapitulatif de la commande initiale
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowInfoModal(false)}
+                                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+                                title="Fermer"
+                            >
+                                ✕
+                            </button>
+                        </div>
 
-                                 <div className="flex items-center gap-3">
-                                     <span className="text-lg w-6 text-center">🕒</span>
-                                     <div className="flex flex-col">
-                                         <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium leading-none mb-1">Validité initiale</span>
-                                         <p className="text-sm font-medium text-slate-900 leading-none">
-                                            {selectedOrder.offer_snap_is_validity_unlimited ? 'Illimitée' : 
-                                             (selectedOrder.offer_snap_validity_days ? 
-                                              `${selectedOrder.offer_snap_validity_unit === 'months' ? Math.round(selectedOrder.offer_snap_validity_days / 30) : selectedOrder.offer_snap_validity_unit === 'weeks' ? Math.round(selectedOrder.offer_snap_validity_days / 7) : selectedOrder.offer_snap_validity_days} ${selectedOrder.offer_snap_validity_unit === 'months' ? 'mois' : selectedOrder.offer_snap_validity_unit === 'weeks' ? 'semaines' : 'jours'}` : 
-                                              (selectedOrder.is_validity_unlimited ? 'Illimitée' : 
-                                               (selectedOrder.end_date ? new Date(selectedOrder.end_date).toLocaleDateString("fr-FR") : "N/A")))}
-                                         </p>
-                                     </div>
-                                 </div>
+                        {/* Body: Key-Value List */}
+                        <div className="p-6 overflow-y-auto space-y-4">
+                            
+                            {/* Table of key-value rows */}
+                            <div className="divide-y divide-slate-100 border-t border-b border-slate-100">
+                                
+                                <div className="py-2.5 flex items-center justify-between gap-4">
+                                    <span className="text-xs font-medium text-slate-500">Tarif d'achat</span>
+                                    <span className="text-xs font-semibold text-slate-900 text-right">
+                                        {formatPrice(selectedOrder)}
+                                        {selectedOrder.payment_status === 'echelonne' && !formatPrice(selectedOrder).includes('x') && selectedOrder.installments?.length > 0 && ` (x${selectedOrder.installments.length})`}
+                                    </span>
+                                </div>
 
-                                 {selectedOrder.allowed_activities && selectedOrder.allowed_activities.length > 0 && (
-                                     <div className="flex items-start gap-3">
-                                         <span className="text-lg w-6 text-center mt-0.5">🎯</span>
-                                         <div className="flex flex-col gap-1.5 w-full">
-                                             <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium leading-none mb-1">Activités concernées</span>
-                                             {(() => {
-                                                 const hasActivityCredits = selectedOrder.allowed_activities && selectedOrder.allowed_activities.length > 0 &&
-                                                     (selectedOrder.offer_snap_activity_credits || selectedOrder.activity_credits) &&
-                                                     Object.keys(selectedOrder.offer_snap_activity_credits || selectedOrder.activity_credits || {}).some(k => 
-                                                         selectedOrder.allowed_activities.includes(k) && 
-                                                         ((selectedOrder.offer_snap_activity_credits?.[k] !== undefined && selectedOrder.offer_snap_activity_credits?.[k] !== null && selectedOrder.offer_snap_activity_credits?.[k].toString().trim() !== "") || 
-                                                          (selectedOrder.activity_credits?.[k] !== undefined && selectedOrder.activity_credits?.[k] !== null && selectedOrder.activity_credits?.[k].toString().trim() !== ""))
-                                                     );
-                                                 return (
-                                                     <div className="w-full space-y-1.5 mt-1 flex flex-col">
-                                                         {selectedOrder.allowed_activities.map((act: string) => {
-                                                             const packCredits = selectedOrder.offer_snap_activity_credits?.[act] ?? selectedOrder.activity_credits?.[act];
-                                                             return (
-                                                                 <div 
-                                                                     key={act} 
-                                                                     className={`flex ${hasActivityCredits ? 'justify-between text-left' : 'justify-center text-center'} items-center gap-2 text-[11px] font-semibold w-full`}
-                                                                 >
-                                                                     <span className="capitalize flex items-center gap-1.5 truncate">
-                                                                         <span 
-                                                                             className="text-[9px] font-bold" 
-                                                                             style={{ color: tenant?.primary_color || '#2563eb' }}
-                                                                         >
-                                                                             ✓
-                                                                         </span>
-                                                                         <span className="text-slate-800 truncate">{act}</span>
-                                                                     </span>
-                                                                     {packCredits !== undefined && packCredits !== null && packCredits.toString().trim() !== "" && (
-                                                                         <span 
-                                                                             className="px-1.5 py-0.5 border font-bold rounded-full text-[9px] whitespace-nowrap"
-                                                                             style={{
-                                                                                 backgroundColor: `${tenant?.primary_color || '#2563eb'}15`,
-                                                                                 borderColor: `${tenant?.primary_color || '#2563eb'}25`,
-                                                                                 color: tenant?.primary_color || '#2563eb'
-                                                                             }}
-                                                                         >
-                                                                             {packCredits} cr.
-                                                                         </span>
-                                                                     )}
-                                                                 </div>
-                                                             );
-                                                         })}
-                                                     </div>
-                                                 );
-                                             })()}
-                                         </div>
-                                     </div>
-                                 )}
+                                <div className="py-2.5 flex items-center justify-between gap-4">
+                                    <span className="text-xs font-medium text-slate-500">Crédits inclus</span>
+                                    <span className="text-xs font-semibold text-slate-900 text-right">
+                                        {selectedOrder.is_unlimited ? 'Illimité' : `${formatCredits(selectedOrder.credits_total)} crédit${(selectedOrder.credits_total || 0) > 1 ? 's' : ''}`}
+                                    </span>
+                                </div>
 
-                                 {(selectedOrder.offer_snap_description || selectedOrder.offer_description) && (
-                                     <div className="pt-2 border-t border-slate-100 flex items-start gap-3">
-                                         <span className="text-xs mt-0.5">📝</span>
-                                         <p className="text-slate-600 text-[11px] font-medium leading-relaxed">
-                                             {selectedOrder.offer_snap_description || selectedOrder.offer_description}
-                                         </p>
-                                     </div>
-                                 )}
-                             </div>
-                         </div>
-                         
-                         <button 
-                            onClick={() => setShowInfoModal(false)}
-                            className="px-8 py-3 bg-slate-900 text-white text-xs font-medium rounded-xl transition-all shadow-lg active:scale-95 mx-auto"
-                         >
-                            Fermer
-                         </button>
-                      </div>
-                   </div>
+                                <div className="py-2.5 flex items-center justify-between gap-4">
+                                    <span className="text-xs font-medium text-slate-500">Date de début</span>
+                                    <span className="text-xs font-semibold text-slate-900 text-right">
+                                        {selectedOrder.start_date ? new Date(selectedOrder.start_date).toLocaleDateString("fr-FR") : "N/A"}
+                                    </span>
+                                </div>
+
+                                <div className="py-2.5 flex items-center justify-between gap-4">
+                                    <span className="text-xs font-medium text-slate-500">Validité initiale</span>
+                                    <span className="text-xs font-semibold text-slate-900 text-right">
+                                        {selectedOrder.offer_snap_is_validity_unlimited ? 'Illimitée' : 
+                                         (selectedOrder.offer_snap_validity_days ? 
+                                          `${selectedOrder.offer_snap_validity_unit === 'months' ? Math.round(selectedOrder.offer_snap_validity_days / 30) : selectedOrder.offer_snap_validity_unit === 'weeks' ? Math.round(selectedOrder.offer_snap_validity_days / 7) : selectedOrder.offer_snap_validity_days} ${selectedOrder.offer_snap_validity_unit === 'months' ? 'mois' : selectedOrder.offer_snap_validity_unit === 'weeks' ? 'semaines' : 'jours'}` : 
+                                          (selectedOrder.is_validity_unlimited ? 'Illimitée' : 
+                                           (selectedOrder.end_date ? new Date(selectedOrder.end_date).toLocaleDateString("fr-FR") : "N/A")))}
+                                    </span>
+                                </div>
+
+                                {(selectedOrder.limit_amount ?? selectedOrder.offer_snap_limit_amount) && (
+                                    <div className="py-2.5 flex items-center justify-between gap-4">
+                                        <span className="text-xs font-medium text-slate-500">Plafond périodique</span>
+                                        <span className="text-xs font-semibold text-slate-900 text-right">
+                                            {formatCredits(selectedOrder.limit_amount ?? selectedOrder.offer_snap_limit_amount)} par {(selectedOrder.limit_period || selectedOrder.offer_snap_limit_period || "mois").replace(/^\//, "")}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Activities Section */}
+                            {selectedOrder.allowed_activities && selectedOrder.allowed_activities.length > 0 && (
+                                <div className="pt-1">
+                                    <p className="text-xs font-medium text-slate-500 mb-2">Activités concernées</p>
+                                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 space-y-1.5">
+                                        {selectedOrder.allowed_activities.map((act: string) => {
+                                            const packCredits = selectedOrder.offer_snap_activity_credits?.[act] ?? selectedOrder.activity_credits?.[act];
+                                            const hasCredits = packCredits !== undefined && packCredits !== null && packCredits.toString().trim() !== "";
+                                            return (
+                                                <div key={act} className="flex items-center justify-between text-xs">
+                                                    <span className="font-medium text-slate-700 capitalize flex items-center gap-1.5">
+                                                        <span className="text-emerald-500 font-bold">✓</span> {act}
+                                                    </span>
+                                                    {hasCredits && (
+                                                        <span className="text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded-lg">
+                                                            {packCredits} cr.
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Description Section */}
+                            {(selectedOrder.offer_snap_description || selectedOrder.offer_description) && (
+                                <div className="pt-1">
+                                    <p className="text-xs font-medium text-slate-500 mb-1.5">Description de l'offre</p>
+                                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 text-xs text-slate-600 font-normal leading-relaxed">
+                                        {selectedOrder.offer_snap_description || selectedOrder.offer_description}
+                                    </div>
+                                </div>
+                            )}
+
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-3 px-6 border-t border-slate-100 bg-white flex justify-end">
+                            <button 
+                                onClick={() => setShowInfoModal(false)}
+                                className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium rounded-lg transition-all shadow-xs active:scale-95"
+                            >
+                                Fermer
+                            </button>
+                        </div>
+
+                    </div>
                 </div>
             )}
 

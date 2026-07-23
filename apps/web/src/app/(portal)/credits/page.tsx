@@ -89,7 +89,7 @@ export default function CreditsPage() {
             {/* Main Content */}
             <main className={`flex-1 px-5 pb-5 md:p-12 pt-4 md:pt-12`}>
                 <div className="max-w-6xl mx-auto">
-                    <header className="mb-6">
+                    <header className="mb-4">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-200 gap-4">
                             <h1 className="text-lg md:text-xl font-medium text-slate-900 tracking-tight flex items-center gap-2">
                                 <span className="text-xl md:text-2xl">🛍️</span> Boutique
@@ -128,7 +128,7 @@ export default function CreditsPage() {
 
                     {/* Catalog sections */}
                     {categoriesList.length > 0 ? (
-                        <div className="mt-8 space-y-12">
+                        <div className="mt-4 space-y-12">
                             {categoriesList.map(([category, categoryOffers]) => (
                                 <section key={category} className="space-y-6">
                                     <div className="flex items-center gap-4">

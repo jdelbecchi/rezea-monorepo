@@ -395,82 +395,15 @@ export default function PlanningPage() {
 
               <div 
                 onClick={handleOpenCreditModal}
-                className="hidden md:flex flex-col gap-2 p-6 bg-white rounded-3xl border border-slate-100 relative overflow-hidden group shadow-sm transition-all hover:shadow-md cursor-pointer !mt-10"
+                className="hidden md:flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 relative overflow-hidden group shadow-sm transition-all hover:shadow-md cursor-pointer select-none !mt-6"
               >
-                  <div className="flex items-center justify-between w-full pb-2 mb-2 border-b border-slate-100 group">
-                    <span className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider leading-none flex items-center gap-1.5">
-                      Mes crédits <DiamondToken className="w-4 h-4" />
-                      {credits && <span className="text-sm font-bold text-slate-900 ml-1 normal-case">{formatCredits(credits.balance)}</span>}
-                    </span>
-                    <span className="text-xs text-slate-400 group-hover:text-slate-600 transition-colors">→</span>
-                  </div>
-                  
-                  {credits && (() => {
-                      const sortedActs = Object.entries(credits.balances_by_activity || {})
-                          .filter(([_, bal]) => bal === null || Number(bal) > 0)
-                          .sort(([a], [b]) => {
-                              if (a === "Toutes activités") return -1;
-                              if (b === "Toutes activités") return 1;
-                              return a.localeCompare(b);
-                          });
-                      if (sortedActs.length === 0) {
-                          return (
-                              <div className="flex items-baseline gap-2">
-                                  <span className="text-3xl font-medium text-slate-900 leading-none">0</span>
-                                  <span className="text-xs text-slate-500 font-normal">unité</span>
-                              </div>
-                          );
-                      }
-                      return (
-                          <div className="flex flex-col gap-1.5 mt-1 animate-in fade-in slide-in-from-top-1 duration-200">
-                              {sortedActs.map(([activity, bal]) => {
-                                  const actFrozen = credits.frozen_by_activity?.[activity] || 0;
-                                  
-                                  const isLimitedActivity = limitBalance && (
-                                      (limitBalance.allowed_activities?.length === 0 && activity === "Toutes activités") ||
-                                      (limitBalance.allowed_activities?.includes(activity))
-                                  );
-
-                                  return (
-                                      <div 
-                                          key={activity} 
-                                          className="flex flex-col gap-1 text-xs text-slate-700 shadow-sm border px-3 py-2 rounded-xl"
-                                          style={{
-                                              background: `linear-gradient(135deg, white, ${(tenant?.primary_color || '#2563eb')}20)`,
-                                              borderColor: `${(tenant?.primary_color || '#2563eb')}30`
-                                          }}
-                                      >
-                                          <div className="flex items-center gap-2">
-                                              <DiamondToken className="w-3.5 h-3.5 text-slate-400" />
-                                              <span className="font-semibold text-slate-900">
-                                                  {isLimitedActivity ? formatCredits(limitBalance.balance) : (bal === null ? "Illimité" : formatCredits(Number(bal)))}
-                                              </span>
-                                              <span className="text-slate-600 text-xs truncate max-w-[150px] capitalize">{activity}</span>
-                                              {Number(actFrozen) > 0 && !isLimitedActivity && (
-                                                  <span className="text-[10px] text-slate-400 font-normal flex items-center gap-0.5 ml-auto" title={`${formatCredits(Number(actFrozen))} crédit(s) en liste d'attente`}>
-                                                      (<span className="opacity-40">⏳</span>{formatCredits(Number(actFrozen))})
-                                                  </span>
-                                              )}
-                                          </div>
-                                          {isLimitedActivity && (
-                                              <div className="flex items-center justify-between text-[10px] text-slate-500 mt-0.5 pl-5">
-                                                  <span className="flex items-center gap-1">
-                                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-3.5 h-3.5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                          <path d="M4 19a8 8 0 0 1 16 0" />
-                                                          <path d="m12 19-4.5-6.5" />
-                                                          <circle cx="12" cy="19" r="1.5" fill="currentColor" />
-                                                      </svg>
-                                                      {formatCredits(limitBalance.base_limit)}{limitBalance.limit_period}
-                                                  </span>
-                                                  <span>Total: {bal === null ? 'Illimité' : formatCredits(Number(bal))}</span>
-                                              </div>
-                                          )}
-                                      </div>
-                                  );
-                              })}
-                          </div>
-                      );
-                  })()}
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider leading-none flex items-center gap-1.5">
+                    Mes crédits <DiamondToken className="w-4 h-4 text-slate-700" />
+                    {credits && <span className="text-base font-bold text-slate-900 ml-1 normal-case">{formatCredits(credits.balance)}</span>}
+                  </span>
+                </div>
+                <span className="text-xs text-slate-400 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all">→</span>
               </div>
               
               <div className="md:hidden sticky top-14 z-30 -mx-5 px-5 py-4 bg-gradient-to-b from-transparent via-white/90 to-transparent backdrop-blur-[2px] flex flex-col gap-1 mt-4 items-end">

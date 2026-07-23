@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useMemo } from "react";
-import { OrderItem, CreditAccount } from "@/lib/api";
+import React, { useMemo, useState, useEffect } from "react";
+import { OrderItem, CreditAccount, api } from "@/lib/api";
 import { formatCredits } from "@/lib/formatters";
 
 interface CreditsDetailModalProps {
@@ -23,6 +23,35 @@ export default function CreditsDetailModal({
   backgroundColor,
   onNavigateToPlanning,
 }: CreditsDetailModalProps) {
+  const [limitBalanceInfo, setLimitBalanceInfo] = useState<any>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      const todayStr = new Date().toISOString().split("T")[0];
+      api.getLimitBalance(todayStr)
+        .then((res) => setLimitBalanceInfo(res))
+        .catch(() => setLimitBalanceInfo(null));
+    }
+  }, [isOpen]);
+
+  const getPeriodShortLabel = (period?: string) => {
+    const p = (period || "mois").toLowerCase().replace(/^\//, "");
+    if (p === "semaine") return "Sem.";
+    if (p === "trimestre") return "Trim.";
+    if (p === "bimestre") return "Bim.";
+    if (p === "an" || p === "année") return "An";
+    return "Mois";
+  };
+
+  const getPeriodNameLabel = (period?: string) => {
+    const p = (period || "mois").toLowerCase().replace(/^\//, "");
+    if (p === "semaine") return "cette semaine";
+    if (p === "trimestre") return "ce trimestre";
+    if (p === "bimestre") return "ce bimestre";
+    if (p === "an" || p === "année") return "cette année";
+    return "ce mois-ci";
+  };
+
   // Process active orders into Offer Cards:
   // Each card displays:
   // - Top: Offer Name (Left) | Expiration Date (Right)
@@ -36,6 +65,8 @@ export default function CreditsDetailModal({
       offerName: string;
       endDate: string | null;
       isValidityUnlimited: boolean;
+      limitAmount?: number | null;
+      limitPeriod?: string;
       activities: {
         name: string;
         credits: number | null;
@@ -170,7 +201,7 @@ export default function CreditsDetailModal({
         <div className="px-6 pt-6 pb-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/50">
           <div>
             <h3 className="text-lg font-medium text-slate-900 tracking-tight">
-              Mes crédits & validités
+              Synthèse de mes crédits
             </h3>
             <p className="text-xs text-slate-500 font-medium">
               Solde total :{" "}
@@ -231,23 +262,50 @@ export default function CreditsDetailModal({
                   className="p-3 space-y-2 rounded-2xl border border-slate-200/70 shadow-2xs overflow-hidden"
                   style={{ background: `linear-gradient(to right, ${tenantColor}24, ${tenantColor}0D)` }}
                 >
-                  {card.activities.map((act, actIdx) => (
-                    <div
-                      key={actIdx}
-                      className="flex items-center justify-between gap-2 text-xs"
-                    >
-                      <span className="font-medium text-slate-700 capitalize truncate">
-                        {act.name}
-                      </span>
+                  {card.activities.map((act, actIdx) => {
+                    const hasMonthlyLimit = card.limitAmount !== null && card.limitAmount !== undefined;
 
-                      <div className="flex items-center gap-1 shrink-0 bg-white border border-slate-200/60 px-2 py-0.5 rounded-lg shadow-2xs">
-                        <span className="text-xs">💎</span>
-                        <span className="font-semibold text-slate-900 text-[11px]">
-                          {act.isUnlimited ? "Illimité" : `${formatCredits(act.credits)} crédit${(act.credits || 0) > 1 ? "s" : ""}`}
+                    const rawPeriodBalance =
+                      limitBalanceInfo?.balance !== undefined && limitBalanceInfo?.balance !== null
+                        ? Number(limitBalanceInfo.balance)
+                        : Number(card.limitAmount || 0);
+
+                    const periodBalance =
+                      act.credits !== null && act.credits !== undefined
+                        ? Math.min(rawPeriodBalance, Number(act.credits))
+                        : rawPeriodBalance;
+
+                    const periodShortLabel = getPeriodShortLabel(card.limitPeriod);
+
+                    return (
+                      <div
+                        key={actIdx}
+                        className="flex items-center justify-between gap-2 text-xs py-0.5"
+                      >
+                        <span className="font-medium text-slate-700 capitalize truncate min-w-0 flex-1">
+                          {act.name}
                         </span>
+
+                        {hasMonthlyLimit ? (
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="text-[11px] font-medium text-amber-900 bg-amber-50/90 border border-amber-200/70 px-2 py-0.5 rounded-lg shadow-2xs whitespace-nowrap">
+                              {periodShortLabel} : <strong className="font-semibold">{formatCredits(periodBalance)}</strong> rest.
+                            </span>
+                            <span className="text-[11px] font-medium text-slate-700 bg-white border border-slate-200/70 px-2 py-0.5 rounded-lg shadow-2xs whitespace-nowrap">
+                              💎 <strong className="font-semibold text-slate-900">{formatCredits(act.credits)}</strong> total
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 shrink-0 bg-white border border-slate-200/60 px-2 py-0.5 rounded-lg shadow-2xs whitespace-nowrap">
+                            <span className="text-xs">💎</span>
+                            <span className="font-semibold text-slate-900 text-[11px]">
+                              {act.isUnlimited ? "Illimité" : `${formatCredits(act.credits)} crédit${(act.credits || 0) > 1 ? "s" : ""}`}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ))

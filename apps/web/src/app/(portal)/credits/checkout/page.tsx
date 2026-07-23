@@ -74,6 +74,24 @@ function CheckoutPageContent() {
         setProcessing(true);
         try {
             const res = await api.createShopOrder(offer.id, payLaterValue, startDate, selectedPricingType);
+
+            // Mark new order alert as already seen so the pop-up modal does not immediately open on home page
+            const orderId = res?.order?.id;
+            if (orderId) {
+                const seenAlerts = JSON.parse(localStorage.getItem('seenAlerts') || '[]');
+                const alertIds = [`pending-order-${orderId}`, `issue-${orderId}`];
+                let updated = false;
+                alertIds.forEach(id => {
+                    if (!seenAlerts.includes(id)) {
+                        seenAlerts.push(id);
+                        updated = true;
+                    }
+                });
+                if (updated) {
+                    localStorage.setItem('seenAlerts', JSON.stringify(seenAlerts));
+                }
+            }
+
             setSuccessData(res);
             setShowSuccess(true);
         } catch (err: any) {
