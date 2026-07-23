@@ -406,7 +406,35 @@ async def compute_fifo_balances(
         .options(selectinload(Order.offer))
         .order_by(Order.start_date.asc(), Order.created_at.asc())
     )
-    orders = orders_res.scalars().all()
+    orders = list(orders_res.scalars().all())
+    
+    # Sort candidate orders so that orders expiring earliest are consumed first!
+    # Unlimited validity orders or orders without end_date come last.
+    def get_order_sort_key(o):
+        is_unlimited_val = getattr(o, 'is_validity_unlimited', False)
+        end_d = getattr(o, 'end_date', None)
+        if isinstance(end_d, datetime):
+            end_d = end_d.date()
+            
+        start_d = getattr(o, 'start_date', None)
+        if isinstance(start_d, datetime):
+            start_d = start_d.date()
+        if not start_d:
+            start_d = date.min
+            
+        created_at = getattr(o, 'created_at', None)
+        if isinstance(created_at, datetime):
+            created_d = created_at.date()
+        elif isinstance(created_at, date):
+            created_d = created_at
+        else:
+            created_d = date.min
+
+        if is_unlimited_val or not end_d:
+            return (1, date.max, start_d, created_d)
+        return (0, end_d, start_d, created_d)
+
+    orders.sort(key=get_order_sort_key)
     
     # 3. Load all existing bookings of the user (confirmed, completed, and active pending waitlist entries)
     bookings_res = await db.execute(
@@ -477,17 +505,16 @@ async def compute_fifo_balances(
         effective_end = compute_effective_end_date(o.end_date, grace_days, grace_mode)
         is_past = not o.is_validity_unlimited and effective_end and effective_end < today
         
-        # Determine if blocked: status has absolute priority, then manual override
+        # Determine if blocked: Expired, Resiliated, Paused, or Past End Date are ALWAYS blocked
         norm_status = normalize_status(o.status)
-        if norm_status in ["en_pause", "resiliee", "expiree"]:
+        
+        if norm_status in ["en_pause", "resiliee", "expiree"] or is_past:
             blocked = True
         elif o.is_blocked is True:
             blocked = False if ignore_manual_blocks else True
-        elif o.is_blocked is False:
+        else:
             blocked = False
-        else: # o.is_blocked is None
-            blocked = is_past
-            
+
         orders_blocked_status[str(o.id)] = blocked
         
     # Now simulate the allocation

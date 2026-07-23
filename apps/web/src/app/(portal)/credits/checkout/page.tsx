@@ -111,7 +111,7 @@ function CheckoutPageContent() {
                 <div className="max-w-3xl mx-auto">
                     <header className="flex items-center justify-between pb-3 border-b border-slate-200 mb-6 gap-4">
                         <h1 className="text-[14px] sm:text-base md:text-lg font-medium text-slate-900 tracking-tight">Récapitulatif de commande</h1>
-                        <Link href="/credits" className="flex items-center gap-1 text-[10px] md:text-xs font-medium text-slate-400 hover:text-slate-800 transition-colors group border border-slate-200 rounded-full px-2.5 py-1 hover:border-slate-300">
+                        <Link href="/credits" className="flex items-center gap-1 text-[10px] md:text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors group border border-white/60 bg-white/60 backdrop-blur-md rounded-full px-2.5 py-1 shadow-sm hover:bg-white/80">
                             <svg viewBox="0 0 24 24" fill="none" className="w-3 h-3 transition-transform group-hover:-translate-x-0.5" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                             </svg>

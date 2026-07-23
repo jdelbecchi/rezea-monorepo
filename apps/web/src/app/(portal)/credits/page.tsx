@@ -6,6 +6,7 @@ import Link from "next/link";
 import { api, User, Offer, Tenant } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
+import CreditsDetailModal from "@/components/CreditsDetailModal";
 import { formatCredits, formatPrice } from "@/lib/formatters";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -24,6 +25,7 @@ export default function CreditsPage() {
     const [myOrders, setMyOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
+    const [showCreditModal, setShowCreditModal] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -104,69 +106,22 @@ export default function CreditsPage() {
                                 </Link>
                             )}
                         </div>
-                        {/* Balance display below the separator line */}
-                        {(balance > 0 || frozenBalance > 0) && (
-                            <div className="mt-4 flex flex-col items-center">
-                                {(() => {
-                                    const activities = Object.entries(balancesByActivity || {})
-                                        .filter(([_, bal]) => bal === null || Number(bal) > 0)
-                                        .sort(([a], [b]) => {
-                                            if (a === "Toutes activités") return -1;
-                                            if (b === "Toutes activités") return 1;
-                                            return a.localeCompare(b);
-                                        });
-                                    if (activities.length === 0) return null;
-                                    if (activities.length > 1) {
-                                        return (
-                                            <div className="flex flex-col items-center gap-1.5 max-w-md w-full">
-                                                <span className="text-[10px] md:text-xs font-medium text-slate-500 uppercase tracking-wider">Mes soldes de crédits</span>
-                                                <div className="flex flex-wrap justify-center gap-2">
-                                                    {activities.map(([activity, bal]) => {
-                                                        return (
-                                                            <div 
-                                                                key={activity} 
-                                                                className="px-3.5 py-1.5 md:px-4 md:py-2 rounded-2xl border flex items-center justify-center gap-2 md:gap-3 shadow-sm bg-white"
-                                                                style={{ 
-                                                                    borderColor: `${(tenantSettings?.primary_color || '#2563eb')}25`
-                                                                }}
-                                                            >
-                                                                <span className="text-sm md:text-base">💎</span>
-                                                                <span className="text-xs md:text-sm font-medium text-slate-900 leading-none">
-                                                                    {bal === null ? "Illimité" : formatCredits(Number(bal))}
-                                                                </span>
-                                                                <span className="text-slate-500 text-[11px] md:text-xs capitalize font-medium">
-                                                                    {activity}
-                                                                </span>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        );
-                                    }
-                                    const singleAct = activities[0];
-                                    const label = singleAct && singleAct[0] !== "Toutes activités" ? ` (${singleAct[0]})` : "";
-                                    const balValue = singleAct ? (singleAct[1] === null ? "Illimité" : formatCredits(Number(singleAct[1]))) : formatCredits(balance);
-                                    return (
-                                        <div className="flex flex-col items-center gap-1.5">
-                                            <div 
-                                                className="px-4 py-1.5 md:px-5 md:py-2 rounded-2xl border flex items-center justify-center gap-3 shadow-sm"
-                                                style={{ 
-                                                    background: `linear-gradient(135deg, white, ${(tenantSettings?.primary_color || '#2563eb')}40)`,
-                                                    borderColor: `${(tenantSettings?.primary_color || '#2563eb')}30`
-                                                }}
-                                            >
-                                                <span className="text-[11px] md:text-xs font-medium text-slate-500 capitalize tracking-tight whitespace-nowrap">Mon solde{label} :</span>
-                                                <div className="flex items-baseline gap-1.5">
-                                                    <span className="text-lg md:text-xl font-medium text-slate-900 leading-none">{balValue}</span>
-                                                    {balValue !== "Illimité" && (
-                                                        <span className="text-[10px] md:text-xs font-medium text-slate-500 lowercase">crédit{Number(balValue) > 1 ? 's' : ''}</span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })()}
+                        {/* Button / Link Synthèse Crédits (same as orders page) */}
+                        {(balance > 0 || frozenBalance > 0 || (myOrders && myOrders.length > 0)) && (
+                            <div className="mt-4 flex justify-end w-full">
+                                <button
+                                    onClick={() => setShowCreditModal(true)}
+                                    className="text-xs font-medium text-slate-900 hover:text-slate-700 flex items-center gap-1.5 transition-colors group cursor-pointer"
+                                >
+                                    <span>💎</span>
+                                    <span>Synthèse de mes crédits</span>
+                                    <span 
+                                        className="text-sm font-semibold transition-transform group-hover:translate-x-0.5" 
+                                        style={{ color: tenantSettings?.primary_color || '#2563eb' }}
+                                    >
+                                        →
+                                    </span>
+                                </button>
                             </div>
                         )}
                     </header>
@@ -406,6 +361,15 @@ export default function CreditsPage() {
                     )}
                 </div>
             </main>
+
+            <CreditsDetailModal 
+                isOpen={showCreditModal}
+                onClose={() => setShowCreditModal(false)}
+                orders={myOrders}
+                credits={{ balance, frozen_balance: frozenBalance, balances_by_activity: balancesByActivity, frozen_by_activity: frozenByActivity } as any}
+                tenantColor={tenantSettings?.primary_color || '#2563eb'}
+                backgroundColor={tenantSettings?.background_color}
+            />
 
             <BottomNav userRole={user?.role} />
 

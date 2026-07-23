@@ -7,6 +7,7 @@ import { api, User, CreditAccount, Tenant, Booking, Event, OrderItem, EventRegis
 import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
 import ConfirmModal from "@/components/ConfirmModal";
+import CreditsDetailModal from "@/components/CreditsDetailModal";
 import { formatCredits } from "@/lib/formatters";
 import { PaymentStatus } from "@/types/enums";
 
@@ -24,6 +25,7 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
   const [myEventRegistrations, setMyEventRegistrations] = useState<EventRegistration[]>([]);
   const [isAlertsExpanded, setIsAlertsExpanded] = useState(false);
   const [showCreditDetails, setShowCreditDetails] = useState(false);
+  const [showCreditModal, setShowCreditModal] = useState(false);
   const [loading, setLoading] = useState(true);
   
   const basePath = "";
@@ -159,6 +161,59 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
     // Sort by priority then by creation date
     return alerts.sort((a, b) => a.priority - b.priority);
   }, [myOrders, myEventRegistrations]);
+
+  // Dynamic calculation of total active credits from active orders (synchronous with modal)
+  const totalActiveCredits = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    let sum = 0;
+    let hasUnlimited = false;
+
+    (myOrders || []).forEach((order) => {
+      if (!order || order.status === "resiliee" || order.status === "expiree" || order.is_blocked) return;
+      const hasCredits = order.is_unlimited || (order.balance !== null && order.balance !== undefined && Number(order.balance) > 0);
+      if (!hasCredits) return;
+
+      if (!order.is_validity_unlimited && order.end_date) {
+        const endDate = new Date(order.end_date);
+        if (!isNaN(endDate.getTime())) {
+          endDate.setHours(23, 59, 59, 999);
+          if (endDate < now) return;
+        }
+      }
+
+      if (order.is_unlimited) {
+        hasUnlimited = true;
+      }
+
+      const actCreditsMap = (order as any).offer_snap_activity_credits || order.activity_credits;
+      const hasSpecificActivityCredits =
+        actCreditsMap &&
+        typeof actCreditsMap === "object" &&
+        Object.keys(actCreditsMap).length > 0 &&
+        Object.entries(actCreditsMap).some(
+          ([_, val]) => val !== null && val !== undefined && val.toString().trim() !== "" && Number(val) > 0
+        );
+
+      if (hasSpecificActivityCredits) {
+        const totalInitial = Object.values(actCreditsMap).reduce(
+          (acc: number, val: any) => acc + (Number(val) || 0),
+          0
+        );
+        const currentBalance = order.balance !== null && order.balance !== undefined ? Number(order.balance) : totalInitial;
+        sum += currentBalance;
+      } else if (order.balance) {
+        sum += Number(order.balance);
+      }
+    });
+
+    if (sum === 0 && credits && typeof credits.balance === "number" && credits.balance > 0) {
+      return { sum: credits.balance, hasUnlimited: false };
+    }
+
+    return { sum, hasUnlimited };
+  }, [myOrders, credits]);
 
   // Logic: One-time popup for new alerts
   const [showNewAlertsPopup, setShowNewAlertsPopup] = useState(false);
@@ -315,61 +370,28 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
                     )}
 
                     {/* Credits display */}
-                    {credits && (credits.balance > 0 || myOrders.length > 0) && (() => {
-                        const activities = Object.entries(credits.balances_by_activity || {})
-                            .filter(([_, bal]) => bal === null || Number(bal) > 0);
-                        const sortedActivities = [...activities].sort(([a], [b]) => {
-                            if (a === "Toutes activités") return -1;
-                            if (b === "Toutes activités") return 1;
-                            return a.localeCompare(b);
-                        });
-                        
-                        if (sortedActivities.length === 0) return null;
-                        
-                        return (
-                            <div className="flex flex-col items-center gap-1 relative">
-                                <button 
-                                    onClick={() => setShowCreditDetails(!showCreditDetails)}
-                                    className="flex items-center gap-2 text-slate-800 hover:text-slate-900 focus:outline-none select-none transition-all active:scale-[0.98] py-1"
+                    {credits && (credits.balance > 0 || myOrders.length > 0) && (
+                        <div className="flex flex-col items-center gap-1 relative">
+                            <button 
+                                onClick={() => setShowCreditModal(true)}
+                                className="flex items-center gap-2 text-slate-800 hover:text-slate-900 focus:outline-none select-none transition-all active:scale-[0.98] py-1"
+                                title="Voir le détail de mes crédits et dates de fin de validité"
+                            >
+                                <span className="text-sm font-medium text-slate-600">Mes crédits</span>
+                                <span className="text-base">💎</span>
+                                <p className="text-lg font-medium leading-none text-slate-900">
+                                    {totalActiveCredits.hasUnlimited ? "Illimité" : formatCredits(totalActiveCredits.sum)}
+                                </p>
+                                <svg 
+                                    xmlns="http://www.w3.org/2000/svg" 
+                                    className="h-4 w-4 text-slate-400" 
+                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
                                 >
-                                    <span className="text-sm font-medium text-slate-600">Mes crédits</span>
-                                    <span className="text-base">💎</span>
-                                    <p className="text-lg font-medium leading-none text-slate-900">{formatCredits(credits.balance)}</p>
-                                    {sortedActivities.length > 0 && (
-                                        <svg 
-                                            xmlns="http://www.w3.org/2000/svg" 
-                                            className={`h-4 w-4 text-slate-400 transition-transform duration-300 ${showCreditDetails ? 'rotate-180' : ''}`} 
-                                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                        >
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                    )}
-                                </button>
-                                
-                                {showCreditDetails && (
-                                    <div className="absolute top-10 left-1/2 -translate-x-1/2 flex flex-col gap-1.5 w-52 mt-2 animate-in fade-in slide-in-from-top-1 duration-200 z-50">
-                                        {sortedActivities.map(([activity, bal]) => {
-                                            const actFrozen = credits.frozen_by_activity?.[activity] || 0;
-                                            return (
-                                                <div key={activity} className="flex items-center justify-between gap-1 text-xs text-slate-700 bg-white shadow-sm border border-slate-200/80 px-3 py-1.5 rounded-xl">
-                                                    <div className="flex items-center gap-1.5 truncate max-w-[140px]">
-                                                        <span>💎</span>
-                                                        <span className="font-bold text-slate-900">{bal === null ? "Illimité" : formatCredits(Number(bal))}</span>
-                                                        <span className="text-slate-500 text-[11px] truncate capitalize">{activity}</span>
-                                                    </div>
-                                                    {Number(actFrozen) > 0 && (
-                                                        <span className="text-[10px] text-slate-400 font-normal flex items-center gap-0.5 shrink-0" title={`${formatCredits(Number(actFrozen))} crédit(s) en liste d'attente`}>
-                                                            (<span className="opacity-40">⏳</span>{formatCredits(Number(actFrozen))})
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })()}
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -636,61 +658,29 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
         <div className="flex flex-col flex-1 px-5 h-full pt-3 lg:pt-0 lg:px-0 lg:col-start-2 lg:row-start-2">
 
             {/* Credits display */}
-            {credits && (credits.balance > 0 || myOrders.length > 0) && (() => {
-                const activities = Object.entries(credits.balances_by_activity || {})
-                    .filter(([_, bal]) => bal === null || Number(bal) > 0);
-                const sortedActivities = [...activities].sort(([a], [b]) => {
-                    if (a === "Toutes activités") return -1;
-                    if (b === "Toutes activités") return 1;
-                    return a.localeCompare(b);
-                });
-                
-                if (sortedActivities.length === 0) return null;
-                
-                return (
-                    <div className="flex flex-col items-end gap-1 px-1 mt-1 mb-5 lg:hidden">
-                        <button 
-                            onClick={() => setShowCreditDetails(!showCreditDetails)}
-                            className="flex items-center gap-2 text-slate-800 hover:text-slate-900 focus:outline-none select-none transition-all active:scale-[0.98] py-1"
+            {credits && (credits.balance > 0 || myOrders.length > 0) && (
+                <div className="flex flex-col items-end gap-1 px-1 mt-1 mb-5 lg:hidden">
+                    <button 
+                        onClick={() => setShowCreditModal(true)}
+                        className="flex items-center gap-2 text-slate-800 hover:text-slate-900 focus:outline-none select-none transition-all active:scale-[0.98] py-1"
+                        title="Voir le détail de mes crédits et dates de fin de validité"
+                    >
+                        <div className="w-px h-5 bg-slate-300 mr-1" />
+                        <span className="text-sm font-medium text-slate-600">Mes crédits</span>
+                        <span className="text-base">💎</span>
+                        <p className="text-lg font-medium leading-none text-slate-900">
+                            {totalActiveCredits.hasUnlimited ? "Illimité" : formatCredits(totalActiveCredits.sum)}
+                        </p>
+                        <svg 
+                            xmlns="http://www.w3.org/2000/svg" 
+                            className="h-4 w-4 text-slate-400" 
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
                         >
-                            <div className="w-px h-5 bg-slate-300 mr-1" />
-                            <span className="text-sm font-medium text-slate-600">Mes crédits</span>
-                            <span className="text-base">💎</span>
-                            <p className="text-lg font-medium leading-none text-slate-900">{formatCredits(credits.balance)}</p>
-                            {sortedActivities.length > 0 && (
-                                <svg 
-                                    xmlns="http://www.w3.org/2000/svg" 
-                                    className={`h-4 w-4 text-slate-400 transition-transform duration-300 ${showCreditDetails ? 'rotate-180' : ''}`} 
-                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                >
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                            )}
-                        </button>
-                        {showCreditDetails && (
-                            <div className="grid grid-cols-2 w-full gap-1.5 mt-2 animate-in fade-in slide-in-from-top-1 duration-200">
-                                {sortedActivities.map(([activity, bal]) => {
-                                    const actFrozen = credits.frozen_by_activity?.[activity] || 0;
-                                    return (
-                                        <div key={activity} className="flex items-center justify-between gap-1 text-xs text-slate-700 bg-white shadow-sm border border-slate-200/80 px-2 py-1.5 rounded-xl w-full">
-                                            <div className="flex items-center gap-1 truncate">
-                                                <span>💎</span>
-                                                <span className="font-bold text-slate-900">{bal === null ? "Illimité" : formatCredits(Number(bal))}</span>
-                                                <span className="text-slate-500 text-[11px] truncate capitalize">{activity}</span>
-                                            </div>
-                                            {Number(actFrozen) > 0 && (
-                                                <span className="text-[10px] text-slate-400 font-normal flex items-center gap-0.5 shrink-0" title={`${formatCredits(Number(actFrozen))} crédit(s) en liste d'attente`}>
-                                                    (<span className="opacity-40">⏳</span>{formatCredits(Number(actFrozen))})
-                                                </span>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-                );
-            })()}
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                </div>
+            )}
 
             {/* 5. Quick Actions Stack */}
             {nextRDV && (
@@ -883,6 +873,17 @@ export default function DashboardPage({ params }: { params: { slug: string } }) 
             </div>
           </div>
         }
+      />
+
+      {/* Credits Breakdown Modal */}
+      <CreditsDetailModal 
+        isOpen={showCreditModal}
+        onClose={() => setShowCreditModal(false)}
+        orders={myOrders}
+        credits={credits}
+        tenantColor={primaryColor}
+        backgroundColor={tenantSettings?.background_color}
+        onNavigateToPlanning={() => router.push(`${basePath}/planning`)}
       />
 
       {/* Global CSS fixes for PWA feel */}

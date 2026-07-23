@@ -6,7 +6,8 @@ import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
 import ConfirmModal from "@/components/ConfirmModal";
-import { api, Session, Event, User, CreditAccount, Tenant, Booking } from "@/lib/api";
+import CreditsDetailModal from "@/components/CreditsDetailModal";
+import { api, Session, Event, User, CreditAccount, Tenant, Booking, OrderItem } from "@/lib/api";
 import { formatDuration, calculateDuration, formatCredits } from "@/lib/formatters";
 import { 
   format, 
@@ -50,6 +51,7 @@ export default function PlanningPage() {
   const [credits, setCredits] = useState<CreditAccount | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [myBookings, setMyBookings] = useState<Booking[]>([]);
+  const [myOrders, setMyOrders] = useState<OrderItem[]>([]);
   
   const [bookingLoading, setBookingLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +63,19 @@ export default function PlanningPage() {
   const [viewMode, setViewMode] = useState<"ALL" | "LIMIT">("ALL");
   const [limitBalance, setLimitBalance] = useState<any | null>(null);
   const [showCreditDetails, setShowCreditDetails] = useState(false);
+  const [showCreditModal, setShowCreditModal] = useState(false);
+
+  const handleOpenCreditModal = async () => {
+    setShowCreditModal(true);
+    try {
+      const ordersData = await api.getMyOrders();
+      if (ordersData && Array.isArray(ordersData)) {
+        setMyOrders(ordersData);
+      }
+    } catch (e) {
+      console.error("Error fetching orders for modal", e);
+    }
+  };
 
   useEffect(() => {
     const initData = async () => {
@@ -70,14 +85,15 @@ export default function PlanningPage() {
         const start = format(selectedDate, "yyyy-MM-dd") + "T00:00:00";
         const end = format(selectedDate, "yyyy-MM-dd") + "T23:59:59";
 
-        const [userData, creditData, tenantData, bookingsData, sessionsData, upcomingEventsData, limitBalanceData] = await Promise.all([
+        const [userData, creditData, tenantData, bookingsData, sessionsData, upcomingEventsData, limitBalanceData, ordersData] = await Promise.all([
           api.getCurrentUser(),
           api.getCreditAccount().catch(() => null),
           api.getTenantSettings(),
           api.getMyBookings(),
           api.getSessions({ start_date: start, end_date: end }),
           api.getUpcomingEvents(),
-          api.getLimitBalance(format(selectedDate, "yyyy-MM-dd")).catch(() => null)
+          api.getLimitBalance(format(selectedDate, "yyyy-MM-dd")).catch(() => null),
+          api.getMyOrders().catch(() => [])
         ]);
 
         setUser(userData);
@@ -87,6 +103,7 @@ export default function PlanningPage() {
         setSessions(sessionsData);
         setAllUpcomingEvents(upcomingEventsData);
         setLimitBalance(limitBalanceData);
+        setMyOrders(ordersData || []);
         
         const dayEvents = upcomingEventsData.filter(e => isSameDay(parseISO(e.event_date), selectedDate));
         setEvents(dayEvents);
@@ -376,12 +393,16 @@ export default function PlanningPage() {
                 </div>
               </div>
 
-              <div className="hidden md:flex flex-col gap-2 p-6 bg-white rounded-3xl border border-slate-100 relative overflow-hidden group shadow-sm transition-all hover:shadow-md !mt-10">
+              <div 
+                onClick={handleOpenCreditModal}
+                className="hidden md:flex flex-col gap-2 p-6 bg-white rounded-3xl border border-slate-100 relative overflow-hidden group shadow-sm transition-all hover:shadow-md cursor-pointer !mt-10"
+              >
                   <div className="flex items-center justify-between w-full pb-2 mb-2 border-b border-slate-100 group">
                     <span className="text-[12px] text-slate-500 font-semibold uppercase tracking-wider leading-none flex items-center gap-1.5">
                       Mes crédits <DiamondToken className="w-4 h-4" />
                       {credits && <span className="text-sm font-bold text-slate-900 ml-1 normal-case">{formatCredits(credits.balance)}</span>}
                     </span>
+                    <span className="text-xs text-slate-400 group-hover:text-slate-600 transition-colors">→</span>
                   </div>
                   
                   {credits && (() => {
@@ -453,14 +474,12 @@ export default function PlanningPage() {
               </div>
               
               <div className="md:hidden sticky top-14 z-30 -mx-5 px-5 py-4 bg-gradient-to-b from-transparent via-white/90 to-transparent backdrop-blur-[2px] flex flex-col gap-1 mt-4 items-end">
-                <button onClick={() => setShowCreditDetails(!showCreditDetails)} className="flex items-center justify-end w-full gap-2">
+                <button onClick={handleOpenCreditModal} className="flex items-center justify-end w-full gap-2">
                   <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Mes crédits</span>
                   <div className="flex items-center gap-1">
                     <DiamondToken className="w-3.5 h-3.5" />
                     {credits && <span className="text-sm font-bold text-slate-900">{formatCredits(credits.balance)}</span>}
-                    <svg className={`w-4 h-4 text-slate-400 transition-transform ml-0.5 ${showCreditDetails ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+                    <span className="text-xs text-slate-400 font-semibold ml-0.5">→</span>
                   </div>
                 </button>
                 {showCreditDetails && credits && (() => {
@@ -906,6 +925,15 @@ export default function PlanningPage() {
             setShowCancelModal(false);
             setBookingToCancel(null);
         }}
+      />
+
+      <CreditsDetailModal 
+        isOpen={showCreditModal}
+        onClose={() => setShowCreditModal(false)}
+        orders={myOrders}
+        credits={credits}
+        tenantColor={tenant?.primary_color || '#2563eb'}
+        backgroundColor={tenant?.background_color}
       />
 
       {!isAdminMode && <BottomNav />}

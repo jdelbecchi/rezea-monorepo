@@ -7,19 +7,23 @@ import { api, User, Tenant, EventRegistration } from "@/lib/api";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { formatCredits } from "@/lib/formatters";
+import CreditsDetailModal from "@/components/CreditsDetailModal";
 
 export default function MemberOrdersPage() {
+    const router = useRouter();
     const params = useParams();
     const slug = params.slug;
     const [user, setUser] = useState<User | null>(null);
     const [tenant, setTenant] = useState<Tenant | null>(null);
     const [orders, setOrders] = useState<any[]>([]);
     const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
+    const [credits, setCredits] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'offers' | 'events'>('offers');
     
     // States for Info Modal
     const [showInfoModal, setShowInfoModal] = useState(false);
+    const [showCreditModal, setShowCreditModal] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
     const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
 
@@ -34,22 +38,21 @@ export default function MemberOrdersPage() {
                 setUser(userData);
                 setTenant(tenantData);
 
-                // Fetch orders and registrations in parallel and wait for both
-                const [ordersResult, registrationsResult] = await Promise.allSettled([
+                // Fetch orders, registrations, and credit account in parallel
+                const [ordersResult, registrationsResult, creditsResult] = await Promise.allSettled([
                     api.getMyOrders(),
-                    api.getMyEventRegistrations()
+                    api.getMyEventRegistrations(),
+                    api.getCreditAccount()
                 ]);
 
                 if (ordersResult.status === 'fulfilled') {
                     setOrders(ordersResult.value);
-                } else {
-                    console.error("Orders fetch failed:", ordersResult.reason);
                 }
-
                 if (registrationsResult.status === 'fulfilled') {
                     setRegistrations(registrationsResult.value);
-                } else {
-                    console.error("Registrations fetch failed:", registrationsResult.reason);
+                }
+                if (creditsResult.status === 'fulfilled') {
+                    setCredits(creditsResult.value);
                 }
 
             } catch (err) {
@@ -292,7 +295,7 @@ export default function MemberOrdersPage() {
                             <span className="text-xl md:text-2xl">📋</span> Mes commandes
                         </h1>
                         {!isAdminMode && (
-                            <Link href="/home" className="flex items-center gap-1 text-[10px] md:text-xs font-medium text-slate-400 hover:text-slate-800 transition-colors group border border-slate-200 rounded-full px-2.5 py-1 hover:border-slate-300">
+                            <Link href="/home" className="flex items-center gap-1 text-[10px] md:text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors group border border-white/60 bg-white/60 backdrop-blur-md rounded-full px-2.5 py-1 shadow-sm hover:bg-white/80">
                                 <svg viewBox="0 0 24 24" fill="none" className="w-3 h-3 transition-transform group-hover:-translate-x-0.5" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                                 </svg>
@@ -334,6 +337,25 @@ export default function MemberOrdersPage() {
                             </button>
                         </div>
                     </div>
+
+                    {/* Button Synthèse Crédits (in offers tab) */}
+                    {activeTab === 'offers' && orders.length > 0 && (
+                        <div className="flex justify-end mb-3">
+                            <button
+                                onClick={() => setShowCreditModal(true)}
+                                className="text-xs font-medium text-slate-900 hover:text-slate-700 flex items-center gap-1.5 transition-colors group"
+                            >
+                                <span>💎</span>
+                                <span>Synthèse de mes crédits</span>
+                                <span 
+                                    className="text-sm font-semibold transition-transform group-hover:translate-x-0.5" 
+                                    style={{ color: tenant?.primary_color || '#2563eb' }}
+                                >
+                                    →
+                                </span>
+                            </button>
+                        </div>
+                    )}
 
                     {(activeTab === 'offers' ? orders.length : registrations.length) === 0 ? (
                         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-10 text-center space-y-3">
@@ -380,7 +402,7 @@ export default function MemberOrdersPage() {
                                                              return (!order.allowed_activities || order.allowed_activities.length === 0) ? (
                                                                  <div className="w-full mt-1.5 flex flex-wrap gap-1.5">
                                                                      <span 
-                                                                         className="px-2 py-1 border font-medium rounded-lg text-[10px] text-center capitalize shadow-sm transition-colors text-slate-800"
+                                                                         className="px-2 py-1 border font-medium rounded-lg text-[10px] sm:text-xs text-center capitalize shadow-sm transition-colors text-slate-800"
                                                                          style={{
                                                                              backgroundColor: `${tenant?.primary_color || '#2563eb'}10`,
                                                                              borderColor: `${tenant?.primary_color || '#2563eb'}25`
@@ -394,7 +416,7 @@ export default function MemberOrdersPage() {
                                                                      {order.allowed_activities.map((act: string) => (
                                                                          <span 
                                                                              key={act}
-                                                                             className="px-2 py-1 border font-medium rounded-lg text-[10px] text-center capitalize shadow-sm transition-colors text-slate-800"
+                                                                             className="px-2 py-1 border font-medium rounded-lg text-[10px] sm:text-xs text-center capitalize shadow-sm transition-colors text-slate-800"
                                                                              style={{
                                                                                  backgroundColor: `${tenant?.primary_color || '#2563eb'}10`,
                                                                                  borderColor: `${tenant?.primary_color || '#2563eb'}25`
@@ -407,13 +429,13 @@ export default function MemberOrdersPage() {
                                                              );
                                                          })()}
                                                     </div>
-                                                    <div className="flex flex-col items-start gap-2">
+                                                    <div className="flex flex-row justify-between items-center gap-2 w-full">
                                                         <p className="text-slate-600 text-xs font-medium tracking-tight whitespace-nowrap">
                                                             Commandée le {new Date(order.created_at).toLocaleDateString("fr-FR")}
                                                         </p>
                                                         <button 
                                                             onClick={() => { setSelectedOrder(order); setShowInfoModal(true); }}
-                                                            className="text-[11px] font-bold flex items-center gap-1 transition-all hover:opacity-80 group/info"
+                                                            className="text-xs font-semibold flex items-center gap-1 transition-all hover:opacity-80 group/info"
                                                             style={{ color: tenant?.primary_color || '#2563eb' }}
                                                         >
                                                             <span className="hover:underline">Plus d'infos</span>
@@ -440,11 +462,11 @@ export default function MemberOrdersPage() {
                                                         </p>
                                                     </div>
                                                     <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:justify-end">
-                                                        <span className="px-3 py-1.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-lg text-[10px] font-semibold">
+                                                        <span className="px-3 py-1.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-lg text-[10px] sm:text-xs font-semibold">
                                                             <span className="opacity-60 mr-1">Statut :</span>
                                                             {getGeneralStatusLabel(order.status)}
                                                         </span>
-                                                        <span className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold border ${getStatusStyle(order.payment_status)}`}>
+                                                        <span className={`px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold border ${getStatusStyle(order.payment_status)}`}>
                                                             <span className="opacity-60 mr-1">Paiement :</span>
                                                             {getStatusLabel(order.payment_status)}
                                                         </span>
@@ -479,7 +501,7 @@ export default function MemberOrdersPage() {
                                                                 href={formatExternalUrl(tenant.payment_redirect_link)}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
-                                                                className="w-full md:w-auto px-6 py-2.5 bg-slate-900 text-white text-[11px] font-medium rounded-xl transition-all shadow-lg flex items-center justify-center gap-4 group/btn active:scale-95"
+                                                                className="w-full md:w-auto px-6 py-2.5 bg-slate-900 text-white text-xs font-medium rounded-xl transition-all shadow-lg flex items-center justify-center gap-4 group/btn active:scale-95"
                                                             >
                                                                 <span>💳</span>
                                                                 <span>Payer ma commande</span>
@@ -544,11 +566,11 @@ export default function MemberOrdersPage() {
                                                     <span>{formatEventPrice(reg)}</span>
                                                 </div>
                                                 <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                                                    <span className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold border ${getStatusStyle(reg.payment_status || 'en_attente')}`}>
+                                                    <span className={`px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold border ${getStatusStyle(reg.payment_status || 'en_attente')}`}>
                                                         <span className="opacity-60 mr-1">Paiement :</span>
                                                         {getStatusLabel(reg.payment_status || 'en_attente')}
                                                     </span>
-                                                    <span className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold border ${getEventRegistrationStatusStyle(reg.status)}`}>
+                                                    <span className={`px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold border ${getEventRegistrationStatusStyle(reg.status)}`}>
                                                         <span className="opacity-60 mr-1">Statut :</span>
                                                         {getEventRegistrationStatusLabel(reg.status)}
                                                     </span>
@@ -580,7 +602,7 @@ export default function MemberOrdersPage() {
                                                         href={formatExternalUrl(tenant.payment_redirect_link)}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="px-6 py-3 bg-slate-900 text-white text-[11px] font-medium rounded-xl transition-all shadow-lg flex items-center justify-center gap-4 group/btn active:scale-95 mx-auto"
+                                                        className="px-6 py-3 bg-slate-900 text-white text-xs font-medium rounded-xl transition-all shadow-lg flex items-center justify-center gap-4 group/btn active:scale-95 mx-auto"
                                                     >
                                                         <span>💳</span>
                                                         <span>Payer ma commande</span>
@@ -738,6 +760,17 @@ export default function MemberOrdersPage() {
                    </div>
                 </div>
             )}
+
+             {/* Credits Breakdown Modal */}
+             <CreditsDetailModal 
+                 isOpen={showCreditModal}
+                 onClose={() => setShowCreditModal(false)}
+                 orders={orders}
+                 credits={credits}
+                 tenantColor={tenant?.primary_color || '#2563eb'}
+                 backgroundColor={tenant?.background_color}
+                 onNavigateToPlanning={() => router.push('/planning')}
+             />
 
             <BottomNav userRole={user?.role} />
 
